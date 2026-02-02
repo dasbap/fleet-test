@@ -14,7 +14,7 @@ const Incidents = () => {
   const navigate = useNavigate();
   const { user, role, isLoading: authLoading } = useAuth();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { incidents, isLoading, refetch } = useIncidents();
+  const { data: incidents = [], isLoading, refetch } = useIncidents();
 
   useEffect(() => {
     document.documentElement.classList.add("dark");

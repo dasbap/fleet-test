@@ -1,153 +1,196 @@
-import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type IncidentStatus = 'reported' | 'validated' | 'in_progress' | 'resolved' | 'rejected';
 
 export interface Incident {
   id: string;
   vehicle_id: string;
   fleet_id: string;
-  reported_by: string;
+  reported_by: string | null;
   validated_by: string | null;
   title: string;
   description: string | null;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  status: 'reported' | 'validated' | 'in_progress' | 'resolved' | 'rejected';
+  severity: IncidentSeverity;
+  status: IncidentStatus;
   location: string | null;
   photo_urls: string[] | null;
   validation_notes: string | null;
   reported_at: string;
   validated_at: string | null;
   resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined data
   vehicle?: {
     id: string;
     plate_number: string;
-    brand: string;
-    model: string;
-  };
+    brand: string | null;
+    model: string | null;
+  } | null;
+  reporter?: {
+    id: string;
+    full_name: string | null;
+  } | null;
+  validator?: {
+    id: string;
+    full_name: string | null;
+  } | null;
 }
 
-// Mock data for demonstration
-const mockIncidents: Incident[] = [
-  {
-    id: '1',
-    vehicle_id: '1',
-    fleet_id: '1',
-    reported_by: 'driver-1',
-    validated_by: null,
-    title: 'Crevaison pneu avant droit',
-    description: 'Crevaison sur la route de Thiès, pneu complètement à plat',
-    severity: 'high',
-    status: 'reported',
-    location: 'Route de Thiès, km 45',
-    photo_urls: null,
-    validation_notes: null,
-    reported_at: new Date().toISOString(),
-    validated_at: null,
-    resolved_at: null,
-    vehicle: {
-      id: '1',
-      plate_number: 'DK-1234-AB',
-      brand: 'Toyota',
-      model: 'Hiace',
-    },
-  },
-  {
-    id: '2',
-    vehicle_id: '2',
-    fleet_id: '1',
-    reported_by: 'driver-2',
-    validated_by: 'mechanic-1',
-    title: 'Feu stop arrière gauche HS',
-    description: 'Le feu stop ne fonctionne plus',
-    severity: 'medium',
-    status: 'validated',
-    location: null,
-    photo_urls: null,
-    validation_notes: 'Ampoule à remplacer, pièce commandée',
-    reported_at: new Date(Date.now() - 86400000).toISOString(),
-    validated_at: new Date().toISOString(),
-    resolved_at: null,
-    vehicle: {
-      id: '2',
-      plate_number: 'DK-5678-CD',
-      brand: 'Renault',
-      model: 'Master',
-    },
-  },
-  {
-    id: '3',
-    vehicle_id: '3',
-    fleet_id: '1',
-    reported_by: 'driver-3',
-    validated_by: 'mechanic-1',
-    title: 'Vidange à effectuer',
-    description: 'Kilométrage atteint pour la vidange programmée',
-    severity: 'low',
-    status: 'in_progress',
-    location: null,
-    photo_urls: null,
-    validation_notes: 'Vidange en cours au garage',
-    reported_at: new Date(Date.now() - 172800000).toISOString(),
-    validated_at: new Date(Date.now() - 86400000).toISOString(),
-    resolved_at: null,
-    vehicle: {
-      id: '3',
-      plate_number: 'DK-9012-EF',
-      brand: 'Mercedes',
-      model: 'Sprinter',
-    },
-  },
-  {
-    id: '4',
-    vehicle_id: '1',
-    fleet_id: '1',
-    reported_by: 'driver-1',
-    validated_by: 'mechanic-1',
-    title: 'Problème de frein',
-    description: 'Bruit de grincement au freinage',
-    severity: 'critical',
-    status: 'resolved',
-    location: 'Garage central',
-    photo_urls: null,
-    validation_notes: 'Plaquettes remplacées, véhicule opérationnel',
-    reported_at: new Date(Date.now() - 604800000).toISOString(),
-    validated_at: new Date(Date.now() - 518400000).toISOString(),
-    resolved_at: new Date(Date.now() - 432000000).toISOString(),
-    vehicle: {
-      id: '1',
-      plate_number: 'DK-1234-AB',
-      brand: 'Toyota',
-      model: 'Hiace',
-    },
-  },
-];
+export interface IncidentInsert {
+  vehicle_id: string;
+  fleet_id: string;
+  title: string;
+  description?: string;
+  severity?: IncidentSeverity;
+  location?: string;
+  photo_urls?: string[];
+}
 
-export function useIncidents() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function useIncidents(fleetId?: string) {
+  return useQuery({
+    queryKey: ['incidents', fleetId],
+    queryFn: async () => {
+      let query = supabase
+        .from('incidents')
+        .select(`
+          *,
+          vehicle:vehicles(id, plate_number, brand, model),
+          reporter:reported_by(id, full_name),
+          validator:validated_by(id, full_name)
+        `)
+        .order('reported_at', { ascending: false });
 
-  const fetchIncidents = async () => {
-    setIsLoading(true);
-    try {
-      // Simulate API call - will be replaced with real Supabase query
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setIncidents(mockIncidents);
-      setError(null);
-    } catch (err) {
-      setError('Erreur lors du chargement des incidents');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      if (fleetId) {
+        query = query.eq('fleet_id', fleetId);
+      }
 
-  useEffect(() => {
-    fetchIncidents();
-  }, []);
+      const { data, error } = await query;
 
-  return {
-    incidents,
-    isLoading,
-    error,
-    refetch: fetchIncidents,
-  };
+      if (error) {
+        console.error('Error fetching incidents:', error);
+        throw new Error(error.message);
+      }
+
+      return (data || []) as Incident[];
+    },
+  });
+}
+
+export function useCreateIncident() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (incident: IncidentInsert) => {
+      const { data: userData } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from('incidents')
+        .insert({
+          vehicle_id: incident.vehicle_id,
+          fleet_id: incident.fleet_id,
+          reported_by: userData.user?.id,
+          title: incident.title,
+          description: incident.description,
+          severity: incident.severity || 'medium',
+          location: incident.location,
+          photo_urls: incident.photo_urls,
+          status: 'reported',
+          reported_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data as Incident;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      toast({
+        title: 'Incident signalé',
+        description: 'L\'incident a été enregistré avec succès.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useValidateIncident() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      id, 
+      status, 
+      validation_notes 
+    }: { 
+      id: string; 
+      status: 'validated' | 'rejected' | 'in_progress' | 'resolved';
+      validation_notes?: string;
+    }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      
+      const updateData: Record<string, any> = {
+        status,
+        validated_by: userData.user?.id,
+        validated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      if (validation_notes) {
+        updateData.validation_notes = validation_notes;
+      }
+
+      if (status === 'resolved') {
+        updateData.resolved_at = new Date().toISOString();
+      }
+
+      const { data, error } = await supabase
+        .from('incidents')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data as Incident;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      
+      const statusMessages: Record<string, string> = {
+        validated: 'L\'incident a été validé.',
+        rejected: 'L\'incident a été rejeté.',
+        in_progress: 'L\'incident est en cours de traitement.',
+        resolved: 'L\'incident a été résolu.',
+      };
+
+      toast({
+        title: 'Incident mis à jour',
+        description: statusMessages[data.status] || 'Le statut a été mis à jour.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
 }
