@@ -5,11 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Zap, ArrowLeft, Mail, Lock, User, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { signIn, signUp, useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
   const [isSignup, setIsSignup] = useState(searchParams.get("mode") === "signup");
   const [isLoading, setIsLoading] = useState(false);
   
@@ -25,19 +27,62 @@ const Auth = () => {
     document.documentElement.classList.add("dark");
   }, []);
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/dashboard");
+    }
+  }, [user, authLoading, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate auth - will be replaced with Supabase
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      if (isSignup) {
+        const { error } = await signUp(formData.email, formData.password, formData.fullName);
+        if (error) {
+          toast({
+            title: "Erreur d'inscription",
+            description: error.message === "User already registered" 
+              ? "Un compte existe déjà avec cet email"
+              : error.message,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        toast({
+          title: "Compte créé avec succès!",
+          description: "Vérifiez votre email pour confirmer votre compte.",
+        });
+      } else {
+        const { error } = await signIn(formData.email, formData.password);
+        if (error) {
+          toast({
+            title: "Erreur de connexion",
+            description: error.message === "Invalid login credentials"
+              ? "Email ou mot de passe incorrect"
+              : error.message,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        toast({
+          title: "Connexion réussie!",
+          description: "Redirection vers le tableau de bord...",
+        });
+        navigate("/dashboard");
+      }
+    } catch (err) {
       toast({
-        title: isSignup ? "Compte créé avec succès!" : "Connexion réussie!",
-        description: "Redirection vers le tableau de bord...",
+        title: "Erreur",
+        description: "Une erreur inattendue s'est produite",
+        variant: "destructive",
       });
-      navigate("/dashboard");
-    }, 1500);
+    }
+    setIsLoading(false);
   };
 
   return (
