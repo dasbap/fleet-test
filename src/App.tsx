@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Vehicles from "./pages/Vehicles";
+import Drivers from "./pages/Drivers";
 import ShiftClosure from "./pages/ShiftClosure";
 import Incidents from "./pages/Incidents";
 import Maintenance from "./pages/Maintenance";
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/dashboard/vehicles" element={<Vehicles />} />
+          <Route path="/dashboard/drivers" element={<Drivers />} />
           <Route path="/dashboard/closure" element={<ShiftClosure />} />
           <Route path="/dashboard/incidents" element={<Incidents />} />
           <Route path="/dashboard/maintenance" element={<Maintenance />} />
