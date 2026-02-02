@@ -36,6 +36,7 @@ import {
 import { useMaintenanceJobs, useUpdateJobStatus, type JobStatus, type MaintenanceJob } from "@/hooks/useMaintenance";
 import { MaintenanceFormDialog } from "@/components/maintenance/MaintenanceFormDialog";
 import { MaintenanceDetailDialog } from "@/components/maintenance/MaintenanceDetailDialog";
+import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -54,16 +55,14 @@ const priorityConfig: Record<string, { label: string; variant: "default" | "seco
 };
 
 export default function Maintenance() {
-  const [userRole] = useState<"organizer" | "manager" | "driver" | "mechanic">("mechanic");
+  const { role, userFleetId } = useAuth();
+  const userRole = role || "mechanic";
   const [activeTab, setActiveTab] = useState<JobStatus | "all">("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
-  // TODO: Get fleetId from auth context
-  const fleetId = undefined;
-
   const { data: jobs = [], isLoading, error } = useMaintenanceJobs(
-    fleetId,
+    userFleetId || undefined,
     activeTab === "all" ? undefined : activeTab
   );
   const updateStatus = useUpdateJobStatus();
@@ -296,7 +295,7 @@ export default function Maintenance() {
       <MaintenanceFormDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
-        fleetId={fleetId}
+        fleetId={userFleetId || undefined}
       />
 
       {selectedJobId && (

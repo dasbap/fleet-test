@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Zap, ArrowLeft, Mail, Lock, User, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { signIn, signUp, useAuth } from "@/hooks/useAuth";
+import { InvitationCodeInput } from "@/components/auth/InvitationCodeInput";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -14,6 +15,8 @@ const Auth = () => {
   const { user, isLoading: authLoading } = useAuth();
   const [isSignup, setIsSignup] = useState(searchParams.get("mode") === "signup");
   const [isLoading, setIsLoading] = useState(false);
+  const [invitationFleetId, setInvitationFleetId] = useState<string | null>(null);
+  const [invitationFleetName, setInvitationFleetName] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     email: "",
@@ -40,7 +43,12 @@ const Auth = () => {
 
     try {
       if (isSignup) {
-        const { error } = await signUp(formData.email, formData.password, formData.fullName);
+        const { error } = await signUp(
+          formData.email, 
+          formData.password, 
+          formData.fullName,
+          invitationFleetId || undefined
+        );
         if (error) {
           toast({
             title: "Erreur d'inscription",
@@ -54,7 +62,9 @@ const Auth = () => {
         }
         toast({
           title: "Compte créé avec succès!",
-          description: "Vérifiez votre email pour confirmer votre compte.",
+          description: invitationFleetId 
+            ? `Vérifiez votre email. Vous rejoindrez la flotte "${invitationFleetName}".`
+            : "Vérifiez votre email pour confirmer votre compte.",
         });
       } else {
         const { error } = await signIn(formData.email, formData.password);
@@ -156,6 +166,16 @@ const Auth = () => {
                     />
                   </div>
                 </div>
+                <InvitationCodeInput
+                  onValidCode={(fleetId, fleetName) => {
+                    setInvitationFleetId(fleetId);
+                    setInvitationFleetName(fleetName);
+                  }}
+                  onClear={() => {
+                    setInvitationFleetId(null);
+                    setInvitationFleetName(null);
+                  }}
+                />
               </>
             )}
 
