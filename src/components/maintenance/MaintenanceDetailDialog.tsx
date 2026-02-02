@@ -8,6 +8,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMaintenanceJob, useUpdateJobStatus, type JobStatus } from "@/hooks/useMaintenance";
 import {
   Loader2,
@@ -23,6 +24,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import EvidenceUpload from "./EvidenceUpload";
+import { useAuth } from "@/hooks/useAuth";
 
 interface MaintenanceDetailDialogProps {
   open: boolean;
@@ -51,6 +54,7 @@ export function MaintenanceDetailDialog({
 }: MaintenanceDetailDialogProps) {
   const { data: job, isLoading } = useMaintenanceJob(jobId);
   const updateStatus = useUpdateJobStatus();
+  const { user } = useAuth();
 
   if (!job) {
     return (
@@ -140,29 +144,42 @@ export function MaintenanceDetailDialog({
             </>
           )}
 
-          {/* Evidence */}
+          {/* Evidence with Upload */}
           <Separator />
           <div>
             <h4 className="font-medium flex items-center gap-2 mb-3">
               <Camera className="h-4 w-4" />
               Preuves photos
             </h4>
-            {job.evidence && job.evidence.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
-                {job.evidence.map((ev: any) => (
-                  <div key={ev.id} className="relative">
-                    <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                      <Camera className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                    <Badge className="absolute top-2 left-2" variant={ev.kind === "before" ? "secondary" : "default"}>
-                      {ev.kind === "before" ? "Avant" : "Après"}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Aucune photo ajoutée</p>
-            )}
+            
+            <Tabs defaultValue="before" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="before">Avant intervention</TabsTrigger>
+                <TabsTrigger value="after">Après intervention</TabsTrigger>
+              </TabsList>
+              <TabsContent value="before" className="mt-4">
+                <EvidenceUpload
+                  jobId={jobId}
+                  kind="before"
+                  existingEvidence={
+                    (job.evidence || []).filter((e: any) => e.kind === 'before')
+                  }
+                  userId={user?.id || ''}
+                  disabled={job.status === 'ready'}
+                />
+              </TabsContent>
+              <TabsContent value="after" className="mt-4">
+                <EvidenceUpload
+                  jobId={jobId}
+                  kind="after"
+                  existingEvidence={
+                    (job.evidence || []).filter((e: any) => e.kind === 'after')
+                  }
+                  userId={user?.id || ''}
+                  disabled={job.status === 'ready'}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Timeline */}

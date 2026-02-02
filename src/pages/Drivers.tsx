@@ -1,0 +1,249 @@
+import { useState } from "react";
+import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { User, Car, MoreVertical, Phone, Calendar, History } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useFleetDrivers, useActiveAssignments } from "@/hooks/useAssignments";
+import { cn } from "@/lib/utils";
+import DriverHistoryDialog from "@/components/drivers/DriverHistoryDialog";
+
+const Drivers = () => {
+  const { role } = useAuth();
+  const userRole = role || "manager";
+  
+  // TODO: Get actual fleet ID from user's membership
+  const mockFleetId = "22222222-2222-2222-2222-222222222222";
+  
+  const { data: drivers = [], isLoading: driversLoading } = useFleetDrivers(mockFleetId);
+  const { data: assignments = [], isLoading: assignmentsLoading } = useActiveAssignments(mockFleetId);
+  
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  const isLoading = driversLoading || assignmentsLoading;
+
+  // Map assignments to drivers
+  const driversWithAssignments = drivers.map(driver => {
+    const assignment = assignments.find(a => a.driver_user_id === driver.user_id);
+    return {
+      ...driver,
+      currentAssignment: assignment || null,
+    };
+  });
+
+  const handleViewHistory = (driverId: string) => {
+    setSelectedDriverId(driverId);
+    setHistoryOpen(true);
+  };
+
+  return (
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <DashboardSidebar userRole={userRole} />
+        <SidebarInset className="flex flex-col flex-1">
+          <DashboardHeader userRole={userRole} />
+          <main className="flex-1 p-6 overflow-auto">
+            <div className="max-w-7xl mx-auto space-y-6">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-heading font-bold">
+                    Gestion des chauffeurs
+                  </h1>
+                  <p className="text-muted-foreground mt-1">
+                    Suivez les affectations et l'historique de vos chauffeurs
+                  </p>
+                </div>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <User className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{drivers.length}</p>
+                        <p className="text-sm text-muted-foreground">Chauffeurs actifs</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center">
+                        <Car className="w-6 h-6 text-success" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">
+                          {driversWithAssignments.filter(d => d.currentAssignment).length}
+                        </p>
+                        <p className="text-sm text-muted-foreground">En mission</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                        <User className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">
+                          {driversWithAssignments.filter(d => !d.currentAssignment).length}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Disponibles</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Drivers Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-heading">Liste des chauffeurs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      Chargement...
+                    </div>
+                  ) : drivers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                        <User className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">Aucun chauffeur</h3>
+                      <p className="text-muted-foreground">
+                        Ajoutez des chauffeurs à votre flotte pour commencer.
+                      </p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Chauffeur</TableHead>
+                          <TableHead>Contact</TableHead>
+                          <TableHead>Véhicule actuel</TableHead>
+                          <TableHead>Statut</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {driversWithAssignments.map((driver) => (
+                          <TableRow key={driver.user_id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <User className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                  <div className="font-medium">
+                                    {driver.full_name || "Sans nom"}
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {driver.phone ? (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="w-4 h-4 text-muted-foreground" />
+                                  <span>{driver.phone}</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground italic">Non renseigné</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {driver.currentAssignment?.vehicle ? (
+                                <div className="flex items-center gap-2">
+                                  <Car className="w-4 h-4 text-muted-foreground" />
+                                  <span className="font-mono">
+                                    {driver.currentAssignment.vehicle.registration}
+                                  </span>
+                                  <span className="text-muted-foreground text-sm">
+                                    {driver.currentAssignment.vehicle.brand} {driver.currentAssignment.vehicle.model}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground italic">Non affecté</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "gap-1",
+                                  driver.currentAssignment
+                                    ? "bg-success/10 text-success border-success/20"
+                                    : "bg-muted text-muted-foreground"
+                                )}
+                              >
+                                {driver.currentAssignment ? "En mission" : "Disponible"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleViewHistory(driver.user_id)}>
+                                    <History className="w-4 h-4 mr-2" />
+                                    Voir historique
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    <Calendar className="w-4 h-4 mr-2" />
+                                    Planifier
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </main>
+        </SidebarInset>
+      </div>
+
+      {/* History Dialog */}
+      <DriverHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        driverId={selectedDriverId}
+      />
+    </SidebarProvider>
+  );
+};
+
+export default Drivers;

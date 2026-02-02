@@ -1,4 +1,5 @@
-import { Car, MoreVertical, User, AlertCircle, CheckCircle } from "lucide-react";
+import { useState } from "react";
+import { Car, MoreVertical, User, AlertCircle, CheckCircle, UserPlus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -18,6 +19,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useVehicles, VehicleStatus } from "@/hooks/useVehicles";
+import { AssignmentFormDialog } from "./AssignmentFormDialog";
+import { useQueryClient } from "@tanstack/react-query";
 
 const statusConfig: Record<VehicleStatus, { label: string; icon: typeof CheckCircle; className: string }> = {
   ok: {
@@ -34,6 +37,21 @@ const statusConfig: Record<VehicleStatus, { label: string; icon: typeof CheckCir
 
 const VehiclesTable = () => {
   const { data: vehicles = [], isLoading } = useVehicles();
+  const queryClient = useQueryClient();
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<{ id: string; registration: string } | null>(null);
+  
+  // TODO: Get actual fleet ID from user's membership
+  const mockFleetId = "22222222-2222-2222-2222-222222222222";
+
+  const handleAssignClick = (vehicleId: string, registration: string) => {
+    setSelectedVehicle({ id: vehicleId, registration });
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssignSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+  };
 
   if (isLoading) {
     return (
@@ -152,7 +170,13 @@ const VehiclesTable = () => {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem>Voir détails</DropdownMenuItem>
                         <DropdownMenuItem>Modifier</DropdownMenuItem>
-                        <DropdownMenuItem>Affecter chauffeur</DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleAssignClick(vehicle.id, vehicle.registration)}
+                          disabled={vehicle.status === 'blocked' || !!vehicle.active_assignment}
+                        >
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Affecter chauffeur
+                        </DropdownMenuItem>
                         <DropdownMenuItem>Historique</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -163,6 +187,14 @@ const VehiclesTable = () => {
           </TableBody>
         </Table>
       </CardContent>
+
+      {/* Assignment Dialog */}
+      <AssignmentFormDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        fleetId={mockFleetId}
+        preselectedVehicleId={selectedVehicle?.id}
+      />
     </Card>
   );
 };
