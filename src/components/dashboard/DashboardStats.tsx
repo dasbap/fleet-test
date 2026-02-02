@@ -1,47 +1,69 @@
-import { Car, Users, AlertTriangle, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { Car, Users, AlertTriangle, DollarSign, TrendingUp, TrendingDown, Wrench, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
-const stats = [
-  {
-    label: "Véhicules actifs",
-    value: "42",
-    change: "+3",
-    trend: "up",
-    icon: Car,
-    color: "primary",
-  },
-  {
-    label: "Chauffeurs en service",
-    value: "38",
-    change: "-2",
-    trend: "down",
-    icon: Users,
-    color: "info",
-  },
-  {
-    label: "Alertes en attente",
-    value: "7",
-    change: "+4",
-    trend: "up",
-    icon: AlertTriangle,
-    color: "warning",
-  },
-  {
-    label: "Recettes du jour",
-    value: "2.4M",
-    suffix: "FCFA",
-    change: "+12%",
-    trend: "up",
-    icon: DollarSign,
-    color: "success",
-  },
-];
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const DashboardStats = () => {
+  const { data: stats, isLoading } = useDashboardStats();
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i}>
+            <CardContent className="p-6">
+              <Skeleton className="h-4 w-24 mb-2" />
+              <Skeleton className="h-8 w-16 mb-2" />
+              <Skeleton className="h-4 w-12" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  const statItems = [
+    {
+      label: "Véhicules actifs",
+      value: stats?.activeVehicles || 0,
+      total: stats?.totalVehicles,
+      change: stats?.blockedVehicles ? `-${stats.blockedVehicles} bloqués` : null,
+      trend: stats?.blockedVehicles && stats.blockedVehicles > 0 ? "down" : "up",
+      icon: Car,
+      color: "primary",
+    },
+    {
+      label: "Chauffeurs en service",
+      value: stats?.activeDrivers || 0,
+      total: stats?.totalDrivers,
+      change: stats?.totalDrivers ? `sur ${stats.totalDrivers}` : null,
+      trend: "up",
+      icon: Users,
+      color: "info",
+    },
+    {
+      label: "Incidents récents",
+      value: stats?.pendingIncidents || 0,
+      change: stats?.maintenanceInProgress ? `${stats.maintenanceInProgress} en cours` : null,
+      trend: stats?.pendingIncidents && stats.pendingIncidents > 3 ? "down" : "up",
+      icon: AlertTriangle,
+      color: "warning",
+    },
+    {
+      label: "Recettes du jour",
+      value: stats?.todayRevenue ? Math.round(stats.todayRevenue / 1000) : 0,
+      suffix: stats?.todayRevenue && stats.todayRevenue >= 1000 ? "K FCFA" : "FCFA",
+      change: stats?.pendingClosures ? `${stats.pendingClosures} clôtures en attente` : null,
+      trend: "up",
+      icon: DollarSign,
+      color: "success",
+    },
+  ];
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {stats.map((stat) => (
+      {statItems.map((stat) => (
         <Card key={stat.label} className="relative overflow-hidden group hover:border-primary/50 transition-colors">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
@@ -49,23 +71,28 @@ const DashboardStats = () => {
                 <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
                 <div className="flex items-baseline gap-1">
                   <span className="text-2xl md:text-3xl font-heading font-bold">
-                    {stat.value}
+                    {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
                   </span>
                   {stat.suffix && (
                     <span className="text-sm text-muted-foreground">{stat.suffix}</span>
                   )}
-                </div>
-                <div className={cn(
-                  "flex items-center gap-1 mt-2 text-sm",
-                  stat.trend === "up" ? "text-success" : "text-destructive"
-                )}>
-                  {stat.trend === "up" ? (
-                    <TrendingUp className="w-4 h-4" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4" />
+                  {stat.total && (
+                    <span className="text-sm text-muted-foreground">/ {stat.total}</span>
                   )}
-                  <span>{stat.change}</span>
                 </div>
+                {stat.change && (
+                  <div className={cn(
+                    "flex items-center gap-1 mt-2 text-sm",
+                    stat.trend === "up" ? "text-success" : "text-warning-foreground"
+                  )}>
+                    {stat.trend === "up" ? (
+                      <TrendingUp className="w-4 h-4" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4" />
+                    )}
+                    <span>{stat.change}</span>
+                  </div>
+                )}
               </div>
               <div className={cn(
                 "w-12 h-12 rounded-xl flex items-center justify-center",

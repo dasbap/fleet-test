@@ -16,6 +16,7 @@ interface UserWithRole {
   session: Session | null;
   role: AppRole | null;
   memberships: FleetMembership[];
+  userFleetId: string | null;
   isLoading: boolean;
 }
 
@@ -93,7 +94,10 @@ export function useAuth(): UserWithRole {
     return () => subscription.unsubscribe();
   }, []);
 
-  return { user, session, role, memberships, isLoading };
+  // Get the first active fleet ID for the user
+  const userFleetId = memberships.length > 0 ? memberships[0].fleet_id : null;
+
+  return { user, session, role, memberships, userFleetId, isLoading };
 }
 
 export async function signIn(email: string, password: string) {
