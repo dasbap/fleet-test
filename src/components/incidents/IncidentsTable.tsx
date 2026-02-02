@@ -15,11 +15,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, CheckCircle, XCircle, Wrench, Eye } from "lucide-react";
+import { MoreHorizontal, Wrench, Eye, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Incident } from "@/hooks/useIncidents";
-import IncidentValidationDialog from "./IncidentValidationDialog";
+import { Incident, useCreateMaintenanceFromIncident } from "@/hooks/useIncidents";
 import { AppRole } from "@/hooks/useAuth";
 
 interface IncidentsTableProps {
@@ -29,14 +28,6 @@ interface IncidentsTableProps {
   onRefresh: () => void;
 }
 
-const statusConfig = {
-  reported: { label: "Signalé", variant: "secondary" as const },
-  validated: { label: "Validé", variant: "default" as const },
-  in_progress: { label: "En cours", variant: "outline" as const },
-  resolved: { label: "Résolu", variant: "default" as const },
-  rejected: { label: "Rejeté", variant: "destructive" as const },
-};
-
 const severityConfig = {
   low: { label: "Faible", variant: "secondary" as const },
   medium: { label: "Moyen", variant: "outline" as const },
@@ -45,14 +36,20 @@ const severityConfig = {
 };
 
 const IncidentsTable = ({ incidents, isLoading, userRole, onRefresh }: IncidentsTableProps) => {
-  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-  const [isValidationOpen, setIsValidationOpen] = useState(false);
+  const createMaintenance = useCreateMaintenanceFromIncident();
 
-  const canValidate = userRole === "mechanic" || userRole === "organizer" || userRole === "manager";
+  const canCreateMaintenance = userRole === "mechanic" || userRole === "organizer" || userRole === "manager";
 
-  const handleValidate = (incident: Incident) => {
-    setSelectedIncident(incident);
-    setIsValidationOpen(true);
+  const handleCreateMaintenance = async (incident: Incident) => {
+    if (!incident.vehicle?.fleet_id) return;
+    
+    await createMaintenance.mutateAsync({
+      incident_id: incident.id,
+      vehicle_id: incident.vehicle_id,
+      fleet_id: incident.vehicle.fleet_id,
+      priority: incident.severity,
+    });
+    onRefresh();
   };
 
   if (isLoading) {
@@ -78,99 +75,80 @@ const IncidentsTable = ({ incidents, isLoading, userRole, onRefresh }: Incidents
   }
 
   return (
-    <>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Titre</TableHead>
-              <TableHead>Véhicule</TableHead>
-              <TableHead>Sévérité</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {incidents.map((incident) => (
-              <TableRow key={incident.id}>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{incident.title}</div>
-                    {incident.description && (
-                      <div className="text-sm text-muted-foreground truncate max-w-[200px]">
-                        {incident.description}
-                      </div>
-                    )}
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Description</TableHead>
+            <TableHead>Véhicule</TableHead>
+            <TableHead>Chauffeur</TableHead>
+            <TableHead>Sévérité</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead className="w-[100px]">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {incidents.map((incident) => (
+            <TableRow key={incident.id}>
+              <TableCell>
+                <div className="max-w-[250px]">
+                  <div className="font-medium truncate">{incident.description}</div>
+                  {incident.evidence_path && (
+                    <div className="text-xs text-muted-foreground">
+                      📎 Preuve jointe
+                    </div>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="font-mono text-sm">
+                  {incident.vehicle?.registration || "N/A"}
+                </div>
+                {incident.vehicle?.brand && (
+                  <div className="text-xs text-muted-foreground">
+                    {incident.vehicle.brand} {incident.vehicle.model}
                   </div>
-                </TableCell>
-                <TableCell>
-                  <div className="font-mono text-sm">
-                    {incident.vehicle?.plate_number || "N/A"}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={severityConfig[incident.severity].variant}>
-                    {severityConfig[incident.severity].label}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={statusConfig[incident.status].variant}>
-                    {statusConfig[incident.status].label}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {format(new Date(incident.reported_at), "dd MMM yyyy", { locale: fr })}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Eye className="mr-2 h-4 w-4" />
-                        Voir détails
+                )}
+              </TableCell>
+              <TableCell>
+                <div className="text-sm">
+                  {incident.driver?.full_name || "Inconnu"}
+                </div>
+              </TableCell>
+              <TableCell>
+                <Badge variant={severityConfig[incident.severity].variant}>
+                  {severityConfig[incident.severity].label}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {format(new Date(incident.created_at), "dd MMM yyyy", { locale: fr })}
+              </TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Voir détails
+                    </DropdownMenuItem>
+                    {canCreateMaintenance && incident.vehicle?.fleet_id && (
+                      <DropdownMenuItem onClick={() => handleCreateMaintenance(incident)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Créer intervention
                       </DropdownMenuItem>
-                      {canValidate && incident.status === "reported" && (
-                        <>
-                          <DropdownMenuItem onClick={() => handleValidate(incident)}>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Valider
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={() => handleValidate(incident)}
-                          >
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Rejeter
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {selectedIncident && (
-        <IncidentValidationDialog
-          open={isValidationOpen}
-          onOpenChange={setIsValidationOpen}
-          incident={selectedIncident}
-          onSuccess={() => {
-            setIsValidationOpen(false);
-            setSelectedIncident(null);
-            onRefresh();
-          }}
-        />
-      )}
-    </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 

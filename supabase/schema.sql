@@ -1,448 +1,451 @@
 -- =====================================================
--- E-SAMBA DATABASE SCHEMA
+-- E-SAMBA DATABASE SCHEMA v2
 -- Execute this SQL in your Supabase SQL Editor
 -- =====================================================
 
--- 1. ENUM TYPES
--- =====================================================
-CREATE TYPE public.app_role AS ENUM ('organizer', 'manager', 'driver', 'mechanic');
-CREATE TYPE public.vehicle_status AS ENUM ('active', 'maintenance', 'blocked', 'inactive');
-CREATE TYPE public.incident_status AS ENUM ('reported', 'validated', 'in_progress', 'resolved', 'rejected');
-CREATE TYPE public.incident_severity AS ENUM ('low', 'medium', 'high', 'critical');
-CREATE TYPE public.shift_status AS ENUM ('active', 'closed', 'cancelled');
-CREATE TYPE public.collection_mode AS ENUM ('cash', 'momo', 'orange', 'mixed');
+-- EXT
+create extension if not exists pgcrypto;
 
--- 2. ORGANIZATIONS TABLE
--- =====================================================
-CREATE TABLE public.orgs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    slug TEXT UNIQUE NOT NULL,
-    logo_url TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+-- ENUMS
+create type role_type as enum ('organizer','manager','driver','mechanic');
+create type vehicle_status as enum ('ok','blocked');
+create type closure_status as enum ('pending','validated','rejected');
+
+-- TENANCY
+create table orgs (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  country_code text not null default 'CM',
+  created_at timestamptz not null default now()
 );
 
-ALTER TABLE public.orgs ENABLE ROW LEVEL SECURITY;
-
--- 3. FLEETS TABLE
--- =====================================================
-CREATE TABLE public.fleets (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID REFERENCES public.orgs(id) ON DELETE CASCADE NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+create table fleets (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references orgs(id) on delete cascade,
+  name text not null,
+  collection_policy text not null default 'mix', -- cash|momo|mix
+  created_at timestamptz not null default now()
 );
 
-ALTER TABLE public.fleets ENABLE ROW LEVEL SECURITY;
-
--- 4. PROFILES TABLE (extends auth.users)
--- =====================================================
-CREATE TABLE public.profiles (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    full_name TEXT,
-    avatar_url TEXT,
-    phone TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+create table profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  full_name text,
+  phone text,
+  created_at timestamptz not null default now()
 );
 
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
--- 5. USER ROLES TABLE (separate from profiles for security)
--- =====================================================
-CREATE TABLE public.user_roles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    role app_role NOT NULL,
-    org_id UUID REFERENCES public.orgs(id) ON DELETE CASCADE,
-    fleet_id UUID REFERENCES public.fleets(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (user_id, role, org_id, fleet_id)
+create table fleet_memberships (
+  id uuid primary key default gen_random_uuid(),
+  fleet_id uuid not null references fleets(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role role_type not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (fleet_id, user_id, role)
 );
 
-ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-
--- 6. FLEET MEMBERSHIPS TABLE
--- =====================================================
-CREATE TABLE public.fleet_memberships (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    fleet_id UUID REFERENCES public.fleets(id) ON DELETE CASCADE NOT NULL,
-    joined_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (user_id, fleet_id)
+-- VEHICLES
+create table vehicles (
+  id uuid primary key default gen_random_uuid(),
+  fleet_id uuid not null references fleets(id) on delete cascade,
+  registration text not null,
+  brand text,
+  model text,
+  year int,
+  current_km int not null default 0,
+  status vehicle_status not null default 'ok',
+  blocked_reason text,
+  created_at timestamptz not null default now(),
+  unique (fleet_id, registration)
 );
 
-ALTER TABLE public.fleet_memberships ENABLE ROW LEVEL SECURITY;
-
--- 7. VEHICLES TABLE
--- =====================================================
-CREATE TABLE public.vehicles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    fleet_id UUID REFERENCES public.fleets(id) ON DELETE CASCADE NOT NULL,
-    plate_number TEXT NOT NULL,
-    brand TEXT,
-    model TEXT,
-    year INTEGER,
-    current_km INTEGER DEFAULT 0,
-    status vehicle_status DEFAULT 'active',
-    status_reason TEXT,
-    daily_target DECIMAL(10,2) DEFAULT 0,
-    score INTEGER DEFAULT 100,
-    qr_code TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (fleet_id, plate_number)
+-- ASSIGNMENTS (non simultané)
+create table driver_vehicle_assignments (
+  id uuid primary key default gen_random_uuid(),
+  fleet_id uuid not null references fleets(id) on delete cascade,
+  vehicle_id uuid not null references vehicles(id) on delete cascade,
+  driver_user_id uuid not null references auth.users(id) on delete cascade,
+  starts_at timestamptz not null default now(),
+  ends_at timestamptz,
+  is_active boolean not null default true,
+  created_by uuid not null references auth.users(id),
+  created_at timestamptz not null default now()
 );
 
-ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
+create unique index one_active_assignment_per_driver
+on driver_vehicle_assignments(driver_user_id)
+where is_active = true;
 
--- 8. DRIVER VEHICLE ASSIGNMENTS
--- =====================================================
-CREATE TABLE public.driver_vehicle_assignments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    driver_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    vehicle_id UUID REFERENCES public.vehicles(id) ON DELETE CASCADE NOT NULL,
-    assigned_at TIMESTAMPTZ DEFAULT NOW(),
-    unassigned_at TIMESTAMPTZ,
-    is_active BOOLEAN DEFAULT TRUE,
-    UNIQUE (driver_id, vehicle_id, is_active)
+create unique index one_active_assignment_per_vehicle
+on driver_vehicle_assignments(vehicle_id)
+where is_active = true;
+
+-- SHIFTS & CLOSURES
+create table driver_shifts (
+  id uuid primary key default gen_random_uuid(),
+  assignment_id uuid not null references driver_vehicle_assignments(id) on delete restrict,
+  km_start int not null,
+  km_end int,
+  started_at timestamptz not null default now(),
+  ended_at timestamptz,
+  status text not null default 'open' -- open|closed
 );
 
-ALTER TABLE public.driver_vehicle_assignments ENABLE ROW LEVEL SECURITY;
-
--- 9. DRIVER SHIFTS TABLE
--- =====================================================
-CREATE TABLE public.driver_shifts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    driver_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    vehicle_id UUID REFERENCES public.vehicles(id) ON DELETE CASCADE NOT NULL,
-    fleet_id UUID REFERENCES public.fleets(id) ON DELETE CASCADE NOT NULL,
-    start_time TIMESTAMPTZ DEFAULT NOW(),
-    end_time TIMESTAMPTZ,
-    start_km INTEGER NOT NULL,
-    end_km INTEGER,
-    status shift_status DEFAULT 'active',
-    created_at TIMESTAMPTZ DEFAULT NOW()
+create table driver_shift_closures (
+  id uuid primary key default gen_random_uuid(),
+  shift_id uuid not null references driver_shifts(id) on delete cascade,
+  revenue_declared int not null,
+  collection_mode text not null, -- cash|momo|mix
+  proof_type text not null,      -- photo|momo_ref|doc
+  proof_value text not null,
+  status closure_status not null default 'pending',
+  validated_by uuid references auth.users(id),
+  validated_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (shift_id)
 );
 
-ALTER TABLE public.driver_shifts ENABLE ROW LEVEL SECURITY;
-
--- 10. DRIVER SHIFT CLOSURES TABLE
--- =====================================================
-CREATE TABLE public.driver_shift_closures (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    shift_id UUID REFERENCES public.driver_shifts(id) ON DELETE CASCADE NOT NULL,
-    driver_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    vehicle_id UUID REFERENCES public.vehicles(id) ON DELETE CASCADE NOT NULL,
-    end_km INTEGER NOT NULL,
-    total_revenue DECIMAL(10,2) NOT NULL,
-    collection_mode collection_mode NOT NULL,
-    cash_amount DECIMAL(10,2) DEFAULT 0,
-    momo_amount DECIMAL(10,2) DEFAULT 0,
-    notes TEXT,
-    photo_url TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+-- INCIDENTS / MAINTENANCE
+create table incidents (
+  id uuid primary key default gen_random_uuid(),
+  vehicle_id uuid not null references vehicles(id) on delete cascade,
+  driver_user_id uuid not null references auth.users(id),
+  severity text not null default 'medium',
+  description text not null,
+  evidence_path text,
+  created_at timestamptz not null default now()
 );
 
-ALTER TABLE public.driver_shift_closures ENABLE ROW LEVEL SECURITY;
-
--- 11. INCIDENTS TABLE
--- =====================================================
-CREATE TABLE public.incidents (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    vehicle_id UUID REFERENCES public.vehicles(id) ON DELETE CASCADE NOT NULL,
-    fleet_id UUID REFERENCES public.fleets(id) ON DELETE CASCADE NOT NULL,
-    reported_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    validated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    title TEXT NOT NULL,
-    description TEXT,
-    severity incident_severity DEFAULT 'medium',
-    status incident_status DEFAULT 'reported',
-    location TEXT,
-    photo_urls TEXT[],
-    validation_notes TEXT,
-    reported_at TIMESTAMPTZ DEFAULT NOW(),
-    validated_at TIMESTAMPTZ,
-    resolved_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+create table maintenance_jobs (
+  id uuid primary key default gen_random_uuid(),
+  vehicle_id uuid not null references vehicles(id) on delete cascade,
+  fleet_id uuid not null references fleets(id) on delete cascade,
+  created_from_incident_id uuid references incidents(id),
+  priority text not null default 'medium',
+  status text not null default 'queued', -- queued|in_progress|ready|blocked
+  created_at timestamptz not null default now(),
+  closed_at timestamptz
 );
 
-ALTER TABLE public.incidents ENABLE ROW LEVEL SECURITY;
-
--- 12. MAINTENANCE JOBS TABLE
--- =====================================================
-CREATE TABLE public.maintenance_jobs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    incident_id UUID REFERENCES public.incidents(id) ON DELETE SET NULL,
-    vehicle_id UUID REFERENCES public.vehicles(id) ON DELETE CASCADE NOT NULL,
-    fleet_id UUID REFERENCES public.fleets(id) ON DELETE CASCADE NOT NULL,
-    assigned_to UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    title TEXT NOT NULL,
-    description TEXT,
-    priority incident_severity DEFAULT 'medium',
-    status TEXT DEFAULT 'pending',
-    estimated_cost DECIMAL(10,2),
-    actual_cost DECIMAL(10,2),
-    started_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+create table maintenance_evidence (
+  id uuid primary key default gen_random_uuid(),
+  job_id uuid not null references maintenance_jobs(id) on delete cascade,
+  kind text not null, -- before|after
+  file_path text not null,
+  created_by uuid not null references auth.users(id),
+  created_at timestamptz not null default now()
 );
 
-ALTER TABLE public.maintenance_jobs ENABLE ROW LEVEL SECURITY;
-
--- 13. AUDIT LOGS TABLE
--- =====================================================
-CREATE TABLE public.audit_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    org_id UUID REFERENCES public.orgs(id) ON DELETE SET NULL,
-    action TEXT NOT NULL,
-    table_name TEXT,
-    record_id UUID,
-    old_data JSONB,
-    new_data JSONB,
-    ip_address INET,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+create table maintenance_checklists (
+  id uuid primary key default gen_random_uuid(),
+  job_id uuid not null references maintenance_jobs(id) on delete cascade,
+  items jsonb not null,
+  signed_by uuid not null references auth.users(id),
+  signed_at timestamptz not null default now()
 );
 
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+-- PLANS / PAYMENTS / SUBSCRIPTIONS / ENTITLEMENTS / QR
+create table plans (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  name text not null,
+  price_per_vehicle int not null,     -- ex 10000 FCFA
+  min_commitment_days int not null default 60,
+  is_active boolean not null default true
+);
+
+create table payments (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references orgs(id) on delete cascade,
+  provider text not null,
+  amount int not null,
+  currency text not null default 'XAF',
+  external_ref text,
+  status text not null default 'initiated', -- initiated|succeeded|failed
+  idempotency_key text not null,
+  raw_payload jsonb,
+  created_at timestamptz not null default now(),
+  unique(provider, idempotency_key)
+);
+
+create table subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  fleet_id uuid not null references fleets(id) on delete cascade,
+  plan_id uuid not null references plans(id),
+  payment_id uuid references payments(id),
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  status text not null default 'active'
+);
+
+create table vehicle_entitlements (
+  id uuid primary key default gen_random_uuid(),
+  vehicle_id uuid not null references vehicles(id) on delete cascade,
+  subscription_id uuid not null references subscriptions(id) on delete cascade,
+  active boolean not null default true,
+  unique(vehicle_id, subscription_id)
+);
+
+create table qr_tokens (
+  id uuid primary key default gen_random_uuid(),
+  vehicle_id uuid not null references vehicles(id) on delete cascade,
+  token_hash text not null unique,
+  scope text not null default 'subscription', -- subscription|debug
+  expires_at timestamptz not null,
+  created_by uuid not null references auth.users(id),
+  created_at timestamptz not null default now()
+);
 
 -- =====================================================
--- SECURITY DEFINER FUNCTIONS
+-- HELPER FUNCTIONS
 -- =====================================================
 
--- Function to check if user has a specific role
-CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
-RETURNS BOOLEAN
-LANGUAGE SQL
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT EXISTS (
-        SELECT 1
-        FROM public.user_roles
-        WHERE user_id = _user_id
-          AND role = _role
-    )
-$$;
-
--- Function to get user's fleet IDs
-CREATE OR REPLACE FUNCTION public.get_user_fleet_ids(_user_id UUID)
-RETURNS SETOF UUID
-LANGUAGE SQL
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT fleet_id FROM public.fleet_memberships WHERE user_id = _user_id
-    UNION
-    SELECT fleet_id FROM public.user_roles WHERE user_id = _user_id AND fleet_id IS NOT NULL
-$$;
-
--- Function to get user's org IDs
-CREATE OR REPLACE FUNCTION public.get_user_org_ids(_user_id UUID)
-RETURNS SETOF UUID
-LANGUAGE SQL
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT org_id FROM public.user_roles WHERE user_id = _user_id AND org_id IS NOT NULL
+create or replace function has_role(p_fleet_id uuid, p_role role_type)
+returns boolean language sql stable as $$
+  select exists (
+    select 1 from fleet_memberships
+    where fleet_id = p_fleet_id
+      and user_id = auth.uid()
+      and role = p_role
+      and is_active = true
+  );
 $$;
 
 -- =====================================================
--- ROW LEVEL SECURITY POLICIES
+-- RPC FUNCTIONS
 -- =====================================================
 
--- PROFILES POLICIES
-CREATE POLICY "Users can view own profile"
-    ON public.profiles FOR SELECT
-    TO authenticated
-    USING (id = auth.uid());
+-- RPC: assign vehicle (atomic) + checks
+create or replace function assign_vehicle(
+  p_fleet_id uuid,
+  p_vehicle_id uuid,
+  p_driver_user_id uuid,
+  p_starts_at timestamptz default now()
+) returns uuid
+language plpgsql security definer as $$
+declare
+  v_vehicle vehicles;
+  v_assignment_id uuid;
+begin
+  select * into v_vehicle
+  from vehicles
+  where id = p_vehicle_id and fleet_id = p_fleet_id
+  for update;
 
-CREATE POLICY "Users can update own profile"
-    ON public.profiles FOR UPDATE
-    TO authenticated
-    USING (id = auth.uid());
+  if not found then raise exception 'vehicle_not_found'; end if;
+  if v_vehicle.status = 'blocked' then raise exception 'vehicle_blocked'; end if;
 
-CREATE POLICY "Users can insert own profile"
-    ON public.profiles FOR INSERT
-    TO authenticated
-    WITH CHECK (id = auth.uid());
+  -- "pas de clôture -> pas de nouvelle affectation" pour ce véhicule
+  if exists (
+    select 1
+    from driver_vehicle_assignments a
+    join driver_shifts s on s.assignment_id = a.id
+    left join driver_shift_closures c on c.shift_id = s.id
+    where a.vehicle_id = p_vehicle_id
+      and a.is_active = false
+      and s.status = 'closed'
+      and c.id is null
+      and s.ended_at > now() - interval '7 days'
+  ) then
+    raise exception 'missing_closure_blocks_assignment';
+  end if;
 
--- USER ROLES POLICIES (only organizers can manage)
-CREATE POLICY "Users can view own roles"
-    ON public.user_roles FOR SELECT
-    TO authenticated
-    USING (user_id = auth.uid());
+  if exists (select 1 from driver_vehicle_assignments where driver_user_id = p_driver_user_id and is_active = true)
+  then raise exception 'driver_already_assigned'; end if;
 
-CREATE POLICY "Organizers can manage roles in their org"
-    ON public.user_roles FOR ALL
-    TO authenticated
-    USING (
-        public.has_role(auth.uid(), 'organizer') 
-        AND org_id IN (SELECT public.get_user_org_ids(auth.uid()))
-    );
+  insert into driver_vehicle_assignments(fleet_id, vehicle_id, driver_user_id, starts_at, created_by)
+  values (p_fleet_id, p_vehicle_id, p_driver_user_id, p_starts_at, auth.uid())
+  returning id into v_assignment_id;
 
--- ORGS POLICIES
-CREATE POLICY "Members can view their org"
-    ON public.orgs FOR SELECT
-    TO authenticated
-    USING (id IN (SELECT public.get_user_org_ids(auth.uid())));
+  return v_assignment_id;
+end;
+$$;
 
-CREATE POLICY "Organizers can update their org"
-    ON public.orgs FOR UPDATE
-    TO authenticated
-    USING (
-        public.has_role(auth.uid(), 'organizer')
-        AND id IN (SELECT public.get_user_org_ids(auth.uid()))
-    );
+-- RPC: close shift
+create or replace function close_shift(
+  p_shift_id uuid,
+  p_km_end int,
+  p_revenue_declared int,
+  p_collection_mode text,
+  p_proof_type text,
+  p_proof_value text
+) returns void
+language plpgsql security definer as $$
+begin
+  update driver_shifts
+    set km_end = p_km_end, ended_at = now(), status = 'closed'
+  where id = p_shift_id;
 
--- FLEETS POLICIES
-CREATE POLICY "Members can view their fleets"
-    ON public.fleets FOR SELECT
-    TO authenticated
-    USING (id IN (SELECT public.get_user_fleet_ids(auth.uid())));
+  insert into driver_shift_closures(shift_id, revenue_declared, collection_mode, proof_type, proof_value)
+  values (p_shift_id, p_revenue_declared, p_collection_mode, p_proof_type, p_proof_value)
+  on conflict (shift_id) do update
+    set revenue_declared = excluded.revenue_declared,
+        collection_mode = excluded.collection_mode,
+        proof_type = excluded.proof_type,
+        proof_value = excluded.proof_value,
+        status = 'pending';
+end;
+$$;
 
-CREATE POLICY "Organizers can manage fleets in their org"
-    ON public.fleets FOR ALL
-    TO authenticated
-    USING (
-        public.has_role(auth.uid(), 'organizer')
-        AND org_id IN (SELECT public.get_user_org_ids(auth.uid()))
-    );
+-- =====================================================
+-- ROW LEVEL SECURITY
+-- =====================================================
 
--- VEHICLES POLICIES
-CREATE POLICY "Fleet members can view vehicles"
-    ON public.vehicles FOR SELECT
-    TO authenticated
-    USING (fleet_id IN (SELECT public.get_user_fleet_ids(auth.uid())));
+alter table fleet_memberships enable row level security;
+alter table vehicles enable row level security;
+alter table driver_vehicle_assignments enable row level security;
+alter table driver_shifts enable row level security;
+alter table driver_shift_closures enable row level security;
+alter table incidents enable row level security;
+alter table maintenance_jobs enable row level security;
+alter table maintenance_evidence enable row level security;
+alter table maintenance_checklists enable row level security;
+alter table subscriptions enable row level security;
+alter table vehicle_entitlements enable row level security;
+alter table qr_tokens enable row level security;
 
-CREATE POLICY "Managers can manage vehicles"
-    ON public.vehicles FOR ALL
-    TO authenticated
-    USING (
-        (public.has_role(auth.uid(), 'organizer') OR public.has_role(auth.uid(), 'manager'))
-        AND fleet_id IN (SELECT public.get_user_fleet_ids(auth.uid()))
-    );
+-- VEHICLES policies
+create policy vehicles_read_manager_org on vehicles
+for select using (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer'));
 
--- DRIVER SHIFTS POLICIES
-CREATE POLICY "Drivers can view own shifts"
-    ON public.driver_shifts FOR SELECT
-    TO authenticated
-    USING (driver_id = auth.uid());
+create policy vehicles_write_manager_org on vehicles
+for insert with check (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer'));
 
-CREATE POLICY "Drivers can manage own shifts"
-    ON public.driver_shifts FOR INSERT
-    TO authenticated
-    WITH CHECK (driver_id = auth.uid());
+create policy vehicles_update_manager_org on vehicles
+for update using (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer'));
 
-CREATE POLICY "Managers can view fleet shifts"
-    ON public.driver_shifts FOR SELECT
-    TO authenticated
-    USING (
-        (public.has_role(auth.uid(), 'organizer') OR public.has_role(auth.uid(), 'manager'))
-        AND fleet_id IN (SELECT public.get_user_fleet_ids(auth.uid()))
-    );
+create policy vehicles_read_driver_assigned on vehicles
+for select using (
+  exists (
+    select 1 from driver_vehicle_assignments a
+    where a.vehicle_id = vehicles.id
+      and a.driver_user_id = auth.uid()
+      and a.is_active = true
+  )
+);
 
--- SHIFT CLOSURES POLICIES
-CREATE POLICY "Drivers can manage own closures"
-    ON public.driver_shift_closures FOR ALL
-    TO authenticated
-    USING (driver_id = auth.uid());
+-- ASSIGNMENTS policies
+create policy assignments_create_manager_org on driver_vehicle_assignments
+for insert with check (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer'));
 
-CREATE POLICY "Managers can view fleet closures"
-    ON public.driver_shift_closures FOR SELECT
-    TO authenticated
-    USING (
-        (public.has_role(auth.uid(), 'organizer') OR public.has_role(auth.uid(), 'manager'))
-        AND vehicle_id IN (
-            SELECT id FROM public.vehicles 
-            WHERE fleet_id IN (SELECT public.get_user_fleet_ids(auth.uid()))
-        )
-    );
+create policy assignments_read_manager_org on driver_vehicle_assignments
+for select using (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer'));
 
--- INCIDENTS POLICIES
-CREATE POLICY "Fleet members can view incidents"
-    ON public.incidents FOR SELECT
-    TO authenticated
-    USING (fleet_id IN (SELECT public.get_user_fleet_ids(auth.uid())));
+create policy assignments_read_driver_self on driver_vehicle_assignments
+for select using (driver_user_id = auth.uid());
 
-CREATE POLICY "Drivers can report incidents"
-    ON public.incidents FOR INSERT
-    TO authenticated
-    WITH CHECK (
-        reported_by = auth.uid()
-        AND fleet_id IN (SELECT public.get_user_fleet_ids(auth.uid()))
-    );
+-- SHIFTS policies
+create policy shifts_driver_select on driver_shifts
+for select using (
+  exists (
+    select 1 from driver_vehicle_assignments a
+    where a.id = driver_shifts.assignment_id
+      and a.driver_user_id = auth.uid()
+  )
+);
 
-CREATE POLICY "Mechanics can validate incidents"
-    ON public.incidents FOR UPDATE
-    TO authenticated
-    USING (
-        public.has_role(auth.uid(), 'mechanic')
-        AND fleet_id IN (SELECT public.get_user_fleet_ids(auth.uid()))
-    );
+create policy shifts_driver_insert on driver_shifts
+for insert with check (
+  exists (
+    select 1 from driver_vehicle_assignments a
+    where a.id = driver_shifts.assignment_id
+      and a.driver_user_id = auth.uid()
+      and a.is_active = true
+  )
+);
 
--- MAINTENANCE JOBS POLICIES
-CREATE POLICY "Fleet members can view maintenance jobs"
-    ON public.maintenance_jobs FOR SELECT
-    TO authenticated
-    USING (fleet_id IN (SELECT public.get_user_fleet_ids(auth.uid())));
+create policy shifts_manager_org_select on driver_shifts
+for select using (
+  exists (
+    select 1 from driver_vehicle_assignments a
+    where a.id = driver_shifts.assignment_id
+      and (has_role(a.fleet_id,'manager') or has_role(a.fleet_id,'organizer'))
+  )
+);
 
-CREATE POLICY "Mechanics can manage maintenance jobs"
-    ON public.maintenance_jobs FOR ALL
-    TO authenticated
-    USING (
-        public.has_role(auth.uid(), 'mechanic')
-        AND fleet_id IN (SELECT public.get_user_fleet_ids(auth.uid()))
-    );
+-- CLOSURES policies
+create policy closures_driver_insert on driver_shift_closures
+for insert with check (
+  exists (
+    select 1
+    from driver_shifts s
+    join driver_vehicle_assignments a on a.id = s.assignment_id
+    where s.id = driver_shift_closures.shift_id
+      and a.driver_user_id = auth.uid()
+  )
+);
 
--- AUDIT LOGS POLICIES (only organizers can view)
-CREATE POLICY "Organizers can view audit logs"
-    ON public.audit_logs FOR SELECT
-    TO authenticated
-    USING (
-        public.has_role(auth.uid(), 'organizer')
-        AND org_id IN (SELECT public.get_user_org_ids(auth.uid()))
-    );
+create policy closures_manager_update on driver_shift_closures
+for update using (
+  exists (
+    select 1
+    from driver_shifts s
+    join driver_vehicle_assignments a on a.id = s.assignment_id
+    where s.id = driver_shift_closures.shift_id
+      and (has_role(a.fleet_id,'manager') or has_role(a.fleet_id,'organizer'))
+  )
+);
+
+-- INCIDENTS policies
+create policy incidents_read_fleet on incidents
+for select using (
+  exists (
+    select 1 from vehicles v
+    where v.id = incidents.vehicle_id
+      and (has_role(v.fleet_id,'manager') or has_role(v.fleet_id,'organizer') or has_role(v.fleet_id,'mechanic'))
+  )
+);
+
+create policy incidents_driver_insert on incidents
+for insert with check (driver_user_id = auth.uid());
+
+create policy incidents_driver_select on incidents
+for select using (driver_user_id = auth.uid());
+
+-- MAINTENANCE: mechanic+manager+org read; mechanic writes evidence/checklist
+create policy jobs_read_mgr_org_mech on maintenance_jobs
+for select using (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer') or has_role(fleet_id,'mechanic'));
+
+create policy evidence_insert_mech on maintenance_evidence
+for insert with check (true); -- restreint par RLS join à durcir en v2
+
+-- FLEET MEMBERSHIPS policies
+create policy memberships_read_self on fleet_memberships
+for select using (user_id = auth.uid());
+
+create policy memberships_read_manager_org on fleet_memberships
+for select using (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer'));
 
 -- =====================================================
 -- TRIGGERS FOR AUTO-PROFILE CREATION
 -- =====================================================
 
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    INSERT INTO public.profiles (id, full_name)
-    VALUES (NEW.id, NEW.raw_user_meta_data->>'full_name');
-    RETURN NEW;
-END;
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (user_id, full_name)
+  values (new.id, new.raw_user_meta_data->>'full_name');
+  return new;
+end;
 $$;
 
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
 
 -- =====================================================
 -- INDEXES FOR PERFORMANCE
 -- =====================================================
 
-CREATE INDEX idx_vehicles_fleet_id ON public.vehicles(fleet_id);
-CREATE INDEX idx_vehicles_status ON public.vehicles(status);
-CREATE INDEX idx_driver_shifts_driver_id ON public.driver_shifts(driver_id);
-CREATE INDEX idx_driver_shifts_vehicle_id ON public.driver_shifts(vehicle_id);
-CREATE INDEX idx_incidents_fleet_id ON public.incidents(fleet_id);
-CREATE INDEX idx_incidents_status ON public.incidents(status);
-CREATE INDEX idx_user_roles_user_id ON public.user_roles(user_id);
-CREATE INDEX idx_fleet_memberships_user_id ON public.fleet_memberships(user_id);
+create index idx_vehicles_fleet_id on vehicles(fleet_id);
+create index idx_vehicles_status on vehicles(status);
+create index idx_incidents_vehicle_id on incidents(vehicle_id);
+create index idx_driver_shifts_assignment_id on driver_shifts(assignment_id);
+create index idx_fleet_memberships_user_id on fleet_memberships(user_id);
+create index idx_fleet_memberships_fleet_id on fleet_memberships(fleet_id);
+create index idx_maintenance_jobs_fleet_id on maintenance_jobs(fleet_id);
+create index idx_maintenance_jobs_vehicle_id on maintenance_jobs(vehicle_id);

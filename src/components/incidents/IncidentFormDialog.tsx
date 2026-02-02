@@ -6,7 +6,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -16,9 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, MapPin } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useVehicles } from "@/hooks/useVehicles";
+import { useCreateIncident, IncidentSeverity } from "@/hooks/useIncidents";
 
 interface IncidentFormDialogProps {
   open: boolean;
@@ -27,48 +26,34 @@ interface IncidentFormDialogProps {
 }
 
 const IncidentFormDialog = ({ open, onOpenChange, onSuccess }: IncidentFormDialogProps) => {
-  const { toast } = useToast();
   const { data: vehicles = [] } = useVehicles();
+  const createIncident = useCreateIncident();
   
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     vehicle_id: "",
-    title: "",
     description: "",
-    severity: "medium",
-    location: "",
+    severity: "medium" as IncidentSeverity,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.vehicle_id || !formData.title) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires",
-        variant: "destructive",
-      });
+    if (!formData.vehicle_id || !formData.description) {
       return;
     }
 
-    setIsSubmitting(true);
+    await createIncident.mutateAsync({
+      vehicle_id: formData.vehicle_id,
+      description: formData.description,
+      severity: formData.severity,
+    });
 
-    // Simulate API call - will be replaced with real Supabase call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      toast({
-        title: "Incident signalé",
-        description: "Votre incident a été enregistré avec succès",
-      });
-      setFormData({
-        vehicle_id: "",
-        title: "",
-        description: "",
-        severity: "medium",
-        location: "",
-      });
-      onSuccess();
-    }, 1000);
+    setFormData({
+      vehicle_id: "",
+      description: "",
+      severity: "medium",
+    });
+    onSuccess();
   };
 
   return (
@@ -96,7 +81,7 @@ const IncidentFormDialog = ({ open, onOpenChange, onSuccess }: IncidentFormDialo
               <SelectContent>
                 {vehicles.map((vehicle) => (
                   <SelectItem key={vehicle.id} value={vehicle.id}>
-                    {vehicle.plate_number} - {vehicle.brand} {vehicle.model}
+                    {vehicle.registration} - {vehicle.brand} {vehicle.model}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -104,23 +89,11 @@ const IncidentFormDialog = ({ open, onOpenChange, onSuccess }: IncidentFormDialo
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Titre de l'incident *</Label>
-            <Input
-              id="title"
-              placeholder="Ex: Crevaison pneu avant droit"
-              value={formData.title}
-              onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="severity">Sévérité</Label>
             <Select
               value={formData.severity}
               onValueChange={(value) =>
-                setFormData({ ...formData, severity: value })
+                setFormData({ ...formData, severity: value as IncidentSeverity })
               }
             >
               <SelectTrigger>
@@ -136,29 +109,14 @@ const IncidentFormDialog = ({ open, onOpenChange, onSuccess }: IncidentFormDialo
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Description *</Label>
             <Textarea
               id="description"
-              placeholder="Décrivez l'incident en détail..."
-              rows={3}
+              placeholder="Décrivez l'incident en détail (ex: Crevaison pneu avant droit au carrefour Liberté)..."
+              rows={4}
               value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="location">
-              <MapPin className="w-4 h-4 inline mr-1" />
-              Localisation
-            </Label>
-            <Input
-              id="location"
-              placeholder="Ex: Carrefour Liberté, Dakar"
-              value={formData.location}
-              onChange={(e) =>
-                setFormData({ ...formData, location: e.target.value })
               }
             />
           </div>
@@ -172,8 +130,12 @@ const IncidentFormDialog = ({ open, onOpenChange, onSuccess }: IncidentFormDialo
             >
               Annuler
             </Button>
-            <Button type="submit" className="flex-1" disabled={isSubmitting}>
-              {isSubmitting ? "Envoi..." : "Signaler l'incident"}
+            <Button 
+              type="submit" 
+              className="flex-1" 
+              disabled={createIncident.isPending || !formData.vehicle_id || !formData.description}
+            >
+              {createIncident.isPending ? "Envoi..." : "Signaler l'incident"}
             </Button>
           </div>
         </form>

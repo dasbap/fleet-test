@@ -3,51 +3,34 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
-export type IncidentStatus = 'reported' | 'validated' | 'in_progress' | 'resolved' | 'rejected';
 
 export interface Incident {
   id: string;
   vehicle_id: string;
-  fleet_id: string;
-  reported_by: string | null;
-  validated_by: string | null;
-  title: string;
-  description: string | null;
+  driver_user_id: string;
   severity: IncidentSeverity;
-  status: IncidentStatus;
-  location: string | null;
-  photo_urls: string[] | null;
-  validation_notes: string | null;
-  reported_at: string;
-  validated_at: string | null;
-  resolved_at: string | null;
+  description: string;
+  evidence_path: string | null;
   created_at: string;
-  updated_at: string;
   // Joined data
   vehicle?: {
     id: string;
-    plate_number: string;
+    registration: string;
     brand: string | null;
     model: string | null;
+    fleet_id: string;
   } | null;
-  reporter?: {
-    id: string;
-    full_name: string | null;
-  } | null;
-  validator?: {
-    id: string;
+  driver?: {
+    user_id: string;
     full_name: string | null;
   } | null;
 }
 
 export interface IncidentInsert {
   vehicle_id: string;
-  fleet_id: string;
-  title: string;
-  description?: string;
+  description: string;
   severity?: IncidentSeverity;
-  location?: string;
-  photo_urls?: string[];
+  evidence_path?: string;
 }
 
 export function useIncidents(fleetId?: string) {
@@ -58,14 +41,14 @@ export function useIncidents(fleetId?: string) {
         .from('incidents')
         .select(`
           *,
-          vehicle:vehicles(id, plate_number, brand, model),
-          reporter:reported_by(id, full_name),
-          validator:validated_by(id, full_name)
+          vehicle:vehicles(id, registration, brand, model, fleet_id),
+          driver:profiles!incidents_driver_user_id_fkey(user_id, full_name)
         `)
-        .order('reported_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
+      // If fleetId is provided, filter by fleet
       if (fleetId) {
-        query = query.eq('fleet_id', fleetId);
+        query = query.eq('vehicle.fleet_id', fleetId);
       }
 
       const { data, error } = await query;
@@ -87,19 +70,18 @@ export function useCreateIncident() {
     mutationFn: async (incident: IncidentInsert) => {
       const { data: userData } = await supabase.auth.getUser();
       
+      if (!userData.user) {
+        throw new Error('Utilisateur non connecté');
+      }
+
       const { data, error } = await supabase
         .from('incidents')
         .insert({
           vehicle_id: incident.vehicle_id,
-          fleet_id: incident.fleet_id,
-          reported_by: userData.user?.id,
-          title: incident.title,
+          driver_user_id: userData.user.id,
           description: incident.description,
           severity: incident.severity || 'medium',
-          location: incident.location,
-          photo_urls: incident.photo_urls,
-          status: 'reported',
-          reported_at: new Date().toISOString(),
+          evidence_path: incident.evidence_path,
         })
         .select()
         .single();
@@ -127,40 +109,31 @@ export function useCreateIncident() {
   });
 }
 
-export function useValidateIncident() {
+// Hook to create a maintenance job from an incident
+export function useCreateMaintenanceFromIncident() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ 
-      id, 
-      status, 
-      validation_notes 
+      incident_id, 
+      vehicle_id, 
+      fleet_id,
+      priority 
     }: { 
-      id: string; 
-      status: 'validated' | 'rejected' | 'in_progress' | 'resolved';
-      validation_notes?: string;
+      incident_id: string;
+      vehicle_id: string;
+      fleet_id: string;
+      priority?: string;
     }) => {
-      const { data: userData } = await supabase.auth.getUser();
-      
-      const updateData: Record<string, any> = {
-        status,
-        validated_by: userData.user?.id,
-        validated_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      if (validation_notes) {
-        updateData.validation_notes = validation_notes;
-      }
-
-      if (status === 'resolved') {
-        updateData.resolved_at = new Date().toISOString();
-      }
-
       const { data, error } = await supabase
-        .from('incidents')
-        .update(updateData)
-        .eq('id', id)
+        .from('maintenance_jobs')
+        .insert({
+          vehicle_id,
+          fleet_id,
+          created_from_incident_id: incident_id,
+          priority: priority || 'medium',
+          status: 'queued',
+        })
         .select()
         .single();
 
@@ -168,21 +141,14 @@ export function useValidateIncident() {
         throw new Error(error.message);
       }
 
-      return data as Incident;
+      return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incidents'] });
-      
-      const statusMessages: Record<string, string> = {
-        validated: 'L\'incident a été validé.',
-        rejected: 'L\'incident a été rejeté.',
-        in_progress: 'L\'incident est en cours de traitement.',
-        resolved: 'L\'incident a été résolu.',
-      };
-
+      queryClient.invalidateQueries({ queryKey: ['maintenance_jobs'] });
       toast({
-        title: 'Incident mis à jour',
-        description: statusMessages[data.status] || 'Le statut a été mis à jour.',
+        title: 'Intervention créée',
+        description: 'L\'incident a été converti en intervention de maintenance.',
       });
     },
     onError: (error: Error) => {
