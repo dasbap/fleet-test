@@ -1,113 +1,104 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
-export type VehicleStatus = 'active' | 'maintenance' | 'blocked';
+export type VehicleStatus = 'active' | 'maintenance' | 'blocked' | 'inactive';
 
 export interface Vehicle {
   id: string;
   fleet_id: string;
-  plate: string;
-  brand: string;
-  model: string;
-  year: number;
-  km: number;
+  plate_number: string;
+  brand: string | null;
+  model: string | null;
+  year: number | null;
+  current_km: number;
   status: VehicleStatus;
-  blocked_reason: string | null;
-  driver?: string | null;
+  status_reason: string | null;
+  daily_target: number;
+  score: number;
+  qr_code: string | null;
   created_at: string;
   updated_at: string;
+  // Joined data
+  driver?: {
+    id: string;
+    full_name: string | null;
+  } | null;
 }
 
 export interface VehicleInsert {
   fleet_id: string;
-  plate: string;
-  brand: string;
-  model: string;
-  year: number;
-  km?: number;
+  plate_number: string;
+  brand?: string;
+  model?: string;
+  year?: number;
+  current_km?: number;
   status?: VehicleStatus;
 }
-
-// Mock data for now - will be replaced with Supabase queries once tables are created
-const mockVehicles: Vehicle[] = [
-  {
-    id: "1",
-    fleet_id: "fleet-1",
-    plate: "LT 1234 A",
-    brand: "Toyota",
-    model: "Corolla",
-    year: 2022,
-    km: 45230,
-    status: "active",
-    blocked_reason: null,
-    driver: "Alain Mbarga",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    fleet_id: "fleet-1",
-    plate: "LT 5678 B",
-    brand: "Hyundai",
-    model: "Elantra",
-    year: 2021,
-    km: 62150,
-    status: "active",
-    blocked_reason: null,
-    driver: "Marie Essomba",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    fleet_id: "fleet-1",
-    plate: "LT 9012 C",
-    brand: "Nissan",
-    model: "Sunny",
-    year: 2020,
-    km: 89340,
-    status: "maintenance",
-    blocked_reason: null,
-    driver: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "4",
-    fleet_id: "fleet-1",
-    plate: "LT 3456 D",
-    brand: "Toyota",
-    model: "Yaris",
-    year: 2023,
-    km: 12450,
-    status: "active",
-    blocked_reason: null,
-    driver: "Paul Ndjock",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "5",
-    fleet_id: "fleet-1",
-    plate: "LT 7890 E",
-    brand: "Kia",
-    model: "Rio",
-    year: 2021,
-    km: 78900,
-    status: "blocked",
-    blocked_reason: "2 clôtures manquées",
-    driver: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
 
 export function useVehicles(fleetId?: string) {
   return useQuery({
     queryKey: ['vehicles', fleetId],
     queryFn: async () => {
-      // TODO: Replace with Supabase query once tables are created
-      return mockVehicles;
+      let query = supabase
+        .from('vehicles')
+        .select(`
+          *,
+          driver_vehicle_assignments!inner(
+            driver_id,
+            is_active,
+            profiles:driver_id(id, full_name)
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (fleetId) {
+        query = query.eq('fleet_id', fleetId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching vehicles:', error);
+        throw new Error(error.message);
+      }
+
+      // Transform data to include driver info
+      return (data || []).map((vehicle: any) => {
+        const activeAssignment = vehicle.driver_vehicle_assignments?.find(
+          (a: any) => a.is_active
+        );
+        return {
+          ...vehicle,
+          driver: activeAssignment?.profiles || null,
+          driver_vehicle_assignments: undefined,
+        };
+      }) as Vehicle[];
+    },
+  });
+}
+
+export function useVehiclesSimple(fleetId?: string) {
+  return useQuery({
+    queryKey: ['vehicles-simple', fleetId],
+    queryFn: async () => {
+      let query = supabase
+        .from('vehicles')
+        .select('*')
+        .order('plate_number', { ascending: true });
+
+      if (fleetId) {
+        query = query.eq('fleet_id', fleetId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching vehicles:', error);
+        throw new Error(error.message);
+      }
+
+      return data as Vehicle[];
     },
   });
 }
@@ -117,20 +108,29 @@ export function useCreateVehicle() {
 
   return useMutation({
     mutationFn: async (vehicle: VehicleInsert) => {
-      // TODO: Replace with Supabase insert once tables are created
-      const newVehicle: Vehicle = {
-        id: Math.random().toString(36).substring(7),
-        ...vehicle,
-        km: vehicle.km || 0,
-        status: vehicle.status || 'active',
-        blocked_reason: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      return newVehicle;
+      const { data, error } = await supabase
+        .from('vehicles')
+        .insert({
+          fleet_id: vehicle.fleet_id,
+          plate_number: vehicle.plate_number,
+          brand: vehicle.brand,
+          model: vehicle.model,
+          year: vehicle.year,
+          current_km: vehicle.current_km || 0,
+          status: vehicle.status || 'active',
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data as Vehicle;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles-simple'] });
       toast({
         title: 'Véhicule ajouté',
         description: 'Le véhicule a été créé avec succès.',
@@ -151,11 +151,25 @@ export function useUpdateVehicle() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Vehicle> & { id: string }) => {
-      // TODO: Replace with Supabase update once tables are created
-      return { id, ...updates } as Vehicle;
+      const { data, error } = await supabase
+        .from('vehicles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data as Vehicle;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles-simple'] });
       toast({
         title: 'Véhicule modifié',
         description: 'Les modifications ont été enregistrées.',

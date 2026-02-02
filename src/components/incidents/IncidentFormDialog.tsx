@@ -96,7 +96,7 @@ const IncidentFormDialog = ({ open, onOpenChange, onSuccess }: IncidentFormDialo
               <SelectContent>
                 {vehicles.map((vehicle) => (
                   <SelectItem key={vehicle.id} value={vehicle.id}>
-                    {vehicle.plate} - {vehicle.brand} {vehicle.model}
+                    {vehicle.plate_number} - {vehicle.brand} {vehicle.model}
                   </SelectItem>
                 ))}
               </SelectContent>
