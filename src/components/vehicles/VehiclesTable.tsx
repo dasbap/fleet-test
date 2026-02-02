@@ -1,4 +1,4 @@
-import { Car, MoreVertical, User, AlertCircle, CheckCircle, Wrench } from "lucide-react";
+import { Car, MoreVertical, User, AlertCircle, CheckCircle } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -17,71 +17,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useVehicles, VehicleStatus } from "@/hooks/useVehicles";
 
-// Mock data - will be replaced with real data from Supabase
-const mockVehicles = [
-  {
-    id: "1",
-    plate: "LT 1234 A",
-    brand: "Toyota",
-    model: "Corolla",
-    year: 2022,
-    km: 45230,
-    status: "active" as const,
-    driver: "Alain Mbarga",
-  },
-  {
-    id: "2",
-    plate: "LT 5678 B",
-    brand: "Hyundai",
-    model: "Elantra",
-    year: 2021,
-    km: 62150,
-    status: "active" as const,
-    driver: "Marie Essomba",
-  },
-  {
-    id: "3",
-    plate: "LT 9012 C",
-    brand: "Nissan",
-    model: "Sunny",
-    year: 2020,
-    km: 89340,
-    status: "maintenance" as const,
-    driver: null,
-  },
-  {
-    id: "4",
-    plate: "LT 3456 D",
-    brand: "Toyota",
-    model: "Yaris",
-    year: 2023,
-    km: 12450,
-    status: "active" as const,
-    driver: "Paul Ndjock",
-  },
-  {
-    id: "5",
-    plate: "LT 7890 E",
-    brand: "Kia",
-    model: "Rio",
-    year: 2021,
-    km: 78900,
-    status: "blocked" as const,
-    driver: null,
-  },
-];
-
-const statusConfig = {
-  active: {
+const statusConfig: Record<VehicleStatus, { label: string; icon: typeof CheckCircle; className: string }> = {
+  ok: {
     label: "Actif",
     icon: CheckCircle,
     className: "bg-success/10 text-success border-success/20",
-  },
-  maintenance: {
-    label: "Entretien",
-    icon: Wrench,
-    className: "bg-warning/10 text-warning border-warning/20",
   },
   blocked: {
     label: "Bloqué",
@@ -91,6 +33,44 @@ const statusConfig = {
 };
 
 const VehiclesTable = () => {
+  const { data: vehicles = [], isLoading } = useVehicles();
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading">Liste des véhicules</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
+            Chargement...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (vehicles.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading">Liste des véhicules</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Car className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Aucun véhicule</h3>
+            <p className="text-muted-foreground">
+              Ajoutez votre premier véhicule pour commencer.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -109,8 +89,11 @@ const VehiclesTable = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockVehicles.map((vehicle) => {
-              const StatusIcon = statusConfig[vehicle.status].icon;
+            {vehicles.map((vehicle) => {
+              const status = vehicle.status as VehicleStatus;
+              const config = statusConfig[status] || statusConfig.ok;
+              const StatusIcon = config.icon;
+              
               return (
                 <TableRow key={vehicle.id}>
                   <TableCell>
@@ -129,17 +112,17 @@ const VehiclesTable = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="font-mono font-semibold">{vehicle.plate}</span>
+                    <span className="font-mono font-semibold">{vehicle.registration}</span>
                   </TableCell>
                   <TableCell>
-                    <span className="font-medium">{vehicle.km.toLocaleString()}</span>
+                    <span className="font-medium">{vehicle.current_km.toLocaleString()}</span>
                     <span className="text-muted-foreground ml-1">km</span>
                   </TableCell>
                   <TableCell>
-                    {vehicle.driver ? (
+                    {vehicle.active_assignment?.driver?.full_name ? (
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-muted-foreground" />
-                        <span>{vehicle.driver}</span>
+                        <span>{vehicle.active_assignment.driver.full_name}</span>
                       </div>
                     ) : (
                       <span className="text-muted-foreground italic">Non assigné</span>
@@ -148,14 +131,16 @@ const VehiclesTable = () => {
                   <TableCell>
                     <Badge
                       variant="outline"
-                      className={cn(
-                        "gap-1",
-                        statusConfig[vehicle.status].className
-                      )}
+                      className={cn("gap-1", config.className)}
                     >
                       <StatusIcon className="w-3 h-3" />
-                      {statusConfig[vehicle.status].label}
+                      {config.label}
                     </Badge>
+                    {vehicle.blocked_reason && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {vehicle.blocked_reason}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>

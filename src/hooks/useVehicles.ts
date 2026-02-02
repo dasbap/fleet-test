@@ -2,78 +2,92 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-export type VehicleStatus = 'active' | 'maintenance' | 'blocked' | 'inactive';
+export type VehicleStatus = 'ok' | 'blocked';
 
 export interface Vehicle {
   id: string;
   fleet_id: string;
-  plate_number: string;
+  registration: string;
   brand: string | null;
   model: string | null;
   year: number | null;
   current_km: number;
   status: VehicleStatus;
-  status_reason: string | null;
-  daily_target: number;
-  score: number;
-  qr_code: string | null;
+  blocked_reason: string | null;
   created_at: string;
-  updated_at: string;
   // Joined data
-  driver?: {
+  active_assignment?: {
     id: string;
-    full_name: string | null;
+    driver_user_id: string;
+    driver?: {
+      user_id: string;
+      full_name: string | null;
+    } | null;
   } | null;
 }
 
 export interface VehicleInsert {
   fleet_id: string;
-  plate_number: string;
+  registration: string;
   brand?: string;
   model?: string;
   year?: number;
   current_km?: number;
-  status?: VehicleStatus;
 }
 
 export function useVehicles(fleetId?: string) {
   return useQuery({
     queryKey: ['vehicles', fleetId],
     queryFn: async () => {
+      // First try to get vehicles with active assignments
       let query = supabase
         .from('vehicles')
-        .select(`
-          *,
-          driver_vehicle_assignments!inner(
-            driver_id,
-            is_active,
-            profiles:driver_id(id, full_name)
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (fleetId) {
         query = query.eq('fleet_id', fleetId);
       }
 
-      const { data, error } = await query;
+      const { data: vehiclesData, error } = await query;
 
       if (error) {
         console.error('Error fetching vehicles:', error);
         throw new Error(error.message);
       }
 
-      // Transform data to include driver info
-      return (data || []).map((vehicle: any) => {
-        const activeAssignment = vehicle.driver_vehicle_assignments?.find(
-          (a: any) => a.is_active
-        );
-        return {
-          ...vehicle,
-          driver: activeAssignment?.profiles || null,
-          driver_vehicle_assignments: undefined,
-        };
-      }) as Vehicle[];
+      // Get active assignments with driver profiles
+      const vehicleIds = (vehiclesData || []).map(v => v.id);
+      
+      if (vehicleIds.length === 0) {
+        return [] as Vehicle[];
+      }
+
+      const { data: assignmentsData } = await supabase
+        .from('driver_vehicle_assignments')
+        .select(`
+          id,
+          vehicle_id,
+          driver_user_id,
+          driver:profiles!driver_vehicle_assignments_driver_user_id_fkey(user_id, full_name)
+        `)
+        .in('vehicle_id', vehicleIds)
+        .eq('is_active', true);
+
+      // Map assignments to vehicles
+      const assignmentMap = new Map();
+      (assignmentsData || []).forEach((a: any) => {
+        assignmentMap.set(a.vehicle_id, {
+          id: a.id,
+          driver_user_id: a.driver_user_id,
+          driver: a.driver,
+        });
+      });
+
+      return (vehiclesData || []).map((vehicle: any) => ({
+        ...vehicle,
+        active_assignment: assignmentMap.get(vehicle.id) || null,
+      })) as Vehicle[];
     },
   });
 }
@@ -85,7 +99,7 @@ export function useVehiclesSimple(fleetId?: string) {
       let query = supabase
         .from('vehicles')
         .select('*')
-        .order('plate_number', { ascending: true });
+        .order('registration', { ascending: true });
 
       if (fleetId) {
         query = query.eq('fleet_id', fleetId);
@@ -112,12 +126,12 @@ export function useCreateVehicle() {
         .from('vehicles')
         .insert({
           fleet_id: vehicle.fleet_id,
-          plate_number: vehicle.plate_number,
+          registration: vehicle.registration,
           brand: vehicle.brand,
           model: vehicle.model,
           year: vehicle.year,
           current_km: vehicle.current_km || 0,
-          status: vehicle.status || 'active',
+          status: 'ok',
         })
         .select()
         .single();
@@ -153,10 +167,7 @@ export function useUpdateVehicle() {
     mutationFn: async ({ id, ...updates }: Partial<Vehicle> & { id: string }) => {
       const { data, error } = await supabase
         .from('vehicles')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updates)
         .eq('id', id)
         .select()
         .single();
@@ -173,6 +184,83 @@ export function useUpdateVehicle() {
       toast({
         title: 'Véhicule modifié',
         description: 'Les modifications ont été enregistrées.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useBlockVehicle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, blocked_reason }: { id: string; blocked_reason: string }) => {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .update({ 
+          status: 'blocked' as VehicleStatus, 
+          blocked_reason 
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data as Vehicle;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      toast({
+        title: 'Véhicule bloqué',
+        description: 'Le véhicule a été mis hors service.',
+        variant: 'destructive',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useUnblockVehicle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .update({ 
+          status: 'ok' as VehicleStatus, 
+          blocked_reason: null 
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data as Vehicle;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      toast({
+        title: 'Véhicule débloqué',
+        description: 'Le véhicule est de nouveau actif.',
       });
     },
     onError: (error: Error) => {

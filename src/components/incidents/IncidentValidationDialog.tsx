@@ -9,17 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
-import { Incident } from "@/hooks/useIncidents";
+import { AlertTriangle, Wrench, Car } from "lucide-react";
+import { Incident, useCreateMaintenanceFromIncident } from "@/hooks/useIncidents";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
-interface IncidentValidationDialogProps {
+interface IncidentDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   incident: Incident;
   onSuccess: () => void;
+  canCreateMaintenance?: boolean;
 }
 
 const severityConfig = {
@@ -29,35 +29,26 @@ const severityConfig = {
   critical: { label: "Critique", variant: "destructive" as const },
 };
 
-const IncidentValidationDialog = ({
+const IncidentDetailsDialog = ({
   open,
   onOpenChange,
   incident,
   onSuccess,
-}: IncidentValidationDialogProps) => {
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [validationNotes, setValidationNotes] = useState("");
-  const [action, setAction] = useState<"validate" | "reject" | null>(null);
+  canCreateMaintenance = false,
+}: IncidentDetailsDialogProps) => {
+  const createMaintenance = useCreateMaintenanceFromIncident();
+  const [notes, setNotes] = useState("");
 
-  const handleSubmit = async (actionType: "validate" | "reject") => {
-    setAction(actionType);
-    setIsSubmitting(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      toast({
-        title: actionType === "validate" ? "Incident validé" : "Incident rejeté",
-        description:
-          actionType === "validate"
-            ? "L'incident a été validé et transmis à la maintenance"
-            : "L'incident a été rejeté",
-      });
-      setValidationNotes("");
-      setAction(null);
-      onSuccess();
-    }, 1000);
+  const handleCreateMaintenance = async () => {
+    if (!incident.vehicle?.fleet_id) return;
+    
+    await createMaintenance.mutateAsync({
+      incident_id: incident.id,
+      vehicle_id: incident.vehicle_id,
+      fleet_id: incident.vehicle.fleet_id,
+      priority: incident.severity,
+    });
+    onSuccess();
   };
 
   return (
@@ -66,7 +57,7 @@ const IncidentValidationDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-primary" />
-            Validation de l'incident
+            Détails de l'incident
           </DialogTitle>
         </DialogHeader>
 
@@ -74,76 +65,86 @@ const IncidentValidationDialog = ({
           {/* Incident details */}
           <div className="p-4 rounded-lg bg-muted/50 space-y-3">
             <div className="flex items-start justify-between">
-              <h3 className="font-semibold">{incident.title}</h3>
+              <div className="flex items-center gap-2">
+                <Car className="w-4 h-4 text-muted-foreground" />
+                <span className="font-mono text-sm">
+                  {incident.vehicle?.registration || "N/A"}
+                </span>
+              </div>
               <Badge variant={severityConfig[incident.severity].variant}>
                 {severityConfig[incident.severity].label}
               </Badge>
             </div>
 
-            {incident.description && (
-              <p className="text-sm text-muted-foreground">
-                {incident.description}
-              </p>
-            )}
+            <div>
+              <p className="text-sm">{incident.description}</p>
+            </div>
 
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-4 text-sm pt-2 border-t">
               <div>
-                <span className="text-muted-foreground">Véhicule: </span>
-                <span className="font-mono">
-                  {incident.vehicle?.plate_number || "N/A"}
-                </span>
+                <span className="text-muted-foreground">Signalé par: </span>
+                <span>{incident.driver?.full_name || "Inconnu"}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">Date: </span>
+                <span className="text-muted-foreground">Le: </span>
                 <span>
-                  {format(new Date(incident.reported_at), "dd MMM yyyy HH:mm", {
+                  {format(new Date(incident.created_at), "dd MMM yyyy HH:mm", {
                     locale: fr,
                   })}
                 </span>
               </div>
             </div>
 
-            {incident.location && (
+            {incident.evidence_path && (
               <div className="text-sm">
-                <span className="text-muted-foreground">Localisation: </span>
-                <span>{incident.location}</span>
+                <span className="text-muted-foreground">Preuve: </span>
+                <a 
+                  href={incident.evidence_path} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Voir le fichier
+                </a>
               </div>
             )}
           </div>
 
-          {/* Validation notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes de validation</Label>
-            <Textarea
-              id="notes"
-              placeholder="Ajoutez des observations ou instructions..."
-              rows={3}
-              value={validationNotes}
-              onChange={(e) => setValidationNotes(e.target.value)}
-            />
-          </div>
+          {/* Notes section */}
+          {canCreateMaintenance && (
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (optionnel)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Ajoutez des observations..."
+                rows={2}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">
             <Button
               type="button"
-              variant="destructive"
+              variant="outline"
               className="flex-1"
-              onClick={() => handleSubmit("reject")}
-              disabled={isSubmitting}
+              onClick={() => onOpenChange(false)}
             >
-              <XCircle className="w-4 h-4 mr-2" />
-              {isSubmitting && action === "reject" ? "..." : "Rejeter"}
+              Fermer
             </Button>
-            <Button
-              type="button"
-              className="flex-1"
-              onClick={() => handleSubmit("validate")}
-              disabled={isSubmitting}
-            >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              {isSubmitting && action === "validate" ? "..." : "Valider"}
-            </Button>
+            {canCreateMaintenance && incident.vehicle?.fleet_id && (
+              <Button
+                type="button"
+                className="flex-1"
+                onClick={handleCreateMaintenance}
+                disabled={createMaintenance.isPending}
+              >
+                <Wrench className="w-4 h-4 mr-2" />
+                {createMaintenance.isPending ? "Création..." : "Créer intervention"}
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>
@@ -151,4 +152,4 @@ const IncidentValidationDialog = ({
   );
 };
 
-export default IncidentValidationDialog;
+export default IncidentDetailsDialog;

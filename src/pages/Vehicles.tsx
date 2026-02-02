@@ -6,10 +6,21 @@ import VehiclesTable from "@/components/vehicles/VehiclesTable";
 import VehicleFormDialog from "@/components/vehicles/VehicleFormDialog";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Vehicles = () => {
-  const [userRole] = useState<"organizer" | "manager" | "driver" | "mechanic">("manager");
+  const { role } = useAuth();
+  const userRole = role || "driver";
+  const queryClient = useQueryClient();
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  // TODO: Get actual fleet ID from user's membership
+  const mockFleetId = "00000000-0000-0000-0000-000000000000";
+
+  const handleSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+  };
 
   return (
     <SidebarProvider>
@@ -29,10 +40,12 @@ const Vehicles = () => {
                     Gérez les véhicules de votre flotte
                   </p>
                 </div>
-                <Button onClick={() => setIsFormOpen(true)} className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Ajouter un véhicule
-                </Button>
+                {(userRole === "manager" || userRole === "organizer") && (
+                  <Button onClick={() => setIsFormOpen(true)} className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Ajouter un véhicule
+                  </Button>
+                )}
               </div>
 
               {/* Vehicles Table */}
@@ -41,7 +54,9 @@ const Vehicles = () => {
               {/* Add Vehicle Dialog */}
               <VehicleFormDialog 
                 open={isFormOpen} 
-                onOpenChange={setIsFormOpen} 
+                onOpenChange={setIsFormOpen}
+                fleetId={mockFleetId}
+                onSuccess={handleSuccess}
               />
             </div>
           </main>

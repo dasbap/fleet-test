@@ -19,22 +19,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
+import { useCreateVehicle } from "@/hooks/useVehicles";
 
 const vehicleFormSchema = z.object({
-  plate: z.string().min(1, "L'immatriculation est requise"),
+  registration: z.string().min(1, "L'immatriculation est requise"),
   brand: z.string().min(1, "La marque est requise"),
   model: z.string().min(1, "Le modèle est requis"),
   year: z.coerce.number().min(1990, "Année invalide").max(new Date().getFullYear() + 1, "Année invalide"),
-  km: z.coerce.number().min(0, "Kilométrage invalide"),
-  status: z.enum(["active", "maintenance", "blocked"]),
+  current_km: z.coerce.number().min(0, "Kilométrage invalide"),
 });
 
 type VehicleFormValues = z.infer<typeof vehicleFormSchema>;
@@ -42,70 +34,46 @@ type VehicleFormValues = z.infer<typeof vehicleFormSchema>;
 interface VehicleFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  vehicle?: {
-    id: string;
-    plate: string;
-    brand: string;
-    model: string;
-    year: number;
-    km: number;
-    status: "active" | "maintenance" | "blocked";
-  };
+  fleetId: string;
+  onSuccess?: () => void;
 }
 
-const VehicleFormDialog = ({ open, onOpenChange, vehicle }: VehicleFormDialogProps) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const isEditing = !!vehicle;
+const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFormDialogProps) => {
+  const createVehicle = useCreateVehicle();
 
   const form = useForm<VehicleFormValues>({
     resolver: zodResolver(vehicleFormSchema),
-    defaultValues: vehicle || {
-      plate: "",
+    defaultValues: {
+      registration: "",
       brand: "",
       model: "",
       year: new Date().getFullYear(),
-      km: 0,
-      status: "active",
+      current_km: 0,
     },
   });
 
   const onSubmit = async (data: VehicleFormValues) => {
-    setIsSubmitting(true);
-    try {
-      // TODO: Connect to Supabase
-      console.log("Vehicle data:", data);
-      
-      toast({
-        title: isEditing ? "Véhicule modifié" : "Véhicule ajouté",
-        description: isEditing 
-          ? "Les modifications ont été enregistrées."
-          : "Le véhicule a été ajouté à la flotte.",
-      });
-      
-      onOpenChange(false);
-      form.reset();
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue. Veuillez réessayer.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    await createVehicle.mutateAsync({
+      fleet_id: fleetId,
+      registration: data.registration,
+      brand: data.brand,
+      model: data.model,
+      year: data.year,
+      current_km: data.current_km,
+    });
+    
+    onOpenChange(false);
+    form.reset();
+    onSuccess?.();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="font-heading">
-            {isEditing ? "Modifier le véhicule" : "Ajouter un véhicule"}
-          </DialogTitle>
+          <DialogTitle className="font-heading">Ajouter un véhicule</DialogTitle>
           <DialogDescription>
-            {isEditing 
-              ? "Modifiez les informations du véhicule ci-dessous."
-              : "Remplissez les informations pour ajouter un nouveau véhicule à la flotte."}
+            Remplissez les informations pour ajouter un nouveau véhicule à la flotte.
           </DialogDescription>
         </DialogHeader>
 
@@ -113,7 +81,7 @@ const VehicleFormDialog = ({ open, onOpenChange, vehicle }: VehicleFormDialogPro
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="plate"
+              name="registration"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Immatriculation</FormLabel>
@@ -172,7 +140,7 @@ const VehicleFormDialog = ({ open, onOpenChange, vehicle }: VehicleFormDialogPro
 
               <FormField
                 control={form.control}
-                name="km"
+                name="current_km"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Kilométrage</FormLabel>
@@ -185,29 +153,6 @@ const VehicleFormDialog = ({ open, onOpenChange, vehicle }: VehicleFormDialogPro
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Statut</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez un statut" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="active">Actif</SelectItem>
-                      <SelectItem value="maintenance">En entretien</SelectItem>
-                      <SelectItem value="blocked">Bloqué</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <div className="flex justify-end gap-3 pt-4">
               <Button
                 type="button"
@@ -216,8 +161,8 @@ const VehicleFormDialog = ({ open, onOpenChange, vehicle }: VehicleFormDialogPro
               >
                 Annuler
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Enregistrement..." : isEditing ? "Modifier" : "Ajouter"}
+              <Button type="submit" disabled={createVehicle.isPending}>
+                {createVehicle.isPending ? "Enregistrement..." : "Ajouter"}
               </Button>
             </div>
           </form>
