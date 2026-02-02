@@ -15,30 +15,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Banknote, Smartphone, CreditCard, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ProofUpload, { ProofType } from "./ProofUpload";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const closureFormSchema = z.object({
   kmEnd: z.coerce.number().min(0, "Kilométrage invalide"),
   revenueDeclared: z.coerce.number().min(0, "Montant invalide"),
-  collectionMode: z.enum(["cash", "mobile_money", "mixed"]),
-  proofType: z.string().optional(),
-  proofValue: z.string().optional(),
+  collectionMode: z.enum(["cash", "momo", "mix"]),
   notes: z.string().optional(),
-}).refine((data) => {
-  // kmEnd must be greater than or equal to kmStart (passed as context)
-  return true;
-}, {
-  message: "Le kilométrage final doit être supérieur au kilométrage initial",
-  path: ["kmEnd"],
 });
 
 type ClosureFormValues = z.infer<typeof closureFormSchema>;
@@ -46,16 +34,21 @@ type ClosureFormValues = z.infer<typeof closureFormSchema>;
 interface ShiftClosureFormProps {
   shiftId: string;
   kmStart: number;
+  vehicleId?: string;
 }
 
 const collectionModes = [
   { value: "cash", label: "Espèces", icon: Banknote },
-  { value: "mobile_money", label: "Mobile Money", icon: Smartphone },
-  { value: "mixed", label: "Mixte", icon: CreditCard },
+  { value: "momo", label: "Mobile Money", icon: Smartphone },
+  { value: "mix", label: "Mixte", icon: CreditCard },
 ];
 
-const ShiftClosureForm = ({ shiftId, kmStart }: ShiftClosureFormProps) => {
+const ShiftClosureForm = ({ shiftId, kmStart, vehicleId }: ShiftClosureFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [proofType, setProofType] = useState<ProofType>('photo');
+  const [proofValue, setProofValue] = useState('');
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const navigate = useNavigate();
 
   const form = useForm<ClosureFormValues>({
     resolver: zodResolver(closureFormSchema),
@@ -63,8 +56,6 @@ const ShiftClosureForm = ({ shiftId, kmStart }: ShiftClosureFormProps) => {
       kmEnd: kmStart,
       revenueDeclared: 0,
       collectionMode: "cash",
-      proofType: "",
-      proofValue: "",
       notes: "",
     },
   });
@@ -72,6 +63,25 @@ const ShiftClosureForm = ({ shiftId, kmStart }: ShiftClosureFormProps) => {
   const watchKmEnd = form.watch("kmEnd");
   const kmDriven = watchKmEnd - kmStart;
   const watchRevenue = form.watch("revenueDeclared");
+
+  const uploadProofFile = async (file: File): Promise<string> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `closures/${shiftId}_${Date.now()}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('maintenance-evidence')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      throw new Error('Erreur upload: ' + uploadError.message);
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('maintenance-evidence')
+      .getPublicUrl(fileName);
+
+    return urlData.publicUrl;
+  };
 
   const onSubmit = async (data: ClosureFormValues) => {
     if (data.kmEnd < kmStart) {
@@ -82,21 +92,72 @@ const ShiftClosureForm = ({ shiftId, kmStart }: ShiftClosureFormProps) => {
       return;
     }
 
+    // Validate proof
+    if (proofType === 'photo' && !proofFile) {
+      toast({
+        title: "Photo requise",
+        description: "Veuillez prendre une photo de la preuve de recette.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (proofType === 'momo_ref' && !proofValue.trim()) {
+      toast({
+        title: "Référence requise",
+        description: "Veuillez saisir la référence de transaction Mobile Money.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (proofType === 'doc' && !proofFile) {
+      toast({
+        title: "Document requis",
+        description: "Veuillez télécharger un document de preuve.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // TODO: Connect to Supabase
-      console.log("Closure data:", { shiftId, ...data });
+      // Upload proof file if exists
+      let finalProofValue = proofValue;
+      if (proofFile) {
+        finalProofValue = await uploadProofFile(proofFile);
+      }
+
+      // Call the close_shift RPC
+      const { error } = await supabase.rpc('close_shift', {
+        p_shift_id: shiftId,
+        p_km_end: data.kmEnd,
+        p_revenue_declared: data.revenueDeclared,
+        p_collection_mode: data.collectionMode,
+        p_proof_type: proofType,
+        p_proof_value: finalProofValue,
+      });
+
+      if (error) throw error;
+
+      // Update vehicle km if provided
+      if (vehicleId) {
+        await supabase
+          .from('vehicles')
+          .update({ current_km: data.kmEnd })
+          .eq('id', vehicleId);
+      }
       
       toast({
         title: "Clôture envoyée",
         description: "Votre clôture journalière a été soumise pour validation.",
       });
       
-      form.reset();
-    } catch (error) {
+      navigate('/dashboard');
+    } catch (error: any) {
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue. Veuillez réessayer.",
+        description: error.message || "Une erreur est survenue. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {
@@ -248,6 +309,16 @@ const ShiftClosureForm = ({ shiftId, kmStart }: ShiftClosureFormProps) => {
                 </div>
               )}
             </div>
+
+            {/* Proof Section */}
+            <ProofUpload
+              proofType={proofType}
+              onProofTypeChange={setProofType}
+              proofValue={proofValue}
+              onProofValueChange={setProofValue}
+              proofFile={proofFile}
+              onProofFileChange={setProofFile}
+            />
 
             {/* Notes Section */}
             <div className="space-y-4">
