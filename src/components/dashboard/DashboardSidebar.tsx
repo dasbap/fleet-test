@@ -37,7 +37,8 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
   const menuItems = {
     organizer: [
       { icon: LayoutDashboard, label: "Tableau de bord", href: "/dashboard" },
-      { icon: Car, label: "Flottes", href: "/dashboard/fleets" },
+      { icon: Car, label: "Véhicules", href: "/dashboard/vehicles" },
+      { icon: Wrench, label: "Incidents", href: "/dashboard/incidents" },
       { icon: Users, label: "Équipes", href: "/dashboard/teams" },
       { icon: BarChart3, label: "Rapports", href: "/dashboard/reports" },
       { icon: DollarSign, label: "Finances", href: "/dashboard/finances" },
@@ -47,8 +48,8 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
     manager: [
       { icon: LayoutDashboard, label: "Tableau de bord", href: "/dashboard" },
       { icon: Car, label: "Véhicules", href: "/dashboard/vehicles" },
+      { icon: Wrench, label: "Incidents", href: "/dashboard/incidents" },
       { icon: Users, label: "Chauffeurs", href: "/dashboard/drivers" },
-      { icon: Wrench, label: "Entretiens", href: "/dashboard/maintenance" },
       { icon: DollarSign, label: "Encaissements", href: "/dashboard/collections" },
       { icon: Bell, label: "Alertes", href: "/dashboard/alerts" },
     ],
@@ -60,7 +61,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
     ],
     mechanic: [
       { icon: LayoutDashboard, label: "Interventions", href: "/dashboard" },
-      { icon: Wrench, label: "En cours", href: "/dashboard/active-jobs" },
+      { icon: Wrench, label: "Incidents", href: "/dashboard/incidents" },
       { icon: Car, label: "Véhicules", href: "/dashboard/vehicles" },
       { icon: Fuel, label: "Historique", href: "/dashboard/history" },
     ],
@@ -113,11 +114,15 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link to="/">
-                <LogOut className="w-5 h-5" />
-                <span>Déconnexion</span>
-              </Link>
+            <SidebarMenuButton
+              onClick={async () => {
+                const { signOut } = await import("@/hooks/useAuth");
+                await signOut();
+                window.location.href = "/";
+              }}
+            >
+              <LogOut className="w-5 h-5" />
+              <span>Déconnexion</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
