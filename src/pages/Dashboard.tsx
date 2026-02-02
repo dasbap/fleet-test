@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import FleetOverview from "@/components/dashboard/FleetOverview";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { useAuth } from "@/hooks/useAuth";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const [userRole] = useState<"organizer" | "manager" | "driver" | "mechanic">("organizer");
+  const { role, userFleetId } = useAuth();
+  const userRole = role || "organizer";
+
+  // Enable real-time notifications
+  useRealtimeNotifications(userFleetId || undefined);
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
