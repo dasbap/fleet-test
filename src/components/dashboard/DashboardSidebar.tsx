@@ -52,6 +52,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
       { icon: Wrench, label: "Incidents", href: "/dashboard/incidents" },
       { icon: Fuel, label: "Maintenance", href: "/dashboard/maintenance" },
       { icon: Users, label: "Chauffeurs", href: "/dashboard/drivers" },
+      { icon: BarChart3, label: "Rapports", href: "/dashboard/reports" },
       { icon: DollarSign, label: "Encaissements", href: "/dashboard/collections" },
       { icon: Bell, label: "Alertes", href: "/dashboard/alerts" },
     ],
