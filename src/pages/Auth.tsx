@@ -17,6 +17,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [invitationFleetId, setInvitationFleetId] = useState<string | null>(null);
   const [invitationFleetName, setInvitationFleetName] = useState<string | null>(null);
+  const [hasUnverifiedCode, setHasUnverifiedCode] = useState(false);
   
   const [formData, setFormData] = useState({
     email: "",
@@ -39,6 +40,17 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent submission if there's an unverified invitation code
+    if (isSignup && hasUnverifiedCode) {
+      toast({
+        title: "Code non vérifié",
+        description: "Veuillez vérifier votre code d'invitation avant de continuer, ou supprimez-le.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -170,11 +182,14 @@ const Auth = () => {
                   onValidCode={(fleetId, fleetName) => {
                     setInvitationFleetId(fleetId);
                     setInvitationFleetName(fleetName);
+                    setHasUnverifiedCode(false);
                   }}
                   onClear={() => {
                     setInvitationFleetId(null);
                     setInvitationFleetName(null);
+                    setHasUnverifiedCode(false);
                   }}
+                  onStatusChange={setHasUnverifiedCode}
                 />
               </>
             )}

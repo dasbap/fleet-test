@@ -8,17 +8,25 @@ import { supabase } from "@/integrations/supabase/client";
 interface InvitationCodeInputProps {
   onValidCode: (fleetId: string, fleetName: string) => void;
   onClear: () => void;
+  onStatusChange?: (hasUnverifiedCode: boolean) => void;
 }
 
-export function InvitationCodeInput({ onValidCode, onClear }: InvitationCodeInputProps) {
+export function InvitationCodeInput({ onValidCode, onClear, onStatusChange }: InvitationCodeInputProps) {
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
   const [fleetName, setFleetName] = useState("");
 
+  // Notify parent when there's an unverified code
+  const updateStatus = (newStatus: typeof status, newCode?: string) => {
+    setStatus(newStatus);
+    const codeValue = newCode !== undefined ? newCode : code;
+    onStatusChange?.(codeValue.length > 0 && newStatus !== "valid");
+  };
+
   const validateCode = async () => {
     if (!code.trim()) return;
     
-    setStatus("checking");
+    updateStatus("checking");
     
     try {
       // Check if the invitation code exists and is valid
@@ -36,36 +44,46 @@ export function InvitationCodeInput({ onValidCode, onClear }: InvitationCodeInpu
         .maybeSingle();
 
       if (error || !data) {
-        setStatus("invalid");
+        updateStatus("invalid");
         return;
       }
 
       // Check if expired
       if (data.expires_at && new Date(data.expires_at) < new Date()) {
-        setStatus("invalid");
+        updateStatus("invalid");
         return;
       }
 
       // Check if max uses reached
       if (data.max_uses && data.current_uses >= data.max_uses) {
-        setStatus("invalid");
+        updateStatus("invalid");
         return;
       }
 
-      setStatus("valid");
+      updateStatus("valid");
       setFleetName((data.fleet as any)?.name || "Flotte");
       onValidCode(data.fleet_id, (data.fleet as any)?.name || "Flotte");
     } catch (err) {
       console.error("Error validating code:", err);
-      setStatus("invalid");
+      updateStatus("invalid");
     }
   };
 
   const handleClear = () => {
     setCode("");
-    setStatus("idle");
+    updateStatus("idle", "");
     setFleetName("");
     onClear();
+  };
+
+  const handleCodeChange = (value: string) => {
+    const upperValue = value.toUpperCase();
+    setCode(upperValue);
+    if (status !== "idle") {
+      updateStatus("idle", upperValue);
+    } else {
+      onStatusChange?.(upperValue.length > 0);
+    }
   };
 
   return (
@@ -80,10 +98,7 @@ export function InvitationCodeInput({ onValidCode, onClear }: InvitationCodeInpu
             placeholder="Ex: FLOTTE-ABC123"
             className="pl-11 uppercase"
             value={code}
-            onChange={(e) => {
-              setCode(e.target.value.toUpperCase());
-              if (status !== "idle") setStatus("idle");
-            }}
+            onChange={(e) => handleCodeChange(e.target.value)}
             disabled={status === "valid"}
           />
         </div>
