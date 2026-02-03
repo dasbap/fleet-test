@@ -4,6 +4,7 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import FleetOverview from "@/components/dashboard/FleetOverview";
 import RecentActivity from "@/components/dashboard/RecentActivity";
+import { SystemHealthAlert } from "@/components/dashboard/SystemHealthAlert";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
@@ -27,13 +28,18 @@ const Dashboard = () => {
           <DashboardHeader userRole={userRole} />
           <main className="flex-1 p-6 overflow-auto">
             <div className="max-w-7xl mx-auto space-y-6">
+              {/* System Health Alert for admins */}
+              <SystemHealthAlert />
+
               {/* Welcome */}
               <div>
                 <h1 className="text-2xl md:text-3xl font-heading font-bold">
-                  Bienvenue, Organisateur 👋
+                  Bienvenue, {userRole === 'driver' ? 'Chauffeur' : userRole === 'mechanic' ? 'Mécanicien' : userRole === 'manager' ? 'Gestionnaire' : 'Organisateur'} 👋
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                  Voici un aperçu de vos flottes aujourd'hui
+                  {userRole === 'driver' 
+                    ? 'Gérez vos courses et clôtures journalières'
+                    : 'Voici un aperçu de vos flottes aujourd\'hui'}
                 </p>
               </div>
 
