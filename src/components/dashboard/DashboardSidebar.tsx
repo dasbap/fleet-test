@@ -110,6 +110,14 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
+              <Link to="/dashboard/profile">
+                <Users className="w-5 h-5" />
+                <span>Mon profil</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
               <Link to="/dashboard/settings">
                 <Settings className="w-5 h-5" />
                 <span>Paramètres</span>

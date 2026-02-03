@@ -12,6 +12,7 @@ import ShiftClosure from "./pages/ShiftClosure";
 import Incidents from "./pages/Incidents";
 import Maintenance from "./pages/Maintenance";
 import Reports from "./pages/Reports";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/dashboard/incidents" element={<Incidents />} />
           <Route path="/dashboard/maintenance" element={<Maintenance />} />
           <Route path="/dashboard/reports" element={<Reports />} />
+          <Route path="/dashboard/profile" element={<Profile />} />
           <Route path="/dashboard/*" element={<Dashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -72,9 +72,11 @@ const DashboardHeader = ({ userRole }: DashboardHeaderProps) => {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="w-4 h-4 mr-2" />
-                Profil
+              <DropdownMenuItem asChild>
+                <a href="/dashboard/profile">
+                  <User className="w-4 h-4 mr-2" />
+                  Profil
+                </a>
               </DropdownMenuItem>
               <DropdownMenuItem>Paramètres</DropdownMenuItem>
               <DropdownMenuSeparator />
