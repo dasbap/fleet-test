@@ -16,6 +16,7 @@ import { RevenueChart } from "@/components/reports/RevenueChart";
 import { KilometersChart } from "@/components/reports/KilometersChart";
 import { IncidentsPieChart } from "@/components/reports/IncidentsPieChart";
 import { RevenueTimelineChart } from "@/components/reports/RevenueTimelineChart";
+import { MaintenanceTrendsChart } from "@/components/reports/MaintenanceTrendsChart";
 import {
   FileText,
   Download,
@@ -246,10 +247,16 @@ export default function Reports() {
                   </div>
 
                   {/* Detailed Cards */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Incidents Pie Chart */}
                     <IncidentsPieChart data={report.incidents.bySeverity} />
 
+                    {/* Maintenance Trends Chart */}
+                    <MaintenanceTrendsChart data={report.maintenance} />
+                  </div>
+
+                  {/* Additional Info */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Top Performers */}
                     <Card>
                       <CardHeader>
