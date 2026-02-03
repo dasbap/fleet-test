@@ -315,8 +315,18 @@ alter table maintenance_checklists enable row level security;
 alter table subscriptions enable row level security;
 alter table vehicle_entitlements enable row level security;
 alter table qr_tokens enable row level security;
+alter table fleet_invitations enable row level security;
 
--- VEHICLES policies
+-- FLEET INVITATIONS policies (allow public read for validation during signup)
+create policy invitations_public_read on fleet_invitations
+for select to anon, authenticated using (true);
+
+create policy invitations_write_manager_org on fleet_invitations
+for insert with check (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer'));
+
+create policy invitations_update_manager_org on fleet_invitations
+for update using (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer'));
+
 create policy vehicles_read_manager_org on vehicles
 for select using (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer'));
 
