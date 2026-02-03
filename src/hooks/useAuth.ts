@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { checkPendingInvitation, acceptInvitation } from './useAcceptInvitation';
 
 export type AppRole = 'organizer' | 'manager' | 'driver' | 'mechanic';
 
@@ -27,8 +28,24 @@ export function useAuth(): UserWithRole {
   const [memberships, setMemberships] = useState<FleetMembership[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const processPendingInvitation = async () => {
+    const pendingCode = await checkPendingInvitation();
+    if (pendingCode) {
+      console.log('Processing pending invitation:', pendingCode);
+      const result = await acceptInvitation(pendingCode);
+      if (result.ok) {
+        console.log('Invitation accepted successfully:', result);
+      } else {
+        console.warn('Failed to accept invitation:', result.error);
+      }
+    }
+  };
+
   const fetchMemberships = async (userId: string) => {
     try {
+      // First, try to process any pending invitation
+      await processPendingInvitation();
+      
       const { data, error } = await supabase
         .from('fleet_memberships')
         .select('id, fleet_id, role, is_active')
@@ -37,7 +54,6 @@ export function useAuth(): UserWithRole {
 
       if (error) {
         console.error('Error fetching memberships:', error);
-        // Set default role for new users without memberships
         setRole('organizer');
         setMemberships([]);
         return;
@@ -45,13 +61,11 @@ export function useAuth(): UserWithRole {
 
       if (data && data.length > 0) {
         setMemberships(data as FleetMembership[]);
-        // Use the highest privilege role
         const roleHierarchy: AppRole[] = ['organizer', 'manager', 'mechanic', 'driver'];
         const userRoles = data.map(m => m.role as AppRole);
         const highestRole = roleHierarchy.find(r => userRoles.includes(r)) || 'driver';
         setRole(highestRole);
       } else {
-        // No memberships yet - default to organizer for new users
         setRole('organizer');
         setMemberships([]);
       }
