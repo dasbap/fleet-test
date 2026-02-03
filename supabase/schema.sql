@@ -44,6 +44,18 @@ create table fleet_memberships (
   unique (fleet_id, user_id, role)
 );
 
+-- FLEET INVITATIONS (codes d'invitation pour onboarding)
+create table fleet_invitations (
+  id uuid primary key default gen_random_uuid(),
+  fleet_id uuid not null references fleets(id) on delete cascade,
+  code text not null unique,
+  expires_at timestamptz,
+  max_uses int,
+  current_uses int not null default 0,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now()
+);
+
 -- VEHICLES
 create table vehicles (
   id uuid primary key default gen_random_uuid(),
@@ -436,6 +448,35 @@ $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- TRIGGER: Auto-affiliate user to fleet via invitation code
+create or replace function public.handle_invitation_signup()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_fleet_id uuid;
+begin
+  v_fleet_id := new.raw_user_meta_data->>'invitation_fleet_id';
+  if v_fleet_id is not null then
+    -- Create driver membership
+    insert into public.fleet_memberships (fleet_id, user_id, role, is_active)
+    values (v_fleet_id::uuid, new.id, 'driver', true);
+    
+    -- Increment invitation usage counter
+    update public.fleet_invitations 
+    set current_uses = current_uses + 1
+    where fleet_id = v_fleet_id::uuid;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger on_invitation_signup
+  after insert on auth.users
+  for each row execute function public.handle_invitation_signup();
 
 -- =====================================================
 -- INDEXES FOR PERFORMANCE
