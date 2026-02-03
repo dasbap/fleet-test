@@ -9,14 +9,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useAuth } from "@/hooks/useAuth";
 import { useFleetReport } from "@/hooks/useFleetReport";
 import { generateFleetPDF } from "@/lib/generateFleetPDF";
+import { generateFleetExcel } from "@/lib/generateFleetExcel";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
 import { RevenueChart } from "@/components/reports/RevenueChart";
 import { KilometersChart } from "@/components/reports/KilometersChart";
 import { IncidentsPieChart } from "@/components/reports/IncidentsPieChart";
+import { RevenueTimelineChart } from "@/components/reports/RevenueTimelineChart";
 import {
   FileText,
   Download,
+  FileSpreadsheet,
   CalendarIcon,
   TrendingUp,
   Car,
@@ -41,6 +44,12 @@ export default function Reports() {
   const handleExportPDF = () => {
     if (report) {
       generateFleetPDF(report);
+    }
+  };
+
+  const handleExportExcel = () => {
+    if (report) {
+      generateFleetExcel(report);
     }
   };
 
@@ -74,14 +83,25 @@ export default function Reports() {
                     Analysez les performances de votre flotte
                   </p>
                 </div>
-                <Button 
-                  onClick={handleExportPDF} 
-                  disabled={!report || isLoading}
-                  size="lg"
-                >
-                  <Download className="mr-2 h-5 w-5" />
-                  Exporter en PDF
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleExportPDF} 
+                    disabled={!report || isLoading}
+                    size="lg"
+                  >
+                    <Download className="mr-2 h-5 w-5" />
+                    PDF
+                  </Button>
+                  <Button 
+                    onClick={handleExportExcel} 
+                    disabled={!report || isLoading}
+                    size="lg"
+                    variant="outline"
+                  >
+                    <FileSpreadsheet className="mr-2 h-5 w-5" />
+                    Excel
+                  </Button>
+                </div>
               </div>
 
               {/* Date Range Selector */}
@@ -195,7 +215,7 @@ export default function Reports() {
                             <p className="text-sm text-muted-foreground">Incidents</p>
                             <p className="text-xl font-bold">{report.incidents.total}</p>
                           </div>
-                          <AlertTriangle className="h-8 w-8 text-amber-500" />
+                          <AlertTriangle className="h-8 w-8 text-destructive" />
                         </div>
                       </CardContent>
                     </Card>
@@ -211,6 +231,13 @@ export default function Reports() {
                       </CardContent>
                     </Card>
                   </div>
+
+                  {/* Revenue Timeline Chart */}
+                  <RevenueTimelineChart 
+                    closures={report.timeline} 
+                    startDate={dateRange.from} 
+                    endDate={dateRange.to} 
+                  />
 
                   {/* Interactive Charts */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

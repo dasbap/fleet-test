@@ -59,6 +59,11 @@ export interface FleetReportData {
       shifts: number;
     }>;
   };
+  timeline: Array<{
+    date: Date;
+    revenue: number;
+    validated: boolean;
+  }>;
 }
 
 export function useFleetReport(startDate: Date, endDate: Date) {
@@ -249,6 +254,11 @@ export function useFleetReport(startDate: Date, endDate: Date) {
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 5),
         },
+        timeline: closures.map(c => ({
+          date: new Date(c.created_at),
+          revenue: c.revenue_declared || 0,
+          validated: c.status === 'validated',
+        })),
       };
     },
     enabled: !!userFleetId,
