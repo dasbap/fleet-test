@@ -6,7 +6,7 @@ import { Ticket, Check, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface InvitationCodeInputProps {
-  onValidCode: (fleetId: string, fleetName: string) => void;
+  onValidCode: (fleetId: string, fleetName: string, code: string) => void;
   onClear: () => void;
   onStatusChange?: (hasUnverifiedCode: boolean) => void;
 }
@@ -62,7 +62,7 @@ export function InvitationCodeInput({ onValidCode, onClear, onStatusChange }: In
 
       updateStatus("valid");
       setFleetName((data.fleet as any)?.name || "Flotte");
-      onValidCode(data.fleet_id, (data.fleet as any)?.name || "Flotte");
+      onValidCode(data.fleet_id, (data.fleet as any)?.name || "Flotte", code.trim().toUpperCase());
     } catch (err) {
       console.error("Error validating code:", err);
       updateStatus("invalid");

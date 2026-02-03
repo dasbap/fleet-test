@@ -17,6 +17,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [invitationFleetId, setInvitationFleetId] = useState<string | null>(null);
   const [invitationFleetName, setInvitationFleetName] = useState<string | null>(null);
+  const [invitationCode, setInvitationCode] = useState<string | null>(null);
   const [hasUnverifiedCode, setHasUnverifiedCode] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -59,7 +60,8 @@ const Auth = () => {
           formData.email, 
           formData.password, 
           formData.fullName,
-          invitationFleetId || undefined
+          invitationFleetId || undefined,
+          invitationCode || undefined
         );
         if (error) {
           toast({
@@ -179,14 +181,16 @@ const Auth = () => {
                   </div>
                 </div>
                 <InvitationCodeInput
-                  onValidCode={(fleetId, fleetName) => {
+                  onValidCode={(fleetId, fleetName, code) => {
                     setInvitationFleetId(fleetId);
                     setInvitationFleetName(fleetName);
+                    setInvitationCode(code);
                     setHasUnverifiedCode(false);
                   }}
                   onClear={() => {
                     setInvitationFleetId(null);
                     setInvitationFleetName(null);
+                    setInvitationCode(null);
                     setHasUnverifiedCode(false);
                   }}
                   onStatusChange={setHasUnverifiedCode}
