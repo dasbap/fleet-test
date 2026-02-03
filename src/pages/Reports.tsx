@@ -11,6 +11,9 @@ import { useFleetReport } from "@/hooks/useFleetReport";
 import { generateFleetPDF } from "@/lib/generateFleetPDF";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
+import { RevenueChart } from "@/components/reports/RevenueChart";
+import { KilometersChart } from "@/components/reports/KilometersChart";
+import { IncidentsPieChart } from "@/components/reports/IncidentsPieChart";
 import {
   FileText,
   Download,
@@ -209,63 +212,16 @@ export default function Reports() {
                     </Card>
                   </div>
 
-                  {/* Detailed Cards */}
+                  {/* Interactive Charts */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Revenue by Vehicle */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <TrendingUp className="h-5 w-5" />
-                          Revenus par Véhicule
-                        </CardTitle>
-                        <CardDescription>Top 10 véhicules</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {report.revenue.byVehicle.length > 0 ? (
-                          <div className="space-y-3">
-                            {report.revenue.byVehicle.map((v, idx) => (
-                              <div key={v.registration} className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm text-muted-foreground w-6">{idx + 1}.</span>
-                                  <span className="font-medium">{v.registration}</span>
-                                </div>
-                                <span className="font-mono text-sm">{formatMoney(v.amount)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-muted-foreground text-center py-4">Aucune donnée</p>
-                        )}
-                      </CardContent>
-                    </Card>
+                    <RevenueChart data={report.revenue.byVehicle} />
+                    <KilometersChart data={report.kilometers.byVehicle} />
+                  </div>
 
-                    {/* Kilometers by Vehicle */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Car className="h-5 w-5" />
-                          Kilomètres par Véhicule
-                        </CardTitle>
-                        <CardDescription>Top 10 véhicules</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {report.kilometers.byVehicle.length > 0 ? (
-                          <div className="space-y-3">
-                            {report.kilometers.byVehicle.map((v, idx) => (
-                              <div key={v.registration} className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm text-muted-foreground w-6">{idx + 1}.</span>
-                                  <span className="font-medium">{v.registration}</span>
-                                </div>
-                                <span className="font-mono text-sm">{v.km.toLocaleString('fr-FR')} km</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-muted-foreground text-center py-4">Aucune donnée</p>
-                        )}
-                      </CardContent>
-                    </Card>
+                  {/* Detailed Cards */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Incidents Pie Chart */}
+                    <IncidentsPieChart data={report.incidents.bySeverity} />
 
                     {/* Top Performers */}
                     <Card>
