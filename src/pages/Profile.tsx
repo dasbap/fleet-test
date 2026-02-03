@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User, Building2, Shield, Calendar, Mail, MapPin } from "lucide-react";
+import ProfileEditForm from "@/components/profile/ProfileEditForm";
 
 interface FleetInfo {
   id: string;
@@ -70,6 +71,11 @@ const Profile = () => {
       fetchFleets();
     }
   }, [memberships, authLoading]);
+
+  const handleProfileUpdate = useCallback(() => {
+    // Force refresh the page to get updated user data
+    window.location.reload();
+  }, []);
 
   if (authLoading) {
     return (
@@ -136,6 +142,9 @@ const Profile = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Profile Edit Form */}
+              <ProfileEditForm user={user} onUpdate={handleProfileUpdate} />
 
               {/* Fleets Card */}
               <Card className="animate-fade-in" style={{ animationDelay: "100ms" }}>
