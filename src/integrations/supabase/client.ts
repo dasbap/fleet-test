@@ -1,12 +1,43 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://zqxjvmejoktwlcqshnwi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxeGp2bWVqb2t0d2xjcXNobndpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5NDYwOTcsImV4cCI6MjA4NTUyMjA5N30._GVkJhjLwNDKWyUk-eVcNjLkMHFmYU5p_ArGVEcRYl8';
+// Récupération des variables d'environnement avec typage explicite
+const SUPABASE_URL: string | undefined = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY: string | undefined = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-});
+// Vérification stricte des variables d'environnement
+if (typeof SUPABASE_URL !== 'string' || !SUPABASE_URL) {
+  throw new Error(
+    "La variable d'environnement VITE_SUPABASE_URL est manquante ou invalide. " +
+      "Merci de vérifier votre fichier .env.local"
+  );
+}
+
+if (typeof SUPABASE_ANON_KEY !== 'string' || !SUPABASE_ANON_KEY) {
+  throw new Error(
+    "La variable d'environnement VITE_SUPABASE_ANON_KEY est manquante ou invalide. " +
+      "Merci de vérifier votre fichier .env.local"
+  );
+}
+
+// Configuration minimaliste et robuste du client Supabase
+export const supabase: SupabaseClient = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  {
+    auth: {
+      storage: localStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+    db: {
+      schema: 'public',
+    },
+    global: {
+      headers: {
+        "x-client-info": "smart-fleet-africa@1.0.0",
+      },
+    },
+  }
+);
+

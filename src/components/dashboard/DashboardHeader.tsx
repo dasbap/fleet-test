@@ -12,9 +12,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
+import { signOut } from "@/hooks/useAuth";
+import type { AppRole } from "@/hooks/useAuth";
 
 interface DashboardHeaderProps {
-  userRole: "organizer" | "manager" | "driver" | "mechanic";
+  userRole: AppRole;
+  displayName?: string;
+  initials?: string;
 }
 
 const roleLabels = {
@@ -24,7 +29,7 @@ const roleLabels = {
   mechanic: "Mécanicien",
 };
 
-const DashboardHeader = ({ userRole }: DashboardHeaderProps) => {
+const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderProps) => {
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
       <div className="h-full px-4 flex items-center justify-between gap-4">
@@ -58,11 +63,13 @@ const DashboardHeader = ({ userRole }: DashboardHeaderProps) => {
               <Button variant="ghost" className="flex items-center gap-2 px-2">
                 <Avatar className="w-8 h-8">
                   <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                    JD
+                    {initials || "US"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-medium">Jean Dupont</span>
+                  <span className="text-sm font-medium">
+                    {displayName || "Utilisateur"}
+                  </span>
                   <Badge variant="secondary" className="text-xs">
                     {roleLabels[userRole]}
                   </Badge>
@@ -73,14 +80,20 @@ const DashboardHeader = ({ userRole }: DashboardHeaderProps) => {
               <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <a href="/dashboard/profile">
+                <Link to="/dashboard/profile">
                   <User className="w-4 h-4 mr-2" />
                   Profil
-                </a>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem>Paramètres</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={async () => {
+                  await signOut();
+                  window.location.href = "/";
+                }}
+              >
                 Déconnexion
               </DropdownMenuItem>
             </DropdownMenuContent>

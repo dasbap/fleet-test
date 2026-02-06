@@ -5,16 +5,36 @@ import { Button } from "@/components/ui/button";
 import { Ticket, Check, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+/** Réponse de la requête flotte_invitations + jointure flottes(name) */
+interface InvitationRow {
+  id: string;
+  fleet_id: string;
+  expires_at: string | null;
+  max_uses: number | null;
+  current_uses: number;
+  fleet: { name: string } | null;
+}
+
 interface InvitationCodeInputProps {
   onValidCode: (fleetId: string, fleetName: string, code: string) => void;
   onClear: () => void;
   onStatusChange?: (hasUnverifiedCode: boolean) => void;
 }
 
+type InvalidReason = "not_found" | "expired" | "max_uses" | "error";
+
+const INVALID_MESSAGES: Record<InvalidReason, string> = {
+  not_found: "Code invalide ou introuvable",
+  expired: "Ce code d'invitation a expiré",
+  max_uses: "Ce code a atteint le nombre maximum d'utilisations",
+  error: "Erreur lors de la vérification. Réessayez.",
+};
+
 export function InvitationCodeInput({ onValidCode, onClear, onStatusChange }: InvitationCodeInputProps) {
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
   const [fleetName, setFleetName] = useState("");
+  const [invalidReason, setInvalidReason] = useState<InvalidReason | null>(null);
 
   // Notify parent when there's an unverified code
   const updateStatus = (newStatus: typeof status, newCode?: string) => {
@@ -25,52 +45,57 @@ export function InvitationCodeInput({ onValidCode, onClear, onStatusChange }: In
 
   const validateCode = async () => {
     if (!code.trim()) return;
-    
+
     updateStatus("checking");
-    
+
     try {
-      // Check if the invitation code exists and is valid
-      const { data, error } = await supabase
-        .from("fleet_invitations")
+      const { data: rawData, error } = await supabase
+        .from("flotte_invitations")
         .select(`
           id,
           fleet_id,
           expires_at,
           max_uses,
           current_uses,
-          fleet:fleets(name)
+          fleet:flottes(name)
         `)
         .eq("code", code.trim().toUpperCase())
         .maybeSingle();
 
+      const data = rawData as InvitationRow | null;
+
       if (error || !data) {
+        setInvalidReason("not_found");
         updateStatus("invalid");
         return;
       }
 
-      // Check if expired
       if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        setInvalidReason("expired");
         updateStatus("invalid");
         return;
       }
 
-      // Check if max uses reached
-      if (data.max_uses && data.current_uses >= data.max_uses) {
+      if (data.max_uses != null && data.current_uses >= data.max_uses) {
+        setInvalidReason("max_uses");
         updateStatus("invalid");
         return;
       }
 
+      const name = data.fleet?.name || "Flotte";
       updateStatus("valid");
-      setFleetName((data.fleet as any)?.name || "Flotte");
-      onValidCode(data.fleet_id, (data.fleet as any)?.name || "Flotte", code.trim().toUpperCase());
+      setFleetName(name);
+      onValidCode(data.fleet_id, name, code.trim().toUpperCase());
     } catch (err) {
       console.error("Error validating code:", err);
+      setInvalidReason("error");
       updateStatus("invalid");
     }
   };
 
   const handleClear = () => {
     setCode("");
+    setInvalidReason(null);
     updateStatus("idle", "");
     setFleetName("");
     onClear();
@@ -80,6 +105,7 @@ export function InvitationCodeInput({ onValidCode, onClear, onStatusChange }: In
     const upperValue = value.toUpperCase();
     setCode(upperValue);
     if (status !== "idle") {
+      setInvalidReason(null);
       updateStatus("idle", upperValue);
     } else {
       onStatusChange?.(upperValue.length > 0);
@@ -100,6 +126,14 @@ export function InvitationCodeInput({ onValidCode, onClear, onStatusChange }: In
             value={code}
             onChange={(e) => handleCodeChange(e.target.value)}
             disabled={status === "valid"}
+            aria-invalid={status === "invalid"}
+            aria-describedby={
+              status === "valid"
+                ? "invitationCode-valid"
+                : status === "invalid"
+                  ? "invitationCode-error"
+                  : undefined
+            }
           />
         </div>
         {status === "idle" && code.length > 0 && (
@@ -125,14 +159,14 @@ export function InvitationCodeInput({ onValidCode, onClear, onStatusChange }: In
         )}
       </div>
       {status === "valid" && (
-        <p className="text-sm text-chart-2 flex items-center gap-1">
+        <p id="invitationCode-valid" className="text-sm text-chart-2 flex items-center gap-1">
           <Check className="h-4 w-4" />
           Vous rejoindrez la flotte "{fleetName}"
         </p>
       )}
       {status === "invalid" && (
-        <p className="text-sm text-destructive">
-          Code invalide ou expiré
+        <p id="invitationCode-error" className="text-sm text-destructive">
+          {invalidReason ? INVALID_MESSAGES[invalidReason] : "Code invalide ou expiré"}
         </p>
       )}
     </div>

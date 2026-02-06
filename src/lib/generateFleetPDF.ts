@@ -195,7 +195,7 @@ export function generateFleetPDF(data: FleetReportData): void {
     
     autoTable(doc, {
       startY: yPos,
-      head: [['Chauffeur', 'Revenus', 'Shifts']],
+      head: [['Chauffeur', 'Revenus', 'Créneaux']],
       body: data.drivers.topPerformers.map(d => [
         d.name,
         formatMoney(d.revenue),

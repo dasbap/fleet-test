@@ -1,0 +1,47 @@
+﻿{
+    "Integration":  {
+
+                    },
+    "Roles":  {
+                  "driver":  "OK",
+                  "manager":  "OK",
+                  "mechanic":  "OK",
+                  "organizer":  "OK"
+              },
+    "Security":  {
+                     "Validation":  "OK",
+                     "RLS":  "OK"
+                 },
+    "Infrastructure":  {
+                           "SupabaseClient":  "OK",
+                           "Migrations":  "OK (7)",
+                           "RPCFunctions":  "WARNING",
+                           "Dependencies":  "OK",
+                           "SupabaseConfig":  "OK",
+                           "DevServer":  "OK",
+                           "Tables":  "WARNING"
+                       },
+    "Performance":  {
+
+                    },
+    "Bugs":  [
+                 "Fonction RPC manquante: creer_flotte_esamba",
+                 "Fonction RPC manquante: creer_ou_mettre_a_jour_adhesion_flotte",
+                 "Fonction RPC manquante: creer_vehicule_esamba",
+                 "Fonction RPC manquante: creer_invitation_esamba",
+                 "Fonction RPC manquante: verifier_esamba_2024",
+                 "Fonction RPC manquante: ajouter_membre_par_email",
+                 "Fonction RPC manquante: assurer_profil_utilisateur",
+                 "Fonction RPC manquante: verifier_statut_vehicule_actif",
+                 "Table manquante dans le schÃ©ma: checklists_maintenance"
+             ],
+    "Timestamp":  "2026-02-06 00:52:34",
+    "Recommendations":  [
+
+                        ],
+    "PublicPages":  {
+                        "Pages":  "OK",
+                        "Hooks":  "OK",
+                        "Routes":  "OK"
+                    }
+}

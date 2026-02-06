@@ -125,7 +125,7 @@ export default function Reports() {
                     size="lg"
                   >
                     <Download className="mr-2 h-5 w-5" />
-                    PDF
+                    Télécharger PDF
                   </Button>
                   <Button 
                     onClick={handleExportExcel} 
@@ -134,7 +134,7 @@ export default function Reports() {
                     variant="outline"
                   >
                     <FileSpreadsheet className="mr-2 h-5 w-5" />
-                    Excel
+                    Télécharger Excel
                   </Button>
                 </div>
               </div>
@@ -328,7 +328,7 @@ export default function Reports() {
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm text-muted-foreground w-6">{idx + 1}.</span>
                                   <span className="font-medium">{d.name}</span>
-                                  <span className="text-xs text-muted-foreground">({d.shifts} shifts)</span>
+                                  <span className="text-xs text-muted-foreground">({d.shifts} créneaux)</span>
                                 </div>
                                 <span className="font-mono text-sm text-chart-2">{formatMoney(d.revenue)}</span>
                               </div>

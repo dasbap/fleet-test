@@ -58,6 +58,12 @@ export interface FleetReportData {
       revenue: number;
       shifts: number;
     }>;
+    scores: Array<{
+      driver_id: string;
+      name: string;
+      score_level: 'green' | 'orange' | 'red';
+      financial_score: number;
+    }>;
   };
   timeline: Array<{
     date: Date;
@@ -87,35 +93,36 @@ export function useFleetReport(startDate: Date, endDate: Date) {
         incidentsResult,
         maintenanceResult,
         membersResult,
+        scoresResult,
       ] = await Promise.all([
         // Fleet info
         supabase
-          .from('fleets')
+          .from('flottes')
           .select('name')
           .eq('id', userFleetId)
           .single(),
         
         // Vehicles
         supabase
-          .from('vehicles')
+          .from('vehicules')
           .select('id, registration, status, current_km')
           .eq('fleet_id', userFleetId),
         
         // Shift closures in period
         supabase
-          .from('driver_shift_closures')
+          .from('clotures_creneaux')
           .select(`
             id, 
             revenue_declared, 
             status, 
             created_at,
-            shift:driver_shifts(
+            shift:creneaux_conducteurs(
               id,
               km_start,
               km_end,
-              assignment:driver_vehicle_assignments(
-                vehicle:vehicles(registration),
-                driver:profiles(full_name)
+              assignment:affectations_vehicules(
+                vehicle:vehicules(registration),
+                driver:profils(full_name)
               )
             )
           `)
@@ -125,13 +132,13 @@ export function useFleetReport(startDate: Date, endDate: Date) {
         // Incidents in period
         supabase
           .from('incidents')
-          .select('id, description, severity, created_at, vehicle:vehicles(registration)')
+          .select('id, description, severity, created_at, vehicle:vehicules(registration)')
           .gte('created_at', startISO)
           .lte('created_at', endISO),
         
         // Maintenance jobs
         supabase
-          .from('maintenance_jobs')
+          .from('travaux_maintenance')
           .select('id, status, created_at')
           .eq('fleet_id', userFleetId)
           .gte('created_at', startISO)
@@ -139,10 +146,24 @@ export function useFleetReport(startDate: Date, endDate: Date) {
         
         // Fleet members
         supabase
-          .from('fleet_memberships')
+          .from('flotte_adhesions')
           .select('user_id, role, is_active')
           .eq('fleet_id', userFleetId)
           .eq('role', 'driver'),
+        
+        // Driver scores
+        supabase
+          .from('scores_conducteurs')
+          .select(`
+            driver_user_id,
+            score_level,
+            financial_score,
+            driver:profils!scores_conducteurs_driver_user_id_fkey(
+              user_id,
+              full_name
+            )
+          `)
+          .eq('fleet_id', userFleetId),
       ]);
 
       const fleet = fleetResult.data;
@@ -151,6 +172,7 @@ export function useFleetReport(startDate: Date, endDate: Date) {
       const incidents = incidentsResult.data || [];
       const maintenance = maintenanceResult.data || [];
       const members = membersResult.data || [];
+      const scores = scoresResult.data || [];
 
       // Calculate revenue stats
       const validatedClosures = closures.filter(c => c.status === 'validated');
@@ -253,6 +275,12 @@ export function useFleetReport(startDate: Date, endDate: Date) {
           topPerformers: Object.values(driverStats)
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 5),
+          scores: scores.map(s => ({
+            driver_id: s.driver_user_id,
+            name: (s.driver as any)?.full_name || 'Chauffeur inconnu',
+            score_level: s.score_level as 'green' | 'orange' | 'red',
+            financial_score: s.financial_score,
+          })),
         },
         timeline: closures.map(c => ({
           date: new Date(c.created_at),

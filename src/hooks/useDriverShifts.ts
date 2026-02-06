@@ -1,55 +1,60 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
 
-export type ShiftStatus = 'active' | 'closed' | 'cancelled';
-export type CollectionMode = 'cash' | 'momo' | 'orange' | 'mixed';
+export type ShiftStatus = 'open' | 'closed';
+export type CollectionMode = 'cash' | 'momo' | 'mix';
 
 export interface DriverShift {
   id: string;
-  driver_id: string;
-  vehicle_id: string;
-  fleet_id: string;
-  start_time: string;
-  end_time: string | null;
-  start_km: number;
-  end_km: number | null;
+  assignment_id: string;
+  km_start: number;
+  km_end: number | null;
+  started_at: string;
+  ended_at: string | null;
   status: ShiftStatus;
-  created_at: string;
-  // Joined data
-  vehicle?: {
+  // Joined data via assignment
+  assignment?: {
     id: string;
-    plate_number: string;
-    brand: string | null;
-    model: string | null;
+    fleet_id: string;
+    vehicle_id: string;
+    driver_user_id: string;
+    vehicle?: {
+      id: string;
+      registration: string;
+      brand: string | null;
+      model: string | null;
+    } | null;
+    driver?: {
+      user_id: string;
+      full_name: string | null;
+    } | null;
   } | null;
 }
 
 export interface ShiftClosure {
   id: string;
   shift_id: string;
-  driver_id: string;
-  vehicle_id: string;
-  end_km: number;
-  total_revenue: number;
+  revenue_declared: number;
+  expected_revenue: number | null;
+  revenue_gap: number | null;
   collection_mode: CollectionMode;
-  cash_amount: number;
-  momo_amount: number;
-  notes: string | null;
-  photo_url: string | null;
+  proof_type: string;
+  proof_value: string;
+  status: 'pending' | 'validated' | 'rejected';
+  validated_by: string | null;
+  validated_at: string | null;
   created_at: string;
 }
 
 export interface ShiftClosureInsert {
   shift_id: string;
-  vehicle_id: string;
-  end_km: number;
-  total_revenue: number;
+  km_end: number;
+  revenue_declared: number;
   collection_mode: CollectionMode;
-  cash_amount?: number;
-  momo_amount?: number;
-  notes?: string;
-  photo_url?: string;
+  proof_type: string;
+  proof_value: string;
 }
 
 export function useActiveShift() {
@@ -62,14 +67,42 @@ export function useActiveShift() {
         return null;
       }
 
+      // Get active assignment first
+      const { data: assignmentData } = await supabase
+        .from('affectations_vehicules')
+        .select('id')
+        .eq('driver_user_id', userData.user.id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!assignmentData) {
+        return null;
+      }
+
+      // Get active shift for this assignment
       const { data, error } = await supabase
-        .from('driver_shifts')
+        .from('creneaux_conducteurs')
         .select(`
           *,
-          vehicle:vehicles(id, plate_number, brand, model)
+          assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
+            id,
+            fleet_id,
+            vehicle_id,
+            driver_user_id,
+            vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(
+              id,
+              registration,
+              brand,
+              model
+            ),
+            driver:profils!affectations_vehicules_driver_user_id_fkey(
+              user_id,
+              full_name
+            )
+          )
         `)
-        .eq('driver_id', userData.user.id)
-        .eq('status', 'active')
+        .eq('assignment_id', assignmentData.id)
+        .eq('status', 'open')
         .maybeSingle();
 
       if (error) {
@@ -92,14 +125,42 @@ export function useDriverShifts() {
         return [];
       }
 
+      // Get all assignments for this driver
+      const { data: assignmentsData } = await supabase
+        .from('affectations_vehicules')
+        .select('id')
+        .eq('driver_user_id', userData.user.id);
+
+      if (!assignmentsData || assignmentsData.length === 0) {
+        return [];
+      }
+
+      const assignmentIds = assignmentsData.map(a => a.id);
+
+      // Get shifts for these assignments
       const { data, error } = await supabase
-        .from('driver_shifts')
+        .from('creneaux_conducteurs')
         .select(`
           *,
-          vehicle:vehicles(id, plate_number, brand, model)
+          assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
+            id,
+            fleet_id,
+            vehicle_id,
+            driver_user_id,
+            vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(
+              id,
+              registration,
+              brand,
+              model
+            ),
+            driver:profils!affectations_vehicules_driver_user_id_fkey(
+              user_id,
+              full_name
+            )
+          )
         `)
-        .eq('driver_id', userData.user.id)
-        .order('created_at', { ascending: false })
+        .in('assignment_id', assignmentIds)
+        .order('started_at', { ascending: false })
         .limit(20);
 
       if (error) {
@@ -117,30 +178,34 @@ export function useStartShift() {
 
   return useMutation({
     mutationFn: async ({ 
-      vehicle_id, 
-      fleet_id, 
-      start_km 
+      assignment_id,
+      km_start 
     }: { 
-      vehicle_id: string; 
-      fleet_id: string; 
-      start_km: number;
+      assignment_id: string;
+      km_start: number;
     }) => {
-      const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData.user) {
-        throw new Error('Non authentifié');
-      }
-
       const { data, error } = await supabase
-        .from('driver_shifts')
+        .from('creneaux_conducteurs')
         .insert({
-          driver_id: userData.user.id,
-          vehicle_id,
-          fleet_id,
-          start_km,
-          status: 'active',
+          assignment_id,
+          km_start,
+          status: 'open',
         })
-        .select()
+        .select(`
+          *,
+          assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
+            id,
+            fleet_id,
+            vehicle_id,
+            driver_user_id,
+            vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(
+              id,
+              registration,
+              brand,
+              model
+            )
+          )
+        `)
         .single();
 
       if (error) {
@@ -154,13 +219,13 @@ export function useStartShift() {
       queryClient.invalidateQueries({ queryKey: ['driver-shifts'] });
       toast({
         title: 'Journée démarrée',
-        description: 'Votre shift a été enregistré.',
+        description: 'Votre créneau a été enregistré.',
       });
     },
     onError: (error: Error) => {
       toast({
         title: 'Erreur',
-        description: error.message,
+        description: mapSupabaseErrorToFrench(error.message),
         variant: 'destructive',
       });
     },
@@ -172,55 +237,50 @@ export function useCloseShift() {
 
   return useMutation({
     mutationFn: async (closure: ShiftClosureInsert) => {
-      const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData.user) {
-        throw new Error('Non authentifié');
-      }
-
-      // First, update the shift status
-      const { error: shiftError } = await supabase
-        .from('driver_shifts')
-        .update({
-          status: 'closed',
-          end_time: new Date().toISOString(),
-          end_km: closure.end_km,
-        })
-        .eq('id', closure.shift_id);
-
-      if (shiftError) {
-        throw new Error(shiftError.message);
-      }
-
-      // Then, create the closure record
-      const { data, error } = await supabase
-        .from('driver_shift_closures')
-        .insert({
-          shift_id: closure.shift_id,
-          driver_id: userData.user.id,
-          vehicle_id: closure.vehicle_id,
-          end_km: closure.end_km,
-          total_revenue: closure.total_revenue,
-          collection_mode: closure.collection_mode,
-          cash_amount: closure.cash_amount || 0,
-          momo_amount: closure.momo_amount || 0,
-          notes: closure.notes,
-          photo_url: closure.photo_url,
-        })
-        .select()
-        .single();
+      // Use the RPC function close_shift which handles everything atomically
+      const { error } = await supabase.rpc('fermer_creneau', {
+        p_shift_id: closure.shift_id,
+        p_km_end: closure.km_end,
+        p_revenue_declared: closure.revenue_declared,
+        p_collection_mode: closure.collection_mode,
+        p_proof_type: closure.proof_type,
+        p_proof_value: closure.proof_value,
+      });
 
       if (error) {
         throw new Error(error.message);
       }
 
-      // Update vehicle km
-      await supabase
-        .from('vehicles')
-        .update({ current_km: closure.end_km })
-        .eq('id', closure.vehicle_id);
+      // Calculer la recette attendue
+      const { error: expectedError } = await supabase.rpc('calculer_recette_attendue', {
+        p_shift_id: closure.shift_id,
+      });
 
-      return data as ShiftClosure;
+      if (expectedError) {
+        console.warn('Erreur lors du calcul de la recette attendue:', expectedError);
+        // Ne pas bloquer la clôture si cette étape échoue
+      }
+
+      // Get the shift to update vehicle km
+      const { data: shiftData } = await supabase
+        .from('creneaux_conducteurs')
+        .select(`
+          assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
+            vehicle_id
+          )
+        `)
+        .eq('id', closure.shift_id)
+        .single();
+
+      if (shiftData?.assignment?.vehicle_id) {
+        // Update vehicle km
+        await supabase
+          .from('vehicules')
+          .update({ current_km: closure.km_end })
+          .eq('id', shiftData.assignment.vehicle_id);
+      }
+
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active-shift'] });
@@ -234,7 +294,7 @@ export function useCloseShift() {
     onError: (error: Error) => {
       toast({
         title: 'Erreur',
-        description: error.message,
+        description: mapSupabaseErrorToFrench(error.message),
         variant: 'destructive',
       });
     },
@@ -246,7 +306,46 @@ export function useShiftClosures() {
   return useQuery({
     queryKey: ['shift-closures'],
     queryFn: async () => {
-      return [] as ShiftClosure[];
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return [];
+
+      // Get assignments for this driver
+      const { data: assignmentsData } = await supabase
+        .from('affectations_vehicules')
+        .select('id')
+        .eq('driver_user_id', userData.user.id);
+
+      if (!assignmentsData || assignmentsData.length === 0) {
+        return [];
+      }
+
+      const assignmentIds = assignmentsData.map(a => a.id);
+
+      // Get shifts for these assignments
+      const { data: shiftsData } = await supabase
+        .from('creneaux_conducteurs')
+        .select('id')
+        .in('assignment_id', assignmentIds);
+
+      if (!shiftsData || shiftsData.length === 0) {
+        return [];
+      }
+
+      const shiftIds = shiftsData.map(s => s.id);
+
+      // Get closures for these shifts
+      const { data, error } = await supabase
+        .from('clotures_creneaux')
+        .select('*')
+        .in('shift_id', shiftIds)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching closures:', error);
+        return [];
+      }
+
+      return (data || []) as ShiftClosure[];
     },
   });
 }
@@ -260,22 +359,39 @@ export function useReviewClosure() {
       status,
     }: {
       closureId: string;
-      status: 'approved' | 'rejected';
-      reviewerId: string;
+      status: 'validated' | 'rejected';
     }) => {
-      return { id: closureId, status } as unknown as ShiftClosure;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non authentifié');
+
+      const { data, error } = await supabase
+        .from('clotures_creneaux')
+        .update({
+          status,
+          validated_by: user.id,
+          validated_at: new Date().toISOString(),
+        })
+        .eq('id', closureId)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data as ShiftClosure;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['shift-closures'] });
       toast({
-        title: variables.status === 'approved' ? 'Clôture approuvée' : 'Clôture rejetée',
-        description: `La clôture a été ${variables.status === 'approved' ? 'approuvée' : 'rejetée'}.`,
+        title: variables.status === 'validated' ? 'Clôture approuvée' : 'Clôture rejetée',
+        description: `La clôture a été ${variables.status === 'validated' ? 'approuvée' : 'rejetée'}.`,
       });
     },
     onError: (error: Error) => {
       toast({
         title: 'Erreur',
-        description: error.message,
+        description: mapSupabaseErrorToFrench(error.message),
         variant: 'destructive',
       });
     },

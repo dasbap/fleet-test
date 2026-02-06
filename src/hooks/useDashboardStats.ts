@@ -45,13 +45,13 @@ export function useDashboardStats() {
       ] = await Promise.all([
         // Vehicles stats
         supabase
-          .from('vehicles')
+          .from('vehicules')
           .select('id, status')
           .eq('fleet_id', userFleetId),
         
         // Drivers in fleet
         supabase
-          .from('fleet_memberships')
+          .from('flotte_adhesions')
           .select('user_id')
           .eq('fleet_id', userFleetId)
           .eq('role', 'driver')
@@ -65,20 +65,20 @@ export function useDashboardStats() {
         
         // Pending closures
         supabase
-          .from('driver_shift_closures')
+          .from('clotures_creneaux')
           .select('id, revenue_declared, status')
           .eq('status', 'pending'),
         
         // Maintenance in progress
         supabase
-          .from('maintenance_jobs')
+          .from('travaux_maintenance')
           .select('id, status')
           .eq('fleet_id', userFleetId)
           .eq('status', 'in_progress'),
         
         // Active assignments (drivers currently working)
         supabase
-          .from('driver_vehicle_assignments')
+          .from('affectations_vehicules')
           .select('id')
           .eq('fleet_id', userFleetId)
           .eq('is_active', true),
@@ -96,7 +96,7 @@ export function useDashboardStats() {
       today.setHours(0, 0, 0, 0);
       
       const { data: todayClosures } = await supabase
-        .from('driver_shift_closures')
+        .from('clotures_creneaux')
         .select('revenue_declared, status')
         .gte('created_at', today.toISOString())
         .eq('status', 'validated');
@@ -134,16 +134,16 @@ export function useRecentActivity() {
       // Fetch recent events from multiple sources
       const [closures, incidents, maintenance] = await Promise.all([
         supabase
-          .from('driver_shift_closures')
+          .from('clotures_creneaux')
           .select(`
             id, 
             revenue_declared, 
             status, 
             created_at,
-            shift:driver_shifts(
+            shift:creneaux_conducteurs(
               id,
-              assignment:driver_vehicle_assignments(
-                vehicle:vehicles(registration)
+              assignment:affectations_vehicules(
+                vehicle:vehicules(registration)
               )
             )
           `)
@@ -152,13 +152,13 @@ export function useRecentActivity() {
         
         supabase
           .from('incidents')
-          .select('id, description, severity, created_at, vehicle:vehicles(registration)')
+          .select('id, description, severity, created_at, vehicle:vehicules(registration)')
           .order('created_at', { ascending: false })
           .limit(5),
         
         supabase
-          .from('maintenance_jobs')
-          .select('id, status, priority, created_at, vehicle:vehicles(registration)')
+          .from('travaux_maintenance')
+          .select('id, status, priority, created_at, vehicle:vehicules(registration)')
           .eq('fleet_id', userFleetId)
           .order('created_at', { ascending: false })
           .limit(5),
@@ -226,7 +226,7 @@ export function useFleetVehicles() {
       if (!userFleetId) return [];
 
       const { data, error } = await supabase
-        .from('vehicles')
+        .from('vehicules')
         .select(`
           id,
           registration,
@@ -235,11 +235,10 @@ export function useFleetVehicles() {
           current_km,
           status,
           blocked_reason,
-          assignments:driver_vehicle_assignments(
+          assignments:affectations_vehicules(
             id,
             is_active,
-            driver_user_id,
-            driver:profiles(full_name)
+            driver_user_id
           )
         `)
         .eq('fleet_id', userFleetId)
@@ -258,7 +257,8 @@ export function useFleetVehicles() {
           current_km: v.current_km,
           status: v.status,
           blocked_reason: v.blocked_reason,
-          driver: activeAssignment?.driver?.full_name || null,
+          driver: activeAssignment ? 'Conducteur' : null,
+          hasActiveAssignment: !!activeAssignment,
         };
       });
     },

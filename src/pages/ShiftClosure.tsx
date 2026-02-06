@@ -1,9 +1,9 @@
-import { useState } from "react";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import ShiftClosureForm from "@/components/driver/ShiftClosureForm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
 import { Car, Clock, Gauge } from "lucide-react";
 
 // Mock active shift data
@@ -19,7 +19,8 @@ const mockActiveShift = {
 };
 
 const ShiftClosure = () => {
-  const [userRole] = useState<"organizer" | "manager" | "driver" | "mechanic">("driver");
+  const { role } = useAuth();
+  const userRole = role ?? "driver";
 
   const formatDuration = (startedAt: string) => {
     const start = new Date(startedAt);

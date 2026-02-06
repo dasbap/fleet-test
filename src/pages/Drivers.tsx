@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -19,24 +20,29 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Car, MoreVertical, Phone, Calendar, History } from "lucide-react";
+import { User, Car, MoreVertical, Phone, Calendar, History, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFleetDrivers, useActiveAssignments } from "@/hooks/useAssignments";
+import { useDriverScores } from "@/hooks/useDriverScores";
 import { cn } from "@/lib/utils";
 import DriverHistoryDialog from "@/components/drivers/DriverHistoryDialog";
 
 const Drivers = () => {
-  const { role } = useAuth();
+  const navigate = useNavigate();
+  const { role, userFleetId } = useAuth();
   const userRole = role || "manager";
-  
-  // TODO: Get actual fleet ID from user's membership
-  const mockFleetId = "22222222-2222-2222-2222-222222222222";
-  
-  const { data: drivers = [], isLoading: driversLoading } = useFleetDrivers(mockFleetId);
-  const { data: assignments = [], isLoading: assignmentsLoading } = useActiveAssignments(mockFleetId);
-  
+
+  const { data: drivers = [], isLoading: driversLoading } = useFleetDrivers(userFleetId ?? undefined);
+  const { data: assignments = [], isLoading: assignmentsLoading } = useActiveAssignments(userFleetId ?? undefined);
+
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+
+  useEffect(() => {
+    if (!userFleetId && role === null) {
+      navigate("/dashboard/create-fleet");
+    }
+  }, [userFleetId, role, navigate]);
 
   const isLoading = driversLoading || assignmentsLoading;
 
@@ -53,6 +59,33 @@ const Drivers = () => {
     setSelectedDriverId(driverId);
     setHistoryOpen(true);
   };
+
+  if (!userFleetId) {
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <DashboardSidebar userRole={userRole} />
+          <SidebarInset className="flex flex-col flex-1">
+            <DashboardHeader userRole={userRole} />
+            <main className="flex-1 p-6 overflow-auto">
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <User className="w-16 h-16 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Aucune flotte trouvée</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Vous devez être membre d&apos;une flotte pour voir les chauffeurs. Rejoignez-en une via un code d&apos;invitation.
+                  </p>
+                  <Button variant="outline" onClick={() => navigate("/dashboard/invitations")}>
+                    Rejoindre une flotte
+                  </Button>
+                </CardContent>
+              </Card>
+            </main>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -148,6 +181,7 @@ const Drivers = () => {
                           <TableHead>Chauffeur</TableHead>
                           <TableHead>Contact</TableHead>
                           <TableHead>Véhicule actuel</TableHead>
+                          <TableHead>Score</TableHead>
                           <TableHead>Statut</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -190,6 +224,23 @@ const Drivers = () => {
                                 </div>
                               ) : (
                                 <span className="text-muted-foreground italic">Non affecté</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {driver.score ? (
+                                <div className="flex flex-col gap-1">
+                                  <Badge
+                                    variant={getScoreBadgeVariant(driver.score.score_level) as any}
+                                    className="w-fit"
+                                  >
+                                    {getScoreLabel(driver.score.score_level)}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    {driver.score.financial_score.toFixed(1)}/100
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground italic text-sm">Non calculé</span>
                               )}
                             </TableCell>
                             <TableCell>

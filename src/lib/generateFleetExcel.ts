@@ -24,7 +24,7 @@ export function generateFleetExcel(data: FleetReportData) {
     [''],
     ['KILOMÉTRAGE'],
     ['Total', `${data.kilometers.total.toLocaleString('fr-FR')} km`],
-    ['Moyenne par shift', `${data.kilometers.average.toLocaleString('fr-FR')} km`],
+    ['Moyenne par créneau', `${data.kilometers.average.toLocaleString('fr-FR')} km`],
     [''],
     ['INCIDENTS'],
     ['Total', data.incidents.total],
@@ -73,7 +73,7 @@ export function generateFleetExcel(data: FleetReportData) {
   
   // Top performers sheet
   if (data.drivers.topPerformers.length > 0) {
-    const driversHeaders = ['Chauffeur', 'Revenus (FCFA)', 'Nombre de shifts'];
+    const driversHeaders = ['Chauffeur', 'Revenus (FCFA)', 'Nombre de créneaux'];
     const driversRows = data.drivers.topPerformers.map(d => [
       d.name,
       d.revenue,

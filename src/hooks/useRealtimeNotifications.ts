@@ -26,29 +26,35 @@ export function useRealtimeNotifications(fleetId?: string) {
       {
         event: 'INSERT',
         schema: 'public',
-        table: 'driver_shift_closures',
+        table: 'clotures_creneaux',
       },
       async (payload) => {
         const closure = payload.new;
         
-        // Fetch the related shift to check fleet_id
+        // Fetch the related shift and assignment to check fleet_id
         const { data: shift } = await supabase
-          .from('driver_shifts')
-          .select('fleet_id, driver_id')
+          .from('creneaux_conducteurs')
+          .select(`
+            assignment_id,
+            assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
+              fleet_id,
+              driver_user_id
+            )
+          `)
           .eq('id', closure.shift_id)
           .single();
 
-        if (shift?.fleet_id === fleetId) {
+        if (shift?.assignment?.fleet_id === fleetId) {
           // Get driver profile
           const { data: profile } = await supabase
-            .from('profiles')
+            .from('profils')
             .select('full_name')
-            .eq('id', shift.driver_id)
+            .eq('user_id', shift.assignment.driver_user_id)
             .single();
 
           toast({
-            title: '🔔 Nouvelle clôture de shift',
-            description: `${profile?.full_name || 'Un chauffeur'} a terminé son shift avec ${closure.declared_revenue} FCFA de revenus.`,
+            title: '🔔 Nouvelle clôture de créneau',
+            description: `${profile?.full_name || 'Un chauffeur'} a terminé son créneau avec ${closure.revenue_declared} FCFA de revenus.`,
           });
 
           // Invalidate queries to refresh data
@@ -69,13 +75,14 @@ export function useRealtimeNotifications(fleetId?: string) {
       async (payload) => {
         const incident = payload.new;
 
-        if (incident.fleet_id === fleetId) {
-          // Get vehicle info
-          const { data: vehicle } = await supabase
-            .from('vehicles')
-            .select('registration')
-            .eq('id', incident.vehicle_id)
-            .single();
+        // Get vehicle info to check fleet_id
+        const { data: vehicle } = await supabase
+          .from('vehicules')
+          .select('registration, fleet_id')
+          .eq('id', incident.vehicle_id)
+          .single();
+
+        if (vehicle?.fleet_id === fleetId) {
 
           const severityLabels: Record<string, string> = {
             low: 'faible',
@@ -104,7 +111,7 @@ export function useRealtimeNotifications(fleetId?: string) {
       {
         event: 'INSERT',
         schema: 'public',
-        table: 'maintenance_jobs',
+        table: 'travaux_maintenance',
       },
       async (payload) => {
         const job = payload.new;
@@ -112,7 +119,7 @@ export function useRealtimeNotifications(fleetId?: string) {
         if (job.fleet_id === fleetId) {
           // Get vehicle info
           const { data: vehicle } = await supabase
-            .from('vehicles')
+            .from('vehicules')
             .select('registration')
             .eq('id', job.vehicle_id)
             .single();
@@ -142,7 +149,7 @@ export function useRealtimeNotifications(fleetId?: string) {
       {
         event: 'UPDATE',
         schema: 'public',
-        table: 'maintenance_jobs',
+        table: 'travaux_maintenance',
       },
       async (payload) => {
         const job = payload.new;
@@ -151,7 +158,7 @@ export function useRealtimeNotifications(fleetId?: string) {
         if (job.fleet_id === fleetId && job.status !== oldJob.status) {
           // Get vehicle info
           const { data: vehicle } = await supabase
-            .from('vehicles')
+            .from('vehicules')
             .select('registration')
             .eq('id', job.vehicle_id)
             .single();

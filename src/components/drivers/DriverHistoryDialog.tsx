@@ -38,13 +38,13 @@ const DriverHistoryDialog = ({ open, onOpenChange, driverId }: DriverHistoryDial
       if (!driverId) return [];
 
       const { data, error } = await supabase
-        .from('driver_vehicle_assignments')
+        .from('affectations_vehicules')
         .select(`
           id,
           starts_at,
           ends_at,
           is_active,
-          vehicle:vehicles!driver_vehicle_assignments_vehicle_id_fkey(id, registration, brand, model)
+          vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(id, registration, brand, model)
         `)
         .eq('driver_user_id', driverId)
         .order('starts_at', { ascending: false });

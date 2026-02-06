@@ -41,7 +41,7 @@ export function useVehicles(fleetId?: string) {
     queryFn: async () => {
       // First try to get vehicles with active assignments
       let query = supabase
-        .from('vehicles')
+        .from('vehicules')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -64,12 +64,12 @@ export function useVehicles(fleetId?: string) {
       }
 
       const { data: assignmentsData } = await supabase
-        .from('driver_vehicle_assignments')
+        .from('affectations_vehicules')
         .select(`
           id,
           vehicle_id,
           driver_user_id,
-          driver:profiles!driver_vehicle_assignments_driver_user_id_fkey(user_id, full_name)
+          driver:profils!affectations_vehicules_driver_user_id_fkey(user_id, full_name)
         `)
         .in('vehicle_id', vehicleIds)
         .eq('is_active', true);
@@ -97,7 +97,7 @@ export function useVehiclesSimple(fleetId?: string) {
     queryKey: ['vehicles-simple', fleetId],
     queryFn: async () => {
       let query = supabase
-        .from('vehicles')
+        .from('vehicules')
         .select('*')
         .order('registration', { ascending: true });
 
@@ -123,7 +123,7 @@ export function useCreateVehicle() {
   return useMutation({
     mutationFn: async (vehicle: VehicleInsert) => {
       const { data, error } = await supabase
-        .from('vehicles')
+        .from('vehicules')
         .insert({
           fleet_id: vehicle.fleet_id,
           registration: vehicle.registration,
@@ -166,7 +166,7 @@ export function useUpdateVehicle() {
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Vehicle> & { id: string }) => {
       const { data, error } = await supabase
-        .from('vehicles')
+        .from('vehicules')
         .update(updates)
         .eq('id', id)
         .select()
@@ -202,7 +202,7 @@ export function useBlockVehicle() {
   return useMutation({
     mutationFn: async ({ id, blocked_reason }: { id: string; blocked_reason: string }) => {
       const { data, error } = await supabase
-        .from('vehicles')
+        .from('vehicules')
         .update({ 
           status: 'blocked' as VehicleStatus, 
           blocked_reason 
@@ -241,7 +241,7 @@ export function useUnblockVehicle() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
-        .from('vehicles')
+        .from('vehicules')
         .update({ 
           status: 'ok' as VehicleStatus, 
           blocked_reason: null 

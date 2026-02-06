@@ -22,29 +22,51 @@ import { useVehicles, VehicleStatus } from "@/hooks/useVehicles";
 import { AssignmentFormDialog } from "./AssignmentFormDialog";
 import { useQueryClient } from "@tanstack/react-query";
 
-const statusConfig: Record<VehicleStatus, { label: string; icon: typeof CheckCircle; className: string }> = {
-  ok: {
-    label: "Actif",
+// Configuration du statut des véhicules
+// Règle métier : Un véhicule "Actif" (statut ok) doit être lié à un chauffeur actif
+// Le statut dépend à la fois du statut technique (ok/blocked) et de l'assignation
+const getVehicleStatusConfig = (
+  status: VehicleStatus,
+  hasActiveAssignment: boolean
+): { label: string; icon: typeof CheckCircle; className: string } => {
+  if (status === "blocked") {
+    return {
+      label: "Bloqué",
+      icon: AlertCircle,
+      className: "bg-destructive/10 text-destructive border-destructive/20",
+    };
+  }
+  
+  // Statut "ok" ET assigné à un chauffeur actif = Actif
+  if (hasActiveAssignment) {
+    return {
+      label: "Actif",
+      icon: CheckCircle,
+      className: "bg-success/10 text-success border-success/20",
+    };
+  }
+  
+  // Statut "ok" mais non assigné = Disponible (mais pas Actif selon la règle métier)
+  return {
+    label: "Disponible",
     icon: CheckCircle,
-    className: "bg-success/10 text-success border-success/20",
-  },
-  blocked: {
-    label: "Bloqué",
-    icon: AlertCircle,
-    className: "bg-destructive/10 text-destructive border-destructive/20",
-  },
+    className: "bg-muted/10 text-muted-foreground border-muted/20",
+  };
 };
 
-const VehiclesTable = () => {
-  const { data: vehicles = [], isLoading } = useVehicles();
+interface VehiclesTableProps {
+  /** ID de la flotte pour filtrer les véhicules. Si absent, tous les véhicules accessibles sont affichés. */
+  fleetId?: string;
+}
+
+const VehiclesTable = ({ fleetId }: VehiclesTableProps) => {
+  const { data: vehicles = [], isLoading } = useVehicles(fleetId);
   const queryClient = useQueryClient();
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<{ id: string; registration: string } | null>(null);
-  
-  // TODO: Get actual fleet ID from user's membership
-  const mockFleetId = "22222222-2222-2222-2222-222222222222";
 
   const handleAssignClick = (vehicleId: string, registration: string) => {
+    if (!fleetId) return;
     setSelectedVehicle({ id: vehicleId, registration });
     setAssignDialogOpen(true);
   };
@@ -109,7 +131,8 @@ const VehiclesTable = () => {
           <TableBody>
             {vehicles.map((vehicle) => {
               const status = vehicle.status as VehicleStatus;
-              const config = statusConfig[status] || statusConfig.ok;
+              const hasActiveAssignment = !!vehicle.active_assignment;
+              const config = getVehicleStatusConfig(status, hasActiveAssignment);
               const StatusIcon = config.icon;
               
               return (
@@ -172,7 +195,7 @@ const VehiclesTable = () => {
                         <DropdownMenuItem>Modifier</DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleAssignClick(vehicle.id, vehicle.registration)}
-                          disabled={vehicle.status === 'blocked' || !!vehicle.active_assignment}
+                          disabled={!fleetId || vehicle.status === 'blocked' || !!vehicle.active_assignment}
                         >
                           <UserPlus className="w-4 h-4 mr-2" />
                           Affecter chauffeur
@@ -189,12 +212,14 @@ const VehiclesTable = () => {
       </CardContent>
 
       {/* Assignment Dialog */}
-      <AssignmentFormDialog
-        open={assignDialogOpen}
-        onOpenChange={setAssignDialogOpen}
-        fleetId={mockFleetId}
-        preselectedVehicleId={selectedVehicle?.id}
-      />
+      {fleetId && (
+        <AssignmentFormDialog
+          open={assignDialogOpen}
+          onOpenChange={setAssignDialogOpen}
+          fleetId={fleetId}
+          preselectedVehicleId={selectedVehicle?.id}
+        />
+      )}
     </Card>
   );
 };

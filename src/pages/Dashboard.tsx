@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import DashboardStats from "@/components/dashboard/DashboardStats";
@@ -10,8 +11,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 const Dashboard = () => {
-  const { role, userFleetId } = useAuth();
+  const { user, role, userFleetId, isLoading } = useAuth();
+  const navigate = useNavigate();
   const userRole = role || "organizer";
+
+  const userMetadata = user?.user_metadata || {};
+  const fullName =
+    userMetadata.full_name || user?.email?.split("@")[0] || "Utilisateur";
+  const initials = fullName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   // Enable real-time notifications
   useRealtimeNotifications(userFleetId || undefined);
@@ -20,12 +32,25 @@ const Dashboard = () => {
     document.documentElement.classList.add("dark");
   }, []);
 
+  // Rediriger automatiquement les utilisateurs sans flotte vers la création de flotte
+  useEffect(() => {
+    if (!isLoading && !userFleetId && role === null) {
+      // L'utilisateur n'a pas de flotte et pas de rôle défini
+      // Rediriger vers la création de flotte pour permettre la création automatique
+      navigate("/dashboard/create-fleet");
+    }
+  }, [isLoading, userFleetId, role, navigate]);
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <DashboardSidebar userRole={userRole} />
         <SidebarInset className="flex flex-col flex-1">
-          <DashboardHeader userRole={userRole} />
+          <DashboardHeader
+            userRole={userRole}
+            displayName={fullName}
+            initials={initials}
+          />
           <main className="flex-1 p-6 overflow-auto">
             <div className="max-w-7xl mx-auto space-y-6">
               {/* System Health Alert for admins */}

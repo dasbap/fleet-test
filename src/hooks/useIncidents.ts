@@ -41,8 +41,8 @@ export function useIncidents(fleetId?: string) {
         .from('incidents')
         .select(`
           *,
-          vehicle:vehicles(id, registration, brand, model, fleet_id),
-          driver:profiles!incidents_driver_user_id_fkey(user_id, full_name)
+          vehicle:vehicules(id, registration, brand, model, fleet_id),
+          driver:profils!incidents_driver_user_id_fkey(user_id, full_name)
         `)
         .order('created_at', { ascending: false });
 
@@ -126,7 +126,7 @@ export function useCreateMaintenanceFromIncident() {
       priority?: string;
     }) => {
       const { data, error } = await supabase
-        .from('maintenance_jobs')
+        .from('travaux_maintenance')
         .insert({
           vehicle_id,
           fleet_id,
@@ -145,7 +145,7 @@ export function useCreateMaintenanceFromIncident() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incidents'] });
-      queryClient.invalidateQueries({ queryKey: ['maintenance_jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['maintenance-jobs'] });
       toast({
         title: 'Intervention créée',
         description: 'L\'incident a été converti en intervention de maintenance.',

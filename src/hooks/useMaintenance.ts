@@ -5,6 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 export type JobStatus = 'queued' | 'in_progress' | 'ready' | 'blocked';
 export type Priority = 'low' | 'medium' | 'high' | 'critical';
 
+/** Élément de pièce / consommable pour une intervention */
+export interface MaintenanceJobPart {
+  designation: string;
+  quantity: number;
+}
+
 export interface MaintenanceJob {
   id: string;
   vehicle_id: string;
@@ -14,6 +20,9 @@ export interface MaintenanceJob {
   status: JobStatus;
   created_at: string;
   closed_at: string | null;
+  notes?: string | null;
+  planned_at?: string | null;
+  parts?: MaintenanceJobPart[];
   // Joined data
   vehicle?: {
     id: string;
@@ -52,11 +61,11 @@ export function useMaintenanceJobs(fleetId?: string, status?: JobStatus) {
     queryKey: ['maintenance-jobs', fleetId, status],
     queryFn: async () => {
       let query = supabase
-        .from('maintenance_jobs')
+        .from('travaux_maintenance')
         .select(`
           *,
-          vehicle:vehicles!maintenance_jobs_vehicle_id_fkey(id, registration, brand, model),
-          incident:incidents!maintenance_jobs_created_from_incident_id_fkey(id, description, severity)
+          vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
+          incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
         `)
         .order('created_at', { ascending: false });
 
@@ -88,11 +97,11 @@ export function useMaintenanceJob(jobId?: string) {
       if (!jobId) return null;
 
       const { data: job, error } = await supabase
-        .from('maintenance_jobs')
+        .from('travaux_maintenance')
         .select(`
           *,
-          vehicle:vehicles!maintenance_jobs_vehicle_id_fkey(id, registration, brand, model),
-          incident:incidents!maintenance_jobs_created_from_incident_id_fkey(id, description, severity)
+          vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
+          incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
         `)
         .eq('id', jobId)
         .single();
@@ -103,14 +112,14 @@ export function useMaintenanceJob(jobId?: string) {
 
       // Get evidence
       const { data: evidence } = await supabase
-        .from('maintenance_evidence')
+        .from('preuves_maintenance')
         .select('*')
         .eq('job_id', jobId)
         .order('created_at', { ascending: false });
 
       // Get checklist
       const { data: checklist } = await supabase
-        .from('maintenance_checklists')
+        .from('listes_verification_maintenance')
         .select('*')
         .eq('job_id', jobId)
         .maybeSingle();
@@ -142,7 +151,7 @@ export function useCreateMaintenanceJob() {
       created_from_incident_id?: string;
     }) => {
       const { data, error } = await supabase
-        .from('maintenance_jobs')
+        .from('travaux_maintenance')
         .insert({
           vehicle_id,
           fleet_id,
@@ -195,7 +204,7 @@ export function useUpdateJobStatus() {
       }
 
       const { data, error } = await supabase
-        .from('maintenance_jobs')
+        .from('travaux_maintenance')
         .update(updates)
         .eq('id', id)
         .select()
@@ -233,6 +242,53 @@ export function useUpdateJobStatus() {
   });
 }
 
+/** Payload partiel pour mise à jour d'une intervention (notes, date prévue, pièces) */
+export interface MaintenanceJobUpdatePayload {
+  notes?: string | null;
+  planned_at?: string | null;
+  parts?: MaintenanceJobPart[];
+}
+
+// Mise à jour partielle d'une intervention (notes, planned_at, parts)
+export function useUpdateMaintenanceJob() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...payload
+    }: { id: string } & MaintenanceJobUpdatePayload) => {
+      const { data, error } = await supabase
+        .from('travaux_maintenance')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data as MaintenanceJob;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['maintenance-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['maintenance-job', data.id] });
+      toast({
+        title: 'Intervention mise à jour',
+        description: 'Les informations ont été enregistrées.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 // Add evidence
 export function useAddEvidence() {
   const queryClient = useQueryClient();
@@ -250,7 +306,7 @@ export function useAddEvidence() {
       created_by: string;
     }) => {
       const { data, error } = await supabase
-        .from('maintenance_evidence')
+        .from('preuves_maintenance')
         .insert({
           job_id,
           kind,
@@ -298,7 +354,7 @@ export function useSignChecklist() {
       signed_by: string;
     }) => {
       const { data, error } = await supabase
-        .from('maintenance_checklists')
+        .from('listes_verification_maintenance')
         .insert({
           job_id,
           items,

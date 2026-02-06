@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -64,6 +65,12 @@ export function MaintenanceFormDialog({
     },
   });
 
+  useEffect(() => {
+    if (open) {
+      form.reset({ vehicle_id: "", priority: "medium" });
+    }
+  }, [open, form]);
+
   const onSubmit = async (data: MaintenanceFormData) => {
     const vehicle = vehicles.find(v => v.id === data.vehicle_id);
     if (!vehicle) return;
@@ -109,7 +116,7 @@ export function MaintenanceFormDialog({
                     <FormLabel>Véhicule</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -153,7 +160,7 @@ export function MaintenanceFormDialog({
                     <FormLabel>Priorité</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>

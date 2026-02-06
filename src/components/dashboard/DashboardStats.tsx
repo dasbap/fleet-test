@@ -1,11 +1,17 @@
-import { Car, Users, AlertTriangle, DollarSign, TrendingUp, TrendingDown, Wrench, Clock } from "lucide-react";
+import { Car, Users, AlertTriangle, DollarSign, TrendingUp, TrendingDown, Wrench, Clock, UserX } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useDriverScores } from "@/hooks/useDriverScores";
+import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const DashboardStats = () => {
   const { data: stats, isLoading } = useDashboardStats();
+  const { userFleetId } = useAuth();
+  const { data: scores = [] } = useDriverScores(userFleetId);
+  
+  const riskyDriversCount = scores.filter(s => s.score_level === 'red').length;
 
   if (isLoading) {
     return (
@@ -62,7 +68,12 @@ const DashboardStats = () => {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className={cn(
+      "grid gap-4",
+      riskyDriversCount > 0 
+        ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-5" 
+        : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+    )}>
       {statItems.map((stat) => (
         <Card key={stat.label} className="relative overflow-hidden group hover:border-primary/50 transition-colors">
           <CardContent className="p-6">

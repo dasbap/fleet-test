@@ -1,17 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { checkPendingInvitation, acceptInvitation } from './useAcceptInvitation';
 
+// Définition du type de rôle applicatif
 export type AppRole = 'organizer' | 'manager' | 'driver' | 'mechanic';
 
-interface FleetMembership {
+// Interface pour l'appartenance à une flotte (exportée pour réutilisation dans Profile, etc.)
+export interface FleetMembership {
   id: string;
   fleet_id: string;
   role: AppRole;
   is_active: boolean;
 }
 
+// Interface du retour du hook useAuth
 interface UserWithRole {
   user: User | null;
   session: Session | null;
@@ -19,6 +22,9 @@ interface UserWithRole {
   memberships: FleetMembership[];
   userFleetId: string | null;
   isLoading: boolean;
+  refreshMemberships: () => Promise<FleetMembership[]>;
+  /** Rafraîchit la session et l'utilisateur (métadonnées) sans recharger la page */
+  refreshUser: () => Promise<void>;
 }
 
 export function useAuth(): UserWithRole {
@@ -26,105 +32,181 @@ export function useAuth(): UserWithRole {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [memberships, setMemberships] = useState<FleetMembership[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const processPendingInvitation = async () => {
+  // Gère la vérification et acceptation d'une éventuelle invitation automatique
+  const processPendingInvitation = async (): Promise<void> => {
     const pendingCode = await checkPendingInvitation();
     if (pendingCode) {
-      console.log('Processing pending invitation:', pendingCode);
+      // Logging pour debug (ok en dev)
+      console.log('Traitement de l’invitation en attente :', pendingCode);
+
       const result = await acceptInvitation(pendingCode);
       if (result.ok) {
-        console.log('Invitation accepted successfully:', result);
+        console.log('Invitation acceptée avec succès :', result);
       } else {
-        console.warn('Failed to accept invitation:', result.error);
+        console.warn("Échec de l’acceptation de l’invitation :", result.error);
       }
     }
   };
 
-  const fetchMemberships = async (userId: string) => {
+  // Charge les memberships actifs pour l'utilisateur donné. Retourne les lignes lues pour les appelants.
+  const fetchMemberships = useCallback(async (userId: string): Promise<FleetMembership[]> => {
     try {
-      // First, try to process any pending invitation
       await processPendingInvitation();
+
+      console.log("🔄 Récupération des memberships pour l'utilisateur:", userId);
       
       const { data, error } = await supabase
-        .from('fleet_memberships')
+        .from('flotte_adhesions')
         .select('id, fleet_id, role, is_active')
         .eq('user_id', userId)
         .eq('is_active', true);
 
       if (error) {
-        console.error('Error fetching memberships:', error);
-        setRole('organizer');
+        console.error("❌ Erreur lors de la récupération des memberships :", error);
+        setRole(null);
         setMemberships([]);
-        return;
+        return [];
       }
 
+      console.log("📋 Memberships récupérés:", data);
+
       if (data && data.length > 0) {
-        setMemberships(data as FleetMembership[]);
+        const list = data as FleetMembership[];
+        setMemberships(list);
+        // Règle projet : rôle le plus "haut" administré en premier
         const roleHierarchy: AppRole[] = ['organizer', 'manager', 'mechanic', 'driver'];
         const userRoles = data.map(m => m.role as AppRole);
         const highestRole = roleHierarchy.find(r => userRoles.includes(r)) || 'driver';
         setRole(highestRole);
+        console.log("✅ Memberships mis à jour:", { count: data.length, role: highestRole, fleetIds: data.map(m => m.fleet_id) });
+        return list;
       } else {
-        setRole('organizer');
+        console.log("ℹ️ Aucun membership actif trouvé");
+        setRole(null);
         setMemberships([]);
+        return [];
       }
-    } catch (err) {
-      console.error('Error in fetchMemberships:', err);
-      setRole('organizer');
+    } catch (e) {
+      console.error("❌ Erreur dans fetchMemberships :", e);
+      setRole(null);
       setMemberships([]);
+      return [];
     }
-  };
+  }, []);
 
+  // Initialisation : écoute de l'état d'authentification
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Defer membership fetch to avoid blocking
-          setTimeout(() => fetchMemberships(session.user.id), 0);
-        } else {
+        try {
+          if (session?.user) {
+            await fetchMemberships(session.user.id);
+          } else {
+            setRole(null);
+            setMemberships([]);
+          }
+        } catch (e) {
+          console.error('Erreur lors du chargement des memberships (onAuthStateChange):', e);
           setRole(null);
           setMemberships([]);
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchMemberships(session.user.id);
-      }
-      setIsLoading(false);
-    });
+    // Vérifie la session existante dès le montage — toujours terminer le chargement (évite blocage "Chargement...")
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        try {
+          if (session?.user) {
+            await fetchMemberships(session.user.id);
+          }
+        } catch (e) {
+          console.error('Erreur lors du chargement des memberships (getSession):', e);
+          setRole(null);
+          setMemberships([]);
+        } finally {
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error('Erreur getSession:', err);
+        setIsLoading(false);
+      });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Get the first active fleet ID for the user
+  // Premier fleetId actif (priorité à la simplicité pour la V1)
   const userFleetId = memberships.length > 0 ? memberships[0].fleet_id : null;
 
-  return { user, session, role, memberships, userFleetId, isLoading };
+  // Trace des changements memberships / userFleetId pour diagnostic création de flotte
+  useEffect(() => {
+    if (memberships.length === 0) {
+      console.log("[useAuth] userFleetId dérivé (aucun membership)", { userFleetId: null });
+      return;
+    }
+    const effectiveFleetId = memberships[0].fleet_id;
+    console.log("[useAuth] userFleetId dérivé (memberships mis à jour)", {
+      userFleetId: effectiveFleetId,
+      count: memberships.length,
+      fleetIds: memberships.map((m) => m.fleet_id),
+    });
+  }, [memberships]);
+
+  // Permet de rafraîchir les memberships. Retourne les memberships récupérés pour synchronisation (ex. après création de flotte).
+  const refreshMemberships = useCallback(async (): Promise<FleetMembership[]> => {
+    console.log("[useAuth] refreshMemberships appelé", { userId: user?.id ?? null });
+    if (!user) {
+      console.warn("[useAuth] refreshMemberships ignoré (pas d'utilisateur)");
+      return [];
+    }
+    const list = await fetchMemberships(user.id);
+    console.log("[useAuth] refreshMemberships terminé", { count: list.length });
+    return list;
+  }, [user, fetchMemberships]);
+
+  // Rafraîchit la session (et donc user avec les métadonnées à jour) sans recharger la page
+  const refreshUser = useCallback(async () => {
+    const { data: { session: newSession } } = await supabase.auth.getSession();
+    setSession(newSession);
+    setUser(newSession?.user ?? null);
+  }, []);
+
+  return {
+    user,
+    session,
+    role,
+    memberships,
+    userFleetId,
+    isLoading,
+    refreshMemberships,
+    refreshUser,
+  };
 }
 
+// Fonction d'authentification simple
 export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   return { data, error };
 }
 
-export async function signUp(email: string, password: string, fullName: string, invitationFleetId?: string, invitationCode?: string) {
+// Fonction d’inscription avec gestion de l’invitation
+export async function signUp(
+  email: string,
+  password: string,
+  fullName: string,
+  invitationFleetId?: string,
+  invitationCode?: string
+) {
   const redirectUrl = `${window.location.origin}/`;
-  
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -140,6 +222,7 @@ export async function signUp(email: string, password: string, fullName: string, 
   return { data, error };
 }
 
+// Fonction de déconnexion
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   return { error };

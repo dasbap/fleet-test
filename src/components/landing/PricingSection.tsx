@@ -7,7 +7,7 @@ const plans = [
   {
     name: "Starter",
     description: "Pour les petites flottes qui démarrent",
-    price: "15 000",
+    price: "25 000",
     currency: "FCFA",
     period: "/ véhicule / mois",
     features: [
@@ -23,7 +23,7 @@ const plans = [
   {
     name: "Pro",
     description: "Pour les flottes en croissance",
-    price: "12 000",
+    price: "21 000",
     currency: "FCFA",
     period: "/ véhicule / mois",
     features: [

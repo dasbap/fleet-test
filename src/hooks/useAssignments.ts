@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
 
 export interface Assignment {
   id: string;
@@ -41,12 +42,12 @@ export function useFleetDrivers(fleetId?: string) {
       if (!fleetId) return [];
 
       const { data, error } = await supabase
-        .from('fleet_memberships')
+        .from('flotte_adhesions')
         .select(`
           user_id,
           role,
           is_active,
-          profile:profiles!fleet_memberships_user_id_fkey(user_id, full_name, phone)
+          profile:profils!flotte_adhesions_user_id_fkey(user_id, full_name, phone)
         `)
         .eq('fleet_id', fleetId)
         .eq('role', 'driver')
@@ -75,11 +76,11 @@ export function useActiveAssignments(fleetId?: string) {
     queryKey: ['active-assignments', fleetId],
     queryFn: async () => {
       let query = supabase
-        .from('driver_vehicle_assignments')
+        .from('affectations_vehicules')
         .select(`
           *,
-          vehicle:vehicles!driver_vehicle_assignments_vehicle_id_fkey(id, registration, brand, model),
-          driver:profiles!driver_vehicle_assignments_driver_user_id_fkey(user_id, full_name)
+          vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(id, registration, brand, model),
+          driver:profils!affectations_vehicules_driver_user_id_fkey(user_id, full_name)
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
@@ -97,6 +98,7 @@ export function useActiveAssignments(fleetId?: string) {
 
       return data as Assignment[];
     },
+    enabled: !!fleetId,
   });
 }
 
@@ -116,7 +118,7 @@ export function useAssignVehicle() {
       driver_user_id: string;
       starts_at?: string;
     }) => {
-      const { data, error } = await supabase.rpc('assign_vehicle', {
+      const { data, error } = await supabase.rpc('affecter_vehicule', {
         p_fleet_id: fleet_id,
         p_vehicle_id: vehicle_id,
         p_driver_user_id: driver_user_id,
@@ -154,7 +156,7 @@ export function useAssignVehicle() {
     onError: (error: Error) => {
       toast({
         title: 'Erreur d\'affectation',
-        description: error.message,
+        description: mapSupabaseErrorToFrench(error.message),
         variant: 'destructive',
       });
     },
@@ -168,7 +170,7 @@ export function useEndAssignment() {
   return useMutation({
     mutationFn: async (assignmentId: string) => {
       const { data, error } = await supabase
-        .from('driver_vehicle_assignments')
+        .from('affectations_vehicules')
         .update({
           is_active: false,
           ends_at: new Date().toISOString(),
@@ -194,7 +196,7 @@ export function useEndAssignment() {
     onError: (error: Error) => {
       toast({
         title: 'Erreur',
-        description: error.message,
+        description: mapSupabaseErrorToFrench(error.message),
         variant: 'destructive',
       });
     },

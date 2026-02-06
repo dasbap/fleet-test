@@ -45,7 +45,7 @@ export function useUploadEvidence() {
 
       // Save reference in database
       const { data, error: dbError } = await supabase
-        .from('maintenance_evidence')
+        .from('preuves_maintenance')
         .insert({
           job_id,
           kind,
@@ -95,7 +95,7 @@ export function useDeleteEvidence() {
 
       // Delete from database
       const { error } = await supabase
-        .from('maintenance_evidence')
+        .from('preuves_maintenance')
         .delete()
         .eq('id', id);
 

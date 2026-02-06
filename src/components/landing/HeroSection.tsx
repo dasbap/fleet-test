@@ -2,6 +2,12 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, CheckCircle2 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
+import heroBg768Avif from "@/assets/hero-bg-768.avif";
+import heroBg1280Avif from "@/assets/hero-bg-1280.avif";
+import heroBg1920Avif from "@/assets/hero-bg-1920.avif";
+import heroBg768Webp from "@/assets/hero-bg-768.webp";
+import heroBg1280Webp from "@/assets/hero-bg-1280.webp";
+import heroBg1920Webp from "@/assets/hero-bg-1920.webp";
 
 const HeroSection = () => {
   const highlights = [
@@ -12,13 +18,26 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
-      {/* Background Image */}
+      {/* Background Image : picture avec AVIF/WebP responsives, fallback JPG, priorité LCP */}
       <div className="absolute inset-0 z-0">
-        <img
-          src={heroBg}
-          alt="Fleet Management Dashboard"
-          className="w-full h-full object-cover opacity-30"
-        />
+        <picture>
+          <source
+            type="image/avif"
+            srcSet={`${heroBg768Avif} 768w, ${heroBg1280Avif} 1280w, ${heroBg1920Avif} 1920w`}
+            sizes="100vw"
+          />
+          <source
+            type="image/webp"
+            srcSet={`${heroBg768Webp} 768w, ${heroBg1280Webp} 1280w, ${heroBg1920Webp} 1920w`}
+            sizes="100vw"
+          />
+          <img
+            src={heroBg}
+            alt="Fleet Management Dashboard"
+            className="w-full h-full object-cover opacity-30"
+            fetchPriority="high"
+          />
+        </picture>
         <div className="absolute inset-0 bg-gradient-to-b from-background via-background/90 to-background" />
       </div>
 

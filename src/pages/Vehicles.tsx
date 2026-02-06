@@ -10,13 +10,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 
 const Vehicles = () => {
-  const { role } = useAuth();
+  const { role, userFleetId } = useAuth();
   const userRole = role || "driver";
   const queryClient = useQueryClient();
   const [isFormOpen, setIsFormOpen] = useState(false);
-
-  // TODO: Get actual fleet ID from user's membership
-  const mockFleetId = "00000000-0000-0000-0000-000000000000";
 
   const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['vehicles'] });
@@ -40,7 +37,7 @@ const Vehicles = () => {
                     Gérez les véhicules de votre flotte
                   </p>
                 </div>
-                {(userRole === "manager" || userRole === "organizer") && (
+                {(userRole === "manager" || userRole === "organizer") && userFleetId && (
                   <Button onClick={() => setIsFormOpen(true)} className="gap-2">
                     <Plus className="w-4 h-4" />
                     Ajouter un véhicule
@@ -49,13 +46,13 @@ const Vehicles = () => {
               </div>
 
               {/* Vehicles Table */}
-              <VehiclesTable />
+              <VehiclesTable fleetId={userFleetId ?? undefined} />
 
               {/* Add Vehicle Dialog */}
               <VehicleFormDialog 
                 open={isFormOpen} 
                 onOpenChange={setIsFormOpen}
-                fleetId={mockFleetId}
+                fleetId={userFleetId ?? ""}
                 onSuccess={handleSuccess}
               />
             </div>

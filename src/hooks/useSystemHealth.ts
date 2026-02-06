@@ -42,25 +42,33 @@ export function useSystemHealth(): SystemHealthResult {
 
     try {
       // Call the RPC to check system health
-      const { data, error: rpcError } = await supabase.rpc('check_system_health', {
+      const { data, error: rpcError } = await supabase.rpc('verifier_sante_systeme', {
         p_fleet_id: userFleetId,
       });
 
       if (rpcError) {
-        // If RPC doesn't exist, use fallback check
+        // Si la RPC n'existe pas, utiliser le fallback
         if (rpcError.code === '42883') {
-          console.warn('RPC check_system_health not found, using fallback');
+          console.warn('RPC verifier_sante_systeme introuvable, utilisation du fallback');
           await fallbackHealthCheck();
           return;
         }
         throw rpcError;
       }
 
+      // Réponse métier : ok false (ex. permission_denied)
+      if (data && (data as { ok?: boolean }).ok === false) {
+        const errMsg = (data as { error?: string }).error || 'Erreur inconnue';
+        setError(errMsg === 'permission_denied' ? 'Permission refusée' : errMsg);
+        setIsLoading(false);
+        return;
+      }
+
       setStatus({
-        usersWithoutMembership: data?.orphan_count || 0,
-        orphanUsers: data?.orphan_users || [],
+        usersWithoutMembership: data?.orphan_count ?? 0,
+        orphanUsers: Array.isArray(data?.orphan_users) ? data.orphan_users : [],
         lastChecked: new Date(),
-        isHealthy: (data?.orphan_count || 0) === 0,
+        isHealthy: (data?.orphan_count ?? 0) === 0,
       });
     } catch (err: any) {
       console.error('Health check error:', err);
@@ -79,7 +87,7 @@ export function useSystemHealth(): SystemHealthResult {
       if (!user) return;
 
       const { data: memberships, error: membershipError } = await supabase
-        .from('fleet_memberships')
+        .from('flotte_adhesions')
         .select('id, fleet_id, role, is_active')
         .eq('user_id', user.id)
         .eq('is_active', true);
@@ -113,7 +121,7 @@ export function useSystemHealth(): SystemHealthResult {
 
     try {
       // Call the RPC to repair orphan membership
-      const { error: rpcError } = await supabase.rpc('repair_orphan_membership', {
+      const { error: rpcError } = await supabase.rpc('reparer_adhesion_orpheline', {
         p_user_id: userId,
         p_fleet_id: fleetId,
         p_role: 'driver',

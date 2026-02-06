@@ -13,8 +13,10 @@ import { useFleetVehicles } from "@/hooks/useDashboardStats";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 
+// Note: Le statut "Actif" nécessite maintenant une assignation active
+// Ceci sera géré dans le composant en vérifiant hasActiveAssignment
 const statusConfig = {
-  ok: { label: "Actif", className: "bg-success text-success-foreground" },
+  ok: { label: "Disponible", className: "bg-muted text-muted-foreground" },
   blocked: { label: "Bloqué", className: "bg-destructive text-destructive-foreground" },
 };
 
@@ -86,9 +88,19 @@ const FleetOverview = () => {
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold">{vehicle.registration}</span>
                     <Badge
-                      className={cn(statusConfig[vehicle.status as keyof typeof statusConfig]?.className)}
+                      className={cn(
+                        vehicle.status === 'blocked' 
+                          ? statusConfig.blocked.className
+                          : (vehicle as any).hasActiveAssignment
+                            ? "bg-success text-success-foreground"
+                            : statusConfig.ok.className
+                      )}
                     >
-                      {statusConfig[vehicle.status as keyof typeof statusConfig]?.label || vehicle.status}
+                      {vehicle.status === 'blocked' 
+                        ? statusConfig.blocked.label
+                        : (vehicle as any).hasActiveAssignment
+                          ? "Actif"
+                          : statusConfig.ok.label}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground truncate">

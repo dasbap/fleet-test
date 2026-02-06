@@ -129,7 +129,7 @@ const ShiftClosureForm = ({ shiftId, kmStart, vehicleId }: ShiftClosureFormProps
       }
 
       // Call the close_shift RPC
-      const { error } = await supabase.rpc('close_shift', {
+      const { error } = await supabase.rpc('fermer_creneau', {
         p_shift_id: shiftId,
         p_km_end: data.kmEnd,
         p_revenue_declared: data.revenueDeclared,
@@ -140,10 +140,20 @@ const ShiftClosureForm = ({ shiftId, kmStart, vehicleId }: ShiftClosureFormProps
 
       if (error) throw error;
 
+      // Calculer la recette attendue
+      const { error: expectedError } = await supabase.rpc('calculer_recette_attendue', {
+        p_shift_id: shiftId,
+      });
+
+      if (expectedError) {
+        console.warn('Erreur lors du calcul de la recette attendue:', expectedError);
+        // Ne pas bloquer la clôture si cette étape échoue
+      }
+
       // Update vehicle km if provided
       if (vehicleId) {
         await supabase
-          .from('vehicles')
+          .from('vehicules')
           .update({ current_km: data.kmEnd })
           .eq('id', vehicleId);
       }
