@@ -27,11 +27,6 @@ const Auth = () => {
     organization: "",
   });
 
-  // Enable dark mode
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
-
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && user) {

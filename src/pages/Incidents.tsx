@@ -17,10 +17,6 @@ const Incidents = () => {
   const { data: incidents = [], isLoading, refetch } = useIncidents();
 
   useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
-
-  useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
     }
