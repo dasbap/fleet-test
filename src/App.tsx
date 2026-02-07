@@ -1,3 +1,4 @@
+import ThemeProvider from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,40 +30,42 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<ProtectedRoute />}>
-            <Route index element={<Dashboard />} />
-            <Route path="vehicles" element={<Vehicles />} />
-            <Route path="drivers" element={<Drivers />} />
-            <Route path="closure" element={<ShiftClosure />} />
-            <Route path="incidents" element={<Incidents />} />
-            <Route path="maintenance" element={<Maintenance />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="invitations" element={<Invitations />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="teams" element={<Teams />} />
-            <Route path="create-fleet" element={<CreateFleet />} />
-            <Route path="finances" element={<Finances />} />
-            <Route path="collections" element={<Collections />} />
-            <Route path="alerts" element={<Alerts />} />
-            <Route path="roles" element={<Roles />} />
-            <Route path="my-vehicle" element={<MyVehicle />} />
-            <Route path="history" element={<History />} />
-            <Route path="*" element={<Dashboard />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<ProtectedRoute />}>
+              <Route index element={<Dashboard />} />
+              <Route path="vehicles" element={<Vehicles />} />
+              <Route path="drivers" element={<Drivers />} />
+              <Route path="closure" element={<ShiftClosure />} />
+              <Route path="incidents" element={<Incidents />} />
+              <Route path="maintenance" element={<Maintenance />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="invitations" element={<Invitations />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="teams" element={<Teams />} />
+              <Route path="create-fleet" element={<CreateFleet />} />
+              <Route path="finances" element={<Finances />} />
+              <Route path="collections" element={<Collections />} />
+              <Route path="alerts" element={<Alerts />} />
+              <Route path="roles" element={<Roles />} />
+              <Route path="my-vehicle" element={<MyVehicle />} />
+              <Route path="history" element={<History />} />
+              <Route path="*" element={<Dashboard />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

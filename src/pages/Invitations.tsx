@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
@@ -46,10 +46,6 @@ const Invitations = () => {
 
   const { data: invitations = [], isLoading, refetch } = useInvitations(userFleetId || undefined);
   const deleteInvitation = useDeleteInvitation();
-
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
 
   // Seuls les organizers et managers peuvent voir cette page
   const canManageInvitations = role === "organizer" || role === "manager";

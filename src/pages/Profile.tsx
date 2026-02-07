@@ -26,12 +26,6 @@ const Profile = () => {
 
   useEnsureProfile(user);
 
-  // Cohérence thème : l'application utilise le mode sombre par défaut sur cette zone.
-  // TODO : à terme, déplacer la gestion du thème dans un provider global si besoin.
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
-
   // Redirection si non authentifié : une fois l'auth résolue, l'absence d'utilisateur envoie vers la page de connexion.
   useEffect(() => {
     if (!authLoading && !user) {

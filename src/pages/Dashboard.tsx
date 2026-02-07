@@ -28,10 +28,6 @@ const Dashboard = () => {
   // Enable real-time notifications
   useRealtimeNotifications(userFleetId || undefined);
 
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
-
   // Rediriger automatiquement les utilisateurs sans flotte vers la création de flotte
   useEffect(() => {
     if (!isLoading && !userFleetId && role === null) {
