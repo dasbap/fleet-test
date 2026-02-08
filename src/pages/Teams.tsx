@@ -471,27 +471,27 @@ const Teams = () => {
                       </p>
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Gérer l'équipe</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Gérer les véhicules</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Créer des invitations</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Valider les clôtures</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Gérer la maintenance</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Voir tous les rapports</span>
                         </div>
                       </div>
@@ -500,7 +500,7 @@ const Teams = () => {
                     {/* Manager */}
                     <div className="space-y-3 p-4 rounded-lg border bg-card">
                       <div className="flex items-center gap-2">
-                        <UserCog className="h-5 w-5 text-blue-500" />
+                        <UserCog className="h-5 w-5 text-info" />
                         <h3 className="font-semibold">Manager</h3>
                       </div>
                       <p className="text-sm text-muted-foreground">
@@ -508,23 +508,23 @@ const Teams = () => {
                       </p>
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Gérer l'équipe</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Gérer les véhicules</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Créer des invitations</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Valider les clôtures</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Gérer la maintenance</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -545,19 +545,19 @@ const Teams = () => {
                       </p>
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Conduire les véhicules assignés</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Créer des incidents</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Clôturer les journées</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Voir ses statistiques</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -582,19 +582,19 @@ const Teams = () => {
                       </p>
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Créer des jobs de maintenance</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Valider les interventions</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Voir les véhicules</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                           <span>Consulter les incidents</span>
                         </div>
                         <div className="flex items-center gap-2">

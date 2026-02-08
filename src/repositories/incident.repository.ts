@@ -44,6 +44,8 @@ export interface IncidentFilters {
   vehicle_id?: string;
   driver_user_id?: string;
   severity?: IncidentSeverity;
+  /** Filtre incidents créés à partir de cette date (ISO) */
+  created_at_since?: string;
 }
 
 /**
@@ -78,6 +80,10 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
 
     if (filters?.severity) {
       query = query.eq('severity', filters.severity);
+    }
+
+    if (filters?.created_at_since) {
+      query = query.gte('created_at', filters.created_at_since);
     }
 
     const { data, error } = await query;

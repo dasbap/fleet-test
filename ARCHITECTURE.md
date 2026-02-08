@@ -43,6 +43,8 @@ Le projet utilise une architecture en couches basée sur le pattern **Repository
 
 **Responsabilité** : Encapsuler tous les appels à Supabase pour une entité donnée.
 
+**Infrastructure** : `base.repository.ts` définit l’interface générique `IRepository<T, TInsert, TUpdate>` et la classe abstraite `BaseRepository` pour les opérations CRUD standard.
+
 **Caractéristiques** :
 - Accès aux données uniquement (pas de logique métier)
 - Méthodes CRUD standard (findAll, findById, create, update, delete)
@@ -159,6 +161,8 @@ export function useCreateVehicle() {
 - Composants fonctionnels uniquement
 - Gestion de l'état UI local uniquement
 
+**Interface et thème** : L’UI est pilotée par le **ThemeProvider** (next-themes) pour le mode dark/light et par les **variables CSS** dans `src/index.css` pour les tokens (couleurs, radius). Cette centralisation évite la duplication et le drift visuel ; les composants utilisent uniquement les tokens du design system (primary, accent, success, etc.), pas de couleurs en dur. Les changements liés au thème ou au design system restent strictement en présentation et ne concernent pas les autres couches.
+
 ## Entités principales
 
 Les entités suivantes ont des repositories et services implémentés :
@@ -167,8 +171,10 @@ Les entités suivantes ont des repositories et services implémentés :
 2. **Fleet Members** (`FleetMemberRepository`, `FleetMemberService`)
 3. **Driver Shifts** (`DriverShiftRepository`, `DriverShiftService`)
 4. **Incidents** (`IncidentRepository`, `IncidentService`)
-5. **Maintenance** (`MaintenanceRepository`, `MaintenanceService`)
+5. **Maintenance** (`MaintenanceRepository`, `MaintenanceService`) — inclut preuves et checklist
 6. **Invitations** (`InvitationRepository`, `InvitationService`)
+7. **Dashboard** (`DashboardRepository`, `DashboardService`) — stats, activité récente, aperçu véhicules
+8. **Fleet Report** (`FleetReportRepository`, `FleetReportService`) — rapport de flotte sur une période
 
 ## Flux de données
 
@@ -219,10 +225,12 @@ L'architecture a été implémentée progressivement :
 2. ✅ Fleet Members
 3. ✅ Driver Shifts
 4. ✅ Incidents
-5. ✅ Maintenance
+5. ✅ Maintenance (dont preuves et checklist)
 6. ✅ Invitations
+7. ✅ Dashboard (useDashboardStats, useRecentActivity, useFleetVehicles)
+8. ✅ Fleet Report (useFleetReport)
 
-Les autres hooks peuvent être migrés selon les besoins.
+Les hooks listés ci-dessus appellent uniquement les services. Les hooks d’auth (`useAuth`), storage ou RPC métier peuvent continuer à utiliser le client Supabase lorsque cela est pertinent.
 
 ## Bonnes pratiques
 
@@ -231,6 +239,13 @@ Les autres hooks peuvent être migrés selon les besoins.
 3. **Gestion d'erreurs cohérente** : Les repositories lancent des erreurs, les services les transforment si nécessaire
 4. **Types TypeScript** : Utiliser des interfaces/types bien définis pour chaque entité
 5. **Documentation** : Commenter les méthodes complexes dans les services
+
+## Tests
+
+- Les repositories peuvent être testés en mockant le client Supabase (`@/integrations/supabase/client`).
+- Les services peuvent être testés en injectant des repositories mockés (logique métier isolée).
+- Les hooks peuvent être testés en mockant les services ou en tests d’intégration avec React Query (voir `useFleetMembers.test.tsx`, `useInvitations.test.tsx`).
+- Placer les tests dans `src/test/` ou à côté des hooks (`.test.ts`, `.test.tsx`).
 
 ## Références
 

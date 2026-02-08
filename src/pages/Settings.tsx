@@ -306,7 +306,7 @@ const Settings = () => {
                       </div>
                     )}
                     {seedMutation.isSuccess && (
-                      <div className="text-sm text-green-600 dark:text-green-400 font-medium">
+                      <div className="text-sm text-success font-medium">
                         ✅ Données ESAMBA créées avec succès
                       </div>
                     )}
@@ -331,7 +331,7 @@ const Settings = () => {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      <CheckCircle2 className="h-5 w-5 text-success" />
                       <CardTitle>Vérification des données</CardTitle>
                     </div>
                     <Button
@@ -355,7 +355,7 @@ const Settings = () => {
                     {isVerifying ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                     ) : verificationStatus?.organisation ? (
-                      <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                      <Badge variant="default" className="bg-success text-success-foreground hover:bg-success/90">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         Créée
                       </Badge>
@@ -373,7 +373,7 @@ const Settings = () => {
                     {isVerifying ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                     ) : verificationStatus?.flotte ? (
-                      <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                      <Badge variant="default" className="bg-success text-success-foreground hover:bg-success/90">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         Créée
                       </Badge>
@@ -391,7 +391,7 @@ const Settings = () => {
                     {isVerifying ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                     ) : verificationStatus?.membership_organizer ? (
-                      <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                      <Badge variant="default" className="bg-success text-success-foreground hover:bg-success/90">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         Créé
                       </Badge>
@@ -409,7 +409,7 @@ const Settings = () => {
                     {isVerifying ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                     ) : verificationStatus?.vehicule_esamba_001 ? (
-                      <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                      <Badge variant="default" className="bg-success text-success-foreground hover:bg-success/90">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         Créé
                       </Badge>
@@ -427,7 +427,7 @@ const Settings = () => {
                     {isVerifying ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                     ) : verificationStatus?.invitation_esamba_2024 ? (
-                      <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                      <Badge variant="default" className="bg-success text-success-foreground hover:bg-success/90">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         Créée
                       </Badge>

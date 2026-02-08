@@ -360,4 +360,55 @@ export class DriverShiftRepository {
 
     return data as ShiftClosure;
   }
+
+  /**
+   * Récupère les clôtures en attente de validation
+   */
+  async findPendingClosures(): Promise<ShiftClosure[]> {
+    const { data, error } = await supabase
+      .from('clotures_creneaux')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching pending closures:', error);
+      throw new Error(error.message);
+    }
+    return (data || []) as ShiftClosure[];
+  }
+
+  /**
+   * Récupère les clôtures validées depuis une date (pour calcul recette)
+   */
+  async findValidatedClosuresSince(sinceIso: string): Promise<{ revenue_declared: number }[]> {
+    const { data, error } = await supabase
+      .from('clotures_creneaux')
+      .select('revenue_declared')
+      .gte('created_at', sinceIso)
+      .eq('status', 'validated');
+
+    if (error) {
+      console.error('Error fetching validated closures:', error);
+      throw new Error(error.message);
+    }
+    return (data || []) as { revenue_declared: number }[];
+  }
+
+  /**
+   * Nombre d'affectations actives pour une flotte
+   */
+  async findActiveAssignmentsCountByFleet(fleetId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('affectations_vehicules')
+      .select('id', { count: 'exact', head: true })
+      .eq('fleet_id', fleetId)
+      .eq('is_active', true);
+
+    if (error) {
+      console.error('Error counting active assignments:', error);
+      throw new Error(error.message);
+    }
+    return count ?? 0;
+  }
 }

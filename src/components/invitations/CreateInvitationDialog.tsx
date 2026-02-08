@@ -240,7 +240,7 @@ export function CreateInvitationDialog({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Ticket className="h-5 w-5 text-green-500" />
+              <Ticket className="h-5 w-5 text-success" />
               Invitation créée avec succès
             </DialogTitle>
             <DialogDescription>
@@ -264,7 +264,7 @@ export function CreateInvitationDialog({
                   onClick={() => copyToClipboard(createdInvitation.code)}
                 >
                   {copied ? (
-                    <Check className="h-4 w-4 text-green-500" />
+                    <Check className="h-4 w-4 text-success" />
                   ) : (
                     <Copy className="h-4 w-4" />
                   )}

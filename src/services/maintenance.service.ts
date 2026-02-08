@@ -6,6 +6,10 @@ import type {
   MaintenanceJobFilters,
   JobStatus,
   Priority,
+  MaintenanceEvidence,
+  MaintenanceChecklist,
+  MaintenanceEvidenceInsert,
+  MaintenanceChecklistInsert,
 } from '@/repositories/maintenance.repository';
 
 /**
@@ -43,6 +47,44 @@ export class MaintenanceService {
       throw new Error('L\'ID du travail de maintenance est requis');
     }
     return this.repository.findById(id);
+  }
+
+  /**
+   * Récupère un travail avec preuves et checklist
+   */
+  async getMaintenanceJobWithDetails(
+    jobId: string
+  ): Promise<(MaintenanceJob & { evidence: MaintenanceEvidence[]; checklist: MaintenanceChecklist | null }) | null> {
+    if (!jobId) {
+      throw new Error('L\'ID du travail de maintenance est requis');
+    }
+    return this.repository.findByIdWithEvidenceAndChecklist(jobId);
+  }
+
+  /**
+   * Ajoute une preuve (photo avant/après) à une intervention
+   */
+  async addEvidence(data: MaintenanceEvidenceInsert): Promise<MaintenanceEvidence> {
+    if (!data.job_id || !data.file_path || !data.created_by) {
+      throw new Error('job_id, file_path et created_by sont requis');
+    }
+    if (data.kind !== 'before' && data.kind !== 'after') {
+      throw new Error('kind doit être "before" ou "after"');
+    }
+    return this.repository.createEvidence(data);
+  }
+
+  /**
+   * Signe la checklist d'une intervention
+   */
+  async signChecklist(data: MaintenanceChecklistInsert): Promise<MaintenanceChecklist> {
+    if (!data.job_id || !data.signed_by) {
+      throw new Error('job_id et signed_by sont requis');
+    }
+    if (!data.items || typeof data.items !== 'object') {
+      throw new Error('items doit être un objet');
+    }
+    return this.repository.createChecklist(data);
   }
 
   /**

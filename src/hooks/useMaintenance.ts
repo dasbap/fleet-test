@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { MaintenanceService } from '@/services/maintenance.service';
 import { MaintenanceRepository } from '@/repositories/maintenance.repository';
 
@@ -73,43 +72,7 @@ export function useMaintenanceJobs(fleetId?: string, status?: JobStatus) {
 export function useMaintenanceJob(jobId?: string) {
   return useQuery({
     queryKey: ['maintenance-job', jobId],
-    queryFn: async () => {
-      if (!jobId) return null;
-
-      const { data: job, error } = await supabase
-        .from('travaux_maintenance')
-        .select(`
-          *,
-          vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
-          incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
-        `)
-        .eq('id', jobId)
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      // Get evidence
-      const { data: evidence } = await supabase
-        .from('preuves_maintenance')
-        .select('*')
-        .eq('job_id', jobId)
-        .order('created_at', { ascending: false });
-
-      // Get checklist
-      const { data: checklist } = await supabase
-        .from('listes_verification_maintenance')
-        .select('*')
-        .eq('job_id', jobId)
-        .maybeSingle();
-
-      return {
-        ...job,
-        evidence: evidence || [],
-        checklist: checklist || null,
-      };
-    },
+    queryFn: () => (jobId ? maintenanceService.getMaintenanceJobWithDetails(jobId) : Promise.resolve(null)),
     enabled: !!jobId,
   });
 }
@@ -252,24 +215,7 @@ export function useAddEvidence() {
       kind: 'before' | 'after';
       file_path: string;
       created_by: string;
-    }) => {
-      const { data, error } = await supabase
-        .from('preuves_maintenance')
-        .insert({
-          job_id,
-          kind,
-          file_path,
-          created_by,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data as MaintenanceEvidence;
-    },
+    }) => maintenanceService.addEvidence({ job_id, kind, file_path, created_by }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-job', data.job_id] });
       toast({
@@ -300,23 +246,7 @@ export function useSignChecklist() {
       job_id: string;
       items: Record<string, boolean>;
       signed_by: string;
-    }) => {
-      const { data, error } = await supabase
-        .from('listes_verification_maintenance')
-        .insert({
-          job_id,
-          items,
-          signed_by,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data as MaintenanceChecklist;
-    },
+    }) => maintenanceService.signChecklist({ job_id, items, signed_by }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-job', data.job_id] });
       toast({

@@ -190,4 +190,105 @@ export class MaintenanceRepository {
       throw new Error(error.message);
     }
   }
+
+  /**
+   * Récupère un travail avec preuves et checklist
+   */
+  async findByIdWithEvidenceAndChecklist(
+    jobId: string
+  ): Promise<(MaintenanceJob & { evidence: MaintenanceEvidence[]; checklist: MaintenanceChecklist | null }) | null> {
+    const job = await this.findById(jobId);
+    if (!job) return null;
+
+    const { data: evidence } = await supabase
+      .from('preuves_maintenance')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: false });
+
+    const { data: checklist } = await supabase
+      .from('listes_verification_maintenance')
+      .select('*')
+      .eq('job_id', jobId)
+      .maybeSingle();
+
+    return {
+      ...job,
+      evidence: (evidence || []) as MaintenanceEvidence[],
+      checklist: (checklist as MaintenanceChecklist) || null,
+    };
+  }
+
+  /**
+   * Ajoute une preuve (photo avant/après) à une intervention
+   */
+  async createEvidence(data: MaintenanceEvidenceInsert): Promise<MaintenanceEvidence> {
+    const { data: row, error } = await supabase
+      .from('preuves_maintenance')
+      .insert({
+        job_id: data.job_id,
+        kind: data.kind,
+        file_path: data.file_path,
+        created_by: data.created_by,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating maintenance evidence:', error);
+      throw new Error(error.message);
+    }
+    return row as MaintenanceEvidence;
+  }
+
+  /**
+   * Crée ou enregistre une checklist signée pour une intervention
+   */
+  async createChecklist(data: MaintenanceChecklistInsert): Promise<MaintenanceChecklist> {
+    const { data: row, error } = await supabase
+      .from('listes_verification_maintenance')
+      .insert({
+        job_id: data.job_id,
+        items: data.items,
+        signed_by: data.signed_by,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating maintenance checklist:', error);
+      throw new Error(error.message);
+    }
+    return row as MaintenanceChecklist;
+  }
+}
+
+export interface MaintenanceEvidence {
+  id: string;
+  job_id: string;
+  kind: 'before' | 'after';
+  file_path: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface MaintenanceChecklist {
+  id: string;
+  job_id: string;
+  items: Record<string, boolean>;
+  signed_by: string;
+  signed_at: string;
+}
+
+export interface MaintenanceEvidenceInsert {
+  job_id: string;
+  kind: 'before' | 'after';
+  file_path: string;
+  created_by: string;
+}
+
+export interface MaintenanceChecklistInsert {
+  job_id: string;
+  items: Record<string, boolean>;
+  signed_by: string;
 }
