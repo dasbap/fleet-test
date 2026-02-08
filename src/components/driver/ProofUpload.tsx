@@ -112,11 +112,11 @@ const ProofUpload = ({
           />
           
           {proofFile && previewUrl ? (
-            <div className="relative">
+            <div className="relative aspect-video w-full">
               <img
                 src={previewUrl}
                 alt="Preuve"
-                className="w-full h-48 object-cover rounded-lg border"
+                className="w-full h-full object-cover rounded-lg border"
               />
               <Button
                 type="button"

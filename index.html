@@ -1,8 +1,23 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" class="dark">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function(){ try { document.documentElement.classList.add('dark'); } catch(e) {} })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <style>
+      /* Thème sombre dès le premier paint (évite FOUC / CLS) */
+      html.dark { background-color: #0f0f0f; color: hsl(0, 0%, 98%); }
+      html:not(.dark) { background-color: #fafafa; color: hsl(0, 0%, 6%); }
+      body { font-family: 'Inter', 'Poppins', ui-sans-serif, system-ui, sans-serif; }
+    </style>
+
+    <!-- Polices : preconnect + chargement early pour limiter le CLS au swap -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" />
 
     <title>E-Samba | Gestion intelligente de flotte en Afrique Centrale</title>
 

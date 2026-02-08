@@ -9,8 +9,7 @@ const ThemeProvider = ({ children }: ThemeProviderProps) => (
   <NextThemesProvider
     attribute="class"
     defaultTheme="dark"
-    forcedTheme="dark"
-    enableSystem={false}
+    enableSystem={true}
   >
     {children}
   </NextThemesProvider>

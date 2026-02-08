@@ -42,3 +42,20 @@ L’application est disponible sur `http://localhost:8080`.
 - `npm run lint` — lint ESLint
 - `npm run test` — tests unitaires
 - `npm run test:integration` — tests d’intégration
+
+## Performance et CLS (Cumulative Layout Shift)
+
+Le projet applique des mesures pour limiter le layout shift post-hydratation (polices, couleurs, images).
+
+### Bonnes pratiques en place
+
+- **Polices** : preconnect + chargement des feuilles Google Fonts dans `index.html` avec `display=swap` ; pas d’`@import` dans le CSS pour éviter un chargement tardif. `font-heading` (Tailwind) aligné sur les polices réellement chargées (Poppins).
+- **Thème** : classe `dark` et styles critiques (couleur de fond, texte) injectés dès le premier paint dans `index.html` pour éviter un flash puis un shift.
+- **Images** : `width`/`height` ou conteneur avec `aspect-ratio` sur les `<img>` et zones d’aperçu pour réserver l’espace avant chargement (HeroSection, EvidencePreviewCard, EvidenceGrid, ProofUpload).
+- **Styles post-hydratation** : éviter d’appliquer des classes ou couleurs dans un `useEffect` sans réserver l’espace au premier rendu ; privilégier des classes appliquées dès le premier rendu.
+
+### Mesure du CLS
+
+- **Chrome DevTools** : onglet Performance, enregistrer un chargement, puis « Experience » → métrique Cumulative Layout Shift.
+- **PageSpeed Insights** : [https://pagespeed.web.dev/](https://pagespeed.web.dev/) — rapport Core Web Vitals dont le CLS.
+- **En production** : intégrer `web-vitals` (ou équivalent) pour remonter le CLS réel des utilisateurs.

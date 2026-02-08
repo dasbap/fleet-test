@@ -4,6 +4,10 @@
 
 Le projet utilise une architecture en couches basée sur le pattern **Repository** et **Services**, combinée avec **React Query** pour la gestion des données côté client.
 
+## Décisions d'architecture
+
+Les décisions importantes (produit, UX, technique) sont documentées sous forme d’ADR : [docs/adr/README.md](docs/adr/README.md).
+
 ## Structure des couches
 
 ```

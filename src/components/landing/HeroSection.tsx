@@ -34,6 +34,8 @@ const HeroSection = () => {
           <img
             src={heroBg}
             alt="Fleet Management Dashboard"
+            width={1920}
+            height={1080}
             className="w-full h-full object-cover opacity-30"
             fetchPriority="high"
           />

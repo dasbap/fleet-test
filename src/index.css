@@ -1,7 +1,5 @@
-/* Veuillez prendre en compte cette police uniquement pour la revue ou l'examen du design : */
-/*@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap");*/
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+/* Polices chargées via <link> dans index.html (preconnect + display=swap) pour limiter le CLS. */
+/* Montserrat (optionnel) : @import url("...Montserrat...&display=swap"); */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

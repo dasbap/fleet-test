@@ -36,11 +36,11 @@ function EvidenceGrid({
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3" role="list">
       {items.map((evidence) => (
-        <div key={evidence.id} className="relative group" role="listitem">
+        <div key={evidence.id} className="relative group aspect-video w-full" role="listitem">
           <img
             src={evidence.file_path}
             alt={`Preuve ${kindLabel}, enregistrée le ${new Date(evidence.created_at).toLocaleDateString("fr-FR")}`}
-            className="w-full h-24 object-cover rounded-lg border border-border"
+            className="w-full h-full object-cover rounded-lg border border-border"
           />
           {!disabled && (
             <Button

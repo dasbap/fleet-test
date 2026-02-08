@@ -29,11 +29,11 @@ function EvidencePreviewCard({
   return (
     <Card>
       <CardContent className="pt-4">
-        <div className="relative">
+        <div className="relative aspect-video w-full">
           <img
             src={previewUrl}
             alt={`Aperçu de la photo ${kindLabel} à téléverser`}
-            className="w-full h-48 object-cover rounded-lg"
+            className="w-full h-full object-cover rounded-lg"
           />
           <Button
             variant="ghost"
