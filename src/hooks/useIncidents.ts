@@ -1,7 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { IncidentService } from '@/services/incident.service';
+import { IncidentRepository } from '@/repositories/incident.repository';
+import { MaintenanceService } from '@/services/maintenance.service';
+import { MaintenanceRepository } from '@/repositories/maintenance.repository';
 
+// Instances singleton des services et repositories
+const incidentRepository = new IncidentRepository();
+const incidentService = new IncidentService(incidentRepository);
+const maintenanceRepository = new MaintenanceRepository();
+const maintenanceService = new MaintenanceService(maintenanceRepository);
+
+// Réexporter les types pour compatibilité
 export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
 
 export interface Incident {
@@ -36,30 +46,7 @@ export interface IncidentInsert {
 export function useIncidents(fleetId?: string) {
   return useQuery({
     queryKey: ['incidents', fleetId],
-    queryFn: async () => {
-      let query = supabase
-        .from('incidents')
-        .select(`
-          *,
-          vehicle:vehicules(id, registration, brand, model, fleet_id),
-          driver:profils!incidents_driver_user_id_fkey(user_id, full_name)
-        `)
-        .order('created_at', { ascending: false });
-
-      // If fleetId is provided, filter by fleet
-      if (fleetId) {
-        query = query.eq('vehicle.fleet_id', fleetId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching incidents:', error);
-        throw new Error(error.message);
-      }
-
-      return (data || []) as Incident[];
-    },
+    queryFn: () => incidentService.getIncidents(fleetId),
   });
 }
 
@@ -68,29 +55,7 @@ export function useCreateIncident() {
 
   return useMutation({
     mutationFn: async (incident: IncidentInsert) => {
-      const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData.user) {
-        throw new Error('Utilisateur non connecté');
-      }
-
-      const { data, error } = await supabase
-        .from('incidents')
-        .insert({
-          vehicle_id: incident.vehicle_id,
-          driver_user_id: userData.user.id,
-          description: incident.description,
-          severity: incident.severity || 'medium',
-          evidence_path: incident.evidence_path,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data as Incident;
+      return incidentService.createIncidentForCurrentUser(incident);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incidents'] });
@@ -114,34 +79,18 @@ export function useCreateMaintenanceFromIncident() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      incident_id, 
-      vehicle_id, 
+    mutationFn: async ({
+      incident_id,
+      vehicle_id,
       fleet_id,
-      priority 
-    }: { 
+      priority,
+    }: {
       incident_id: string;
       vehicle_id: string;
       fleet_id: string;
-      priority?: string;
+      priority?: 'low' | 'medium' | 'high' | 'critical';
     }) => {
-      const { data, error } = await supabase
-        .from('travaux_maintenance')
-        .insert({
-          vehicle_id,
-          fleet_id,
-          created_from_incident_id: incident_id,
-          priority: priority || 'medium',
-          status: 'queued',
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
+      return maintenanceService.createFromIncident(incident_id, vehicle_id, fleet_id, priority);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incidents'] });

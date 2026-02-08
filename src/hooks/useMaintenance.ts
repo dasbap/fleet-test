@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { MaintenanceService } from '@/services/maintenance.service';
+import { MaintenanceRepository } from '@/repositories/maintenance.repository';
 
 export type JobStatus = 'queued' | 'in_progress' | 'ready' | 'blocked';
 export type Priority = 'low' | 'medium' | 'high' | 'critical';
@@ -55,37 +57,15 @@ export interface MaintenanceChecklist {
   signed_at: string;
 }
 
+// Instances singleton des services et repositories
+const maintenanceRepository = new MaintenanceRepository();
+const maintenanceService = new MaintenanceService(maintenanceRepository);
+
 // Fetch maintenance jobs
 export function useMaintenanceJobs(fleetId?: string, status?: JobStatus) {
   return useQuery({
     queryKey: ['maintenance-jobs', fleetId, status],
-    queryFn: async () => {
-      let query = supabase
-        .from('travaux_maintenance')
-        .select(`
-          *,
-          vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
-          incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (fleetId) {
-        query = query.eq('fleet_id', fleetId);
-      }
-
-      if (status) {
-        query = query.eq('status', status);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching maintenance jobs:', error);
-        throw new Error(error.message);
-      }
-
-      return data as MaintenanceJob[];
-    },
+    queryFn: () => maintenanceService.getMaintenanceJobs(fleetId, status),
   });
 }
 
@@ -150,23 +130,13 @@ export function useCreateMaintenanceJob() {
       priority?: Priority;
       created_from_incident_id?: string;
     }) => {
-      const { data, error } = await supabase
-        .from('travaux_maintenance')
-        .insert({
-          vehicle_id,
-          fleet_id,
-          priority,
-          created_from_incident_id: created_from_incident_id || null,
-          status: 'queued',
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data as MaintenanceJob;
+      return maintenanceService.createMaintenanceJob({
+        vehicle_id,
+        fleet_id,
+        priority,
+        created_from_incident_id: created_from_incident_id || null,
+        status: 'queued',
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-jobs'] });
@@ -203,18 +173,7 @@ export function useUpdateJobStatus() {
         updates.closed_at = new Date().toISOString();
       }
 
-      const { data, error } = await supabase
-        .from('travaux_maintenance')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data as MaintenanceJob;
+      return maintenanceService.updateMaintenanceJob(id, updates);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-jobs'] });
@@ -258,18 +217,7 @@ export function useUpdateMaintenanceJob() {
       id,
       ...payload
     }: { id: string } & MaintenanceJobUpdatePayload) => {
-      const { data, error } = await supabase
-        .from('travaux_maintenance')
-        .update(payload)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data as MaintenanceJob;
+      return maintenanceService.updateMaintenanceJob(id, payload);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-jobs'] });

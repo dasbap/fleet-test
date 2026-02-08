@@ -22,6 +22,9 @@ jobs:
     name: Verify Migration to French
     runs-on: ubuntu-latest
     
+    env:
+      SUPABASE_CLI_VERSION: latest  # Version de Supabase CLI à installer
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,9 +35,48 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install Supabase CLI
+      - name: Get npm global prefix
+        id: npm-global-prefix
         run: |
-          npm install -g supabase
+          NPM_PREFIX=$(npm config get prefix)
+          if [ -z "$NPM_PREFIX" ]; then
+            echo "⚠️ Préfixe npm non trouvé, utilisation du préfixe par défaut"
+            NPM_PREFIX="/usr/local"
+          fi
+          echo "prefix=$NPM_PREFIX" >> $GITHUB_OUTPUT
+          echo "npm global prefix: $NPM_PREFIX"
+
+      - name: Cache Supabase CLI
+        uses: actions/cache@v4
+        id: cache-supabase-cli
+        with:
+          path: |
+            ${{ steps.npm-global-prefix.outputs.prefix }}/lib/node_modules/supabase
+            ${{ steps.npm-global-prefix.outputs.prefix }}/bin/supabase
+          key: supabase-cli-global-${{ runner.os }}-node-20-${{ env.SUPABASE_CLI_VERSION }}
+          restore-keys: |
+            supabase-cli-global-${{ runner.os }}-node-20-
+            supabase-cli-global-${{ runner.os }}-
+
+      - name: Check cache status
+        run: |
+          if [ "${{ steps.cache-supabase-cli.outputs.cache-hit }}" == "true" ]; then
+            echo "✅ Cache trouvé - Supabase CLI sera restauré depuis le cache"
+          else
+            echo "ℹ️ Cache non trouvé - Supabase CLI sera installé"
+          fi
+
+      - name: Install Supabase CLI
+        if: steps.cache-supabase-cli.outputs.cache-hit != 'true'
+        run: |
+          echo "Installation de Supabase CLI (version: ${{ env.SUPABASE_CLI_VERSION }})..."
+          if [ "${{ env.SUPABASE_CLI_VERSION }}" == "latest" ]; then
+            npm install -g supabase@latest
+          else
+            npm install -g supabase@${{ env.SUPABASE_CLI_VERSION }}
+          fi
+          echo "✅ Supabase CLI installé avec succès"
+          supabase --version
 
       - name: Verify Supabase CLI installation
         run: |
@@ -85,22 +127,26 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const report = fs.readFileSync('migration-report.txt', 'utf8');
-            
+            let report = '';
+            try {
+              report = fs.readFileSync('migration-report.txt', 'utf8');
+            } catch (e) {
+              report = '(Rapport non disponible - exécution du script de vérification en échec ou fichier absent.)';
+            }
             const comment = `## 🔍 Migration Verification Report
-            
+
             <details>
             <summary>Click to expand report</summary>
-            
+
             \`\`\`
             ${report}
             \`\`\`
-            
+
             </details>
-            
-            **Note:** This is an automated verification. Review the report and take action if needed.
+
+            **Note:** Vérification automatique. Consulter le rapport et agir si besoin.
             `;
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,

@@ -1,9 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { mapSupabaseErrorToFrench } from "@/lib/mapSupabaseError";
+import { FleetMemberService } from "@/services/fleet-member.service";
+import { FleetMemberRepository } from "@/repositories/fleet-member.repository";
 
-export interface FleetMember {
+// Instances singleton des services et repositories
+const fleetMemberRepository = new FleetMemberRepository();
+const fleetMemberService = new FleetMemberService(fleetMemberRepository);
+
+// Réexporter les types pour compatibilité
+export type FleetMember = {
   id: string;
   user_id: string;
   role: "organizer" | "manager" | "driver" | "mechanic";
@@ -14,7 +20,7 @@ export interface FleetMember {
     phone: string | null;
   } | null;
   email: string | null;
-}
+};
 
 export interface AddMemberData {
   email: string;
@@ -27,34 +33,9 @@ export interface AddMemberData {
 export function useFleetMembers(fleetId?: string) {
   return useQuery<FleetMember[], Error>({
     queryKey: ["fleet-members", fleetId],
-    queryFn: async () => {
+    queryFn: () => {
       if (!fleetId) return [];
-
-      const { data, error } = await supabase
-        .from("flotte_adhesions")
-        .select(
-          `
-          id,
-          user_id,
-          role,
-          is_active,
-          created_at,
-          profile:profils!flotte_adhesions_user_id_fkey(full_name, phone)
-        `
-        )
-        .eq("fleet_id", fleetId)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      // Note: Les emails ne sont pas récupérables directement pour des raisons de sécurité
-      // Ils seront affichés uniquement pour l'utilisateur connecté
-      return (data || []).map((member: any) => ({
-        ...member,
-        email: null, // Sera récupéré côté serveur si nécessaire
-      })) as FleetMember[];
+      return fleetMemberService.getFleetMembers(fleetId);
     },
     enabled: !!fleetId,
   });
@@ -68,45 +49,7 @@ export function useAddFleetMember() {
 
   return useMutation<void, Error, { fleetId: string; data: AddMemberData }>({
     mutationFn: async ({ fleetId, data }) => {
-      console.log("Tentative d'ajout de membre:", { fleetId, email: data.email, role: data.role });
-      
-      // Utiliser la fonction RPC qui gère la recherche par email
-      const { data: membershipId, error: membershipError } = await supabase.rpc(
-        "ajouter_membre_par_email",
-        {
-          p_fleet_id: fleetId,
-          p_email: data.email,
-          p_role: data.role,
-        }
-      );
-
-      console.log("Résultat de ajouter_membre_par_email:", { membershipId, error: membershipError });
-
-      if (membershipError) {
-        // Gestion explicite des erreurs avec des messages adaptés
-        let errorMessage = "Impossible d'ajouter le membre à la flotte.";
-        const msg = membershipError.message || "";
-        console.error("Erreur lors de l'ajout du membre:", msg);
-        
-        if (msg.includes("User not found") || msg.includes("user_not_found")) {
-          errorMessage = "Aucun utilisateur trouvé avec cet email. L'utilisateur doit d'abord créer un compte.";
-        } else if (msg.includes("Permission denied") || msg.includes("permission_denied")) {
-          errorMessage = "Vous n'avez pas les droits nécessaires pour ajouter un membre (manager ou organisateur requis).";
-        } else if (msg.includes("Fleet not found") || msg.includes("fleet_not_found")) {
-          errorMessage = "Flotte introuvable. Veuillez rafraîchir la page ou vérifier l'identifiant de la flotte.";
-        } else if (msg.includes("duplicate key value") || msg.includes("already exists")) {
-          errorMessage = "Cet utilisateur est déjà membre de la flotte avec ce rôle.";
-        }
-        throw new Error(errorMessage);
-      }
-      
-      if (!membershipId) {
-        console.warn("Aucun membershipId retourné, mais pas d'erreur non plus");
-        // Ne pas jeter d'erreur si membershipId est null mais qu'il n'y a pas d'erreur
-        // La fonction RPC peut retourner null dans certains cas valides
-      } else {
-        console.log("Membre ajouté avec succès, membershipId:", membershipId);
-      }
+      await fleetMemberService.addMemberByEmail(fleetId, data.email, data.role);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["fleet-members", variables.fleetId] });
@@ -138,23 +81,8 @@ export function useUpdateMemberRole() {
     Error,
     { membershipId: string; fleetId: string; userId: string; role: "organizer" | "manager" | "driver" | "mechanic" }
   >({
-    mutationFn: async ({ fleetId, userId, role }) => {
-      // Utiliser creer_ou_mettre_a_jour_adhesion_flotte pour gérer les conflits de contrainte unique
-      // Si l'utilisateur a déjà un rôle différent, cela créera un nouveau membership
-      // ou mettra à jour l'existant de manière atomique
-      const { data: newMembershipId, error } = await supabase.rpc(
-        "creer_ou_mettre_a_jour_adhesion_flotte",
-        {
-          p_fleet_id: fleetId,
-          p_user_id: userId,
-          p_role: role,
-          p_is_active: true,
-        }
-      );
-
-      if (error || !newMembershipId) {
-        throw new Error(error?.message || "Impossible de mettre à jour le rôle.");
-      }
+    mutationFn: async ({ membershipId, fleetId, userId, role }) => {
+      await fleetMemberService.updateMemberRole(membershipId, fleetId, userId, role);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["fleet-members", variables.fleetId] });
@@ -181,15 +109,8 @@ export function useRemoveFleetMember() {
   const queryClient = useQueryClient();
 
   return useMutation<void, Error, { membershipId: string; fleetId: string }>({
-    mutationFn: async ({ membershipId }) => {
-      const { error } = await supabase
-        .from("flotte_adhesions")
-        .update({ is_active: false })
-        .eq("id", membershipId);
-
-      if (error) {
-        throw new Error(error.message || "Impossible de retirer le membre.");
-      }
+    mutationFn: async ({ membershipId, fleetId }) => {
+      await fleetMemberService.removeMember(membershipId, fleetId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["fleet-members", variables.fleetId] });

@@ -1,7 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { InvitationService } from '@/services/invitation.service';
+import { InvitationRepository } from '@/repositories/invitation.repository';
 
+// Instances singleton des services et repositories
+const invitationRepository = new InvitationRepository();
+const invitationService = new InvitationService(invitationRepository);
+
+// Réexporter les types pour compatibilité
 export interface FleetInvitation {
   id: string;
   fleet_id: string;
@@ -32,28 +38,7 @@ export interface InvitationInsert {
 export function useInvitations(fleetId?: string) {
   return useQuery({
     queryKey: ['invitations', fleetId],
-    queryFn: async () => {
-      let query = supabase
-        .from('flotte_invitations')
-        .select(`
-          *,
-          fleet:flottes(id, name)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (fleetId) {
-        query = query.eq('fleet_id', fleetId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching invitations:', error);
-        throw new Error(error.message);
-      }
-
-      return (data || []) as FleetInvitation[];
-    },
+    queryFn: () => invitationService.getInvitations(fleetId),
     enabled: !!fleetId,
   });
 }
@@ -63,29 +48,7 @@ export function useCreateInvitation() {
 
   return useMutation({
     mutationFn: async (invitation: InvitationInsert) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Non authentifié');
-
-      const { data, error } = await supabase
-        .from('flotte_invitations')
-        .insert({
-          ...invitation,
-          created_by: user.id,
-        })
-        .select(`
-          *,
-          fleet:flottes(id, name)
-        `)
-        .single();
-
-      if (error) {
-        if (error.code === '23505') {
-          throw new Error('Ce code d\'invitation existe déjà. Veuillez en choisir un autre.');
-        }
-        throw new Error(error.message);
-      }
-
-      return data as FleetInvitation;
+      return invitationService.createInvitation(invitation);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['invitations', variables.fleet_id] });
@@ -109,14 +72,7 @@ export function useDeleteInvitation() {
 
   return useMutation({
     mutationFn: async ({ invitationId, fleetId }: { invitationId: string; fleetId: string }) => {
-      const { error } = await supabase
-        .from('flotte_invitations')
-        .delete()
-        .eq('id', invitationId);
-
-      if (error) {
-        throw new Error(error.message);
-      }
+      await invitationService.deleteInvitation(invitationId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['invitations', variables.fleetId] });

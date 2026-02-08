@@ -1,76 +1,22 @@
 # Règles pour l'assistant IA Cursor - Smart Fleet Africa
 
-## Contexte du projet
-- Application de gestion de flotte de véhicules pour l'Afrique
-- Stack: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
-- Base de données: Supabase
-- Architecture: Composants fonctionnels avec hooks personnalisés
+## Structure des règles
 
-## Règles de code
+Les règles sont organisées dans `.cursor/rules/` pour une meilleure spécialisation :
 
-### Généralités
-- Toujours répondre en français
-- Code simple et minimaliste pour une meilleure scalabilité
-- Respecter l'architecture existante (composants, hooks, pages)
-- Utiliser les alias de chemins définis (@/components, @/hooks, @/lib)
+- **`architecture.mdc`** : Architecture Repository + Services avec React Query (toujours appliquée)
+- **`general.mdc`** : Règles générales du projet (toujours appliquée)
+- **`react-patterns.mdc`** : Patterns React, TypeScript, hooks personnalisés et gestion d'état
+- **`api-guidelines.mdc`** : Guidelines pour React Query, query keys, invalidation
+- **`frontend-components.mdc`** : Règles spécifiques aux composants UI et shadcn/ui
 
-### TypeScript
-- Utiliser les types explicites
-- Éviter `any` sauf cas exceptionnels
-- Utiliser les interfaces pour les objets complexes
-- Préférer les types union pour les valeurs limitées
+## Documentation
 
-### React
-- Composants fonctionnels uniquement
-- Utiliser les hooks personnalisés existants quand possible
-- Props typées avec interface ou type
-- Gérer les états avec React Query pour les données serveur
-- Utiliser les composants shadcn/ui existants
+Pour plus de détails sur l'architecture du projet, voir :
+- **`ARCHITECTURE.md`** : Documentation complète de l'architecture Repository + Services
 
-### Styling
-- Utiliser Tailwind CSS pour le styling
-- Utiliser la fonction `cn()` pour combiner les classes
-- Respecter le système de design existant
-- Utiliser les variables CSS définies dans index.css
+## Règle fondamentale
 
-### Structure des fichiers
-- Un composant par fichier
-- Nommer les fichiers en PascalCase pour les composants
-- Exporter par défaut les composants principaux
-- Exporter nommés pour les utilitaires et hooks
+**Toujours respecter l'architecture en couches** : Composants → Hooks → Services → Repositories → Supabase
 
-### Sécurité
-- Valider toutes les entrées utilisateur avec Zod
-- Sanitizer les données avant affichage
-- Ne jamais exposer de secrets dans le code
-- Utiliser les variables d'environnement pour les configurations sensibles
-
-### Performance
-- Éviter les re-renders inutiles (memo, useMemo, useCallback)
-- Lazy loading pour les routes et composants lourds
-- Optimiser les requêtes avec React Query
-- Pagination pour les grandes listes
-
-### Tests
-- Écrire des tests unitaires pour la logique métier
-- Utiliser Vitest et Testing Library
-- Tests dans le dossier src/test/
-
-### Git
-- Messages de commit en français
-- Commits atomiques et descriptifs
-- Ne jamais commiter node_modules ou fichiers de build
-
-## Conventions de nommage
-- Composants: PascalCase (ex: `DriverCard.tsx`)
-- Hooks: camelCase avec préfixe "use" (ex: `useVehicles.ts`)
-- Utilitaires: camelCase (ex: `generateFleetPDF.ts`)
-- Constantes: UPPER_SNAKE_CASE
-- Variables et fonctions: camelCase
-
-## Bonnes pratiques spécifiques au projet
-- Utiliser Supabase pour toutes les opérations de base de données
-- Gérer l'authentification avec les hooks Supabase
-- Utiliser React Router pour la navigation
-- Implémenter la gestion d'erreurs avec try/catch et affichage utilisateur
-- Logging des actions critiques pour le debugging
+Les règles détaillées sont dans les fichiers spécialisés mentionnés ci-dessus.

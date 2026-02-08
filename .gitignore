@@ -33,3 +33,9 @@ dist-ssr
 
 # Vercel
 .vercel
+
+# Cursor / IDE
+.cursor/
+
+# Rapports de test temporaires
+TEST-REPORT-*.json

@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -18,6 +21,8 @@
     "check:supabase": "powershell -ExecutionPolicy Bypass -File scripts/check-supabase.ps1",
     "check:backend": "powershell -ExecutionPolicy Bypass -File scripts/check-backend.ps1",
     "verify:migration": "powershell -ExecutionPolicy Bypass -File scripts/verify-migration-status.ps1",
+    "install:supabase-cli": "powershell -ExecutionPolicy Bypass -File scripts/install-supabase-cli.ps1",
+    "verify:supabase-link": "powershell -ExecutionPolicy Bypass -File scripts/verify-supabase-link.ps1",
     "test:migrations": "powershell -ExecutionPolicy Bypass -File scripts/test-migrations.ps1",
     "hero:images": "node scripts/generate-hero-images.js"
   },

@@ -3,6 +3,19 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": "vite",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "e-samba.com"
+        }
+      ],
+      "destination": "https://www.e-samba.com/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
