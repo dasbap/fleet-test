@@ -4,6 +4,10 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  build: {
+    sourcemap: false,
+    // manualChunks : à envisager si le bundle est lourd (React, React Router, Recharts).
+  },
   server: {
     host: "localhost",
     port: 8080,

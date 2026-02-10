@@ -251,6 +251,13 @@ Les hooks listés ci-dessus appellent uniquement les services. Les hooks d’aut
 - Les hooks peuvent être testés en mockant les services ou en tests d’intégration avec React Query (voir `useFleetMembers.test.tsx`, `useInvitations.test.tsx`).
 - Placer les tests dans `src/test/` ou à côté des hooks (`.test.ts`, `.test.tsx`).
 
+## Performance et thème (présentation)
+
+- **Premier paint** : Thème sombre dès le premier rendu (script inline + `class="dark"` sur `html` dans `index.html`, ADR 0001) pour éviter FOUC.
+- **Switch thème** : Aucune transition sur `html`/`body` pour les couleurs ; si un toggle est réintroduit, utiliser un garde-fou temporaire (voir `src/index.css` et ADR 0001).
+- **Layout** : La classe `.dark` ne modifie que des variables CSS de couleurs, pas de dimensions (évite le CLS).
+- **Métriques** : Web Vitals (LCP, CLS, INP, FCP) sont reportées via `src/reportWebVitals.ts` (log en dev ; en prod, brancher un endpoint ou GA). TTI se mesure via Lighthouse si besoin.
+
 ## Références
 
 - [React Query Documentation](https://tanstack.com/query/latest)

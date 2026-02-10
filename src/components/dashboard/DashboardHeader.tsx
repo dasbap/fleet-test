@@ -1,5 +1,4 @@
 import { Bell, Search, User } from "lucide-react";
-import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -50,7 +49,6 @@ const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderPro
 
         {/* Right */}
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5" />

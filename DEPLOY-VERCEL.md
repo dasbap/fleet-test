@@ -274,7 +274,7 @@ Une fois le déploiement réussi :
 2. ✅ Configurer les métadonnées Open Graph pour les réseaux sociaux
 3. ✅ Configurer Google Analytics (optionnel)
 4. ✅ Configurer les webhooks Supabase si nécessaire
-5. ✅ Mettre en place un monitoring d'erreurs (ex: Sentry)
+5. ✅ Mettre en place un monitoring d'erreurs (Sentry) : définir la variable d'environnement `VITE_SENTRY_DSN` avec le DSN du projet Sentry. L'app envoie alors les erreurs JS à Sentry ; les événements sont tagués `theme: dark` et `theme_related: true` si l'erreur semble liée au thème. Voir `src/instrument.ts` et [docs/checklist-validation-theme.md](docs/checklist-validation-theme.md).
 
 ## 📞 Support
 

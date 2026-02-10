@@ -59,3 +59,7 @@ Le projet applique des mesures pour limiter le layout shift post-hydratation (po
 - **Chrome DevTools** : onglet Performance, enregistrer un chargement, puis « Experience » → métrique Cumulative Layout Shift.
 - **PageSpeed Insights** : [https://pagespeed.web.dev/](https://pagespeed.web.dev/) — rapport Core Web Vitals dont le CLS.
 - **En production** : intégrer `web-vitals` (ou équivalent) pour remonter le CLS réel des utilisateurs.
+
+## Évolution du thème
+
+L’application utilise actuellement un **thème sombre forcé** (voir [ADR 0001 — Thème sombre forcé](docs/adr/0001-forced-theme-dark.md)). Pour un passage futur à un thème sélectionnable par l’utilisateur (light/dark/système), consulter la section « Notes techniques (si réactivation d’un switch thème) » de l’ADR et les commentaires dans `src/index.css`.

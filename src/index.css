@@ -11,6 +11,14 @@
    Gray: #424242 → HSL(0, 0%, 26%)
 */
 
+/* Thème et transitions (zéro transition au switch)
+   - Ne pas ajouter de transition sur html ou body pour color / background / border-color :
+     un changement de classe .dark sur html doit donner un rendu instantané.
+   - Si un toggle thème est réintroduit plus tard : au moment du switch, ajouter une classe
+     sur html (ex. [data-theme-switching]) avec en CSS :
+     [data-theme-switching], [data-theme-switching] * { transition: none !important; }
+     puis appliquer le thème, puis retirer la classe au prochain frame (requestAnimationFrame). */
+
 @layer base {
   :root {
     --background: 0 0% 98%;
@@ -68,6 +76,8 @@
     --info-foreground: 0 0% 100%;
   }
 
+  /* Convention : .dark ne définit que des variables de couleurs / tokens.
+     Ne pas ajouter de dimensions, padding, font-size, etc. ici pour éviter tout layout shift (CLS). */
   .dark {
     --background: 0 0% 6%;
     --foreground: 0 0% 98%;

@@ -12,6 +12,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "validate:production": "vite build && vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run -c vitest.integration.config.ts",
@@ -55,6 +56,7 @@
     "@radix-ui/react-toggle": "^1.1.9",
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
+    "@sentry/react": "^10.38.0",
     "@supabase/supabase-js": "^2.93.3",
     "@tanstack/react-query": "^5.83.0",
     "class-variance-authority": "^0.7.1",
@@ -78,6 +80,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
+    "web-vitals": "^5.1.0",
     "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },

@@ -23,3 +23,10 @@ Accepté.
 ## Référence
 
 - Implémentation : `src/components/ThemeProvider.tsx`.
+- Aucun composant ThemeToggle n’est exposé ; le thème est uniquement forcé côté provider (pas de code mort lié au switch).
+- **Checklist de validation pré-production** : voir [docs/checklist-validation-theme.md](../checklist-validation-theme.md).
+
+## Notes techniques (si réactivation d’un switch thème)
+
+- Pour un switch instantané : ne pas appliquer de transition sur `html`/`body` pour les propriétés de thème (color, background, border-color). Voir commentaire dans `src/index.css`.
+- Si un toggle est réintroduit : utiliser un garde-fou temporaire (classe sur `html`, ex. `[data-theme-switching]` avec `transition: none` le temps du switch, puis retrait au prochain frame).

@@ -1,8 +1,5 @@
-import ThemeProvider from "@/components/ThemeProvider";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Sentry from "@sentry/react";
+import Providers from "@/components/Providers";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
@@ -27,45 +24,47 @@ import MyVehicle from "./pages/MyVehicle";
 import History from "./pages/History";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
-
 const App = () => (
-  <ThemeProvider>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<ProtectedRoute />}>
-              <Route index element={<Dashboard />} />
-              <Route path="vehicles" element={<Vehicles />} />
-              <Route path="drivers" element={<Drivers />} />
-              <Route path="closure" element={<ShiftClosure />} />
-              <Route path="incidents" element={<Incidents />} />
-              <Route path="maintenance" element={<Maintenance />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="invitations" element={<Invitations />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="teams" element={<Teams />} />
-              <Route path="create-fleet" element={<CreateFleet />} />
-              <Route path="finances" element={<Finances />} />
-              <Route path="collections" element={<Collections />} />
-              <Route path="alerts" element={<Alerts />} />
-              <Route path="roles" element={<Roles />} />
-              <Route path="my-vehicle" element={<MyVehicle />} />
-              <Route path="history" element={<History />} />
-              <Route path="*" element={<Dashboard />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </ThemeProvider>
+  <Sentry.ErrorBoundary
+    fallback={
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
+        <p className="text-muted-foreground">
+          Une erreur est survenue. Veuillez recharger la page.
+        </p>
+      </div>
+    }
+  >
+    <Providers>
+      <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/dashboard" element={<ProtectedRoute />}>
+          <Route index element={<Dashboard />} />
+          <Route path="vehicles" element={<Vehicles />} />
+          <Route path="drivers" element={<Drivers />} />
+          <Route path="closure" element={<ShiftClosure />} />
+          <Route path="incidents" element={<Incidents />} />
+          <Route path="maintenance" element={<Maintenance />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="invitations" element={<Invitations />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="teams" element={<Teams />} />
+          <Route path="create-fleet" element={<CreateFleet />} />
+          <Route path="finances" element={<Finances />} />
+          <Route path="collections" element={<Collections />} />
+          <Route path="alerts" element={<Alerts />} />
+          <Route path="roles" element={<Roles />} />
+          <Route path="my-vehicle" element={<MyVehicle />} />
+          <Route path="history" element={<History />} />
+          <Route path="*" element={<Dashboard />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+    </Providers>
+  </Sentry.ErrorBoundary>
 );
 
 export default App;
