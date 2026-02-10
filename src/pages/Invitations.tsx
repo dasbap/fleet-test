@@ -33,8 +33,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useInvitations, useDeleteInvitation } from "@/hooks/useInvitations";
 import { CreateInvitationDialog } from "@/components/invitations/CreateInvitationDialog";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { cn } from "@/lib/utils";
 
 const Invitations = () => {
   const { toast } = useToast();

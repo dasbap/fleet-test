@@ -57,6 +57,8 @@ Contexte : Vite + React, thème forcé via `ThemeProvider` (`forcedTheme="dark"`
 
 ## Ordre recommandé
 
+(Voir aussi le diagramme de flux et le détail dans le plan `.cursor/plans/checklist_validation_pré-production_thème_*.plan.md`.)
+
 1. `npm run validate:production` — vérifier console et navigation.
 2. Tests manuels : cold start, navigation privée, Safari ; toutes les routes ; modals/dropdowns ; accessibilité.
 3. Lighthouse (Performance + Accessibility).

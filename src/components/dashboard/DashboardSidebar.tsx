@@ -19,6 +19,7 @@ import {
   Wrench,
   DollarSign,
   Users,
+  User,
   Bell,
   Settings,
   LogOut,
@@ -130,7 +131,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
                   location.pathname === "/dashboard/profile" ? "page" : undefined
                 }
               >
-                <Users className="w-5 h-5" />
+                <User className="w-5 h-5" />
                 <span>Mon profil</span>
               </Link>
             </SidebarMenuButton>

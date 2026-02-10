@@ -288,9 +288,10 @@ const Teams = () => {
                   <p className="text-muted-foreground mb-4">
                     Vous devez être membre d'une flotte pour gérer une équipe. Rejoignez-en une via un code d'invitation.
                   </p>
+                  {/* Page Invitations = création de codes (organizer/manager). Pour rejoindre une flotte : utiliser un code lors de l'inscription (Auth). */}
                   <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => navigate("/dashboard/invitations")}>
-                      Rejoindre une flotte
+                    <Button variant="outline" onClick={() => navigate("/dashboard")}>
+                      Aller au tableau de bord
                     </Button>
                   </div>
                 </CardContent>

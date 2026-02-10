@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useEnsureProfile } from "@/hooks/useEnsureProfile";
 import { useUserFleets } from "@/hooks/useUserFleets";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -94,13 +94,13 @@ const Profile = () => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <DashboardSidebar userRole={role || "driver"} />
-        <main className="flex-1 flex flex-col">
+        <SidebarInset className="flex flex-col flex-1">
           <DashboardHeader
             userRole={role || "driver"}
             displayName={fullName}
             initials={initials}
           />
-          <div className="flex-1 p-6">
+          <main className="flex-1 p-6 overflow-auto">
             <div className="max-w-4xl mx-auto space-y-6">
               <ProfileHeader
                 user={user}
@@ -125,8 +125,8 @@ const Profile = () => {
                 <MembershipsTable memberships={memberships} fleetById={fleetById} />
               )}
             </div>
-          </div>
-        </main>
+          </main>
+        </SidebarInset>
       </div>
     </SidebarProvider>
   );

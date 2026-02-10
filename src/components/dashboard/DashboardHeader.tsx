@@ -1,4 +1,4 @@
-import { Bell, Search, User } from "lucide-react";
+import { Bell, Search, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -85,7 +85,12 @@ const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderPro
                   Profil
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>Paramètres</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/settings">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Paramètres
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive"

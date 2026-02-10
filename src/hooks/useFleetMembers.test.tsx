@@ -18,6 +18,7 @@ const fromChain = {
   eq: vi.fn().mockReturnThis(),
   order: vi.fn().mockReturnThis(),
   update: vi.fn().mockReturnThis(),
+  single: vi.fn(),
 };
 const fromMock = vi.fn(() => fromChain);
 const rpcMock = vi.fn();
@@ -82,8 +83,8 @@ describe("useFleetMembers", () => {
         profile: { full_name: "Jean Dupont", phone: null },
       },
     ];
-    // La requête est déclenchée par await sur la chaîne .select().eq().order()
-    fromChain.order.mockResolvedValueOnce({ data: members, error: null });
+    // Dernière méthode de la chaîne findAll : .eq('fleet_id', id) ; c'est elle qui doit résoudre
+    fromChain.eq.mockResolvedValueOnce({ data: members, error: null });
 
     const { result } = renderHook(() => useFleetMembers("fleet-1"), {
       wrapper: createWrapper(),
@@ -99,7 +100,7 @@ describe("useFleetMembers", () => {
   });
 
   it("throw en cas d'erreur Supabase", async () => {
-    fromChain.order.mockResolvedValueOnce({
+    fromChain.eq.mockResolvedValueOnce({
       data: null,
       error: { message: "Permission denied" },
     });
@@ -217,13 +218,27 @@ describe("useUpdateMemberRole", () => {
 });
 
 describe("useRemoveFleetMember", () => {
+  const updatedMember = {
+    id: "m1",
+    user_id: "u1",
+    fleet_id: "fleet-1",
+    role: "driver",
+    is_active: false,
+    created_at: "2025-01-01T00:00:00Z",
+    profile: { full_name: "Jean", phone: null },
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     fromChain.update.mockReturnValue(fromChain);
-    fromChain.eq.mockResolvedValueOnce({ data: null, error: null });
+    fromChain.eq.mockReturnValue(fromChain);
+    fromChain.select.mockReturnValue(fromChain);
   });
 
   it("met à jour flotte_adhesions avec is_active: false", async () => {
+    // Chaîne update : .update().eq().select().single() ; c'est single() qui doit résoudre
+    fromChain.single.mockResolvedValue({ data: updatedMember, error: null });
+
     const { result } = renderHook(() => useRemoveFleetMember(), {
       wrapper: createWrapper(),
     });
@@ -239,8 +254,7 @@ describe("useRemoveFleetMember", () => {
   });
 
   it("throw quand l'UPDATE échoue", async () => {
-    fromChain.eq.mockReset();
-    fromChain.eq.mockResolvedValueOnce({
+    fromChain.single.mockResolvedValue({
       data: null,
       error: { message: "RLS policy violation" },
     });

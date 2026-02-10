@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/react";
+import { PageSEO } from "@/components/PageSEO";
 import Providers from "@/components/Providers";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -36,7 +37,8 @@ const App = () => (
   >
     <Providers>
       <BrowserRouter>
-      <Routes>
+        <PageSEO />
+        <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/dashboard" element={<ProtectedRoute />}>
@@ -61,8 +63,8 @@ const App = () => (
           <Route path="*" element={<Dashboard />} />
         </Route>
         <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
     </Providers>
   </Sentry.ErrorBoundary>
 );

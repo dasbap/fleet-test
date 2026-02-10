@@ -73,10 +73,11 @@ const Drivers = () => {
                   <User className="w-16 h-16 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Aucune flotte trouvée</h3>
                   <p className="text-muted-foreground mb-4">
-                    Vous devez être membre d&apos;une flotte pour voir les chauffeurs. Rejoignez-en une via un code d&apos;invitation.
+                    Vous devez être membre d&apos;une flotte pour voir les chauffeurs. Rejoignez-en une via un code d&apos;invitation (lors de l&apos;inscription).
                   </p>
-                  <Button variant="outline" onClick={() => navigate("/dashboard/invitations")}>
-                    Rejoindre une flotte
+                  {/* Page Invitations = création de codes (organizer/manager). Pour rejoindre : utiliser un code lors de l'inscription (Auth). */}
+                  <Button variant="outline" onClick={() => navigate("/dashboard")}>
+                    Aller au tableau de bord
                   </Button>
                 </CardContent>
               </Card>

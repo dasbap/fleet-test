@@ -24,7 +24,7 @@ Accepté.
 
 - Implémentation : `src/components/ThemeProvider.tsx`.
 - Aucun composant ThemeToggle n’est exposé ; le thème est uniquement forcé côté provider (pas de code mort lié au switch).
-- **Checklist de validation pré-production** : voir [docs/checklist-validation-theme.md](../checklist-validation-theme.md).
+- **Checklist de validation pré-production** : voir [docs/checklist-validation-theme.md](../checklist-validation-theme.md). Pour le diagramme de flux et le détail des commandes, voir le plan `.cursor/plans/checklist_validation_pré-production_thème_*.plan.md`.
 
 ## Notes techniques (si réactivation d’un switch thème)
 

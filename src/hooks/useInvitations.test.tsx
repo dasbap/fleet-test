@@ -180,10 +180,28 @@ describe("useCreateInvitation", () => {
 });
 
 describe("useDeleteInvitation", () => {
+  const invitationToDelete = {
+    id: "inv-1",
+    fleet_id: "f1",
+    code: "CODE-A",
+    expires_at: null,
+    max_uses: null,
+    current_uses: 0,
+    created_by: "u1",
+    created_at: "2025-01-01T00:00:00Z",
+    fleet: { id: "f1", name: "Flotte 1" },
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    fromChain.select.mockReturnValue(fromChain);
+    fromChain.order.mockReturnValue(fromChain);
     fromChain.delete.mockReturnValue(fromChain);
-    fromChain.eq.mockResolvedValueOnce({ data: null, error: null });
+    // Service appelle findById puis delete : 1) findById = from().select().eq().single() ; 2) delete = from().delete().eq()
+    fromChain.eq
+      .mockReturnValueOnce(fromChain)
+      .mockResolvedValueOnce({ data: null, error: null });
+    fromChain.single.mockResolvedValue({ data: invitationToDelete, error: null });
   });
 
   it("supprime l'invitation par id", async () => {
@@ -191,7 +209,7 @@ describe("useDeleteInvitation", () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate({ invitationId: "inv-1", fleetId: "f1" });
+    await result.current.mutateAsync({ invitationId: "inv-1", fleetId: "f1" });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

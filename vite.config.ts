@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { prerenderSeoPlugin } from "./scripts/vite-plugin-prerender-seo";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -17,7 +18,7 @@ export default defineConfig({
       overlay: false,
     },
   },
-  plugins: [react()],
+  plugins: [react(), prerenderSeoPlugin()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
