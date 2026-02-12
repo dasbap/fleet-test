@@ -1,16 +1,17 @@
 import { useState } from "react";
-import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
 import VehiclesTable from "@/components/vehicles/VehiclesTable";
 import VehicleFormDialog from "@/components/vehicles/VehicleFormDialog";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Car } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
+import { PageLoader } from "@/components/dashboard/PageLoader";
 
 const Vehicles = () => {
-  const { role, userFleetId } = useAuth();
+  const { role, userFleetId, isLoading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const userRole = role || "driver";
   const queryClient = useQueryClient();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -19,14 +20,36 @@ const Vehicles = () => {
     queryClient.invalidateQueries({ queryKey: ['vehicles'] });
   };
 
+  if (authLoading) {
+    return <PageLoader />;
+  }
+
+  if (!userFleetId) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <Car className="w-16 h-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Aucune flotte</h3>
+            <p className="text-muted-foreground mb-4">
+              Rejoignez une flotte via un code d'invitation ou créez-en une pour gérer vos véhicules.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => navigate("/dashboard")}>
+                Tableau de bord
+              </Button>
+              <Button onClick={() => navigate("/dashboard/create-fleet")}>
+                Créer une flotte
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <DashboardSidebar userRole={userRole} />
-        <SidebarInset className="flex flex-col flex-1">
-          <DashboardHeader userRole={userRole} />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -37,7 +60,7 @@ const Vehicles = () => {
                     Gérez les véhicules de votre flotte
                   </p>
                 </div>
-                {(userRole === "manager" || userRole === "organizer") && userFleetId && (
+                {(userRole === "manager" || userRole === "organizer") && (
                   <Button onClick={() => setIsFormOpen(true)} className="gap-2">
                     <Plus className="w-4 h-4" />
                     Ajouter un véhicule
@@ -46,20 +69,16 @@ const Vehicles = () => {
               </div>
 
               {/* Vehicles Table */}
-              <VehiclesTable fleetId={userFleetId ?? undefined} />
+              <VehiclesTable fleetId={userFleetId} />
 
               {/* Add Vehicle Dialog */}
-              <VehicleFormDialog 
-                open={isFormOpen} 
-                onOpenChange={setIsFormOpen}
-                fleetId={userFleetId ?? ""}
-                onSuccess={handleSuccess}
-              />
-            </div>
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+      <VehicleFormDialog 
+        open={isFormOpen} 
+        onOpenChange={setIsFormOpen}
+        fleetId={userFleetId}
+        onSuccess={handleSuccess}
+      />
+    </div>
   );
 };
 

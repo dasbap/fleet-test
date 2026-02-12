@@ -14,6 +14,22 @@ export class FleetMemberService {
   constructor(private repository: FleetMemberRepository) {}
 
   /**
+   * Récupère les adhésions actives d'un utilisateur (pour useAuth / memberships).
+   */
+  async getActiveMembershipsForUser(userId: string): Promise<{ id: string; fleet_id: string; role: RoleType; is_active: boolean }[]> {
+    if (!userId) {
+      return [];
+    }
+    const members = await this.repository.findAll({ user_id: userId, is_active: true });
+    return members.map((m) => ({
+      id: m.id,
+      fleet_id: m.fleet_id,
+      role: m.role,
+      is_active: m.is_active,
+    }));
+  }
+
+  /**
    * Récupère tous les membres d'une flotte
    */
   async getFleetMembers(fleetId: string): Promise<FleetMember[]> {

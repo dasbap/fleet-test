@@ -1,8 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { AlertService } from '@/services/alert.service';
+import { AlertRepository } from '@/repositories/alert.repository';
 
-/** Niveaux de sévérité alignés sur le schéma (alertes_automatiques.severity) */
+const alertRepository = new AlertRepository();
+const alertService = new AlertService(alertRepository);
+
 export type AlertSeverity = 'critical' | 'high' | 'medium' | 'low';
 
 export interface Alert {
@@ -26,21 +29,9 @@ export function useAlerts(fleetId?: string) {
 
   return useQuery({
     queryKey: ['alerts', targetFleetId],
-    queryFn: async () => {
-      if (!targetFleetId) return [];
-
-      const { data, error } = await supabase
-        .from('alertes_automatiques')
-        .select('*')
-        .eq('fleet_id', targetFleetId)
-        .eq('resolved', false)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return (data || []) as Alert[];
-    },
+    queryFn: () => (targetFleetId ? alertService.getUnresolvedAlerts(targetFleetId) : []),
     enabled: !!targetFleetId,
-    refetchInterval: 60000, // Rafraîchir toutes les minutes
+    refetchInterval: 60000,
   });
 }
 
@@ -49,16 +40,10 @@ export function useGenerateAlerts() {
   const { userFleetId } = useAuth();
 
   return useMutation({
-    mutationFn: async (fleetId?: string) => {
+    mutationFn: (fleetId?: string) => {
       const targetFleetId = fleetId || userFleetId;
       if (!targetFleetId) throw new Error('No fleet ID');
-
-      const { data, error } = await supabase.rpc('generer_alertes_automatiques', {
-        p_fleet_id: targetFleetId,
-      });
-
-      if (error) throw error;
-      return data;
+      return alertService.generateAlerts(targetFleetId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
@@ -70,18 +55,8 @@ export function useResolveAlert() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ alertId, resolvedBy }: { alertId: string; resolvedBy: string }) => {
-      const { error } = await supabase
-        .from('alertes_automatiques')
-        .update({
-          resolved: true,
-          resolved_by: resolvedBy,
-          resolved_at: new Date().toISOString(),
-        })
-        .eq('id', alertId);
-
-      if (error) throw error;
-    },
+    mutationFn: ({ alertId, resolvedBy }: { alertId: string; resolvedBy: string }) =>
+      alertService.resolveAlert(alertId, resolvedBy),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
     },

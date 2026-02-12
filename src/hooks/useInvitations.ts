@@ -2,10 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { InvitationService } from '@/services/invitation.service';
 import { InvitationRepository } from '@/repositories/invitation.repository';
+import { FleetMemberRepository } from '@/repositories/fleet-member.repository';
 
 // Instances singleton des services et repositories
 const invitationRepository = new InvitationRepository();
-const invitationService = new InvitationService(invitationRepository);
+const fleetMemberRepository = new FleetMemberRepository();
+const invitationService = new InvitationService(invitationRepository, fleetMemberRepository);
 
 // Réexporter les types pour compatibilité
 export interface FleetInvitation {

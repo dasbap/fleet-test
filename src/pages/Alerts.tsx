@@ -1,7 +1,4 @@
 import { useState, useMemo, useCallback } from "react";
-import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -132,13 +129,7 @@ const Alerts = () => {
   );
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <DashboardSidebar userRole={userRole} />
-        <SidebarInset className="flex flex-col flex-1">
-          <DashboardHeader userRole={userRole} />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl md:text-3xl font-heading font-bold flex items-center gap-2">
@@ -288,11 +279,7 @@ const Alerts = () => {
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    </div>
   );
 };
 

@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { DriverScoreService } from '@/services/driver-score.service';
+import { DriverScoreRepository } from '@/repositories/driver-score.repository';
+
+const driverScoreRepository = new DriverScoreRepository();
+const driverScoreService = new DriverScoreService(driverScoreRepository);
 
 export interface DriverScore {
   id: string;
@@ -22,24 +26,7 @@ export function useDriverScores(fleetId?: string) {
 
   return useQuery({
     queryKey: ['driver-scores', targetFleetId],
-    queryFn: async () => {
-      if (!targetFleetId) return [];
-
-      const { data, error } = await supabase
-        .from('scores_conducteurs')
-        .select(`
-          *,
-          driver:profils!scores_conducteurs_driver_user_id_fkey(
-            user_id,
-            full_name
-          )
-        `)
-        .eq('fleet_id', targetFleetId)
-        .order('financial_score', { ascending: true });
-
-      if (error) throw error;
-      return (data || []) as DriverScore[];
-    },
+    queryFn: () => (targetFleetId ? driverScoreService.getDriverScores(targetFleetId) : []),
     enabled: !!targetFleetId,
   });
 }
@@ -48,15 +35,8 @@ export function useCalculateDriverScore() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ driverUserId, fleetId }: { driverUserId: string; fleetId: string }) => {
-      const { data, error } = await supabase.rpc('calculer_score_conducteur', {
-        p_driver_user_id: driverUserId,
-        p_fleet_id: fleetId,
-      });
-
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: ({ driverUserId, fleetId }: { driverUserId: string; fleetId: string }) =>
+      driverScoreService.calculateDriverScore(driverUserId, fleetId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['driver-scores'] });
     },

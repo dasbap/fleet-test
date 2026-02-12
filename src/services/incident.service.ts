@@ -6,7 +6,6 @@ import type {
   IncidentFilters,
   IncidentSeverity,
 } from '@/repositories/incident.repository';
-import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Service pour la logique métier des incidents
@@ -69,21 +68,6 @@ export class IncidentService {
       ...data,
       description: data.description.trim(),
       severity: data.severity || 'medium',
-    });
-  }
-
-  /**
-   * Crée un incident pour l'utilisateur connecté
-   */
-  async createIncidentForCurrentUser(data: Omit<IncidentInsert, 'driver_user_id'>): Promise<Incident> {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      throw new Error('Utilisateur non connecté');
-    }
-
-    return this.createIncident({
-      ...data,
-      driver_user_id: userData.user.id,
     });
   }
 

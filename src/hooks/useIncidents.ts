@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { IncidentService } from '@/services/incident.service';
 import { IncidentRepository } from '@/repositories/incident.repository';
 import { MaintenanceService } from '@/services/maintenance.service';
@@ -52,10 +53,15 @@ export function useIncidents(fleetId?: string) {
 
 export function useCreateIncident() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (incident: IncidentInsert) => {
-      return incidentService.createIncidentForCurrentUser(incident);
+      if (!user) throw new Error('Utilisateur non connecté');
+      return incidentService.createIncident({
+        ...incident,
+        driver_user_id: user.id,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incidents'] });

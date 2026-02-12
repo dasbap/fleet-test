@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { checkPendingInvitation, acceptInvitation } from './useAcceptInvitation';
+import { FleetMemberService } from '@/services/fleet-member.service';
+import { FleetMemberRepository } from '@/repositories/fleet-member.repository';
+
+const fleetMemberRepository = new FleetMemberRepository();
+const fleetMemberService = new FleetMemberService(fleetMemberRepository);
 
 // Définition du type de rôle applicatif
 export type AppRole = 'organizer' | 'manager' | 'driver' | 'mechanic';
@@ -50,38 +55,24 @@ export function useAuth(): UserWithRole {
     }
   };
 
-  // Charge les memberships actifs pour l'utilisateur donné. Retourne les lignes lues pour les appelants.
+  // Charge les memberships actifs pour l'utilisateur donné via le service (pas d'appel direct Supabase).
   const fetchMemberships = useCallback(async (userId: string): Promise<FleetMembership[]> => {
     try {
       await processPendingInvitation();
 
       console.log("🔄 Récupération des memberships pour l'utilisateur:", userId);
-      
-      const { data, error } = await supabase
-        .from('flotte_adhesions')
-        .select('id, fleet_id, role, is_active')
-        .eq('user_id', userId)
-        .eq('is_active', true);
 
-      if (error) {
-        console.error("❌ Erreur lors de la récupération des memberships :", error);
-        setRole(null);
-        setMemberships([]);
-        return [];
-      }
+      const list = await fleetMemberService.getActiveMembershipsForUser(userId);
 
-      console.log("📋 Memberships récupérés:", data);
-
-      if (data && data.length > 0) {
-        const list = data as FleetMembership[];
-        setMemberships(list);
-        // Règle projet : rôle le plus "haut" administré en premier
+      if (list.length > 0) {
+        const membershipsList = list as FleetMembership[];
+        setMemberships(membershipsList);
         const roleHierarchy: AppRole[] = ['organizer', 'manager', 'mechanic', 'driver'];
-        const userRoles = data.map(m => m.role as AppRole);
-        const highestRole = roleHierarchy.find(r => userRoles.includes(r)) || 'driver';
+        const userRoles = list.map((m) => m.role as AppRole);
+        const highestRole = roleHierarchy.find((r) => userRoles.includes(r)) || 'driver';
         setRole(highestRole);
-        console.log("✅ Memberships mis à jour:", { count: data.length, role: highestRole, fleetIds: data.map(m => m.fleet_id) });
-        return list;
+        console.log("✅ Memberships mis à jour:", { count: list.length, role: highestRole, fleetIds: list.map((m) => m.fleet_id) });
+        return membershipsList;
       } else {
         console.log("ℹ️ Aucun membership actif trouvé");
         setRole(null);

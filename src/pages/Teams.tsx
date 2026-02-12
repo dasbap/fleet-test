@@ -1,9 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { useNavigate, Navigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,11 +57,11 @@ import {
   Search,
   Loader2,
   Check,
+  Ticket,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFleetMembers, useAddFleetMember, useUpdateMemberRole, useRemoveFleetMember, type FleetMember, type AddMemberData } from "@/hooks/useFleetMembers";
 import { useSearchUsers, type SearchedUser } from "@/hooks/useSearchUsers";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -77,6 +73,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { PageLoader } from "@/components/dashboard/PageLoader";
 
 const addMemberSchema = z.object({
   email: z.string().email("Email invalide"),
@@ -245,11 +242,7 @@ const Teams = () => {
   };
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   // Seuls organizer et manager peuvent accéder à la page Équipes (aligné avec Invitations)
@@ -268,49 +261,34 @@ const Teams = () => {
   // Sans flotte : afficher la carte uniquement si role !== null (sinon redirection en cours)
   if (!userFleetId) {
     if (role === null) {
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      );
+      return <PageLoader />;
     }
     return (
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-background">
-          <DashboardSidebar userRole={userRole} />
-          <SidebarInset className="flex flex-col flex-1">
-            <DashboardHeader userRole={userRole} />
-            <main className="flex-1 p-6 overflow-auto">
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <Users className="w-16 h-16 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Aucune flotte trouvée</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Vous devez être membre d'une flotte pour gérer une équipe. Rejoignez-en une via un code d'invitation.
-                  </p>
-                  {/* Page Invitations = création de codes (organizer/manager). Pour rejoindre une flotte : utiliser un code lors de l'inscription (Auth). */}
-                  <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => navigate("/dashboard")}>
-                      Aller au tableau de bord
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </main>
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
+      <div className="max-w-7xl mx-auto">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <Users className="w-16 h-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Aucune flotte trouvée</h3>
+            <p className="text-muted-foreground mb-4">
+              Vous devez être membre d'une flotte pour gérer une équipe. Créez une flotte ou rejoignez-en une via un code d'invitation.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => navigate("/dashboard")}>
+                Tableau de bord
+              </Button>
+              <Button onClick={() => navigate("/dashboard/create-fleet")}>
+                Créer une flotte
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <DashboardSidebar userRole={userRole} />
-        <SidebarInset className="flex flex-col flex-1">
-          <DashboardHeader userRole={userRole} />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto space-y-6">
+    <>
+      <div className="max-w-7xl mx-auto space-y-6">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
@@ -323,10 +301,18 @@ const Teams = () => {
                   </p>
                 </div>
                 {canManageTeam && (
-                  <Button onClick={() => setIsAddMemberDialogOpen(true)}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Ajouter un membre
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" asChild>
+                      <Link to="/dashboard/invitations">
+                        <Ticket className="h-4 w-4 mr-2" />
+                        Créer une invitation
+                      </Link>
+                    </Button>
+                    <Button onClick={() => setIsAddMemberDialogOpen(true)}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Ajouter un membre
+                    </Button>
+                  </div>
                 )}
               </div>
 
@@ -348,13 +334,21 @@ const Teams = () => {
                       <Users className="w-16 h-16 text-muted-foreground mb-4" />
                       <h3 className="text-lg font-semibold mb-2">Aucun membre</h3>
                       <p className="text-muted-foreground mb-4">
-                        Commencez par ajouter des membres à votre équipe.
+                        Commencez par ajouter des membres à votre équipe ou invitez-les par code.
                       </p>
                       {canManageTeam && (
-                        <Button onClick={() => setIsAddMemberDialogOpen(true)}>
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          Ajouter le premier membre
-                        </Button>
+                        <div className="flex flex-wrap gap-3 justify-center">
+                          <Button variant="outline" asChild>
+                            <Link to="/dashboard/invitations">
+                              <Ticket className="h-4 w-4 mr-2" />
+                              Créer une invitation
+                            </Link>
+                          </Button>
+                          <Button onClick={() => setIsAddMemberDialogOpen(true)}>
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Ajouter le premier membre
+                          </Button>
+                        </div>
                       )}
                     </div>
                   ) : (
@@ -611,9 +605,6 @@ const Teams = () => {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          </main>
-        </SidebarInset>
       </div>
 
       {/* Dialog pour ajouter un membre */}
@@ -886,7 +877,7 @@ const Teams = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </SidebarProvider>
+    </>
   );
 };
 

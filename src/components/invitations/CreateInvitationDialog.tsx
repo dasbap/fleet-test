@@ -204,7 +204,7 @@ export function CreateInvitationDialog({
       });
 
       // Invalider les queries pour rafraîchir les données
-      queryClient.invalidateQueries({ queryKey: ["invitations"] });
+      queryClient.invalidateQueries({ queryKey: ['invitations'] });
 
       toast({
         title: "Invitation créée",

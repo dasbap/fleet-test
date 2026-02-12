@@ -1,171 +1,22 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
 import { useEsambaDataVerification } from "@/hooks/useEsambaDataVerification";
 import { useFleetMembers, type FleetMember } from "@/hooks/useFleetMembers";
+import { useSeedEsambaData } from "@/hooks/useSeedEsambaData";
+import { PageLoader } from "@/components/dashboard/PageLoader";
 import { Settings as SettingsIcon, Zap, CheckCircle2, XCircle, RefreshCw, Users, Shield, UserCog, Car, Wrench, Phone, Loader2 } from "lucide-react";
-
-interface SeedResult {
-  orgId: string;
-  fleetId: string;
-  vehicleId: string;
-  invitationCode: string;
-}
 
 const Settings = () => {
   const { user, role, userFleetId, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { data: verificationStatus, isLoading: isVerifying, refetch: refetchVerification } = useEsambaDataVerification();
   const { data: fleetMembers = [], isLoading: isLoadingMembers, error: membersError, refetch: refetchMembers } = useFleetMembers(userFleetId || undefined);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [authLoading, user, navigate]);
-
-  const seedMutation = useMutation<SeedResult, Error>({
-    mutationFn: async () => {
-      if (!user) {
-        throw new Error("Utilisateur non connecté.");
-      }
-
-      // Vérifier si l'organisation existe déjà
-      const { data: existingOrgs } = await supabase
-        .from("organisations")
-        .select("id")
-        .eq("name", "Organisation ESAMBA")
-        .limit(1);
-
-      let orgId: string;
-      if (existingOrgs && existingOrgs.length > 0) {
-        orgId = existingOrgs[0].id as string;
-      } else {
-        // Créer l'organisation si elle n'existe pas
-        const { data: org, error: orgError } = await supabase
-          .from("organisations")
-          .insert({
-            name: "Organisation ESAMBA",
-            country_code: "CM",
-          })
-          .select("id")
-          .single();
-
-        if (orgError || !org) {
-          throw new Error(orgError?.message || "Impossible de créer l'organisation.");
-        }
-        orgId = org.id as string;
-      }
-
-      // 2) Flotte ESAMBA
-      // Utilisation d'une fonction RPC pour contourner les problèmes RLS
-      const { data: fleetId, error: fleetError } = await supabase.rpc(
-        "creer_flotte_esamba",
-        {
-          p_org_id: orgId,
-          p_name: "Flotte ESAMBA",
-          p_collection_policy: "mix",
-        }
-      );
-
-      if (fleetError || !fleetId) {
-        throw new Error(
-          fleetError?.message || "Impossible de créer la flotte."
-        );
-      }
-
-      // 3) Membership organisateur pour l'utilisateur courant
-      // Utilisation d'une fonction RPC pour gérer l'UPSERT de manière atomique
-      // Cela évite les erreurs de contrainte unique et les race conditions
-      const { data: membershipId, error: membershipError } = await supabase.rpc(
-        "creer_ou_mettre_a_jour_adhesion_flotte",
-        {
-          p_fleet_id: fleetId,
-          p_user_id: user.id,
-          p_role: "organizer",
-          p_is_active: true,
-        }
-      );
-
-      if (membershipError) {
-        throw new Error(
-          membershipError.message || "Impossible de créer ou mettre à jour le membership."
-        );
-      }
-
-      // 4) Véhicule de démo
-      // Utilisation d'une fonction RPC pour contourner les problèmes RLS
-      // Le membership vient d'être créé, mais il peut y avoir un délai de propagation
-      const { data: vehicleId, error: vehicleError } = await supabase.rpc(
-        "creer_vehicule_esamba",
-        {
-          p_fleet_id: fleetId,
-          p_registration: "ESAMBA-001",
-          p_brand: "Toyota",
-          p_model: "Corolla",
-          p_year: 2020,
-          p_current_km: 0,
-        }
-      );
-
-      if (vehicleError || !vehicleId) {
-        throw new Error(
-          vehicleError?.message || "Impossible de créer le véhicule."
-        );
-      }
-
-      // 5) Invitation ESAMBA-2024
-      // Utilisation d'une fonction RPC pour contourner les problèmes RLS
-      const { data: invitationCode, error: invitationError } = await supabase.rpc(
-        "creer_invitation_esamba",
-        {
-          p_fleet_id: fleetId,
-          p_code: "ESAMBA-2024",
-        }
-      );
-
-      if (invitationError || !invitationCode) {
-        throw new Error(
-          invitationError?.message || "Impossible de créer l'invitation."
-        );
-      }
-
-      return {
-        orgId,
-        fleetId,
-        vehicleId: vehicleId as string,
-        invitationCode,
-      };
-    },
-    onSuccess: (result) => {
-      // Rafraîchir la vérification après création
-      queryClient.invalidateQueries({ queryKey: ["esamba-data-verification"] });
-      
-      console.log("✅ Données ESAMBA vérifiées/créées:", result);
-      toast({
-        title: "✅ Données ESAMBA prêtes",
-        description: `Organisation, flotte, véhicule et invitation ${result.invitationCode} sont disponibles.`,
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Erreur",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const seedMutation = useSeedEsambaData();
 
   // Note: L'exécution automatique a été désactivée pour éviter les problèmes
   // L'utilisateur doit cliquer manuellement sur le bouton "Créer les données ESAMBA-2024"
@@ -242,23 +93,13 @@ const Settings = () => {
   }, [fleetMembers]);
 
   if (authLoading || !user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   const userRole = role || "organizer";
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <DashboardSidebar userRole={userRole} />
-        <SidebarInset className="flex flex-col flex-1">
-          <DashboardHeader userRole={userRole} />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
@@ -555,11 +396,7 @@ const Settings = () => {
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    </div>
   );
 };
 

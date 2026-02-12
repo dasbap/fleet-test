@@ -1,13 +1,19 @@
 /**
  * Tests unitaires pour useAcceptInvitation
  * Vérifie l'interprétation du retour RPC accepter_invitation (objet, tableau, erreur).
+ *
+ * Note architecture : useAcceptInvitation appelle directement Supabase (RPC, auth, from)
+ * ⚠️ Ce hook ne respecte pas le pattern Hook → Service → Repository : il appelle Supabase directement (RPC, auth, from).
+ * Les tests ici procèdent à un mock direct de Supabase.
+ * Un refactor futur passant par un service nécessiterait d'adapter les mocks.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { acceptInvitation, checkPendingInvitation } from "./useAcceptInvitation";
 
 const rpcMock = vi.fn();
-const fromMock = vi.fn(() => ({
+let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+const fromMock = vi.fn((_table?: string) => ({
   select: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
   maybeSingle: vi.fn(),
@@ -27,6 +33,11 @@ vi.mock("@/integrations/supabase/client", () => ({
 describe("useAcceptInvitation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy?.mockRestore();
   });
 
   describe("acceptInvitation", () => {
@@ -68,6 +79,14 @@ describe("useAcceptInvitation", () => {
       rpcMock.mockResolvedValue({ data: null, error: null });
 
       const result = await acceptInvitation("CODE3");
+
+      expect(result).toEqual({ ok: false, error: "invalid_response" });
+    });
+
+    it("retourne invalid_response quand la RPC renvoie un tableau vide", async () => {
+      rpcMock.mockResolvedValue({ data: [], error: null });
+
+      const result = await acceptInvitation("CODE_EMPTY");
 
       expect(result).toEqual({ ok: false, error: "invalid_response" });
     });
@@ -142,6 +161,38 @@ describe("useAcceptInvitation", () => {
       const code = await checkPendingInvitation();
 
       expect(code).toBeNull();
+    });
+
+    it("retourne null si invitation_code présent mais invitation_fleet_id absent", async () => {
+      getUserMock.mockResolvedValue({
+        data: {
+          user: {
+            id: "user-1",
+            user_metadata: { invitation_code: "INV-PARTIAL" },
+          },
+        },
+      });
+
+      const code = await checkPendingInvitation();
+
+      expect(code).toBeNull();
+      expect(fromMock).not.toHaveBeenCalled();
+    });
+
+    it("retourne null si user_metadata absent ou vide", async () => {
+      getUserMock.mockResolvedValue({
+        data: {
+          user: {
+            id: "user-1",
+            user_metadata: {},
+          },
+        },
+      });
+
+      const code = await checkPendingInvitation();
+
+      expect(code).toBeNull();
+      expect(fromMock).not.toHaveBeenCalled();
     });
   });
 });

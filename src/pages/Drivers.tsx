@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,40 +59,31 @@ const Drivers = () => {
 
   if (!userFleetId) {
     return (
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-background">
-          <DashboardSidebar userRole={userRole} />
-          <SidebarInset className="flex flex-col flex-1">
-            <DashboardHeader userRole={userRole} />
-            <main className="flex-1 p-6 overflow-auto">
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <User className="w-16 h-16 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Aucune flotte trouvée</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Vous devez être membre d&apos;une flotte pour voir les chauffeurs. Rejoignez-en une via un code d&apos;invitation (lors de l&apos;inscription).
-                  </p>
-                  {/* Page Invitations = création de codes (organizer/manager). Pour rejoindre : utiliser un code lors de l'inscription (Auth). */}
-                  <Button variant="outline" onClick={() => navigate("/dashboard")}>
-                    Aller au tableau de bord
-                  </Button>
-                </CardContent>
-              </Card>
-            </main>
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
+      <div className="max-w-7xl mx-auto">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <User className="w-16 h-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Aucune flotte trouvée</h3>
+            <p className="text-muted-foreground mb-4">
+              Vous devez être membre d&apos;une flotte pour voir les chauffeurs. Rejoignez-en une via un code d&apos;invitation (lors de l&apos;inscription).
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => navigate("/dashboard")}>
+                Tableau de bord
+              </Button>
+              <Button onClick={() => navigate("/dashboard/create-fleet")}>
+                Créer une flotte
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <DashboardSidebar userRole={userRole} />
-        <SidebarInset className="flex flex-col flex-1">
-          <DashboardHeader userRole={userRole} />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto space-y-6">
+    <>
+      <div className="max-w-7xl mx-auto space-y-6">
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -283,18 +271,14 @@ const Drivers = () => {
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </main>
-        </SidebarInset>
       </div>
 
-      {/* History Dialog */}
       <DriverHistoryDialog
         open={historyOpen}
         onOpenChange={setHistoryOpen}
         driverId={selectedDriverId}
       />
-    </SidebarProvider>
+    </>
   );
 };
 

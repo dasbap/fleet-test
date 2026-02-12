@@ -1,26 +1,16 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import IncidentsTable from "@/components/incidents/IncidentsTable";
 import IncidentFormDialog from "@/components/incidents/IncidentFormDialog";
 import { useIncidents } from "@/hooks/useIncidents";
+import { PageLoader } from "@/components/dashboard/PageLoader";
 
 const Incidents = () => {
-  const navigate = useNavigate();
-  const { user, role, isLoading: authLoading } = useAuth();
+  const { role, userFleetId, isLoading: authLoading } = useAuth();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { data: incidents = [], isLoading, refetch } = useIncidents();
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
+  const { data: incidents = [], isLoading, refetch } = useIncidents(userFleetId ?? undefined);
 
   const handleIncidentCreated = () => {
     setIsFormOpen(false);
@@ -28,21 +18,12 @@ const Incidents = () => {
   };
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-muted-foreground">Chargement...</div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <DashboardSidebar userRole={role || "driver"} />
-        <SidebarInset className="flex flex-col flex-1">
-          <DashboardHeader userRole={role || "driver"} />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto space-y-6">
+    <>
+      <div className="max-w-7xl mx-auto space-y-6">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
@@ -55,7 +36,7 @@ const Incidents = () => {
                       : "Gérez tous les incidents de votre flotte"}
                   </p>
                 </div>
-                {(role === "driver" || role === "organizer" || role === "manager") && (
+                {(role === "driver" || role === "organizer" || role === "manager") && userFleetId && (
                   <Button onClick={() => setIsFormOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Signaler un incident
@@ -70,17 +51,15 @@ const Incidents = () => {
                 userRole={role || "driver"}
                 onRefresh={refetch}
               />
-            </div>
-          </main>
-        </SidebarInset>
       </div>
 
       <IncidentFormDialog
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         onSuccess={handleIncidentCreated}
+        fleetId={userFleetId ?? undefined}
       />
-    </SidebarProvider>
+    </>
   );
 };
 

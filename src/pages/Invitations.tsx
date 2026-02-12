@@ -1,8 +1,5 @@
-import { useState } from "react";
-import { Navigate } from "react-router-dom";
-import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { useState, useEffect } from "react";
+import { Navigate, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -28,7 +25,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ticket, Plus, Copy, Check, MoreVertical, Trash2, Calendar, Users, Loader2 } from "lucide-react";
+import { Ticket, Plus, Copy, Check, MoreVertical, Trash2, Calendar, Users, Loader2, UsersRound } from "lucide-react";
+import { PageLoader } from "@/components/dashboard/PageLoader";
 import { useAuth } from "@/hooks/useAuth";
 import { useInvitations, useDeleteInvitation } from "@/hooks/useInvitations";
 import { CreateInvitationDialog } from "@/components/invitations/CreateInvitationDialog";
@@ -36,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Invitations = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { user, role, userFleetId, isLoading: authLoading } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -109,25 +108,51 @@ const Invitations = () => {
   };
 
   if (authLoading || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!canManageInvitations) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Rediriger vers la création de flotte si pas de flotte ni de rôle (aligné avec Teams et Dashboard)
+  useEffect(() => {
+    if (!userFleetId && role === null) {
+      navigate("/dashboard/create-fleet");
+    }
+  }, [userFleetId, role, navigate]);
+
+  // Sans flotte : afficher la carte dédiée si role défini (sinon redirection en cours)
+  if (!userFleetId) {
+    if (role === null) {
+      return <PageLoader />;
+    }
+    return (
+      <div className="max-w-7xl mx-auto">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <Ticket className="w-16 h-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Aucune flotte trouvée</h3>
+            <p className="text-muted-foreground mb-4">
+              Vous devez être membre d'une flotte pour gérer les invitations. Créez une flotte ou rejoignez-en une via un code d'invitation.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => navigate("/dashboard")}>
+                Tableau de bord
+              </Button>
+              <Button onClick={() => navigate("/dashboard/create-fleet")}>
+                Créer une flotte
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <DashboardSidebar userRole={role || "manager"} />
-        <SidebarInset className="flex flex-col flex-1">
-          <DashboardHeader userRole={role || "manager"} />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto space-y-6">
+    <>
+      <div className="max-w-7xl mx-auto space-y-6">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
@@ -138,22 +163,18 @@ const Invitations = () => {
                     Créez et gérez les codes d'invitation pour votre flotte
                   </p>
                 </div>
-                <Button 
-                  onClick={() => {
-                    if (!userFleetId) {
-                      toast({
-                        title: "Flotte requise",
-                        description: "Vous devez être membre d'une flotte pour créer une invitation. Créez d'abord les données ESAMBA depuis les paramètres.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    setIsCreateDialogOpen(true);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Créer une invitation
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" asChild>
+                    <Link to="/dashboard/teams">
+                      <UsersRound className="w-4 h-4 mr-2" />
+                      Voir l'équipe
+                    </Link>
+                  </Button>
+                  <Button onClick={() => setIsCreateDialogOpen(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Créer une invitation
+                  </Button>
+                </div>
               </div>
 
               {/* Statistics Cards */}
@@ -221,13 +242,7 @@ const Invitations = () => {
                       <p className="text-muted-foreground mb-4">
                         Créez votre première invitation pour inviter des chauffeurs à rejoindre votre flotte.
                       </p>
-                      <Button 
-                        onClick={() => {
-                          console.log("Opening invitation dialog, userFleetId:", userFleetId);
-                          setIsCreateDialogOpen(true);
-                        }}
-                        disabled={!userFleetId}
-                      >
+                      <Button onClick={() => setIsCreateDialogOpen(true)}>
                         <Plus className="w-4 h-4 mr-2" />
                         Créer une invitation
                       </Button>
@@ -330,9 +345,6 @@ const Invitations = () => {
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </main>
-        </SidebarInset>
       </div>
 
       {/* Create Invitation Dialog */}
@@ -383,7 +395,7 @@ const Invitations = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SidebarProvider>
+    </>
   );
 };
 

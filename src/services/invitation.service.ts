@@ -5,13 +5,38 @@ import type {
   InvitationUpdate,
   InvitationFilters,
 } from '@/repositories/invitation.repository';
+import { FleetMemberRepository } from '@/repositories/fleet-member.repository';
 import { supabase } from '@/integrations/supabase/client';
+
+export interface AcceptInvitationResult {
+  ok: boolean;
+  error?: string | null;
+  fleet_id?: string;
+  membership_id?: string;
+  message?: string;
+}
+
+function normalizeRpcResult(data: unknown): AcceptInvitationResult | null {
+  if (data == null) return null;
+  if (Array.isArray(data)) {
+    const first = data[0];
+    return typeof first === 'object' && first !== null && 'ok' in first
+      ? (first as AcceptInvitationResult)
+      : null;
+  }
+  return typeof data === 'object' && data !== null && 'ok' in data
+    ? (data as AcceptInvitationResult)
+    : null;
+}
 
 /**
  * Service pour la logique métier des invitations
  */
 export class InvitationService {
-  constructor(private repository: InvitationRepository) {}
+  constructor(
+    private repository: InvitationRepository,
+    private fleetMemberRepository: FleetMemberRepository
+  ) {}
 
   /**
    * Récupère toutes les invitations d'une flotte
@@ -167,5 +192,41 @@ export class InvitationService {
     }
 
     await this.repository.incrementUses(id);
+  }
+
+  /**
+   * Accepte une invitation par code (RPC accepter_invitation).
+   */
+  async acceptInvitation(code: string): Promise<AcceptInvitationResult> {
+    try {
+      const { data, error } = await this.repository.acceptInvitationRpc(code);
+      if (error) {
+        console.error('Error accepting invitation:', error);
+        return { ok: false, error: error.message };
+      }
+      const result = normalizeRpcResult(data);
+      if (result) return result;
+      return { ok: false, error: 'invalid_response' };
+    } catch (err) {
+      console.error('Exception accepting invitation:', err);
+      return { ok: false, error: 'unexpected_error' };
+    }
+  }
+
+  /**
+   * Retourne le code d'invitation en attente si l'utilisateur a les métadonnées et n'a pas encore d'adhésion.
+   */
+  async checkPendingInvitation(
+    userId: string,
+    metadata: { invitation_code?: string; invitation_fleet_id?: string }
+  ): Promise<string | null> {
+    const invitationCode = metadata?.invitation_code;
+    const invitationFleetId = metadata?.invitation_fleet_id;
+    if (!invitationCode || !invitationFleetId) return null;
+    const membership = await this.fleetMemberRepository.findActiveMembershipByUserAndFleet(
+      userId,
+      invitationFleetId
+    );
+    return membership ? null : invitationCode;
   }
 }

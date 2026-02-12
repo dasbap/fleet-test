@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
+import { useAuth } from '@/hooks/useAuth';
 import { DriverShiftService } from '@/services/driver-shift.service';
 import { DriverShiftRepository } from '@/repositories/driver-shift.repository';
 import { VehicleRepository } from '@/repositories/vehicle.repository';
@@ -67,28 +67,20 @@ export interface ShiftClosureInsert {
 }
 
 export function useActiveShift() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['active-shift'],
-    queryFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        return null;
-      }
-      return driverShiftService.getActiveShift(userData.user.id);
-    },
+    queryKey: ['active-shift', user?.id],
+    queryFn: () => (user ? driverShiftService.getActiveShift(user.id) : Promise.resolve(null)),
+    enabled: !!user,
   });
 }
 
 export function useDriverShifts() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['driver-shifts'],
-    queryFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        return [];
-      }
-      return driverShiftService.getDriverShifts(userData.user.id, 20);
-    },
+    queryKey: ['driver-shifts', user?.id],
+    queryFn: () => (user ? driverShiftService.getDriverShifts(user.id, 20) : Promise.resolve([])),
+    enabled: !!user,
   });
 }
 
@@ -152,18 +144,17 @@ export function useCloseShift() {
 
 // Legacy export for backward compatibility
 export function useShiftClosures() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['shift-closures'],
-    queryFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return [];
-      return driverShiftService.getShiftClosures(userData.user.id);
-    },
+    queryKey: ['shift-closures', user?.id],
+    queryFn: () => (user ? driverShiftService.getShiftClosures(user.id) : Promise.resolve([])),
+    enabled: !!user,
   });
 }
 
 export function useReviewClosure() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({
@@ -173,9 +164,7 @@ export function useReviewClosure() {
       closureId: string;
       status: 'validated' | 'rejected';
     }) => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non authentifié');
-
       return driverShiftService.reviewClosure(closureId, status, user.id);
     },
     onSuccess: (_, variables) => {

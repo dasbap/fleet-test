@@ -1,6 +1,3 @@
-import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import ShiftClosureForm from "@/components/driver/ShiftClosureForm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,13 +29,7 @@ const ShiftClosure = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <DashboardSidebar userRole={userRole} />
-        <SidebarInset className="flex flex-col flex-1">
-          <DashboardHeader userRole={userRole} />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
               {/* Header */}
               <div>
                 <h1 className="text-2xl md:text-3xl font-heading font-bold">
@@ -98,11 +89,7 @@ const ShiftClosure = () => {
                 shiftId={mockActiveShift.id}
                 kmStart={mockActiveShift.kmStart}
               />
-            </div>
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    </div>
   );
 };
 

@@ -8,6 +8,8 @@ Le projet utilise une architecture en couches basée sur le pattern **Repository
 
 Les décisions importantes (produit, UX, technique) sont documentées sous forme d’ADR : [docs/adr/README.md](docs/adr/README.md).
 
+Pour les flux de navigation et de données entre les pages (auth, invitations, équipes, création de flotte), voir [docs/flux-navigation.md](docs/flux-navigation.md).
+
 ## Structure des couches
 
 ```

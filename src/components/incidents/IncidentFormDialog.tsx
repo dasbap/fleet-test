@@ -23,10 +23,11 @@ interface IncidentFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  fleetId?: string;
 }
 
-const IncidentFormDialog = ({ open, onOpenChange, onSuccess }: IncidentFormDialogProps) => {
-  const { data: vehicles = [] } = useVehicles();
+const IncidentFormDialog = ({ open, onOpenChange, onSuccess, fleetId }: IncidentFormDialogProps) => {
+  const { data: vehicles = [] } = useVehicles(fleetId);
   const createIncident = useCreateIncident();
   
   const [formData, setFormData] = useState({

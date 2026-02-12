@@ -1,9 +1,4 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,9 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-import { mapSupabaseErrorToFrench } from "@/lib/mapSupabaseError";
+import { useCreateFleet } from "@/hooks/useCreateFleet";
+import { PageLoader } from "@/components/dashboard/PageLoader";
 import { Loader2, ArrowLeft, Building2, Users } from "lucide-react";
 import {
   Form,
@@ -43,9 +37,8 @@ const createFleetSchema = z.object({
 type CreateFleetFormValues = z.infer<typeof createFleetSchema>;
 
 const CreateFleet = () => {
-  const { user, role, isLoading: authLoading, refreshMemberships } = useAuth();
+  const { role, isLoading: authLoading, refreshMemberships } = useAuth();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const form = useForm<CreateFleetFormValues>({
     resolver: zodResolver(createFleetSchema),
@@ -57,126 +50,16 @@ const CreateFleet = () => {
     },
   });
 
-  // L'authentification est gérée par ProtectedRoute ; pas de redirect /auth ici.
-
-  const createFleetMutation = useMutation<
-    { orgId: string; fleetId: string },
-    Error,
-    CreateFleetFormValues
-  >({
-    mutationFn: async (values) => {
-      console.log("[CreateFleet] mutation démarrée", { orgName: values.orgName, fleetName: values.fleetName });
-      if (!user) {
-        throw new Error("Utilisateur non connecté.");
-      }
-
-      // Vérifier si l'organisation existe déjà
-      const { data: existingOrgs } = await supabase
-        .from("organisations")
-        .select("id")
-        .eq("name", values.orgName)
-        .limit(1);
-
-      let orgId: string;
-      if (Array.isArray(existingOrgs) && existingOrgs.length > 0) {
-        orgId = existingOrgs[0].id as string;
-      } else {
-        // Création de l'organisation
-        const { data: org, error: orgError } = await supabase
-          .from("organisations")
-          .insert({
-            name: values.orgName,
-            country_code: values.countryCode,
-          })
-          .select("id")
-          .single();
-
-        if (orgError || !org) {
-          throw new Error(orgError?.message || "Impossible de créer l'organisation.");
-        }
-        orgId = org.id as string;
-      }
-
-      // Création de la flotte via la fonction RPC personnalisée (retourne un uuid)
-      const { data: rawFleetId, error: fleetError } = await supabase.rpc(
-        "creer_flotte_esamba",
-        {
-          p_org_id: orgId,
-          p_name: values.fleetName,
-          p_collection_policy: values.collectionPolicy,
-        }
-      );
-      if (fleetError) {
-        throw new Error(fleetError?.message || "Impossible de créer la flotte.");
-      }
-      const fleetId =
-        typeof rawFleetId === "string"
-          ? rawFleetId
-          : (rawFleetId as { id?: string; fleet_id?: string } | null)?.id ??
-            (rawFleetId as { id?: string; fleet_id?: string } | null)?.fleet_id ??
-            null;
-      if (!fleetId) {
-        throw new Error("Impossible de créer la flotte (aucun identifiant retourné).");
-      }
-
-      // Ajout de l'utilisateur comme organizer dans l'équipe nouvellement créée
-      const { error: membershipError } = await supabase.rpc(
-        "creer_ou_mettre_a_jour_adhesion_flotte",
-        {
-          p_fleet_id: fleetId,
-          p_user_id: user.id,
-          p_role: "organizer",
-          p_is_active: true,
-        }
-      );
-      if (membershipError) {
-        throw new Error(
-          membershipError?.message || "Impossible de vous ajouter comme organizer de la flotte."
-        );
-      }
-
-      console.log("[CreateFleet] mutation réussie", { orgId, fleetId });
-      return { orgId, fleetId };
-    },
-    onSuccess: async (data) => {
-      console.log("[CreateFleet] onSuccess appelé", { orgId: data.orgId, fleetId: data.fleetId });
-      toast({
-        title: "✅ Flotte créée avec succès",
-        description:
-          "Votre flotte a été créée et vous êtes maintenant organizer. Redirection en cours...",
-      });
-
-      // Invalidation des requêtes pour rafraîchir l'état côté React Query
-      queryClient.invalidateQueries({ queryKey: ["fleet-members"] });
-      queryClient.invalidateQueries({ queryKey: ["user-fleet"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
-      queryClient.invalidateQueries({ queryKey: ["fleet-vehicles-overview"] });
-
-      // Rafraîchir les memberships puis laisser React appliquer l'état avant la navigation,
-      // pour que le Dashboard voie bien la nouvelle flotte (userFleetId à jour).
+  const createFleetMutation = useCreateFleet({
+    onSuccess: async () => {
       try {
-        console.log("[CreateFleet] appel refreshMemberships()...");
-        const members = await refreshMemberships();
-        console.log("[CreateFleet] refreshMemberships() terminé", { count: members.length });
-        // Court délai pour que le state useAuth soit commité avant le rendu du Dashboard
+        await refreshMemberships();
         await new Promise((r) => setTimeout(r, 80));
         navigate("/dashboard");
       } catch (error) {
-        console.error(
-          "[CreateFleet] ❌ Erreur lors du rafraîchissement des memberships après création de flotte:",
-          error
-        );
+        console.error("Erreur refreshMemberships après création flotte:", error);
         window.location.href = "/dashboard";
       }
-    },
-    onError: (error) => {
-      console.error("[CreateFleet] onError", { message: error.message, name: error.name });
-      toast({
-        title: "Erreur",
-        description: mapSupabaseErrorToFrench(error.message),
-        variant: "destructive",
-      });
     },
   });
 
@@ -185,21 +68,11 @@ const CreateFleet = () => {
   };
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <DashboardSidebar userRole={role || "organizer"} />
-        <SidebarInset className="flex flex-col flex-1">
-          <DashboardHeader userRole={role || "organizer"} />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
               {/* En-tête */}
               <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
@@ -372,11 +245,7 @@ const CreateFleet = () => {
                   </p>
                 </CardContent>
               </Card>
-            </div>
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    </div>
   );
 };
 

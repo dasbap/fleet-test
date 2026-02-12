@@ -1,7 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
+import { AssignmentService } from '@/services/assignment.service';
+import { AssignmentRepository } from '@/repositories/assignment.repository';
+
+const assignmentRepository = new AssignmentRepository();
+const assignmentService = new AssignmentService(assignmentRepository);
 
 export interface Assignment {
   id: string;
@@ -13,7 +17,6 @@ export interface Assignment {
   is_active: boolean;
   created_by: string;
   created_at: string;
-  // Joined data
   vehicle?: {
     id: string;
     registration: string;
@@ -34,116 +37,32 @@ export interface Driver {
   is_active: boolean;
 }
 
-// Fetch all drivers in a fleet
 export function useFleetDrivers(fleetId?: string) {
   return useQuery({
     queryKey: ['fleet-drivers', fleetId],
-    queryFn: async () => {
-      if (!fleetId) return [];
-
-      const { data, error } = await supabase
-        .from('flotte_adhesions')
-        .select(`
-          user_id,
-          role,
-          is_active,
-          profile:profils!flotte_adhesions_user_id_fkey(user_id, full_name, phone)
-        `)
-        .eq('fleet_id', fleetId)
-        .eq('role', 'driver')
-        .eq('is_active', true);
-
-      if (error) {
-        console.error('Error fetching drivers:', error);
-        throw new Error(error.message);
-      }
-
-      return (data || []).map((d: any) => ({
-        user_id: d.user_id,
-        full_name: d.profile?.full_name || null,
-        phone: d.profile?.phone || null,
-        role: d.role,
-        is_active: d.is_active,
-      })) as Driver[];
-    },
+    queryFn: () => (fleetId ? assignmentService.getFleetDrivers(fleetId) : []),
     enabled: !!fleetId,
   });
 }
 
-// Fetch active assignments
 export function useActiveAssignments(fleetId?: string) {
   return useQuery({
     queryKey: ['active-assignments', fleetId],
-    queryFn: async () => {
-      let query = supabase
-        .from('affectations_vehicules')
-        .select(`
-          *,
-          vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(id, registration, brand, model),
-          driver:profils!affectations_vehicules_driver_user_id_fkey(user_id, full_name)
-        `)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (fleetId) {
-        query = query.eq('fleet_id', fleetId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching assignments:', error);
-        throw new Error(error.message);
-      }
-
-      return data as Assignment[];
-    },
+    queryFn: () => assignmentService.getActiveAssignments(fleetId),
     enabled: !!fleetId,
   });
 }
 
-// Assign vehicle using RPC function
 export function useAssignVehicle() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      fleet_id,
-      vehicle_id,
-      driver_user_id,
-      starts_at,
-    }: {
+    mutationFn: (params: {
       fleet_id: string;
       vehicle_id: string;
       driver_user_id: string;
       starts_at?: string;
-    }) => {
-      const { data, error } = await supabase.rpc('affecter_vehicule', {
-        p_fleet_id: fleet_id,
-        p_vehicle_id: vehicle_id,
-        p_driver_user_id: driver_user_id,
-        p_starts_at: starts_at || new Date().toISOString(),
-      });
-
-      if (error) {
-        // Parse specific errors from the RPC function
-        if (error.message.includes('vehicle_not_found')) {
-          throw new Error('Véhicule non trouvé dans cette flotte');
-        }
-        if (error.message.includes('vehicle_blocked')) {
-          throw new Error('Ce véhicule est actuellement bloqué');
-        }
-        if (error.message.includes('missing_closure_blocks_assignment')) {
-          throw new Error('Une clôture manquante empêche cette affectation');
-        }
-        if (error.message.includes('driver_already_assigned')) {
-          throw new Error('Ce chauffeur a déjà un véhicule affecté');
-        }
-        throw new Error(error.message);
-      }
-
-      return data as string; // Returns assignment ID
-    },
+    }) => assignmentService.assignVehicle(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['active-assignments'] });
@@ -155,7 +74,7 @@ export function useAssignVehicle() {
     },
     onError: (error: Error) => {
       toast({
-        title: 'Erreur d\'affectation',
+        title: "Erreur d'affectation",
         description: mapSupabaseErrorToFrench(error.message),
         variant: 'destructive',
       });
@@ -163,34 +82,17 @@ export function useAssignVehicle() {
   });
 }
 
-// End an assignment (deactivate)
 export function useEndAssignment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (assignmentId: string) => {
-      const { data, error } = await supabase
-        .from('affectations_vehicules')
-        .update({
-          is_active: false,
-          ends_at: new Date().toISOString(),
-        })
-        .eq('id', assignmentId)
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
-    },
+    mutationFn: (assignmentId: string) => assignmentService.endAssignment(assignmentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['active-assignments'] });
       toast({
         title: 'Affectation terminée',
-        description: 'L\'affectation a été clôturée.',
+        description: "L'affectation a été clôturée.",
       });
     },
     onError: (error: Error) => {

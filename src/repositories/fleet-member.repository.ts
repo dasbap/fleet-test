@@ -238,6 +238,25 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
   }
 
   /**
+   * Vérifie si l'utilisateur a une adhésion active pour la flotte (pour checkPendingInvitation).
+   */
+  async findActiveMembershipByUserAndFleet(userId: string, fleetId: string): Promise<{ id: string } | null> {
+    const { data, error } = await supabase
+      .from('flotte_adhesions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('fleet_id', fleetId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error finding membership:', error);
+      throw new Error(error.message);
+    }
+    return data as { id: string } | null;
+  }
+
+  /**
    * Désactive un membre (le retire de l'équipe)
    */
   async deactivateMember(membershipId: string): Promise<void> {

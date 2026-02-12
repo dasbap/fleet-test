@@ -32,7 +32,7 @@ export interface AddMemberData {
  */
 export function useFleetMembers(fleetId?: string) {
   return useQuery<FleetMember[], Error>({
-    queryKey: ["fleet-members", fleetId],
+    queryKey: ['fleet-members', fleetId],
     queryFn: () => {
       if (!fleetId) return [];
       return fleetMemberService.getFleetMembers(fleetId);
@@ -52,7 +52,7 @@ export function useAddFleetMember() {
       await fleetMemberService.addMemberByEmail(fleetId, data.email, data.role);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["fleet-members", variables.fleetId] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-members', variables.fleetId] });
       toast({
         title: "✅ Membre ajouté",
         description: "Le membre a été ajouté à l'équipe avec succès.",
@@ -85,8 +85,7 @@ export function useUpdateMemberRole() {
       await fleetMemberService.updateMemberRole(membershipId, fleetId, userId, role);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["fleet-members", variables.fleetId] });
-      queryClient.invalidateQueries({ queryKey: ["user-fleet"] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-members', variables.fleetId] });
       toast({
         title: "✅ Rôle mis à jour",
         description: "Le rôle du membre a été modifié avec succès.",
@@ -113,7 +112,7 @@ export function useRemoveFleetMember() {
       await fleetMemberService.removeMember(membershipId, fleetId);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["fleet-members", variables.fleetId] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-members', variables.fleetId] });
       toast({
         title: "✅ Membre retiré",
         description: "Le membre a été retiré de l'équipe.",

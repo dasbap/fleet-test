@@ -1,17 +1,25 @@
 /**
- * Tests unitaires pour useFleetMembers, useAddFleetMember, useUpdateMemberRole, useRemoveFleetMember
+ * Tests unitaires pour useFleetMembers, useAddFleetMember, useUpdateMemberRole, useRemoveFleetMember.
+ *
+ * Flux de chaînage Supabase mockée :
+ * - findAll : from().select().order().eq() → eq résout
+ * - ajout : rpc("ajouter_membre_par_email", ...) mocké
+ * - update : from().update().eq().select().single() → single résout
+ * - removeMember : findById (from().select().eq().single()) puis update (from().update().eq().select().single())
+ *
+ * Respect de l'architecture : hooks → services → repositories → Supabase.
+ * Les tests mockent la chaîne Supabase (jamais d'appel direct dans le hook).
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   useFleetMembers,
   useAddFleetMember,
   useUpdateMemberRole,
   useRemoveFleetMember,
 } from "./useFleetMembers";
-import type { ReactNode } from "react";
+import { createQueryClientWrapper } from "@/test/utils";
 
 const fromChain = {
   select: vi.fn().mockReturnThis(),
@@ -20,7 +28,7 @@ const fromChain = {
   update: vi.fn().mockReturnThis(),
   single: vi.fn(),
 };
-const fromMock = vi.fn(() => fromChain);
+const fromMock = vi.fn((_table?: string) => fromChain);
 const rpcMock = vi.fn();
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -38,30 +46,27 @@ vi.mock("@/lib/mapSupabaseError", () => ({
   mapSupabaseErrorToFrench: (msg: string) => msg,
 }));
 
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
-  };
+function resetFromChainForFindAll() {
+  fromChain.select.mockReturnValue(fromChain);
+  fromChain.order.mockReturnValue(fromChain);
+  fromChain.eq.mockReturnValue(fromChain);
+}
+
+function resetFromChainForUpdate() {
+  fromChain.update.mockReturnValue(fromChain);
+  fromChain.eq.mockReturnValue(fromChain);
+  fromChain.select.mockReturnValue(fromChain);
 }
 
 describe("useFleetMembers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    fromChain.select.mockReturnValue(fromChain);
-    fromChain.order.mockReturnValue(fromChain);
-    fromChain.eq.mockReturnValue(fromChain);
+    resetFromChainForFindAll();
   });
 
   it("ne lance pas la requête si fleetId est undefined", async () => {
     const { result } = renderHook(() => useFleetMembers(undefined), {
-      wrapper: createWrapper(),
+      wrapper: createQueryClientWrapper(),
     });
 
     await waitFor(() => {
@@ -87,7 +92,7 @@ describe("useFleetMembers", () => {
     fromChain.eq.mockResolvedValueOnce({ data: members, error: null });
 
     const { result } = renderHook(() => useFleetMembers("fleet-1"), {
-      wrapper: createWrapper(),
+      wrapper: createQueryClientWrapper(),
     });
 
     await waitFor(() => {
@@ -106,7 +111,7 @@ describe("useFleetMembers", () => {
     });
 
     const { result } = renderHook(() => useFleetMembers("fleet-1"), {
-      wrapper: createWrapper(),
+      wrapper: createQueryClientWrapper(),
     });
 
     await waitFor(() => {
@@ -124,7 +129,7 @@ describe("useAddFleetMember", () => {
 
   it("appelle la RPC ajouter_membre_par_email avec les bons paramètres", async () => {
     const { result } = renderHook(() => useAddFleetMember(), {
-      wrapper: createWrapper(),
+      wrapper: createQueryClientWrapper(),
     });
 
     result.current.mutate({
@@ -149,7 +154,7 @@ describe("useAddFleetMember", () => {
     });
 
     const { result } = renderHook(() => useAddFleetMember(), {
-      wrapper: createWrapper(),
+      wrapper: createQueryClientWrapper(),
     });
 
     result.current.mutate({
@@ -172,7 +177,7 @@ describe("useUpdateMemberRole", () => {
 
   it("appelle la RPC creer_ou_mettre_a_jour_adhesion_flotte", async () => {
     const { result } = renderHook(() => useUpdateMemberRole(), {
-      wrapper: createWrapper(),
+      wrapper: createQueryClientWrapper(),
     });
 
     result.current.mutate({
@@ -200,7 +205,7 @@ describe("useUpdateMemberRole", () => {
     });
 
     const { result } = renderHook(() => useUpdateMemberRole(), {
-      wrapper: createWrapper(),
+      wrapper: createQueryClientWrapper(),
     });
 
     result.current.mutate({
@@ -230,17 +235,18 @@ describe("useRemoveFleetMember", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    fromChain.update.mockReturnValue(fromChain);
-    fromChain.eq.mockReturnValue(fromChain);
-    fromChain.select.mockReturnValue(fromChain);
+    resetFromChainForUpdate();
   });
 
   it("met à jour flotte_adhesions avec is_active: false", async () => {
-    // Chaîne update : .update().eq().select().single() ; c'est single() qui doit résoudre
-    fromChain.single.mockResolvedValue({ data: updatedMember, error: null });
+    // removeMember : findById puis update ; chaque appel utilise .single()
+    const memberForFind = { ...updatedMember, is_active: true };
+    fromChain.single
+      .mockResolvedValueOnce({ data: memberForFind, error: null })
+      .mockResolvedValueOnce({ data: updatedMember, error: null });
 
     const { result } = renderHook(() => useRemoveFleetMember(), {
-      wrapper: createWrapper(),
+      wrapper: createQueryClientWrapper(),
     });
 
     result.current.mutate({ membershipId: "m1", fleetId: "fleet-1" });
@@ -254,13 +260,17 @@ describe("useRemoveFleetMember", () => {
   });
 
   it("throw quand l'UPDATE échoue", async () => {
-    fromChain.single.mockResolvedValue({
+    // removeMember appelle findById puis update : 1) findById doit réussir
+    const memberForFindById = { ...updatedMember, is_active: true };
+    fromChain.single.mockResolvedValueOnce({ data: memberForFindById, error: null });
+    // 2) update doit échouer
+    fromChain.single.mockResolvedValueOnce({
       data: null,
       error: { message: "RLS policy violation" },
     });
 
     const { result } = renderHook(() => useRemoveFleetMember(), {
-      wrapper: createWrapper(),
+      wrapper: createQueryClientWrapper(),
     });
 
     result.current.mutate({ membershipId: "m1", fleetId: "fleet-1" });

@@ -183,6 +183,14 @@ export class InvitationRepository implements IRepository<FleetInvitation, Invita
   }
 
   /**
+   * Appelle la RPC accepter_invitation. Retourne la réponse brute pour normalisation côté service.
+   */
+  async acceptInvitationRpc(code: string): Promise<{ data: unknown; error: { message: string } | null }> {
+    const { data, error } = await supabase.rpc('accepter_invitation', { p_code: code });
+    return { data, error: error ? { message: error.message } : null };
+  }
+
+  /**
    * Incrémente le compteur d'utilisation d'une invitation
    */
   async incrementUses(id: string): Promise<void> {

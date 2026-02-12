@@ -1,15 +1,12 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useEnsureProfile } from "@/hooks/useEnsureProfile";
 import { useUserFleets } from "@/hooks/useUserFleets";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import UserFleetsCard from "@/components/profile/UserFleetsCard";
 import MembershipsTable from "@/components/profile/MembershipsTable";
 import ProfileEditForm from "@/components/profile/ProfileEditForm";
+import { PageLoader } from "@/components/dashboard/PageLoader";
 
 const Profile = () => {
   const {
@@ -20,18 +17,10 @@ const Profile = () => {
     refreshMemberships,
     refreshUser,
   } = useAuth();
-  const navigate = useNavigate();
   const { fleets, fleetById, isLoading: isLoadingFleets, error: fleetsError, refresh: refreshFleets } = useUserFleets(memberships);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEnsureProfile(user);
-
-  // Redirection si non authentifié : une fois l'auth résolue, l'absence d'utilisateur envoie vers la page de connexion.
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
 
   // Rafraîchir les adhésions au montage pour avoir les dernières données (ex. après acceptation d'invitation).
   useEffect(() => {
@@ -81,27 +70,13 @@ const Profile = () => {
   }, [user]);
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!user) return null;
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <DashboardSidebar userRole={role || "driver"} />
-        <SidebarInset className="flex flex-col flex-1">
-          <DashboardHeader
-            userRole={role || "driver"}
-            displayName={fullName}
-            initials={initials}
-          />
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
               <ProfileHeader
                 user={user}
                 role={role}
@@ -124,11 +99,7 @@ const Profile = () => {
               {memberships.length > 0 && (
                 <MembershipsTable memberships={memberships} fleetById={fleetById} />
               )}
-            </div>
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    </div>
   );
 };
 
