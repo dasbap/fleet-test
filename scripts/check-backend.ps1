@@ -38,100 +38,123 @@ if (Test-Path "src/integrations/supabase/client.ts") {
 }
 
 # =====================================================
-# 2. VERIFICATION DES FONCTIONS RPC
+# 2. VERIFICATION DES FONCTIONS RPC (noms francais)
 # =====================================================
 
 Write-Host ""
 Write-Host "2. Fonctions RPC..." -ForegroundColor Yellow
 
-# Fonctions RPC utilisees dans le code
+# Fonctions RPC attendues par le backend (noms francais)
 $rpcUsed = @(
-    "assign_vehicle",
-    "close_shift",
-    "accept_invitation",
-    "check_system_health",
-    "repair_orphan_membership"
+    "affecter_vehicule",
+    "fermer_creneau",
+    "accepter_invitation",
+    "verifier_sante_systeme",
+    "reparer_adhesion_orpheline",
+    "creer_flotte_esamba",
+    "creer_ou_mettre_a_jour_adhesion_flotte",
+    "creer_vehicule_esamba",
+    "creer_invitation_esamba",
+    "verifier_esamba_2024",
+    "ajouter_membre_par_email",
+    "assurer_profil_utilisateur",
+    "rechercher_utilisateurs",
+    "calculer_recette_attendue",
+    "generer_alertes_automatiques",
+    "calculer_score_conducteur"
 )
 
-# Fonctions RPC definies dans le schema
+# Scanner tous les fichiers SQL (schema, migrations, rpc-*.sql) pour les definitions
 $rpcDefined = @()
+$sqlFiles = @()
+if (Test-Path "supabase/schema.sql") { $sqlFiles += "supabase/schema.sql" }
+if (Test-Path "supabase/migrations") {
+    $sqlFiles += Get-ChildItem "supabase/migrations/*.sql" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+}
+Get-ChildItem "supabase/rpc-*.sql" -ErrorAction SilentlyContinue | ForEach-Object { $sqlFiles += $_.FullName }
 
-if (Test-Path "supabase/schema.sql") {
-    $schemaContent = Get-Content "supabase/schema.sql" -Raw
-    if ($schemaContent -match "create or replace function assign_vehicle") {
-        $rpcDefined += "assign_vehicle"
+foreach ($sqlFile in $sqlFiles) {
+    $content = Get-Content $sqlFile -Raw -ErrorAction SilentlyContinue
+    if (-not $content) { continue }
+    $contentLower = $content.ToLowerInvariant()
+    foreach ($rpc in $rpcUsed) {
+        if ($rpcDefined -contains $rpc) { continue }
+        $pattern = "create\s+or\s+replace\s+function\s+(?:public\.)?\s*$([regex]::Escape($rpc))\s*\("
+        if ($contentLower -match $pattern) {
+            $rpcDefined += $rpc
+        }
     }
-    if ($schemaContent -match "create or replace function close_shift") {
-        $rpcDefined += "close_shift"
+}
+# RPC de maintenance (optionnelles)
+foreach ($sqlFile in $sqlFiles) {
+    $content = Get-Content $sqlFile -Raw -ErrorAction SilentlyContinue
+    if (-not $content) { continue }
+    $contentLower = $content.ToLowerInvariant()
+    @("check_orphaned_data", "cleanup_orphaned_data") | ForEach-Object {
+        $r = $_
+        if ($rpcDefined -notcontains $r -and $contentLower -match "create\s+or\s+replace\s+function\s+(?:public\.)?\s*$([regex]::Escape($r))\s*\(") {
+            $rpcDefined += $r
+        }
     }
 }
 
-if (Test-Path "supabase/rpc-consistency.sql") {
-    $rpcConsistencyContent = Get-Content "supabase/rpc-consistency.sql" -Raw
-    if ($rpcConsistencyContent -match "create or replace function check_orphaned_data") {
-        $rpcDefined += "check_orphaned_data"
-    }
-    if ($rpcConsistencyContent -match "create or replace function cleanup_orphaned_data") {
-        $rpcDefined += "cleanup_orphaned_data"
-    }
-}
-
-if (Test-Path "supabase/rpc-missing-functions.sql") {
-    $rpcMissingContent = Get-Content "supabase/rpc-missing-functions.sql" -Raw
-    if ($rpcMissingContent -match "create or replace function accept_invitation") {
-        $rpcDefined += "accept_invitation"
-    }
-    if ($rpcMissingContent -match "create or replace function check_system_health") {
-        $rpcDefined += "check_system_health"
-    }
-    if ($rpcMissingContent -match "create or replace function repair_orphan_membership") {
-        $rpcDefined += "repair_orphan_membership"
-    }
-}
-
-Write-Host "   Fonctions RPC utilisees dans le code:" -ForegroundColor Cyan
+Write-Host "   Fonctions RPC attendues (backend):" -ForegroundColor Cyan
 foreach ($rpc in $rpcUsed) {
     if ($rpcDefined -contains $rpc) {
         Write-Host "     OK: $rpc" -ForegroundColor Green
     } else {
-        Write-Host "     ATTENTION: $rpc utilisee mais pas trouvee dans les schemas SQL" -ForegroundColor Yellow
+        Write-Host "     ATTENTION: $rpc attendue mais pas trouvee dans les schemas/migrations SQL" -ForegroundColor Yellow
     }
 }
 
-Write-Host "   Fonctions RPC definies dans les schemas:" -ForegroundColor Cyan
-foreach ($rpc in $rpcDefined) {
+Write-Host "   Fonctions RPC definies dans schemas/migrations:" -ForegroundColor Cyan
+foreach ($rpc in ($rpcDefined | Sort-Object -Unique)) {
     Write-Host "     - $rpc" -ForegroundColor White
 }
 
 # =====================================================
-# 3. VERIFICATION DES TABLES UTILISEES
+# 3. VERIFICATION DES TABLES (noms francais)
 # =====================================================
 
 Write-Host ""
 Write-Host "3. Tables utilisees..." -ForegroundColor Yellow
 
+# Tables attendues par le backend (noms francais, schema actuel)
 $tablesUsed = @(
-    "orgs",
-    "fleets",
-    "profiles",
-    "fleet_memberships",
-    "fleet_invitations",
-    "vehicles",
-    "driver_vehicle_assignments",
-    "driver_shifts",
-    "driver_shift_closures",
+    "organisations",
+    "flottes",
+    "profils",
+    "flotte_adhesions",
+    "flotte_invitations",
+    "vehicules",
+    "affectations_vehicules",
+    "creneaux_conducteurs",
+    "clotures_creneaux",
     "incidents",
-    "maintenance_jobs",
-    "maintenance_evidence",
-    "maintenance_checklists"
+    "travaux_maintenance",
+    "preuves_maintenance",
+    "listes_verification_maintenance",
+    "plans",
+    "paiements",
+    "abonnements",
+    "droits_vehicules",
+    "jetons_qr"
 )
 
 $tablesDefined = @()
+$tableSqlFiles = @()
+if (Test-Path "supabase/schema.sql") { $tableSqlFiles += "supabase/schema.sql" }
+if (Test-Path "supabase/migrations") {
+    $tableSqlFiles += Get-ChildItem "supabase/migrations/*.sql" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+}
 
-if (Test-Path "supabase/schema.sql") {
-    $schemaContent = Get-Content "supabase/schema.sql" -Raw
+foreach ($sqlFile in $tableSqlFiles) {
+    $content = Get-Content $sqlFile -Raw -ErrorAction SilentlyContinue
+    if (-not $content) { continue }
+    $contentLower = $content.ToLowerInvariant()
     foreach ($table in $tablesUsed) {
-        if ($schemaContent -match "create table $table") {
+        if ($tablesDefined -contains $table) { continue }
+        if ($contentLower -match "create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?\s*$([regex]::Escape($table))\s*\(") {
             $tablesDefined += $table
         }
     }
@@ -140,9 +163,9 @@ if (Test-Path "supabase/schema.sql") {
 $missingTables = $tablesUsed | Where-Object { $tablesDefined -notcontains $_ }
 
 if ($missingTables.Count -eq 0) {
-    Write-Host "   OK: Toutes les tables utilisees sont definies dans le schema" -ForegroundColor Green
+    Write-Host "   OK: Toutes les tables attendues sont definies dans le schema/migrations" -ForegroundColor Green
 } else {
-    Write-Host "   ERREUR: Tables manquantes dans le schema:" -ForegroundColor Red
+    Write-Host "   ERREUR: Tables manquantes dans le schema/migrations:" -ForegroundColor Red
     foreach ($table in $missingTables) {
         Write-Host "     - $table" -ForegroundColor Red
     }

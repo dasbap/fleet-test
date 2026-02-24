@@ -345,6 +345,67 @@ alter table abonnements enable row level security;
 alter table droits_vehicules enable row level security;
 alter table jetons_qr enable row level security;
 alter table flotte_invitations enable row level security;
+alter table organisations enable row level security;
+alter table flottes enable row level security;
+alter table plans enable row level security;
+
+-- Politiques restrictives organisations / flottes / flotte_adhesions / preuves_maintenance :
+-- voir migrations 20250223100000 et 20250223110000 pour la source de vérité.
+
+-- ORGANISATIONS
+create policy orgs_select_member on organisations
+  for select to authenticated
+  using (
+    exists (
+      select 1 from flottes f
+      join flotte_adhesions fa on fa.fleet_id = f.id
+      where f.org_id = organisations.id and fa.user_id = auth.uid() and fa.is_active = true
+    )
+  );
+create policy orgs_update_member on organisations
+  for update to authenticated
+  using (
+    exists (
+      select 1 from flottes f
+      join flotte_adhesions fa on fa.fleet_id = f.id
+      where f.org_id = organisations.id and fa.user_id = auth.uid() and fa.is_active = true
+        and fa.role in ('manager', 'organizer')
+    )
+  )
+  with check (true);
+create policy orgs_insert_authenticated on organisations
+  for insert to authenticated with check (true);
+create policy orgs_delete_manager_org on organisations
+  for delete to authenticated
+  using (
+    exists (
+      select 1 from flottes f
+      join flotte_adhesions fa on fa.fleet_id = f.id
+      where f.org_id = organisations.id and fa.user_id = auth.uid() and fa.is_active = true
+        and fa.role in ('manager', 'organizer')
+    )
+  );
+
+-- FLOTTES
+create policy flottes_select_manager_org on flottes
+  for select to authenticated using (has_role(id, 'manager') or has_role(id, 'organizer'));
+create policy flottes_insert_manager_org_org on flottes
+  for insert to authenticated
+  with check (
+    exists (
+      select 1 from flotte_adhesions fa
+      join flottes f on f.id = fa.fleet_id
+      where f.org_id = flottes.org_id and fa.user_id = auth.uid() and fa.is_active = true
+        and fa.role in ('manager', 'organizer')
+    )
+    or not exists (select 1 from flottes f2 where f2.org_id = flottes.org_id)
+  );
+create policy flottes_update_manager_org on flottes
+  for update to authenticated
+  using (has_role(id, 'manager') or has_role(id, 'organizer'))
+  with check (has_role(id, 'manager') or has_role(id, 'organizer'));
+create policy flottes_delete_manager_org on flottes
+  for delete to authenticated using (has_role(id, 'manager') or has_role(id, 'organizer'));
 
 -- FLOTTE INVITATIONS policies (allow public read for validation during signup)
 create policy invitations_lecture_publique on flotte_invitations
@@ -459,14 +520,30 @@ create policy travaux_lecture_mgr_org_mec on travaux_maintenance
 for select using (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer') or has_role(fleet_id,'mechanic'));
 
 create policy preuves_insertion_mec on preuves_maintenance
-for insert with check (true); -- restreint par RLS join à durcir en v2
+for insert to authenticated
+with check (
+  exists (
+    select 1 from travaux_maintenance t
+    where t.id = job_id and has_role(t.fleet_id, 'mechanic')
+  )
+);
 
--- FLOTTE ADHESIONS policies
-create policy adhesions_lecture_soi on flotte_adhesions
-for select using (user_id = auth.uid());
+-- FLOTTE ADHESIONS policies (lecture / écriture restrictive)
+create policy memberships_select_self_or_manager_org on flotte_adhesions
+for select to authenticated
+using (user_id = auth.uid() or has_role(fleet_id, 'manager') or has_role(fleet_id, 'organizer'));
+create policy memberships_insert_manager_org on flotte_adhesions
+for insert to authenticated with check (has_role(fleet_id, 'manager') or has_role(fleet_id, 'organizer'));
+create policy memberships_update_manager_org on flotte_adhesions
+for update to authenticated
+using (has_role(fleet_id, 'manager') or has_role(fleet_id, 'organizer'))
+with check (has_role(fleet_id, 'manager') or has_role(fleet_id, 'organizer'));
+create policy memberships_delete_manager_org on flotte_adhesions
+for delete to authenticated using (has_role(fleet_id, 'manager') or has_role(fleet_id, 'organizer'));
 
-create policy adhesions_lecture_manager_org on flotte_adhesions
-for select using (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer'));
+-- PLANS (catalogue lecture seule)
+create policy plans_select_authenticated on plans
+for select to authenticated using (true);
 
 -- =====================================================
 -- TRIGGERS FOR AUTO-PROFILE CREATION
