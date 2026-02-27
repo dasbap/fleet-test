@@ -32,8 +32,8 @@ Ce document détaille la création, la gestion et le contrôle des membres d'une
 -- 1. Récupérer l’ID utilisateur par email
 SELECT id FROM auth.users WHERE email = 'utilisateur@example.com';
 
--- 2. Ajouter le membre à la flotte
-SELECT public.upsert_fleet_membership(
+-- 2. Ajouter le membre à la flotte (table française flotte_adhesions)
+SELECT public.creer_ou_mettre_a_jour_adhesion_flotte(
   'fleet_id_ici'::uuid,
   'user_id_ici'::uuid,
   'manager'::role_type,  -- organizer, manager, driver, mechanic
@@ -81,7 +81,7 @@ Via interface :
 
 Via SQL :
 ```sql
-SELECT public.upsert_fleet_membership(
+SELECT public.creer_ou_mettre_a_jour_adhesion_flotte(
   'fleet_id_ici'::uuid,
   'user_id_ici'::uuid,
   'nouveau_role'::role_type,
@@ -97,11 +97,11 @@ Via interface :
 
 Via SQL :
 ```sql
-UPDATE fleet_memberships
+UPDATE flotte_adhesions
 SET is_active = false
 WHERE fleet_id = 'fleet_id_ici'::uuid AND user_id = 'user_id_ici'::uuid;
 
-SELECT public.upsert_fleet_membership(
+SELECT public.creer_ou_mettre_a_jour_adhesion_flotte(
   'fleet_id_ici'::uuid,
   'user_id_ici'::uuid,
   'driver'::role_type,
@@ -117,26 +117,26 @@ Via interface :
 Via SQL :
 ```sql
 SELECT 
-  fm.id,
-  fm.role,
-  fm.is_active,
+  fa.id,
+  fa.role,
+  fa.is_active,
   p.full_name,
   p.phone,
   u.email,
-  fm.created_at
-FROM fleet_memberships fm
-JOIN fleets f ON f.id = fm.fleet_id
-LEFT JOIN profiles p ON p.user_id = fm.user_id
-LEFT JOIN auth.users u ON u.id = fm.user_id
+  fa.created_at
+FROM flotte_adhesions fa
+JOIN flottes f ON f.id = fa.fleet_id
+LEFT JOIN profils p ON p.user_id = fa.user_id
+LEFT JOIN auth.users u ON u.id = fa.user_id
 WHERE f.name = 'Nom de la flotte'
-  AND fm.is_active = true
-ORDER BY fm.created_at DESC;
+  AND fa.is_active = true
+ORDER BY fa.created_at DESC;
 ```
 
 ## ⚠️ Rappels importants
 
 - Un utilisateur peut avoir plusieurs rôles, mais pas deux fois le même rôle dans une flotte.
-- Utiliser `upsert_fleet_membership` pour toute modification des rôles ou statut.
+- Utiliser `creer_ou_mettre_a_jour_adhesion_flotte` pour toute modification des rôles ou statut.
 - Les droits sont gérés via RLS (Row Level Security) : seuls organizer et manager peuvent ajouter des membres.
 - La fonction `add_member_by_email` valide automatiquement les droits.
 - Les emails ne sont pas exposés publiquement.
@@ -144,7 +144,7 @@ ORDER BY fm.created_at DESC;
 ## 🛠️ Fonctions RPC principales
 
 - `add_member_by_email(p_fleet_id, p_email, p_role)` : ajoute un membre via son email. Permissions : organizer/manager. Retourne l’UUID du nouveau membership.
-- `upsert_fleet_membership(p_fleet_id, p_user_id, p_role, p_is_active)` : insertion ou mise à jour atomique d’un membre (gère toutes les contraintes). Retourne l’UUID.
+- `creer_ou_mettre_a_jour_adhesion_flotte(p_fleet_id, p_user_id, p_role, p_is_active)` : insertion ou mise à jour atomique d’un membre (gère toutes les contraintes) sur `flotte_adhesions`. Retourne l’UUID.
 
 ## 📚 Ressources
 

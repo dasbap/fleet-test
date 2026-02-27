@@ -21,6 +21,7 @@
     "init:env": "powershell -ExecutionPolicy Bypass -File scripts/init-env.ps1",
     "check:supabase": "powershell -ExecutionPolicy Bypass -File scripts/check-supabase.ps1",
     "verify:connection": "node scripts/verify-connection.js",
+    "verify:supabase": "node scripts/verify-supabase-health.js",
     "check:backend": "powershell -ExecutionPolicy Bypass -File scripts/check-backend.ps1",
     "verify:migration": "powershell -ExecutionPolicy Bypass -File scripts/verify-migration-status.ps1",
     "install:supabase-cli": "powershell -ExecutionPolicy Bypass -File scripts/install-supabase-cli.ps1",

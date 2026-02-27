@@ -19,11 +19,24 @@ cd smart-fleet-africa
 # Installer les dépendances
 npm i
 
+# Configuration Supabase (local) : créer .env.local puis remplir URL et clé anon
+npm run init:env
+# Éditer .env.local avec vos valeurs (Settings → API sur app.supabase.com)
+npm run check:supabase
+
 # Lancer le serveur de développement
 npm run dev
 ```
 
 L’application est disponible sur `http://localhost:8080`.
+
+## Comptes démo
+
+Identifiants pour les utilisateurs de démo créés par `supabase/create-demo-organization-complete.sql` : [DEMO-CREDENTIALS.md](DEMO-CREDENTIALS.md) (mot de passe commun `Demo2025!`).
+
+## Vérification de la connexion base de données
+
+Procédure détaillée (env, check-supabase, verify:connection, check:backend, scripts SQL) : [docs/verification-connexion-bdd.md](docs/verification-connexion-bdd.md).
 
 ## Technologies
 
@@ -39,6 +52,10 @@ L’application est disponible sur `http://localhost:8080`.
 - `npm run dev` — serveur de développement
 - `npm run build` — build de production
 - `npm run preview` — prévisualisation du build
+- `npm run init:env` — crée `.env.local` depuis `.env.example` (à faire une fois)
+- `npm run check:supabase` — vérifie la présence et la cohérence de la config Supabase (`.env.local`, client)
+- `npm run verify:connection` — teste la connexion API Supabase (table `organisations`)
+- `npm run check:backend` — vérifie tables, RPC et hooks backend
 - `npm run lint` — lint ESLint
 - `npm run test` — tests unitaires
 - `npm run test:integration` — tests d’intégration

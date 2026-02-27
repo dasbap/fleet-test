@@ -16,15 +16,31 @@ Vérifier que toutes les données principales ESAMBA sont créées, en particuli
 
 ### Étape 1 : Exécuter le script de vérification
 
-1. **Ouvrez Supabase SQL Editor**
+> **Attention — erreur fréquente** : Si vous voyez `syntax error at or near "supabase"`, c’est que le **chemin** du fichier (ex. `supabase/verify-esamba-data-complete.sql`) a été collé dans l’éditeur SQL. Il faut coller **uniquement le contenu** du fichier .sql (les lignes qui commencent par `--` et `SELECT`), pas son nom ni son chemin.
+
+**Pour corriger tout de suite :**
+
+1. Dans l’explorateur de Cursor, ouvrez `smart-fleet-africa/supabase/verify-esamba-data-complete.sql`.
+2. **Ctrl+A** (tout sélectionner) puis **Ctrl+C** (copier).
+3. Dans Supabase → SQL Editor, supprimez tout ce qui est affiché (y compris `supabase/verify-esamba-data-complete.sql`).
+4. **Ctrl+V** pour coller le contenu copié (vous devez voir des lignes en `--` et `SELECT ...`).
+5. Cliquez sur **Run**.
+
+Le contenu correct commence par `-- =====================================================` et contient de nombreuses requêtes `SELECT`. Si vous ne voyez qu’une seule ligne comme `supabase/verify-esamba-data-complete.sql`, c’est le chemin qui a été collé : refaites la copie depuis le fichier `.sql`.
+
+---
+
+1. **Ouvrez Supabase SQL Editor**   
    - Allez sur https://app.supabase.com
    - Sélectionnez votre projet
    - Cliquez sur "SQL Editor"
 
-2. **Exécutez le script de vérification**
-   - Ouvrez le fichier `supabase/verify-esamba-data-complete.sql`
-   - Copiez-collez tout le contenu dans l'éditeur SQL
-   - Cliquez sur "Run" ou appuyez sur F5
+2. **Exécutez le script `supabase/verify-esamba-data-complete.sql`**
+   - Ouvrez le fichier `supabase/verify-esamba-data-complete.sql` dans votre éditeur (VS Code / Cursor).
+   - Copiez **tout le contenu SQL** du fichier (Ctrl+A, Ctrl+C).
+   - Collez-le dans Supabase SQL Editor (remplacez tout le texte présent). **Ne collez pas le chemin du fichier** — uniquement le contenu.
+   - Cliquez sur Run (ou F5).
+   - Si le fichier n'existe pas ou que le contenu semble corrompu, récupérez une version correcte ou demandez à un collègue.
 
 3. **Analysez les résultats**
    - Le script affiche un rapport détaillé pour chaque élément
@@ -45,7 +61,7 @@ SELECT
   COUNT(*) as nombre,
   STRING_AGG(id::text, ', ') as ids,
   STRING_AGG(name, ', ') as noms
-FROM fleets
+FROM flottes
 WHERE name = 'Flotte ESAMBA';
 ```
 
@@ -120,6 +136,17 @@ vehicule_count: 1
 invitation_count: 1
 statut_global: ✅ DONNÉES PRINCIPALES CRÉÉES
 ```
+Le `vehicule_count` correspond au moins au véhicule ESAMBA-001 ; la présence d’autres véhicules (ex. ESAMBA-002, ESAMBA-003) est compatible avec les résultats attendus.
+
+### Vérification automatisée
+
+Vous pouvez exécuter une vérification reproductible depuis la racine du projet (avec `.env.local` configuré) :
+
+```bash
+node scripts/verify-esamba-expected.js
+```
+
+Le script appelle la RPC `verifier_esamba_2024()` et vérifie les **4 éléments de données** : Organisation ESAMBA, Flotte ESAMBA, Véhicule ESAMBA-001, Invitation ESAMBA-2024. Le 5e critère (Membership Organizer) dépend d’un utilisateur connecté ; il n’est pas requis pour le succès du script et est vérifiable sur la page Paramètres. Code de sortie : 0 si tous les critères données sont présents, 1 sinon (utilisable en CI ou après seed).
 
 ### Dans l'application
 
@@ -140,10 +167,10 @@ SELECT
   f.collection_policy,
   o.name as organisation,
   f.created_at,
-  (SELECT COUNT(*) FROM vehicles v WHERE v.fleet_id = f.id) as vehicules,
-  (SELECT COUNT(*) FROM fleet_invitations fi WHERE fi.fleet_id = f.id) as invitations
-FROM fleets f
-LEFT JOIN orgs o ON o.id = f.org_id
+  (SELECT COUNT(*) FROM vehicules v WHERE v.fleet_id = f.id) as vehicules,
+  (SELECT COUNT(*) FROM flotte_invitations fi WHERE fi.fleet_id = f.id) as invitations
+FROM flottes f
+LEFT JOIN organisations o ON o.id = f.org_id
 WHERE f.name = 'Flotte ESAMBA';
 ```
 
@@ -154,22 +181,22 @@ WHERE f.name = 'Flotte ESAMBA';
 SELECT 
   'Organisation' as type,
   o.name as nom
-FROM fleets f
-JOIN orgs o ON o.id = f.org_id
+FROM flottes f
+JOIN organisations o ON o.id = f.org_id
 WHERE f.name = 'Flotte ESAMBA'
 UNION ALL
 SELECT 
   'Véhicule',
   v.registration
-FROM fleets f
-JOIN vehicles v ON v.fleet_id = f.id
+FROM flottes f
+JOIN vehicules v ON v.fleet_id = f.id
 WHERE f.name = 'Flotte ESAMBA'
 UNION ALL
 SELECT 
   'Invitation',
   fi.code
-FROM fleets f
-JOIN fleet_invitations fi ON fi.fleet_id = f.id
+FROM flottes f
+JOIN flotte_invitations fi ON fi.fleet_id = f.id
 WHERE f.name = 'Flotte ESAMBA';
 ```
 
@@ -179,7 +206,7 @@ WHERE f.name = 'Flotte ESAMBA';
 
 1. **Vérifiez qu'elle existe dans la base**
    ```sql
-   SELECT * FROM fleets WHERE name = 'Flotte ESAMBA';
+   SELECT * FROM flottes WHERE name = 'Flotte ESAMBA';
    ```
    Si aucun résultat, exécutez le script de création :
    ```sql
@@ -189,14 +216,14 @@ WHERE f.name = 'Flotte ESAMBA';
 2. **Vérifiez les politiques RLS**
    ```sql
    SELECT * FROM pg_policies 
-   WHERE tablename = 'fleets';
+   WHERE tablename = 'flottes';
    ```
    Assurez-vous que les politiques permettent la lecture.
 
 3. **Vérifiez dans l'application**
    - Ouvrez la console du navigateur (F12)
    - Regardez s'il y a des erreurs
-   - Vérifiez que la fonction `check_esamba_2024()` fonctionne
+   - Vérifiez que la fonction `verifier_esamba_2024()` fonctionne
 
 ### Si certains éléments manquent
 
@@ -227,25 +254,25 @@ Pour un test complet, exécutez cette requête qui vérifie tout :
 ```sql
 SELECT 
   'TEST FINAL' as test,
-  (SELECT COUNT(*) > 0 FROM orgs WHERE name = 'Organisation ESAMBA') as org_ok,
-  (SELECT COUNT(*) > 0 FROM fleets WHERE name = 'Flotte ESAMBA') as flotte_ok,
-  (SELECT COUNT(*) > 0 FROM vehicles v
-   JOIN fleets f ON f.id = v.fleet_id
+  (SELECT COUNT(*) > 0 FROM organisations WHERE name = 'Organisation ESAMBA') as org_ok,
+  (SELECT COUNT(*) > 0 FROM flottes WHERE name = 'Flotte ESAMBA') as flotte_ok,
+  (SELECT COUNT(*) > 0 FROM vehicules v
+   JOIN flottes f ON f.id = v.fleet_id
    WHERE f.name = 'Flotte ESAMBA' 
      AND v.registration = 'ESAMBA-001') as vehicule_ok,
-  (SELECT COUNT(*) > 0 FROM fleet_invitations fi
-   JOIN fleets f ON f.id = fi.fleet_id
+  (SELECT COUNT(*) > 0 FROM flotte_invitations fi
+   JOIN flottes f ON f.id = fi.fleet_id
    WHERE f.name = 'Flotte ESAMBA' 
      AND fi.code = 'ESAMBA-2024') as invitation_ok,
   CASE 
-    WHEN (SELECT COUNT(*) > 0 FROM orgs WHERE name = 'Organisation ESAMBA')
-     AND (SELECT COUNT(*) > 0 FROM fleets WHERE name = 'Flotte ESAMBA')
-     AND (SELECT COUNT(*) > 0 FROM vehicles v
-          JOIN fleets f ON f.id = v.fleet_id
+    WHEN (SELECT COUNT(*) > 0 FROM organisations WHERE name = 'Organisation ESAMBA')
+     AND (SELECT COUNT(*) > 0 FROM flottes WHERE name = 'Flotte ESAMBA')
+     AND (SELECT COUNT(*) > 0 FROM vehicules v
+          JOIN flottes f ON f.id = v.fleet_id
           WHERE f.name = 'Flotte ESAMBA' 
             AND v.registration = 'ESAMBA-001')
-     AND (SELECT COUNT(*) > 0 FROM fleet_invitations fi
-          JOIN fleets f ON f.id = fi.fleet_id
+     AND (SELECT COUNT(*) > 0 FROM flotte_invitations fi
+          JOIN flottes f ON f.id = fi.fleet_id
           WHERE f.name = 'Flotte ESAMBA' 
             AND fi.code = 'ESAMBA-2024')
     THEN '✅ TOUT EST OK'

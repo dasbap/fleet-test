@@ -8,6 +8,10 @@ import { FleetMemberRepository } from '@/repositories/fleet-member.repository';
 const fleetMemberRepository = new FleetMemberRepository();
 const fleetMemberService = new FleetMemberService(fleetMemberRepository);
 
+const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV === true;
+const devLog = (...args: unknown[]) => { if (isDev) console.log(...args); };
+const devWarn = (...args: unknown[]) => { if (isDev) console.warn(...args); };
+
 // Définition du type de rôle applicatif
 export type AppRole = 'organizer' | 'manager' | 'driver' | 'mechanic';
 
@@ -44,13 +48,13 @@ export function useAuth(): UserWithRole {
     const pendingCode = await checkPendingInvitation();
     if (pendingCode) {
       // Logging pour debug (ok en dev)
-      console.log('Traitement de l’invitation en attente :', pendingCode);
+      devLog('Traitement de l’invitation en attente :', pendingCode);
 
       const result = await acceptInvitation(pendingCode);
       if (result.ok) {
-        console.log('Invitation acceptée avec succès :', result);
+        devLog('Invitation acceptée avec succès :', result);
       } else {
-        console.warn("Échec de l’acceptation de l’invitation :", result.error);
+        devWarn("Échec de l’acceptation de l’invitation :", result.error);
       }
     }
   };
@@ -60,7 +64,7 @@ export function useAuth(): UserWithRole {
     try {
       await processPendingInvitation();
 
-      console.log("🔄 Récupération des memberships pour l'utilisateur:", userId);
+      devLog("🔄 Récupération des memberships pour l'utilisateur:", userId);
 
       const list = await fleetMemberService.getActiveMembershipsForUser(userId);
 
@@ -71,10 +75,10 @@ export function useAuth(): UserWithRole {
         const userRoles = list.map((m) => m.role as AppRole);
         const highestRole = roleHierarchy.find((r) => userRoles.includes(r)) || 'driver';
         setRole(highestRole);
-        console.log("✅ Memberships mis à jour:", { count: list.length, role: highestRole, fleetIds: list.map((m) => m.fleet_id) });
+        devLog("✅ Memberships mis à jour:", { count: list.length, role: highestRole, fleetIds: list.map((m) => m.fleet_id) });
         return membershipsList;
       } else {
-        console.log("ℹ️ Aucun membership actif trouvé");
+        devLog("ℹ️ Aucun membership actif trouvé");
         setRole(null);
         setMemberships([]);
         return [];
@@ -141,11 +145,11 @@ export function useAuth(): UserWithRole {
   // Trace des changements memberships / userFleetId pour diagnostic création de flotte
   useEffect(() => {
     if (memberships.length === 0) {
-      console.log("[useAuth] userFleetId dérivé (aucun membership)", { userFleetId: null });
+      devLog("[useAuth] userFleetId dérivé (aucun membership)", { userFleetId: null });
       return;
     }
     const effectiveFleetId = memberships[0].fleet_id;
-    console.log("[useAuth] userFleetId dérivé (memberships mis à jour)", {
+    devLog("[useAuth] userFleetId dérivé (memberships mis à jour)", {
       userFleetId: effectiveFleetId,
       count: memberships.length,
       fleetIds: memberships.map((m) => m.fleet_id),
@@ -154,13 +158,13 @@ export function useAuth(): UserWithRole {
 
   // Permet de rafraîchir les memberships. Retourne les memberships récupérés pour synchronisation (ex. après création de flotte).
   const refreshMemberships = useCallback(async (): Promise<FleetMembership[]> => {
-    console.log("[useAuth] refreshMemberships appelé", { userId: user?.id ?? null });
+    devLog("[useAuth] refreshMemberships appelé", { userId: user?.id ?? null });
     if (!user) {
-      console.warn("[useAuth] refreshMemberships ignoré (pas d'utilisateur)");
+      devWarn("[useAuth] refreshMemberships ignoré (pas d'utilisateur)");
       return [];
     }
     const list = await fetchMemberships(user.id);
-    console.log("[useAuth] refreshMemberships terminé", { count: list.length });
+    devLog("[useAuth] refreshMemberships terminé", { count: list.length });
     return list;
   }, [user, fetchMemberships]);
 

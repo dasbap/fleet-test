@@ -50,6 +50,15 @@ const Invitations = () => {
   // L'authentification est gérée par ProtectedRoute. Redirection des rôles non autorisés via Navigate ci-dessous.
 
   const copyToClipboard = async (code: string) => {
+    if (!navigator.clipboard) {
+      toast({
+        title: "Fonction non supportée",
+        description: "La copie dans le presse-papiers n'est pas supportée par ce navigateur.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(code);
       setCopiedCode(code);
@@ -70,13 +79,26 @@ const Invitations = () => {
   const handleDelete = async () => {
     if (!invitationToDelete || !userFleetId) return;
 
-    await deleteInvitation.mutateAsync({
-      invitationId: invitationToDelete,
-      fleetId: userFleetId,
-    });
+    try {
+      await deleteInvitation.mutateAsync({
+        invitationId: invitationToDelete,
+        fleetId: userFleetId,
+      });
 
-    setDeleteDialogOpen(false);
-    setInvitationToDelete(null);
+      toast({
+        title: "Invitation supprimée",
+        description: "L'invitation a été supprimée avec succès.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'invitation. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setInvitationToDelete(null);
+    }
   };
 
   const getInvitationStatus = (invitation: {

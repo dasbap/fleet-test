@@ -3,7 +3,7 @@
 # Smart Fleet Africa
 # =====================================================
 # Ce script vérifie que :
-# 1. La fonction RPC check_esamba_2024 existe
+# 1. La fonction RPC verifier_esamba_2024 existe
 # 2. Toutes les données ESAMBA sont créées
 # 3. La vérification fonctionne correctement
 # =====================================================
@@ -47,7 +47,7 @@ Write-Host ""
 
 Write-Host "3. TESTER LA FONCTION RPC" -ForegroundColor White
 Write-Host "   Dans SQL Editor, executez:" -ForegroundColor Gray
-Write-Host "   SELECT * FROM check_esamba_2024();" -ForegroundColor Cyan
+Write-Host "   SELECT * FROM verifier_esamba_2024();" -ForegroundColor Cyan
 Write-Host "   Vous devriez voir 5 colonnes booleennes" -ForegroundColor Gray
 Write-Host ""
 
@@ -79,16 +79,16 @@ Write-Host ""
 Write-Host "ASTUCE: Vous pouvez aussi tester directement dans SQL Editor:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "   -- Verifier les donnees ESAMBA" -ForegroundColor Gray
-Write-Host "   SELECT * FROM check_esamba_2024();" -ForegroundColor Cyan
+Write-Host "   SELECT * FROM verifier_esamba_2024();" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "   -- Verifier manuellement chaque element" -ForegroundColor Gray
-Write-Host "   SELECT COUNT(*) FROM orgs WHERE name = 'Organisation ESAMBA';" -ForegroundColor Cyan
-Write-Host "   SELECT COUNT(*) FROM fleets WHERE name = 'Flotte ESAMBA';" -ForegroundColor Cyan
-Write-Host "   SELECT COUNT(*) FROM vehicles v" -ForegroundColor Cyan
-Write-Host "     JOIN fleets f ON f.id = v.fleet_id" -ForegroundColor Cyan
+Write-Host "   SELECT COUNT(*) FROM organisations WHERE name = 'Organisation ESAMBA';" -ForegroundColor Cyan
+Write-Host "   SELECT COUNT(*) FROM flottes WHERE name = 'Flotte ESAMBA';" -ForegroundColor Cyan
+Write-Host "   SELECT COUNT(*) FROM vehicules v" -ForegroundColor Cyan
+Write-Host "     JOIN flottes f ON f.id = v.fleet_id" -ForegroundColor Cyan
 Write-Host "     WHERE f.name = 'Flotte ESAMBA' AND v.registration = 'ESAMBA-001';" -ForegroundColor Cyan
-Write-Host "   SELECT COUNT(*) FROM fleet_invitations fi" -ForegroundColor Cyan
-Write-Host "     JOIN fleets f ON f.id = fi.fleet_id" -ForegroundColor Cyan
+Write-Host "   SELECT COUNT(*) FROM flotte_invitations fi" -ForegroundColor Cyan
+Write-Host "     JOIN flottes f ON f.id = fi.fleet_id" -ForegroundColor Cyan
 Write-Host "     WHERE f.name = 'Flotte ESAMBA' AND fi.code = 'ESAMBA-2024';" -ForegroundColor Cyan
 Write-Host ""
 

@@ -6,7 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Zap, ArrowLeft, Mail, Lock, User, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { signIn, signUp, useAuth } from "@/hooks/useAuth";
+import { mapSupabaseErrorToFrench } from "@/lib/mapSupabaseError";
 import { InvitationCodeInput } from "@/components/auth/InvitationCodeInput";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -15,17 +24,30 @@ const Auth = () => {
   const { user, isLoading: authLoading } = useAuth();
   const [isSignup, setIsSignup] = useState(searchParams.get("mode") === "signup");
   const [isLoading, setIsLoading] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isRecovery, setIsRecovery] = useState(false);
+  const [recoveryPassword, setRecoveryPassword] = useState("");
+  const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState("");
   const [invitationFleetId, setInvitationFleetId] = useState<string | null>(null);
   const [invitationFleetName, setInvitationFleetName] = useState<string | null>(null);
   const [invitationCode, setInvitationCode] = useState<string | null>(null);
   const [hasUnverifiedCode, setHasUnverifiedCode] = useState(false);
-  
+  const [showDemoCredentials, setShowDemoCredentials] = useState(false);
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     fullName: "",
     organization: "",
   });
+
+  // Détecter le retour depuis le lien de réinitialisation (hash type=recovery)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes("type=recovery")) {
+      setIsRecovery(true);
+    }
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -34,9 +56,80 @@ const Auth = () => {
     }
   }, [user, authLoading, navigate]);
 
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = formData.email.trim();
+    if (!email) {
+      toast({ title: "Email requis", description: "Saisissez votre adresse email.", variant: "destructive" });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+      if (error) {
+        toast({
+          title: "Erreur",
+          description: error.message === "Email not confirmed" ? "Cet email n'est pas encore confirmé." : error.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      toast({
+        title: "Email envoyé",
+        description: "Si un compte existe pour cet email, vous recevrez un lien pour réinitialiser votre mot de passe. Vérifiez aussi les spams.",
+      });
+      setIsForgotPassword(false);
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'envoyer l'email.", variant: "destructive" });
+    }
+    setIsLoading(false);
+  };
+
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (recoveryPassword.length < 6) {
+      toast({ title: "Mot de passe trop court", description: "Utilisez au moins 6 caractères.", variant: "destructive" });
+      return;
+    }
+    if (recoveryPassword !== recoveryPasswordConfirm) {
+      toast({ title: "Les mots de passe ne correspondent pas", variant: "destructive" });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: recoveryPassword });
+      if (error) {
+        toast({ title: "Erreur", description: error.message, variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
+      toast({ title: "Mot de passe mis à jour", description: "Vous pouvez vous connecter avec votre nouveau mot de passe." });
+      setRecoveryPassword("");
+      setRecoveryPasswordConfirm("");
+      setIsRecovery(false);
+      window.history.replaceState(null, "", window.location.pathname);
+      navigate("/dashboard");
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de mettre à jour le mot de passe.", variant: "destructive" });
+    }
+    setIsLoading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (isRecovery) {
+      handleRecoverySubmit(e);
+      return;
+    }
+    if (isForgotPassword) {
+      handleForgotPasswordSubmit(e);
+      return;
+    }
+
     // Prevent submission if there's an unverified invitation code
     if (isSignup && hasUnverifiedCode) {
       toast({
@@ -46,7 +139,7 @@ const Auth = () => {
       });
       return;
     }
-    
+
     setIsLoading(true);
 
     try {
@@ -78,11 +171,13 @@ const Auth = () => {
       } else {
         const { error } = await signIn(formData.email, formData.password);
         if (error) {
+          const description =
+            error.message === "Invalid login credentials"
+              ? "Email ou mot de passe incorrect"
+              : mapSupabaseErrorToFrench(error.message);
           toast({
             title: "Erreur de connexion",
-            description: error.message === "Invalid login credentials"
-              ? "Email ou mot de passe incorrect"
-              : error.message,
+            description,
             variant: "destructive",
           });
           setIsLoading(false);
@@ -128,16 +223,111 @@ const Auth = () => {
 
           {/* Header */}
           <h1 className="text-2xl md:text-3xl font-heading font-bold mb-2">
-            {isSignup ? "Créer un compte" : "Bon retour!"}
+            {isRecovery
+              ? "Nouveau mot de passe"
+              : isForgotPassword
+                ? "Mot de passe oublié"
+                : isSignup
+                  ? "Créer un compte"
+                  : "Bon retour!"}
           </h1>
           <p className="text-muted-foreground mb-8">
-            {isSignup
-              ? "Commencez à gérer votre flotte intelligemment"
-              : "Connectez-vous pour accéder à votre tableau de bord"}
+            {isRecovery
+              ? "Choisissez un nouveau mot de passe pour votre compte"
+              : isForgotPassword
+                ? "Saisissez votre email pour recevoir un lien de réinitialisation"
+                : isSignup
+                  ? "Commencez à gérer votre flotte intelligemment"
+                  : "Connectez-vous pour accéder à votre tableau de bord"}
           </p>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Formulaire récupération (nouveau mot de passe après clic sur le lien email) */}
+            {isRecovery && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="recoveryPassword">Nouveau mot de passe</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="recoveryPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      className="pl-11"
+                      value={recoveryPassword}
+                      onChange={(e) => setRecoveryPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="recoveryPasswordConfirm">Confirmer le mot de passe</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="recoveryPasswordConfirm"
+                      type="password"
+                      placeholder="••••••••"
+                      className="pl-11"
+                      value={recoveryPasswordConfirm}
+                      onChange={(e) => setRecoveryPasswordConfirm(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Enregistrement..." : "Définir le mot de passe"}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRecovery(false);
+                    window.history.replaceState(null, "", window.location.pathname);
+                  }}
+                  className="w-full text-sm text-muted-foreground hover:text-primary"
+                >
+                  Retour à la connexion
+                </button>
+              </>
+            )}
+
+            {/* Formulaire mot de passe oublié (envoi du lien par email) */}
+            {!isRecovery && isForgotPassword && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="forgotEmail">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="forgotEmail"
+                      type="email"
+                      placeholder="vous@exemple.com"
+                      className="pl-11"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Envoi..." : "Envoyer le lien de réinitialisation"}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPassword(false)}
+                  className="w-full text-sm text-muted-foreground hover:text-primary"
+                >
+                  Retour à la connexion
+                </button>
+              </>
+            )}
+
+            {/* Formulaire connexion / inscription */}
+            {!isRecovery && !isForgotPassword && (
+              <>
             {isSignup && (
               <>
                 <div className="space-y-2">
@@ -215,12 +405,13 @@ const Auth = () => {
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Mot de passe</Label>
                 {!isSignup && (
-                  <a
-                    href="#"
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPassword(true)}
                     className="text-sm text-primary hover:underline"
                   >
                     Mot de passe oublié?
-                  </a>
+                  </button>
                 )}
               </div>
               <div className="relative">
@@ -246,19 +437,35 @@ const Auth = () => {
                 ? "Créer mon compte"
                 : "Se connecter"}
             </Button>
+              </>
+            )}
           </form>
 
-          {/* Toggle */}
-          <p className="text-center text-muted-foreground mt-6">
-            {isSignup ? "Déjà un compte?" : "Pas encore de compte?"}{" "}
-            <button
-              type="button"
-              onClick={() => setIsSignup(!isSignup)}
-              className="text-primary hover:underline font-medium"
-            >
-              {isSignup ? "Se connecter" : "S'inscrire"}
-            </button>
-          </p>
+          {/* Toggle (masqué en mode récupération ou mot de passe oublié) */}
+          {!isRecovery && !isForgotPassword && (
+            <>
+              <p className="text-center text-muted-foreground mt-6">
+                {isSignup ? "Déjà un compte?" : "Pas encore de compte?"}{" "}
+                <button
+                  type="button"
+                  onClick={() => setIsSignup(!isSignup)}
+                  className="text-primary hover:underline font-medium"
+                >
+                  {isSignup ? "Se connecter" : "S'inscrire"}
+                </button>
+              </p>
+
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowDemoCredentials(true)}
+                  className="text-xs text-muted-foreground hover:text-primary underline"
+                >
+                  Voir les identifiants démo
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -293,6 +500,63 @@ const Auth = () => {
           </div>
         </div>
       </div>
+
+      {/* Dialog identifiants démo */}
+      <Dialog open={showDemoCredentials} onOpenChange={setShowDemoCredentials}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Identifiants démo</DialogTitle>
+            <DialogDescription>
+              Comptes de démonstration créés par le script E-Samba. À utiliser uniquement en environnement de test.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">
+              <span className="font-semibold">Mot de passe (tous les comptes)&nbsp;:</span>{" "}
+              <code className="px-1 py-0.5 rounded bg-muted text-xs">Demo2025!</code>
+            </p>
+            <div className="rounded-md border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Rôle</th>
+                    <th className="px-3 py-2 text-left font-medium">Email</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="px-3 py-2">Organizer</td>
+                    <td className="px-3 py-2 font-mono text-xs">demo.organizer@esamba.test</td>
+                  </tr>
+                  <tr className="border-t">
+                    <td className="px-3 py-2">Manager 1</td>
+                    <td className="px-3 py-2 font-mono text-xs">demo.manager1@esamba.test</td>
+                  </tr>
+                  <tr className="border-t">
+                    <td className="px-3 py-2">Manager 2</td>
+                    <td className="px-3 py-2 font-mono text-xs">demo.manager2@esamba.test</td>
+                  </tr>
+                  <tr className="border-t">
+                    <td className="px-3 py-2">Driver 1</td>
+                    <td className="px-3 py-2 font-mono text-xs">demo.driver1@esamba.test</td>
+                  </tr>
+                  <tr className="border-t">
+                    <td className="px-3 py-2">Driver 2</td>
+                    <td className="px-3 py-2 font-mono text-xs">demo.driver2@esamba.test</td>
+                  </tr>
+                  <tr className="border-t">
+                    <td className="px-3 py-2">Mechanic 1</td>
+                    <td className="px-3 py-2 font-mono text-xs">demo.mechanic1@esamba.test</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Ne pas utiliser ces identifiants en production. Ils sont réservés aux démonstrations et environnements de test.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

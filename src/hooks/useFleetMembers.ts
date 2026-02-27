@@ -33,11 +33,16 @@ export interface AddMemberData {
 export function useFleetMembers(fleetId?: string) {
   return useQuery<FleetMember[], Error>({
     queryKey: ['fleet-members', fleetId],
-    queryFn: () => {
+    queryFn: async () => {
       if (!fleetId) return [];
-      return fleetMemberService.getFleetMembers(fleetId);
+      try {
+        return await fleetMemberService.getFleetMembers(fleetId);
+      } catch (err) {
+        throw err instanceof Error ? err : new Error(String(err));
+      }
     },
     enabled: !!fleetId,
+    retry: false,
   });
 }
 

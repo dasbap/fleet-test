@@ -241,6 +241,10 @@ SELECT repair_orphan_membership(
 - Vérifiez que `.env.local` contient les bonnes valeurs
 - Vérifiez que les variables commencent par `VITE_`
 
+### "Database error querying schema" (à la connexion)
+- Procédure détaillée : [docs/verification-connexion-supabase.md](docs/verification-connexion-supabase.md)
+- En bref : réactiver le projet sur app.supabase.com si en pause ; vérifier `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` dans `.env.local` ; appliquer toutes les migrations dans l’ordre
+
 ### Erreur "Table does not exist"
 - Vérifiez que vous avez exécuté `supabase/schema.sql` dans Supabase
 

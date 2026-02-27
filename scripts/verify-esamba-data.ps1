@@ -19,7 +19,7 @@ Write-Host "   → Sélectionnez votre projet" -ForegroundColor Gray
 Write-Host "2. Ouvrez le SQL Editor" -ForegroundColor White
 Write-Host "   → Database → SQL Editor" -ForegroundColor Gray
 Write-Host "   → Ouvrez le fichier :" -ForegroundColor Gray
-Write-Host "      supabase/test-create-esamba-complete.sql" -ForegroundColor Green
+Write-Host "      supabase/verify-esamba-data-complete.sql" -ForegroundColor Green
 Write-Host "   → Cliquez sur 'Run' ou F5`n" -ForegroundColor Gray
 
 Write-Host "3. Vérification des résultats" -ForegroundColor White

@@ -44,6 +44,14 @@ export function mapSupabaseErrorToFrench(message: string): string {
     return "Un compte existe déjà avec cet email.";
   }
 
+  // Erreur schéma / base (ex. projet en pause, migrations non appliquées)
+  if (m.includes("querying schema") || (m.includes("database error") && m.includes("schema"))) {
+    return "Problème côté base de données. Vérifiez que le projet Supabase est actif et que les migrations sont appliquées.";
+  }
+  if (m.includes("database error") || m.includes("connection error")) {
+    return "Impossible de joindre la base de données. Vérifiez l’URL et la clé Supabase (.env.local).";
+  }
+
   // Réseau / requête
   if (m.includes("network") || m.includes("fetch") || m.includes("failed to fetch")) {
     return "Problème de connexion. Vérifiez votre réseau et réessayez.";
@@ -53,7 +61,12 @@ export function mapSupabaseErrorToFrench(message: string): string {
   }
 
   // Erreurs métier déjà en français (propagation)
-  if (message.includes("introuvable") || message.includes("Impossible") || message.includes("non trouvé")) {
+  if (
+    message.includes("introuvable") ||
+    message.includes("Impossible") ||
+    message.includes("non trouvé") ||
+    message.toLowerCase().includes("vérifier") // Ajout : si erreur métier contient "vérifier"
+  ) {
     return message;
   }
 

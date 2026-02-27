@@ -32,6 +32,17 @@ VITE_SUPABASE_ANON_KEY=votre_cle_anon_ici
    - **Project URL** → `VITE_SUPABASE_URL`
    - **anon public** key → `VITE_SUPABASE_ANON_KEY`
 
+### 4. Redirect URLs (mot de passe oublié et connexion)
+
+Pour que le **mot de passe oublié** et les redirections après authentification fonctionnent, les URLs de redirection doivent être autorisées :
+
+1. Supabase Dashboard → **Authentication** → **URL Configuration**
+2. Dans **Redirect URLs**, ajouter :
+   - **Développement** : `http://localhost:8080/auth`
+   - **Production** : `https://www.e-samba.com/auth`
+
+Sans ces URLs, le lien « Réinitialiser le mot de passe » dans l’email renverra une erreur de redirection non autorisée.
+
 ## 🗄️ Configuration de la base de données
 
 ### Exécuter le schéma SQL

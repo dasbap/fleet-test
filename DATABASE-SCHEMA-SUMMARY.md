@@ -243,7 +243,7 @@
 ---
 
 ### 14. **plans** (Plans d'abonnement)
-**RLS : OFF** ❌
+**RLS : ON (lecture catalogue)** ✅
 
 | Colonne | Type | Obligatoire | Description |
 |---------|------|-------------|-------------|
@@ -256,7 +256,7 @@
 
 ---
 
-### 15. **payments** (Paiements)
+### 15. **paiements** (Paiements)
 **RLS : OFF** ❌
 
 | Colonne | Type | Obligatoire | Description |
@@ -275,7 +275,7 @@
 
 ---
 
-### 16. **subscriptions** (Abonnements)
+### 16. **abonnements** (Abonnements flotte)
 **RLS : ON** ✅
 
 | Colonne | Type | Obligatoire | Description |
@@ -283,47 +283,120 @@
 | `id` | uuid | ✅ | Clé primaire (généré automatiquement) |
 | `fleet_id` | uuid | ✅ | Référence vers `flottes.id` (FK) |
 | `plan_id` | uuid | ✅ | Référence vers `plans.id` (FK) |
-| `payment_id` | uuid | ❌ | Référence vers `payments.id` (FK) |
-| `starts_at` | timestamptz | ✅ | Date de début |
-| `ends_at` | timestamptz | ✅ | Date de fin |
+| `payment_id` | uuid | ❌ | Référence vers `paiements.id` (FK) |
+| `starts_at` | timestamptz | ✅ | Date de début de la période couverte |
+| `ends_at` | timestamptz | ✅ | Date de fin de la période couverte |
 | `status` | text | ✅ | Statut (défaut: 'active') |
 
 **Politiques RLS :**
-- ✅ RLS activé mais **aucune politique définie** (à compléter)
+- ✅ Lecture par manager/organizer de la flotte (`has_role(fleet_id, 'manager'|'organizer')`)
 
 ---
 
-### 17. **vehicle_entitlements** (Droits d'accès véhicules)
+### 17. **droits_vehicules** (Licences véhicules)
 **RLS : ON** ✅
 
 | Colonne | Type | Obligatoire | Description |
 |---------|------|-------------|-------------|
 | `id` | uuid | ✅ | Clé primaire (généré automatiquement) |
 | `vehicle_id` | uuid | ✅ | Référence vers `vehicules.id` (FK) |
-| `subscription_id` | uuid | ✅ | Référence vers `subscriptions.id` (FK) |
-| `active` | boolean | ✅ | Statut actif (défaut: true) |
+| `subscription_id` | uuid | ✅ | Référence vers `abonnements.id` (FK) |
+| `active` | boolean | ✅ | Licence active (défaut: true) |
+| `starts_at` | timestamptz | ✅ | Début de validité de la licence véhicule |
+| `ends_at` | timestamptz | ✅ | Fin de validité de la licence véhicule |
+| `status` | text | ✅ | `active` \| `expired` \| `revoked` |
+| `is_premium` | boolean | ✅ | Indique si la licence est Premium |
 | **Contrainte unique** : `(vehicle_id, subscription_id)` |
 
 **Politiques RLS :**
-- ✅ RLS activé mais **aucune politique définie** (à compléter)
+- ✅ Lecture via l'abonnement : manager/organizer de la flotte liée à l'abonnement
 
 ---
 
-### 18. **qr_tokens** (Tokens QR)
+### 18. **jetons_qr** (Tokens QR)
 **RLS : ON** ✅
 
 | Colonne | Type | Obligatoire | Description |
 |---------|------|-------------|-------------|
 | `id` | uuid | ✅ | Clé primaire (généré automatiquement) |
-| `vehicle_id` | uuid | ✅ | Référence vers `vehicules.id` (FK) |
+| `vehicle_id` | uuid | ❌ | Référence vers `vehicules.id` (FK) pour un QR véhicule |
 | `token_hash` | text | ✅ | Hash du token (UNIQUE) |
 | `scope` | text | ✅ | Portée: 'subscription'\|'debug' (défaut: 'subscription') |
 | `expires_at` | timestamptz | ✅ | Date d'expiration |
 | `created_by` | uuid | ✅ | Référence vers `auth.users.id` (FK) |
 | `created_at` | timestamptz | ✅ | Date de création |
+| `type` | text | ✅ | Type de QR : 'vehicle'\|'lot' |
+| `fleet_id` | uuid | ❌ | Flotte associée (obligatoire pour les QR lot) |
+| `subscription_id` | uuid | ❌ | Abonnement lié |
+| `license_ids` | uuid[] | ❌ | Licences couvertes (QR lot) |
+| `action` | text | ✅ | 'activate'\|'renew'\|'reactivate' |
+| `max_uses` | int | ✅ | Nombre maximum d'utilisations |
+| `used_count` | int | ✅ | Nombre d'utilisations déjà effectuées |
 
 **Politiques RLS :**
-- ✅ RLS activé mais **aucune politique définie** (à compléter)
+- ✅ Lecture pour manager/organizer de la flotte (via `vehicules.fleet_id` ou `fleet_id`)
+
+---
+
+### 19. **addons** (Add-ons d'abonnement)
+**RLS : ON (lecture catalogue)** ✅
+
+| Colonne | Type | Obligatoire | Description |
+|---------|------|-------------|-------------|
+| `id` | uuid | ✅ | Clé primaire (généré automatiquement) |
+| `code` | text | ✅ | Code unique de l'addon (ex. 'pulse_plus') |
+| `name` | text | ✅ | Nom affiché |
+| `price_per_vehicle` | int | ✅ | Prix par véhicule |
+| `is_active` | boolean | ✅ | Statut actif |
+| `created_at` | timestamptz | ✅ | Date de création |
+
+---
+
+### 20. **abonnements_addons** (Lien abonnement ↔ addon)
+**RLS : hérite des règles de `abonnements` via les RPC** ⚠️
+
+| Colonne | Type | Obligatoire | Description |
+|---------|------|-------------|-------------|
+| `subscription_id` | uuid | ✅ | Référence vers `abonnements.id` |
+| `addon_id` | uuid | ✅ | Référence vers `addons.id` |
+| `quantity` | int | ✅ | Quantité (souvent = nb véhicules couverts) |
+| **PK** |  |  | `(subscription_id, addon_id)` |
+
+---
+
+### 21. **journal_scans_qr** (Journal des scans QR)
+**RLS : ON** ✅
+
+| Colonne | Type | Obligatoire | Description |
+|---------|------|-------------|-------------|
+| `id` | uuid | ✅ | Clé primaire (généré automatiquement) |
+| `qr_token_id` | uuid | ✅ | Référence vers `jetons_qr.id` (FK) |
+| `scanned_by_user_id` | uuid | ✅ | Utilisateur qui a scanné (FK `auth.users.id`) |
+| `scanned_by_role` | role_type | ❌ | Rôle au moment du scan |
+| `scanned_at` | timestamptz | ✅ | Date/heure du scan |
+| `result` | text | ✅ | `success`\|`rejected`\|`expired`\|`invalid_role`\|`discipline_hold` |
+| `details` | jsonb | ❌ | Détails supplémentaires (contexte) |
+
+**Politiques RLS :**
+- ✅ Lecture pour manager/organizer de la flotte concernée (via jointure `jetons_qr` → `vehicules` → `flottes`)
+
+---
+
+### 22. **blocages_discipline**
+**RLS : ON** ✅
+
+| Colonne | Type | Obligatoire | Description |
+|---------|------|-------------|-------------|
+| `id` | uuid | ✅ | Clé primaire (généré automatiquement) |
+| `vehicle_id` | uuid | ✅ | Référence vers `vehicules.id` (FK) |
+| `reason` | text | ✅ | Raison du blocage disciplinaire |
+| `status` | text | ✅ | `active`\|`lifted` |
+| `created_at` | timestamptz | ✅ | Date de création |
+| `lifted_at` | timestamptz | ❌ | Date de levée du blocage |
+| `lifted_by_user_id` | uuid | ❌ | Utilisateur qui a levé le blocage |
+
+**Politiques RLS :**
+- ✅ Lecture pour manager/organizer/mécanicien de la flotte du véhicule
 
 ---
 
@@ -337,21 +410,23 @@
 4. **creneaux_conducteurs** - Politiques définies ✅
 5. **clotures_creneaux** - Politiques définies ✅
 6. **incidents** - Politiques définies ✅
-7. **maintenance_jobs** (travaux_maintenance) - Politiques définies ✅
-8. **maintenance_evidence** (preuves_maintenance) - Politique partielle (à durcir) ⚠️
-9. **maintenance_checklists** - RLS activé mais **aucune politique** ❌
-10. **subscriptions** (abonnements) - RLS activé mais **aucune politique** ❌
-11. **vehicle_entitlements** (droits_vehicules) - RLS activé mais **aucune politique** ❌
-12. **qr_tokens** (jetons_qr) - RLS activé mais **aucune politique** ❌
-13. **flotte_invitations** - Politiques définies ✅
+7. **travaux_maintenance** - Politiques définies ✅
+8. **preuves_maintenance** - Politique partielle (à durcir) ⚠️
+9. **listes_verification_maintenance** - RLS activé mais **politiques à compléter** ❌
+10. **abonnements** - Lecture manager/organizer ✅
+11. **droits_vehicules** - Lecture via abonnement pour manager/organizer ✅
+12. **jetons_qr** - Lecture pour manager/organizer ✅
+13. **journal_scans_qr** - Lecture pour manager/organizer ✅
+14. **blocages_discipline** - Lecture manager/organizer/mécanicien ✅
+15. **flotte_invitations** - Politiques définies ✅
+16. **addons** - Lecture catalogue authentifiés ✅
 
 ### ❌ Tables avec RLS DÉSACTIVÉ :
 
 1. **organisations**
 2. **flottes**
 3. **profils**
-4. **plans**
-5. **payments**
+4. **paiements**
 
 ---
 

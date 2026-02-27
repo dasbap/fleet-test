@@ -1,11 +1,11 @@
 # =====================================================
-# EXECUTION DE LA FONCTION RPC check_esamba_2024
+# EXECUTION DE LA FONCTION RPC verifier_esamba_2024
 # Smart Fleet Africa
 # =====================================================
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "EXECUTION DE check_esamba_2024 RPC" -ForegroundColor Green
+Write-Host "EXECUTION DE verifier_esamba_2024 RPC" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -54,7 +54,7 @@ Write-Host "   Vous devriez voir: 'Success. No rows returned'" -ForegroundColor 
 Write-Host ""
 
 Write-Host "7. Testez la fonction RPC" -ForegroundColor White
-Write-Host "   Executez: SELECT * FROM check_esamba_2024();" -ForegroundColor Gray
+Write-Host "   Executez: SELECT * FROM verifier_esamba_2024();" -ForegroundColor Gray
 Write-Host ""
 
 Write-Host "========================================" -ForegroundColor Cyan
@@ -81,7 +81,7 @@ if ($supabaseCli) {
             Write-Host ""
             Write-Host "OK: Fonction RPC creee avec succes!" -ForegroundColor Green
             Write-Host ""
-            Write-Host "Testez avec: SELECT * FROM check_esamba_2024();" -ForegroundColor Cyan
+            Write-Host "Testez avec: SELECT * FROM verifier_esamba_2024();" -ForegroundColor Cyan
         } else {
             Write-Host ""
             Write-Host "ERREUR: Erreur lors de l'execution" -ForegroundColor Red

@@ -95,7 +95,7 @@ const Teams = () => {
   const userRole = role || "organizer";
 
   // Récupérer les membres de la flotte
-  const { data: members = [], isLoading: isLoadingMembers } = useFleetMembers(userFleetId || undefined);
+  const { data: members = [], isLoading: isLoadingMembers, isError: isMembersError, error: membersError, refetch: refetchMembers } = useFleetMembers(userFleetId || undefined);
   const addMemberMutation = useAddFleetMember();
   const updateRoleMutation = useUpdateMemberRole();
   const removeMemberMutation = useRemoveFleetMember();
@@ -327,7 +327,19 @@ const Teams = () => {
                 <CardContent>
                   {isLoadingMembers ? (
                     <div className="flex items-center justify-center py-12">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : isMembersError ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <XCircle className="w-16 h-16 text-destructive mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Erreur de chargement</h3>
+                      <p className="text-muted-foreground mb-4 max-w-md">
+                        {typeof membersError?.message === "string" ? membersError.message : "Impossible de charger les membres de l'équipe."}
+                      </p>
+                      <Button variant="outline" onClick={() => void refetchMembers()}>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Réessayer
+                      </Button>
                     </div>
                   ) : members.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">

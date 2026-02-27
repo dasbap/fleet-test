@@ -147,7 +147,7 @@ describe('Création de flotte - Tests d\'intégration', () => {
     expect(data).toBe('TEST-2024');
   });
 
-  it('devrait vérifier que toutes les données sont créées avec check_esamba_2024', async () => {
+  it('devrait vérifier que toutes les données sont créées (verifier_esamba_2024)', async () => {
     // Note: Cette fonction vérifie spécifiquement les données ESAMBA-2024
     // Pour les tests, on vérifie manuellement les données créées
     const { data: fleet } = await supabase

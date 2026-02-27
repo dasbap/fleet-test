@@ -229,7 +229,7 @@ create table droits_vehicules (
 
 create table jetons_qr (
   id uuid primary key default gen_random_uuid(),
-  vehicle_id uuid not null references vehicules(id) on delete cascade,
+  vehicle_id uuid references vehicules(id) on delete cascade,
   token_hash text not null unique,
   scope text not null default 'subscription', -- subscription|debug
   expires_at timestamptz not null,

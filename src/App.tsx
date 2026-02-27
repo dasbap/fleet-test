@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/react";
 import { PageSEO } from "@/components/PageSEO";
 import Providers from "@/components/Providers";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
 import Index from "./pages/Index";
@@ -28,13 +28,20 @@ import NotFound from "./pages/NotFound";
 
 const App = () => (
   <Sentry.ErrorBoundary
-    fallback={
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
-        <p className="text-muted-foreground">
+    fallback={({ resetError }) => (
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center gap-4 p-4">
+        <p className="text-muted-foreground text-center">
           Une erreur est survenue. Veuillez recharger la page.
         </p>
+        <button
+          type="button"
+          onClick={() => (resetError ? resetError() : window.location.reload())}
+          className="text-sm font-medium text-primary underline underline-offset-4 hover:no-underline"
+        >
+          Recharger la page
+        </button>
       </div>
-    }
+    )}
   >
     <Providers>
       <BrowserRouter>
@@ -42,6 +49,7 @@ const App = () => (
         <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
         <Route path="/dashboard" element={<ProtectedRoute />}>
           <Route element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />

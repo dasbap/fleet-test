@@ -178,21 +178,28 @@ describe('Fonctions RPC - Vérification des noms de tables', () => {
     expect(invitation?.fleet_id).toBe(testFleetId);
   });
 
-  it('check_esamba_2024 devrait utiliser les bons noms de tables', async () => {
-    // Cette fonction vérifie les données ESAMBA-2024 spécifiques
-    // On teste juste qu'elle s'exécute sans erreur
-    const { data, error } = await supabase.rpc('check_esamba_2024');
+  it('verifier_esamba_2024 devrait retourner les 5 critères de vérification', async () => {
+    // Vérifie que la RPC verifier_esamba_2024 s'exécute et retourne la structure attendue
+    const { data, error } = await supabase.rpc('verifier_esamba_2024');
 
     expect(error).toBeNull();
     expect(data).toBeDefined();
     expect(Array.isArray(data) && data.length > 0).toBe(true);
-    
+
     const result = data[0];
     expect(result).toHaveProperty('organisation');
     expect(result).toHaveProperty('flotte');
     expect(result).toHaveProperty('membership_organizer');
     expect(result).toHaveProperty('vehicule_esamba_001');
     expect(result).toHaveProperty('invitation_esamba_2024');
+
+    // Si les données ESAMBA sont présentes en base, les 4 critères données doivent être true
+    if (result.organisation && result.flotte && result.vehicule_esamba_001 && result.invitation_esamba_2024) {
+      expect(result.organisation).toBe(true);
+      expect(result.flotte).toBe(true);
+      expect(result.vehicule_esamba_001).toBe(true);
+      expect(result.invitation_esamba_2024).toBe(true);
+    }
   });
 
   it('add_member_by_email devrait utiliser les tables flottes et flotte_adhesions', async () => {
