@@ -38,6 +38,17 @@ Identifiants pour les utilisateurs de démo créés par `supabase/create-demo-or
 
 Procédure détaillée (env, check-supabase, verify:connection, check:backend, scripts SQL) : [docs/verification-connexion-bdd.md](docs/verification-connexion-bdd.md).
 
+## Onboarding base de données (baseline + deltas)
+
+- **Nouvel environnement** :
+  1. Générer/valider la baseline de référence (`supabase/baseline/00000000000000_baseline_schema.sql`)
+  2. Appliquer ensuite uniquement les deltas listés dans `supabase/baseline/delta-migrations.txt`
+  3. Exécuter `npm run test:baseline-delta` pour vérifier le flux complet en local
+- **Environnement existant** :
+  1. Ne pas rejouer l'historique legacy
+  2. Appliquer uniquement les deltas sécurité/RLS/search_path
+- **Freeze de référence distant** : `npm run freeze:remote-schema` (exports dans `supabase/snapshots/`)
+
 ## Technologies
 
 - Vite

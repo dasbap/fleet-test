@@ -1,0 +1,4 @@
+supabase/migrations/20250223110000_fix_rls_policies_restrictive.sql
+supabase/migrations/20250223120000_fix_functions_search_path.sql
+supabase/migrations/20260326130000_security_advisor_organisations_rls_and_legacy_rpc.sql
+supabase/migrations/20260326170000_scalable_rls_rpc_hardening.sql
