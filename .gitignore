@@ -34,8 +34,9 @@ dist-ssr
 # Vercel
 .vercel
 
-# Cursor / IDE
-.cursor/
+# Cursor / IDE — tout sauf la config MCP (partage équipe)
+.cursor/*
+!.cursor/mcp.json
 
 # Rapports de test temporaires
 TEST-REPORT-*.json
