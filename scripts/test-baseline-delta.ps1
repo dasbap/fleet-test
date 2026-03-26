@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $baselineFile = "supabase/baseline/00000000000000_baseline_schema.sql"
 $deltaListFile = "supabase/baseline/delta-migrations.txt"
+$configFile = "supabase/config.toml"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
@@ -44,10 +45,32 @@ function Invoke-SupabaseCommand {
     }
 }
 
+function Test-PortAvailable {
+    param(
+        [int]$Port
+    )
+
+    $listener = $null
+    try {
+        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, $Port)
+        $listener.Start()
+        return $true
+    }
+    catch {
+        return $false
+    }
+    finally {
+        if ($null -ne $listener) {
+            $listener.Stop()
+        }
+    }
+}
+
 $tempRoot = "supabase/migrations_tmp_baseline_test"
 $legacyRoot = "supabase/migrations_legacy_saved"
 $migrationsRoot = "supabase/migrations"
 $migrationSwapped = $false
+$configBackupPath = $null
 
 if (Test-Path $tempRoot) { Remove-Item -Path $tempRoot -Recurse -Force }
 if (Test-Path $legacyRoot) { Remove-Item -Path $legacyRoot -Recurse -Force }
@@ -70,6 +93,36 @@ foreach ($delta in $deltas) {
 }
 
 try {
+    if (Test-Path $configFile) {
+        $originalDbPort = 54322
+        $targetDbPort = $originalDbPort
+        if (-not (Test-PortAvailable -Port $originalDbPort)) {
+            $fallbackPorts = @(54332, 54333, 54334, 54335, 54336, 54337, 54338, 54339, 54340)
+            $freePort = $fallbackPorts | Where-Object { Test-PortAvailable -Port $_ } | Select-Object -First 1
+            if ($null -eq $freePort) {
+                throw "Aucun port DB libre trouvé pour Supabase local."
+            }
+            $targetDbPort = [int]$freePort
+        }
+
+        if ($targetDbPort -ne $originalDbPort) {
+            Write-Host "INFO: Port 54322 occupe, bascule temporaire sur le port $targetDbPort." -ForegroundColor Yellow
+            $configBackupPath = "$configFile.ci-backup"
+            Copy-Item $configFile $configBackupPath -Force
+            $configRaw = Get-Content $configFile -Raw
+            $configRaw = $configRaw -replace '(?ms)(\[db\]\s*.*?port\s*=\s*)\d+', "`$1$targetDbPort"
+            Set-Content -Path $configFile -Value $configRaw -Encoding UTF8
+        }
+    }
+
+    Write-Host "0) Nettoyage stack Supabase existante..." -ForegroundColor Cyan
+    try {
+        Invoke-SupabaseCommand -CommandArgs @("stop", "--no-backup")
+    }
+    catch {
+        Write-Host "INFO: Aucun stack actif a stopper (ou arret deja effectue)." -ForegroundColor DarkYellow
+    }
+
     Write-Host "1) Demarrage stack locale Supabase..." -ForegroundColor Cyan
     Invoke-SupabaseCommand -CommandArgs @("start")
 
@@ -101,5 +154,8 @@ finally {
     }
     if (Test-Path $tempRoot) {
         Remove-Item -Path $tempRoot -Recurse -Force
+    }
+    if ($null -ne $configBackupPath -and (Test-Path $configBackupPath)) {
+        Move-Item -Path $configBackupPath -Destination $configFile -Force
     }
 }
