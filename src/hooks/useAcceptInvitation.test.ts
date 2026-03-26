@@ -3,7 +3,7 @@
  * Vérifie l'interprétation du retour RPC accepter_invitation (objet, tableau, erreur).
  *
  * Note architecture : useAcceptInvitation appelle directement Supabase (RPC, auth, from)
- * ⚠️ Ce hook ne respecte pas le pattern Hook → Service → Repository : il appelle Supabase directement (RPC, auth, from).
+ * ⚠️ Ce hook ne respecte pas le pattern Hook -> Service -> Repository : il appelle Supabase directement (RPC, auth, from).
  * Les tests ici procèdent à un mock direct de Supabase.
  * Un refactor futur passant par un service nécessiterait d'adapter les mocks.
  */

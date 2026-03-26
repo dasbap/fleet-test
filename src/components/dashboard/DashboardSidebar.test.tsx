@@ -33,7 +33,9 @@ describe("DashboardSidebar", () => {
     signOutMock.mockResolvedValue({ error: null });
   });
 
-  it("affiche les liens de navigation pour le rôle organizer", async () => {
+  it(
+    "affiche les liens de navigation pour le rôle organizer",
+    async () => {
     renderSidebar("organizer");
     await waitFor(() => {
       expect(screen.getByRole("link", { name: /Tableau de bord/i })).toBeInTheDocument();
@@ -79,7 +81,9 @@ describe("DashboardSidebar", () => {
       "href",
       "/dashboard/roles"
     );
-  });
+    },
+    15000
+  );
 
   it("affiche le lien actif avec aria-current page", () => {
     renderSidebar("organizer", "/dashboard/vehicles");

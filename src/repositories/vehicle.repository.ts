@@ -84,7 +84,7 @@ export class VehicleRepository implements IRepository<Vehicle, VehicleInsert, Ve
 
     // Mapper les affectations aux véhicules
     const assignmentMap = new Map();
-    (assignmentsData || []).forEach((a: any) => {
+    (assignmentsData || []).forEach((a) => {
       assignmentMap.set(a.vehicle_id, {
         id: a.id,
         driver_user_id: a.driver_user_id,
@@ -92,7 +92,7 @@ export class VehicleRepository implements IRepository<Vehicle, VehicleInsert, Ve
       });
     });
 
-    return vehicles.map((vehicle: any) => ({
+    return vehicles.map((vehicle) => ({
       ...vehicle,
       active_assignment: assignmentMap.get(vehicle.id) || null,
     })) as Vehicle[];

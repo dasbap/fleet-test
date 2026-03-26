@@ -212,11 +212,13 @@ export function CreateInvitationDialog({
       });
 
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating invitation:", error);
+      const message =
+        error instanceof Error ? error.message : "Impossible de créer l'invitation.";
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de créer l'invitation.",
+        description: message,
         variant: "destructive",
       });
     } finally {

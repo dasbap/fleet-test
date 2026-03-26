@@ -1,4 +1,4 @@
-# Logs
+ï»¿# Logs
 logs
 *.log
 npm-debug.log*
@@ -34,9 +34,11 @@ dist-ssr
 # Vercel
 .vercel
 
-# Cursor / IDE — tout sauf la config MCP (partage équipe)
+# Cursor / IDE â€” tout sauf la config MCP (partage Ã©quipe)
 .cursor/*
 !.cursor/mcp.json
 
 # Rapports de test temporaires
 TEST-REPORT-*.json
+!.cursor/rules/
+!.cursor/rules/*.mdc

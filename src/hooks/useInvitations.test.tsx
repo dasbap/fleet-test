@@ -13,12 +13,12 @@
  * - create : from().insert().select().single() → single résout
  * - delete : findById (from().select().eq().single) puis from().delete().eq() → eq résout
  *
- * Les tests couvrent :
+ * Les tests couvrent :
  *   - Lecture d’invitations (useInvitations)
  *   - Création d’invitation (useCreateInvitation)
  *   - Suppression d’invitation (useDeleteInvitation)
  *
- * Veiller à la conformité complète : aucun accès direct à Supabase depuis les hooks.
+ * Veiller à la conformité complète : aucun accès direct à Supabase depuis les hooks.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";

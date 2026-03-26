@@ -125,6 +125,14 @@ const Teams = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- form.reset stable, reset uniquement à l'ouverture
   }, [isAddMemberDialogOpen]);
 
+  // Rediriger automatiquement vers la création de flotte si pas de flotte ni de rôle.
+  // Important : ce useEffect doit être appelé de manière inconditionnelle (pas après un early return).
+  useEffect(() => {
+    if (!userFleetId && role === null) {
+      navigate("/dashboard/create-fleet");
+    }
+  }, [userFleetId, role, navigate]);
+
   const onSubmit = async (data: AddMemberFormValues) => {
     if (!userFleetId) {
       toast({
@@ -250,13 +258,6 @@ const Teams = () => {
   if (!canManageTeam) {
     return <Navigate to="/dashboard" replace />;
   }
-
-  // Rediriger automatiquement vers la création de flotte si pas de flotte ni de rôle
-  useEffect(() => {
-    if (!userFleetId && role === null) {
-      navigate("/dashboard/create-fleet");
-    }
-  }, [userFleetId, role, navigate]);
 
   // Sans flotte : afficher la carte uniquement si role !== null (sinon redirection en cours)
   if (!userFleetId) {

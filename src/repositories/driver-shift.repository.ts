@@ -296,7 +296,8 @@ export class DriverShiftRepository {
       return null;
     }
 
-    return (data as any)?.assignment?.vehicle_id || null;
+    return (data as { assignment?: { vehicle_id?: string } } | null)?.assignment
+      ?.vehicle_id || null;
   }
 
   /**

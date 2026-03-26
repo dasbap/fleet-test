@@ -85,10 +85,10 @@ export class FleetMemberService {
 
     try {
       await this.repository.addMemberByEmail(fleetId, email.trim().toLowerCase(), role);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Gestion explicite des erreurs avec des messages adaptés
       let errorMessage = "Impossible d'ajouter le membre à la flotte.";
-      const msg = error.message || '';
+      const msg = error instanceof Error ? error.message : '';
 
       if (msg.includes('User not found') || msg.includes('user_not_found')) {
         errorMessage = "Aucun utilisateur trouvé avec cet email. L'utilisateur doit d'abord créer un compte.";

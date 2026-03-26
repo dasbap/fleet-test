@@ -91,14 +91,14 @@ const FleetOverview = () => {
                       className={cn(
                         vehicle.status === 'blocked' 
                           ? statusConfig.blocked.className
-                          : (vehicle as any).hasActiveAssignment
+                          : (vehicle as { hasActiveAssignment?: boolean }).hasActiveAssignment
                             ? "bg-success text-success-foreground"
                             : statusConfig.ok.className
                       )}
                     >
                       {vehicle.status === 'blocked' 
                         ? statusConfig.blocked.label
-                        : (vehicle as any).hasActiveAssignment
+                        : (vehicle as { hasActiveAssignment?: boolean }).hasActiveAssignment
                           ? "Actif"
                           : statusConfig.ok.label}
                     </Badge>

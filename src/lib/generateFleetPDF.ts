@@ -85,7 +85,8 @@ export function generateFleetPDF(data: FleetReportData): void {
     margin: { left: 14 },
   });
 
-  yPos = (doc as any).lastAutoTable.finalY + 5;
+  const docWithAutoTable = doc as { lastAutoTable?: { finalY: number } };
+  yPos = (docWithAutoTable.lastAutoTable?.finalY ?? yPos) + 5;
 
   // Revenue Section
   addSection('💰 Revenus par Véhicule');
@@ -100,7 +101,7 @@ export function generateFleetPDF(data: FleetReportData): void {
       styles: { fontSize: 9, cellPadding: 4 },
       margin: { left: 14 },
     });
-    yPos = (doc as any).lastAutoTable.finalY + 5;
+    yPos = (docWithAutoTable.lastAutoTable?.finalY ?? yPos) + 5;
   } else {
     doc.text('Aucune donnée de revenu pour cette période.', 14, yPos);
     yPos += 8;
@@ -119,7 +120,7 @@ export function generateFleetPDF(data: FleetReportData): void {
       styles: { fontSize: 9, cellPadding: 4 },
       margin: { left: 14 },
     });
-    yPos = (doc as any).lastAutoTable.finalY + 5;
+    yPos = (docWithAutoTable.lastAutoTable?.finalY ?? yPos) + 5;
   } else {
     doc.text('Aucune donnée de kilométrage pour cette période.', 14, yPos);
     yPos += 8;
@@ -147,7 +148,7 @@ export function generateFleetPDF(data: FleetReportData): void {
     },
     margin: { left: 14 },
   });
-  yPos = (doc as any).lastAutoTable.finalY + 5;
+  yPos = (docWithAutoTable.lastAutoTable?.finalY ?? yPos) + 5;
 
   if (data.incidents.recent.length > 0) {
     autoTable(doc, {
@@ -164,7 +165,7 @@ export function generateFleetPDF(data: FleetReportData): void {
       styles: { fontSize: 8, cellPadding: 3 },
       margin: { left: 14 },
     });
-    yPos = (doc as any).lastAutoTable.finalY + 5;
+    yPos = (docWithAutoTable.lastAutoTable?.finalY ?? yPos) + 5;
   }
 
   // Maintenance Section
@@ -187,7 +188,7 @@ export function generateFleetPDF(data: FleetReportData): void {
     },
     margin: { left: 14 },
   });
-  yPos = (doc as any).lastAutoTable.finalY + 5;
+  yPos = (docWithAutoTable.lastAutoTable?.finalY ?? yPos) + 5;
 
   // Top Performers Section
   if (data.drivers.topPerformers.length > 0) {

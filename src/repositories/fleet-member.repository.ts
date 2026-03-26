@@ -81,7 +81,7 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
     }
 
     // Note: Les emails ne sont pas récupérables directement pour des raisons de sécurité
-    return (data || []).map((member: any) => ({
+    return (data || []).map((member) => ({
       ...member,
       email: null, // Sera récupéré côté serveur si nécessaire
     })) as FleetMember[];

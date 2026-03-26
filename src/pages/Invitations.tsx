@@ -49,6 +49,14 @@ const Invitations = () => {
 
   // L'authentification est gérée par ProtectedRoute. Redirection des rôles non autorisés via Navigate ci-dessous.
 
+  // Rediriger vers la création de flotte si pas de flotte ni de rôle.
+  // Important : ce useEffect doit être appelé de manière inconditionnelle (pas après un early return).
+  useEffect(() => {
+    if (!userFleetId && role === null) {
+      navigate("/dashboard/create-fleet");
+    }
+  }, [userFleetId, role, navigate]);
+
   const copyToClipboard = async (code: string) => {
     if (!navigator.clipboard) {
       toast({
@@ -136,13 +144,6 @@ const Invitations = () => {
   if (!canManageInvitations) {
     return <Navigate to="/dashboard" replace />;
   }
-
-  // Rediriger vers la création de flotte si pas de flotte ni de rôle (aligné avec Teams et Dashboard)
-  useEffect(() => {
-    if (!userFleetId && role === null) {
-      navigate("/dashboard/create-fleet");
-    }
-  }, [userFleetId, role, navigate]);
 
   // Sans flotte : afficher la carte dédiée si role défini (sinon redirection en cours)
   if (!userFleetId) {

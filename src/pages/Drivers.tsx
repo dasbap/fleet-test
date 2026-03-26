@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -24,14 +24,14 @@ import { cn } from "@/lib/utils";
 import DriverHistoryDialog from "@/components/drivers/DriverHistoryDialog";
 
 // Réparation : Ajout des fonctions utilitaires manquantes pour le score
-function getScoreBadgeVariant(scoreLevel: string): string {
+function getScoreBadgeVariant(scoreLevel: string): BadgeProps["variant"] {
   switch (scoreLevel) {
     case "excellent":
-      return "success";
+      return "default";
     case "bon":
-      return "primary";
+      return "secondary";
     case "correct":
-      return "warning";
+      return "outline";
     case "faible":
       return "destructive";
     default:
@@ -270,9 +270,7 @@ const Drivers = () => {
                         {driver.score ? (
                           <div className="flex flex-col gap-1">
                             <Badge
-                              variant={
-                                getScoreBadgeVariant(driver.score.score_level) as any
-                              }
+                              variant={getScoreBadgeVariant(driver.score.score_level)}
                               className="w-fit"
                             >
                               {getScoreLabel(driver.score.score_level)}

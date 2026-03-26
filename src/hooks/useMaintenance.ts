@@ -130,7 +130,7 @@ export function useUpdateJobStatus() {
       id: string;
       status: JobStatus;
     }) => {
-      const updates: any = { status };
+      const updates: { status: JobStatus; closed_at?: string | null } = { status };
       
       if (status === 'ready') {
         updates.closed_at = new Date().toISOString();

@@ -164,10 +164,12 @@ const ShiftClosureForm = ({ shiftId, kmStart, vehicleId }: ShiftClosureFormProps
       });
       
       navigate('/dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Une erreur est survenue. Veuillez réessayer.";
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue. Veuillez réessayer.",
+        description: message,
         variant: "destructive",
       });
     } finally {

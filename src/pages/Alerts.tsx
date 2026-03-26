@@ -96,10 +96,12 @@ const Alerts = () => {
         title: "Alertes générées",
         description: `${count} nouvelle(s) alerte(s) générée(s).`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Impossible de générer les alertes.";
       toast({
         title: "Erreur",
-        description: error?.message || "Impossible de générer les alertes.",
+        description: message,
         variant: "destructive",
       });
     }
@@ -115,10 +117,12 @@ const Alerts = () => {
           title: "Alerte résolue",
           description: "L'alerte a été marquée comme résolue.",
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "Impossible de résoudre l'alerte.";
         toast({
           title: "Erreur",
-          description: error?.message || "Impossible de résoudre l'alerte.",
+          description: message,
           variant: "destructive",
         });
       } finally {

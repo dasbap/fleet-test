@@ -1,0 +1,216 @@
+---
+description: Guidelines pour React Query, query keys, invalidation et gestion du cache
+globs:
+  - "**/*.ts"
+  - "**/hooks/**/*.ts"
+---
+
+# Guidelines API - Smart Fleet Africa
+
+## Architecture générale
+
+- Utiliser React Query pour la gestion du cache et des requêtes
+- Les hooks appellent les services (voir `architecture.mdc` pour les détails)
+- Centraliser la configuration Supabase dans `@/integrations/supabase/client`
+
+## Structure des hooks avec React Query
+
+### Pattern useQuery
+
+Les hooks de lecture appellent les services, jamais directement Supabase ou les repositories.
+
+```tsx
+import { useQuery } from '@tanstack/react-query';
+import { VehicleService } from '@/services/vehicle.service';
+import { VehicleRepository } from '@/repositories/vehicle.repository';
+
+// Instances singleton
+const vehicleRepository = new VehicleRepository();
+const vehicleService = new VehicleService(vehicleRepository);
+
+export function useVehicles(fleetId?: string) {
+  return useQuery({
+    queryKey: ['vehicles', fleetId],
+    queryFn: () => vehicleService.getVehicles(fleetId),
+  });
+}
+```
+
+### Pattern useMutation
+
+Les hooks de mutation gèrent l'invalidation du cache et les toasts utilisateur.
+
+```tsx
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/hooks/use-toast';
+import { VehicleService } from '@/services/vehicle.service';
+import { VehicleRepository } from '@/repositories/vehicle.repository';
+
+const vehicleRepository = new VehicleRepository();
+const vehicleService = new VehicleService(vehicleRepository);
+
+export function useCreateVehicle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: VehicleInsert) => {
+      return vehicleService.createVehicle(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      toast({
+        title: 'Véhicule ajouté',
+        description: 'Le véhicule a été créé avec succès.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+```
+
+## Query Keys
+
+- Utiliser des clés descriptives et hiérarchiques
+- Inclure les paramètres de filtrage dans la clé
+- Utiliser des tableaux pour la hiérarchie
+
+```tsx
+// ✅ Bon
+queryKey: ['vehicles', fleetId]
+queryKey: ['incidents', fleetId, startDate, endDate]
+queryKey: ['driver-shifts', assignmentId]
+
+// ❌ À éviter
+queryKey: 'vehicles'
+queryKey: ['data']
+```
+
+## Gestion des erreurs
+
+Les erreurs sont gérées dans les services et repositories. Les hooks doivent simplement propager les erreurs pour React Query.
+
+```tsx
+export function useVehicles(fleetId?: string) {
+  return useQuery({
+    queryKey: ['vehicles', fleetId],
+    queryFn: () => vehicleService.getVehicles(fleetId),
+    // React Query gère automatiquement les erreurs
+    // Les services lancent des Error qui sont capturées par React Query
+  });
+}
+```
+
+Dans les composants, gérer les erreurs :
+
+```tsx
+const { data, error, isLoading } = useVehicles(fleetId);
+
+if (error) {
+  toast({
+    title: 'Erreur',
+    description: 'Une erreur est survenue lors du chargement.',
+    variant: 'destructive',
+  });
+  return null;
+}
+```
+
+## Invalidation du cache
+
+- Invalider après les mutations (create, update, delete)
+- Utiliser des patterns de clés pour invalider plusieurs queries
+- Invalider les queries dépendantes
+
+```tsx
+// Invalider une query spécifique
+queryClient.invalidateQueries({ queryKey: ['vehicles', fleetId] });
+
+// Invalider toutes les queries commençant par 'vehicles'
+queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+
+// Invalider plusieurs queries après une mutation
+onSuccess: () => {
+  queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+  queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+}
+```
+
+## Optimisations
+
+- Configurer `staleTime` dans React Query pour réduire les requêtes
+- Utiliser `enabled` pour désactiver les requêtes conditionnellement
+- Implémenter la pagination avec les services/repositories
+
+```tsx
+// staleTime pour réduire les requêtes
+useQuery({
+  queryKey: ['vehicles'],
+  queryFn: () => vehicleService.getVehicles(),
+  staleTime: 5 * 60 * 1000, // 5 minutes
+});
+
+// Requête conditionnelle
+useQuery({
+  queryKey: ['vehicles', fleetId],
+  queryFn: () => vehicleService.getVehicles(fleetId),
+  enabled: !!fleetId, // Ne s'exécute que si fleetId existe
+});
+```
+
+## Requêtes parallèles
+
+Pour les requêtes indépendantes, utiliser `Promise.all` dans les services, pas dans les hooks.
+
+```tsx
+// Dans un service
+async getDashboardData(fleetId: string) {
+  const [vehicles, drivers, incidents] = await Promise.all([
+    this.vehicleRepository.findAll({ fleet_id: fleetId }),
+    this.fleetMemberRepository.findAll({ fleet_id: fleetId }),
+    this.incidentRepository.findAll({ fleet_id: fleetId }),
+  ]);
+  
+  return { vehicles, drivers, incidents };
+}
+
+// Dans le hook
+export function useDashboardData(fleetId: string) {
+  return useQuery({
+    queryKey: ['dashboard-data', fleetId],
+    queryFn: () => dashboardService.getDashboardData(fleetId),
+  });
+}
+```
+
+## Bonnes pratiques
+
+- Toujours vérifier l'existence de `fleetId` ou `userFleetId` avant les requêtes (dans les services)
+- Retourner des valeurs par défaut (tableaux vides, objets par défaut) si pas de données
+- Gérer les cas où l'utilisateur n'est pas authentifié
+- Utiliser des query keys cohérentes dans tout le projet
+
+```tsx
+export function useVehicles(fleetId?: string) {
+  return useQuery({
+    queryKey: ['vehicles', fleetId],
+    queryFn: () => {
+      // Le service gère le cas où fleetId est undefined
+      return vehicleService.getVehicles(fleetId);
+    },
+    // Valeur par défaut si pas de fleetId
+    enabled: !!fleetId,
+  });
+}
+```
+
+## Références
+
+- Voir `architecture.mdc` pour les détails sur Repository + Services
+- Voir `react-patterns.mdc` pour les patterns React Query généraux
+- Documentation React Query : https://tanstack.com/query/latest

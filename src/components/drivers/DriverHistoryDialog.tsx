@@ -54,19 +54,9 @@ const DriverHistoryDialog = ({ open, onOpenChange, driverId }: DriverHistoryDial
         throw new Error(error.message);
       }
 
-      // Transform data to match expected interface
-      return (data || []).map((item: any) => ({
-        id: item.id,
-        starts_at: item.starts_at,
-        ends_at: item.ends_at,
-        is_active: item.is_active,
-        vehicle: item.vehicle ? {
-          id: item.vehicle.id,
-          registration: item.vehicle.registration,
-          brand: item.vehicle.brand,
-          model: item.vehicle.model,
-        } : null,
-      })) as AssignmentHistory[];
+      // La requête SELECT correspond déjà à `AssignmentHistory` (surtout l’alias `vehicle:`).
+      // On caste le résultat au type attendu pour éviter les `any`.
+      return (data || []) as AssignmentHistory[];
     },
     enabled: !!driverId && open,
   });
