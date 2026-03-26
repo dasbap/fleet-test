@@ -43,11 +43,11 @@ jobs:
 
       - name: Run baseline + delta validation
         shell: pwsh
-        run: npm run test:baseline-delta
+        run: ./scripts/test-baseline-delta.ps1
 
       - name: Run SQL security tests
         shell: pwsh
-        run: npm run test:sql-security
+        run: ./scripts/test-sql-security.ps1
 
   validate-delta-file-list:
     name: Validate delta files exist
