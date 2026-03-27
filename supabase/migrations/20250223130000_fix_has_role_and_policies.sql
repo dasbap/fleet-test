@@ -1,8 +1,7 @@
 BEGIN;
 
-DROP FUNCTION IF EXISTS public.has_role(uuid, role_type);
-
-CREATE OR REPLACE FUNCTION public.has_role(
+-- Versionnement: has_role_v2 devient l'implémentation canonique.
+CREATE OR REPLACE FUNCTION public.has_role_v2(
   p_flotte_id uuid,
   p_role      role_type
 )
@@ -19,6 +18,20 @@ AS $$
       AND role     = p_role
       AND is_active = true
   );
+$$;
+
+-- Compatibilité: has_role délègue vers has_role_v2 pour éviter
+-- de casser les policies existantes pendant la migration progressive.
+CREATE OR REPLACE FUNCTION public.has_role(
+  p_flotte_id uuid,
+  p_role      role_type
+)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.has_role_v2(p_flotte_id, p_role);
 $$;
 
 -- Optionnel : restreindre la lecture des invitations.
