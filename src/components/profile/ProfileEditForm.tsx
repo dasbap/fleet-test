@@ -127,7 +127,6 @@ const ProfileEditForm = ({ user, onUpdate }: ProfileEditFormProps) => {
         .eq("user_id", user.id);
 
       if (profileError) {
-        // eslint-disable-next-line no-console
         console.error(
           "Erreur lors de la mise à jour du profil (table profils) :",
           profileError
@@ -141,7 +140,6 @@ const ProfileEditForm = ({ user, onUpdate }: ProfileEditFormProps) => {
       onUpdate();
       form.reset({ fullName: values.fullName });
     } catch (error: unknown) {
-      // eslint-disable-next-line no-console
       console.error("Erreur lors de la mise à jour profil :", error);
       const rawMessage =
         error instanceof Error ? error.message : undefined;

@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Camera } from "lucide-react";
 import { useDeleteEvidence } from "@/hooks/useMaintenanceEvidence";
-import { useEvidenceUpload, EVIDENCE_IMAGE_TYPES } from "@/hooks/useEvidenceUpload";
+import { useEvidenceUpload } from "@/hooks/useEvidenceUpload";
 import { cn } from "@/lib/utils";
 import EvidenceGrid from "./EvidenceGrid";
 import EvidencePreviewCard from "./EvidencePreviewCard";
@@ -133,4 +133,3 @@ const EvidenceUpload = ({
 };
 
 export default EvidenceUpload;
-export { EVIDENCE_IMAGE_TYPES };

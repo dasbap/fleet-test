@@ -94,7 +94,7 @@ export function MaintenanceDetailDialog({
         : ""
     );
     setLocalParts(Array.isArray(job.parts) ? [...job.parts] : []);
-  }, [job?.id, job?.notes, job?.planned_at, job?.parts]);
+  }, [job]);
 
   const handleSavePlanning = async () => {
     await updateJob.mutateAsync({

@@ -137,7 +137,7 @@ export function useAuth(): UserWithRole {
       });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchMemberships]);
 
   // Premier fleetId actif (priorité à la simplicité pour la V1)
   const userFleetId = memberships.length > 0 ? memberships[0].fleet_id : null;

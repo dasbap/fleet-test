@@ -90,7 +90,7 @@ export function useSystemHealth(): SystemHealthResult {
     if (canCheckHealth && userFleetId) {
       checkHealth();
     }
-  }, [canCheckHealth, userFleetId]);
+  }, [canCheckHealth, userFleetId, checkHealth]);
 
   return {
     status,

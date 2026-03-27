@@ -12,7 +12,7 @@ Réduire le risque de régressions en imposant un workflow simple et reproductib
 1. Après un `save` :
    - la mise en forme Prettier s’applique (`editor.formatOnSave`)
    - les corrections ESLint s’appliquent (`eslint --fix`)
-2. Avant d’ouvrir une PR / de pousser un changement :
+2. Avant des modifications majeures (et avant PR/push) :
    - exécuter `npm run lint`
    - exécuter `npm test`
 
