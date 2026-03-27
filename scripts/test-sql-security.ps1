@@ -22,6 +22,17 @@ function Invoke-SupabaseCommand {
   }
 }
 
+function Ensure-SupabaseRunning {
+  try {
+    Invoke-SupabaseCommand -CommandArgs @("status")
+    return
+  }
+  catch {
+    Write-Host "INFO: Stack Supabase absente, demarrage sans vector/logflare..." -ForegroundColor Yellow
+    Invoke-SupabaseCommand -CommandArgs @("start", "-x", "vector,logflare")
+  }
+}
+
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "TESTS SQL SECURITE (RLS/RPC)" -ForegroundColor Green
@@ -36,7 +47,7 @@ foreach ($testFile in $tests) {
 
 try {
   Write-Host "1) Verification stack Supabase locale..." -ForegroundColor Cyan
-  Invoke-SupabaseCommand -CommandArgs @("status")
+  Ensure-SupabaseRunning
 
   Write-Host "2) Execution des tests SQL..." -ForegroundColor Cyan
   foreach ($testFile in $tests) {

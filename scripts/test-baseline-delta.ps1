@@ -127,8 +127,8 @@ try {
         Write-Host "INFO: Aucun stack actif a stopper (ou arret deja effectue)." -ForegroundColor DarkYellow
     }
 
-    Write-Host "1) Demarrage stack locale Supabase..." -ForegroundColor Cyan
-    Invoke-SupabaseCommand -CommandArgs @("start")
+    Write-Host "1) Demarrage stack locale Supabase (sans vector/logflare)..." -ForegroundColor Cyan
+    Invoke-SupabaseCommand -CommandArgs @("start", "-x", "vector,logflare")
 
     Write-Host "2) Preparation d une chaine migrations temporaire baseline+deltas..." -ForegroundColor Cyan
     Move-Item $migrationsRoot $legacyRoot
