@@ -43,13 +43,29 @@ jobs:
         with:
           version: latest
 
+      - name: Prepare CI log directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Path "supabase-ci-logs" -Force | Out-Null
+
       - name: Run baseline + delta validation
         shell: pwsh
-        run: ./scripts/test-baseline-delta.ps1
+        env:
+          CI_SUPABASE_DEBUG: "true"
+        run: ./scripts/test-baseline-delta.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/baseline-delta.log"
 
       - name: Run SQL security tests
         shell: pwsh
-        run: ./scripts/test-sql-security.ps1
+        env:
+          CI_SUPABASE_DEBUG: "true"
+        run: ./scripts/test-sql-security.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/sql-security.log"
+
+      - name: Upload Supabase debug logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-debug-logs
+          path: supabase-ci-logs/
+          if-no-files-found: warn
 
   validate-delta-file-list:
     name: Validate delta files exist

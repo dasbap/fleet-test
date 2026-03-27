@@ -39,6 +39,10 @@ function Invoke-SupabaseCommand {
         [string[]]$CommandArgs
     )
 
+    if ($env:CI_SUPABASE_DEBUG -eq "true") {
+        $CommandArgs = @($CommandArgs + "--debug")
+    }
+
     & npx supabase @CommandArgs
     if ($LASTEXITCODE -ne 0) {
         throw "Commande Supabase en echec: npx supabase $($CommandArgs -join ' ')"

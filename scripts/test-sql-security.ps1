@@ -7,11 +7,15 @@ $ErrorActionPreference = "Stop"
 $tests = @(
   "supabase/tests/01_security_invariants.sql",
   "supabase/tests/02_policy_coverage.sql",
-  "supabase/tests/03_invitation_guardrails.sql"
+  "supabase/tests/03_invitation_guardrails.sql",
+  "supabase/tests/04_post_migration_objects.sql"
 )
 
 function Invoke-SupabaseCommand {
   param([string[]]$CommandArgs)
+  if ($env:CI_SUPABASE_DEBUG -eq "true") {
+    $CommandArgs = @($CommandArgs + "--debug")
+  }
   & npx supabase @CommandArgs
   if ($LASTEXITCODE -ne 0) {
     throw "Commande Supabase en echec: npx supabase $($CommandArgs -join ' ')"
