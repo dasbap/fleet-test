@@ -19,11 +19,7 @@ BEGIN
   IF to_regclass('public.clotures_creneaux') IS NULL THEN
     RAISE EXCEPTION 'Objet manquant: table public.clotures_creneaux';
   END IF;
-END
-$$;
 
-DO $$
-BEGIN
   IF to_regprocedure('public.affecter_vehicule(uuid,uuid,uuid,timestamp with time zone)') IS NULL THEN
     RAISE EXCEPTION 'Objet manquant: RPC public.affecter_vehicule(uuid,uuid,uuid,timestamptz)';
   END IF;
