@@ -1,6 +1,6 @@
 -- =====================================================
 -- SÉCURITÉ RLS + FONCTIONS — À exécuter dans l'ordre dans le SQL Editor
--- Copier TOUT le contenu de ce fichier (pas le nom du fichier) puis Run
+-- Copier TOUT le contenu de ce fichier (pas le nom du fichier) puis Exécuter
 -- =====================================================
 
 -- ========== PARTIE 1 : Activer RLS sur toutes les tables ==========

@@ -2,12 +2,12 @@
 
 ## Installation
 
-1. Ouvrez votre **Supabase Dashboard** : https://app.supabase.com
+1. Ouvrez votre **tableau de bord Supabase** : https://app.supabase.com
 2. Sélectionnez votre projet
-3. Allez dans **SQL Editor** (menu de gauche)
+3. Allez dans **�diteur SQL** (menu de gauche)
 4. Ouvrez le fichier `supabase/rpc-consistency.sql`
 5. **Copiez tout le contenu** et collez-le dans l'éditeur SQL
-6. Cliquez sur **Run** ou appuyez sur `Ctrl+Enter`
+6. Cliquez sur **Exécuter** ou appuyez sur `Ctrl+Enter`
 
 ## Fonctions disponibles
 

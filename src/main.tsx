@@ -1,6 +1,4 @@
-import "./instrument";
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
 import "./index.css";
 import { reportWebVitals } from "./reportWebVitals";
 
@@ -26,5 +24,38 @@ if (import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL) {
   };
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
-reportWebVitals();
+const renderBootstrapError = (message: string) => {
+  const rootEl = document.getElementById("root");
+  if (!rootEl) return;
+
+  rootEl.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f0f0f;color:#f5f5f5;padding:16px;text-align:center;font-family:Inter,system-ui,sans-serif;">
+      <div>
+        <p style="margin:0 0 8px 0;font-size:16px;">Une erreur de démarrage est survenue.</p>
+        <p style="margin:0;color:#b8b8b8;font-size:14px;">${message}</p>
+        <p style="margin:12px 0 0 0;color:#b8b8b8;font-size:14px;">Essayez de recharger la page.</p>
+      </div>
+    </div>
+  `;
+};
+
+const bootstrap = async () => {
+  const rootEl = document.getElementById("root");
+  if (!rootEl) {
+    return;
+  }
+
+  try {
+    await import("./instrument");
+    const { default: App } = await import("./App.tsx");
+    createRoot(rootEl).render(<App />);
+    reportWebVitals();
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Erreur inconnue";
+    console.error("Erreur de bootstrap React:", error);
+    renderBootstrapError(message);
+  }
+};
+
+void bootstrap();

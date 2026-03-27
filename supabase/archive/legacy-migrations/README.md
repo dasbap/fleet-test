@@ -1,4 +1,4 @@
-# Legacy migrations archive (documentation)
+# Archive des migrations legacy (documentation)
 
 Ce dossier documente les migrations legacy à ne plus utiliser pour le flux baseline/rebase.
 

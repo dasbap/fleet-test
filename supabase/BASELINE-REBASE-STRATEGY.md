@@ -80,7 +80,7 @@ Contrôles :
 - Pour les fonctions exposées via RLS/RPC : `SECURITY DEFINER` + `SET search_path = public`.
 
 ## Contrôles sécurité après déploiement
-- Activer dans Supabase Dashboard : Leaked password protection (HaveIBeenPwned).
+- Activer dans tableau de bord Supabase : Leaked password protection (HaveIBeenPwned).
 - Relancer Security Advisor.
 - Vérifier les fonctions sensibles (`affecter_vehicule`, `fermer_creneau`, alias legacy) avec `pg_get_functiondef`.
 - Exécuter `supabase/run-securite-rls-and-functions.sql` pour auditer RLS/search_path/EXECUTE grants.

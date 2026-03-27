@@ -2,11 +2,11 @@
 
 Ce guide vous explique comment utiliser et interpréter le script de vérification de la migration vers le français (`verify-migration-status.sql`).
 
-## 📋 Introduction
+## �??? Introduction
 
 Le script `verify-migration-status.sql` génère un rapport structuré qui vérifie l'état complet de la migration de votre base de données vers les noms français. Il identifie automatiquement les problèmes et génère des commandes SQL de correction.
 
-## 🚀 Comment exécuter le script
+## �??? Comment exécuter le script
 
 ### Option 1 : Via npm script (Recommandé)
 
@@ -22,14 +22,14 @@ Cette commande lance le script PowerShell qui vous guide à travers les options 
 powershell -ExecutionPolicy Bypass -File scripts/verify-migration-status.ps1
 ```
 
-### Option 3 : Via Supabase Dashboard
+### Option 3 : Via tableau de bord Supabase
 
-1. Connectez-vous à [Supabase Dashboard](https://app.supabase.com)
+1. Connectez-vous à [tableau de bord Supabase](https://app.supabase.com)
 2. Sélectionnez votre projet
-3. Allez dans **SQL Editor** (menu de gauche)
+3. Allez dans **�diteur SQL** (menu de gauche)
 4. Ouvrez le fichier `supabase/verify-migration-status.sql`
 5. Copiez tout le contenu et collez-le dans l'éditeur SQL
-6. Cliquez sur **Run** (ou `Ctrl+Enter` / `Cmd+Enter`)
+6. Cliquez sur **Ex�cuter** (ou `Ctrl+Enter` / `Cmd+Enter`)
 
 ### Option 4 : Via Supabase CLI
 
@@ -37,7 +37,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify-migration-status.ps1
 supabase db execute --file supabase/verify-migration-status.sql
 ```
 
-## 📊 Structure du rapport
+## �??? Structure du rapport
 
 Le rapport généré contient **7 sections** principales :
 
@@ -51,7 +51,7 @@ Le rapport généré contient **7 sections** principales :
 
 ---
 
-## 📖 Interprétation détaillée des sections
+## �??? Interprétation détaillée des sections
 
 ### Section 1 : Résumé exécutif
 
@@ -60,34 +60,34 @@ Le rapport généré contient **7 sections** principales :
 - Le nombre de tables françaises trouvées dans la base de données
 - Le nombre de tables anglaises restantes (doublons)
 - Le pourcentage de complétion de la migration
-- Le statut global (✅ Succès / ⚠️ Avertissements / ❌ Erreurs)
+- Le statut global (�?? Succès / �?�️ Avertissements / �? Erreurs)
 
 **Comment interpréter les résultats :**
 
 | Statut | Signification | Action requise |
 |--------|---------------|----------------|
-| ✅ SUCCÈS | Toutes les tables françaises sont présentes, aucune table anglaise restante | Aucune action requise |
-| ⚠️ AVERTISSEMENTS | Des doublons sont détectés (tables anglaises + françaises coexistantes) | Supprimer les tables anglaises (voir Section 3) |
-| ❌ ERREURS | Des tables françaises manquent | Relancer la migration complète |
+| �?? SUCC�?S | Toutes les tables françaises sont présentes, aucune table anglaise restante | Aucune action requise |
+| �?�️ AVERTISSEMENTS | Des doublons sont détectés (tables anglaises + françaises coexistantes) | Supprimer les tables anglaises (voir Section 3) |
+| �? ERREURS | Des tables françaises manquent | Relancer la migration complète |
 
 **Exemple de sortie réussie :**
 ```
-📊 STATISTIQUES GLOBALES
+�??? STATISTIQUES GLOBALES
 Tables françaises attendues: 15
 Tables françaises trouvées: 15
 Tables anglaises restantes (doublons): 0
 Pourcentage de complétion: 100%
-Statut global: ✅ SUCCÈS
+Statut global: �?? SUCC�?S
 ```
 
 **Exemple avec problèmes :**
 ```
-📊 STATISTIQUES GLOBALES
+�??? STATISTIQUES GLOBALES
 Tables françaises attendues: 15
 Tables françaises trouvées: 12
 Tables anglaises restantes (doublons): 3
 Pourcentage de complétion: 80%
-Statut global: ⚠️ AVERTISSEMENTS
+Statut global: �?�️ AVERTISSEMENTS
 ```
 
 ---
@@ -101,7 +101,7 @@ Statut global: ⚠️ AVERTISSEMENTS
 
 **Colonnes du rapport :**
 
-- **statut** : ✅ (présente) ou ❌ (manquante)
+- **statut** : �?? (présente) ou �? (manquante)
 - **Table française** : Nom de la table française attendue
 - **Ancien nom** : Nom de la table anglaise correspondante
 - **Priorité** :
@@ -112,16 +112,16 @@ Statut global: ⚠️ AVERTISSEMENTS
 
 **Comment interpréter :**
 
-- ✅ **OK - Table présente** : La table existe, aucune action requise
-- ❌ **ACTION REQUISE - Table manquante** : La table n'existe pas, relancer la migration
+- �?? **OK - Table présente** : La table existe, aucune action requise
+- �? **ACTION REQUISE - Table manquante** : La table n'existe pas, relancer la migration
 
 **Exemple de sortie :**
 ```
 statut | Table française        | Ancien nom              | Priorité | Message d'action
 -------|------------------------|-------------------------|----------|------------------
-✅     | organisations          | orgs                    | CRITIQUE | OK - Table présente
-✅     | flottes                | fleets                  | CRITIQUE | OK - Table présente
-❌     | vehicules              | vehicles                | CRITIQUE | ACTION REQUISE - Table manquante
+�??     | organisations          | orgs                    | CRITIQUE | OK - Table présente
+�??     | flottes                | fleets                  | CRITIQUE | OK - Table présente
+�?     | vehicules              | vehicles                | CRITIQUE | ACTION REQUISE - Table manquante
 ```
 
 **Que faire en cas de problème :**
@@ -140,30 +140,30 @@ statut | Table française        | Ancien nom              | Priorité | Message
 **Colonnes du rapport :**
 
 - **statut** :
-  - ⚠️ DOUBLON DÉTECTÉ : Table anglaise ET française existent
-  - ⚠️ ANCIENNE TABLE EXISTE : Seule la table anglaise existe
-  - ✅ OK : Aucune table anglaise restante
+  - �?�️ DOUBLON D�?TECT�? : Table anglaise ET française existent
+  - �?�️ ANCIENNE TABLE EXISTE : Seule la table anglaise existe
+  - �?? OK : Aucune table anglaise restante
 - **Table anglaise** : Nom de l'ancienne table
 - **Table française correspondante** : Nom de la nouvelle table française
 - **Commande de correction suggérée** : Commande SQL prête à exécuter
 
 **Comment interpréter :**
 
-- ⚠️ **DOUBLON DÉTECTÉ** : Les deux tables existent. **Action requise** : Supprimer la table anglaise avec la commande suggérée
-- ⚠️ **ANCIENNE TABLE EXISTE** : Seule la table anglaise existe. **Action requise** : Renommer la table avec la commande suggérée
-- ✅ **OK** : Aucune table anglaise restante
+- �?�️ **DOUBLON D�?TECT�?** : Les deux tables existent. **Action requise** : Supprimer la table anglaise avec la commande suggérée
+- �?�️ **ANCIENNE TABLE EXISTE** : Seule la table anglaise existe. **Action requise** : Renommer la table avec la commande suggérée
+- �?? **OK** : Aucune table anglaise restante
 
 **Exemple de sortie avec doublons :**
 ```
 statut              | Table anglaise          | Table française correspondante | Commande de correction
 --------------------|-------------------------|-------------------------------|----------------------
-⚠️ DOUBLON DÉTECTÉ | vehicles                | vehicules                     | SUPPRIMER: DROP TABLE IF EXISTS vehicles CASCADE;
-⚠️ DOUBLON DÉTECTÉ | fleet_memberships       | flotte_adhesions              | SUPPRIMER: DROP TABLE IF EXISTS fleet_memberships CASCADE;
+�?�️ DOUBLON D�?TECT�? | vehicles                | vehicules                     | SUPPRIMER: DROP TABLE IF EXISTS vehicles CASCADE;
+�?�️ DOUBLON D�?TECT�? | fleet_memberships       | flotte_adhesions              | SUPPRIMER: DROP TABLE IF EXISTS fleet_memberships CASCADE;
 ```
 
 **Que faire en cas de problème :**
 1. **Vérifier les données** : Avant de supprimer une table anglaise, vérifiez qu'elle ne contient pas de données importantes
-2. **Exécuter les commandes suggérées** : Copiez les commandes SQL de la colonne "Commande de correction suggérée" et exécutez-les dans Supabase SQL Editor
+2. **Exécuter les commandes suggérées** : Copiez les commandes SQL de la colonne "Commande de correction suggérée" et exécutez-les dans Supabase �diteur SQL
 3. **Relancer le script** : Après avoir supprimé les doublons, relancez le script pour vérifier que tout est correct
 
 ---
@@ -183,7 +183,7 @@ statut              | Table anglaise          | Table française correspondante 
 
 **Colonnes du rapport :**
 
-- **statut** : ✅ (présente) ou ❌ (manquante)
+- **statut** : �?? (présente) ou �? (manquante)
 - **Fonction française** : Nom de la fonction française attendue
 - **Ancien nom** : Nom de l'ancienne fonction anglaise
 - **Priorité** : CRITIQUE ou IMPORTANT
@@ -192,16 +192,16 @@ statut              | Table anglaise          | Table française correspondante 
 **Vérification spéciale : `has_role`**
 
 Le script vérifie également les paramètres de la fonction `has_role` :
-- ✅ **Paramètre correct (p_flotte_id)** : La fonction utilise le bon nom de paramètre français
-- ⚠️ **Paramètre incorrect (p_fleet_id)** : La fonction utilise encore l'ancien nom de paramètre anglais
+- �?? **Paramètre correct (p_flotte_id)** : La fonction utilise le bon nom de paramètre français
+- �?�️ **Paramètre incorrect (p_fleet_id)** : La fonction utilise encore l'ancien nom de paramètre anglais
 
 **Exemple de sortie :**
 ```
 statut | Fonction française      | Ancien nom      | Priorité | Message d'action
 -------|-------------------------|-----------------|----------|------------------
-✅     | affecter_vehicule       | assign_vehicle  | CRITIQUE | OK - Fonction présente
-✅     | fermer_creneau          | close_shift     | CRITIQUE | OK - Fonction présente
-❌     | rechercher_utilisateurs | search_users    | IMPORTANT| ACTION REQUISE - Fonction manquante
+�??     | affecter_vehicule       | assign_vehicle  | CRITIQUE | OK - Fonction présente
+�??     | fermer_creneau          | close_shift     | CRITIQUE | OK - Fonction présente
+�?     | rechercher_utilisateurs | search_users    | IMPORTANT| ACTION REQUISE - Fonction manquante
 ```
 
 **Que faire en cas de problème :**
@@ -221,22 +221,22 @@ statut | Fonction française      | Ancien nom      | Priorité | Message d'acti
 - **Schéma** : Généralement `public`
 - **Table** : Nom de la table
 - **Index** : Nom de l'index
-- **Statut** : ✅ Index français ou ⚠️ Index à vérifier
+- **Statut** : �?? Index français ou �?�️ Index à vérifier
 
 **Exemple de sortie :**
 ```
 Schéma | Table                | Index                              | Statut
 -------|----------------------|------------------------------------|------------------
-public | vehicules            | idx_vehicules_fleet_id            | ✅ Index français
-public | vehicules            | idx_vehicules_status              | ✅ Index français
-public | flotte_adhesions     | idx_flotte_adhesions_user_id      | ✅ Index français
+public | vehicules            | idx_vehicules_fleet_id            | �?? Index français
+public | vehicules            | idx_vehicules_status              | �?? Index français
+public | flotte_adhesions     | idx_flotte_adhesions_user_id      | �?? Index français
 ```
 
 **Détection des anciens index :**
 
 Le script liste également les anciens index anglais qui doivent être supprimés :
 ```
-⚠️ | public | vehicles | idx_vehicles_fleet_id | DROP INDEX IF EXISTS public.idx_vehicles_fleet_id;
+�?�️ | public | vehicles | idx_vehicles_fleet_id | DROP INDEX IF EXISTS public.idx_vehicles_fleet_id;
 ```
 
 **Que faire en cas de problème :**
@@ -256,22 +256,22 @@ Le script liste également les anciens index anglais qui doivent être supprimé
 - **Schéma** : Généralement `public`
 - **Table** : Nom de la table
 - **Politique** : Nom de la politique RLS
-- **Statut** : ✅ Politique française ou ⚠️ Politique à vérifier
+- **Statut** : �?? Politique française ou �?�️ Politique à vérifier
 
 **Exemple de sortie :**
 ```
 Schéma | Table                | Politique                          | Statut
 -------|----------------------|------------------------------------|------------------
-public | vehicules           | vehicules_lecture_manager_org       | ✅ Politique française
-public | vehicules           | vehicules_ecriture_manager_org     | ✅ Politique française
-public | flotte_adhesions    | adhesions_lecture_soi              | ✅ Politique française
+public | vehicules           | vehicules_lecture_manager_org       | �?? Politique française
+public | vehicules           | vehicules_ecriture_manager_org     | �?? Politique française
+public | flotte_adhesions    | adhesions_lecture_soi              | �?? Politique française
 ```
 
 **Détection des anciennes politiques :**
 
 Le script liste également les anciennes politiques anglaises qui doivent être supprimées :
 ```
-⚠️ | public | vehicles | vehicles_read_manager_org | DROP POLICY IF EXISTS vehicles_read_manager_org ON public.vehicles;
+�?�️ | public | vehicles | vehicles_read_manager_org | DROP POLICY IF EXISTS vehicles_read_manager_org ON public.vehicles;
 ```
 
 **Que faire en cas de problème :**
@@ -304,13 +304,13 @@ DROP FUNCTION IF EXISTS close_shift CASCADE;
 
 1. **Copiez les commandes** générées dans cette section
 2. **Vérifiez les commandes** avant de les exécuter (surtout les DROP TABLE)
-3. **Exécutez dans Supabase SQL Editor** :
-   - Ouvrez SQL Editor dans Supabase Dashboard
+3. **Exécutez dans Supabase �diteur SQL** :
+   - Ouvrez �diteur SQL dans tableau de bord Supabase
    - Collez les commandes
-   - Cliquez sur Run
+   - Cliquez sur Ex�cuter
 4. **Relancez le script** pour vérifier que les problèmes sont résolus
 
-**⚠️ Précautions importantes :**
+**�?�️ Précautions importantes :**
 
 - **Sauvegardez vos données** avant d'exécuter des commandes DROP TABLE
 - **Vérifiez les dépendances** : Les commandes avec CASCADE supprimeront également les objets dépendants
@@ -318,17 +318,17 @@ DROP FUNCTION IF EXISTS close_shift CASCADE;
 
 ---
 
-## 📝 Exemples pratiques
+## �??� Exemples pratiques
 
 ### Exemple 1 : Rapport réussi (migration complète)
 
 ```
-📊 STATISTIQUES GLOBALES
+�??? STATISTIQUES GLOBALES
 Tables françaises attendues: 15
 Tables françaises trouvées: 15
 Tables anglaises restantes (doublons): 0
 Pourcentage de complétion: 100%
-Statut global: ✅ SUCCÈS
+Statut global: �?? SUCC�?S
 ```
 
 **Interprétation :** La migration est complète. Toutes les tables françaises sont présentes et aucune table anglaise ne reste.
@@ -340,19 +340,19 @@ Statut global: ✅ SUCCÈS
 ### Exemple 2 : Rapport avec doublons détectés
 
 ```
-📊 STATISTIQUES GLOBALES
+�??? STATISTIQUES GLOBALES
 Tables françaises attendues: 15
 Tables françaises trouvées: 15
 Tables anglaises restantes (doublons): 3
 Pourcentage de complétion: 100%
-Statut global: ⚠️ AVERTISSEMENTS
+Statut global: �?�️ AVERTISSEMENTS
 ```
 
 **Section 3 - Détection des doublons :**
 ```
-⚠️ DOUBLON DÉTECTÉ | vehicles | vehicules | SUPPRIMER: DROP TABLE IF EXISTS vehicles CASCADE;
-⚠️ DOUBLON DÉTECTÉ | fleet_memberships | flotte_adhesions | SUPPRIMER: DROP TABLE IF EXISTS fleet_memberships CASCADE;
-⚠️ DOUBLON DÉTECTÉ | driver_shift_closures | clotures_creneaux | SUPPRIMER: DROP TABLE IF EXISTS driver_shift_closures CASCADE;
+�?�️ DOUBLON D�?TECT�? | vehicles | vehicules | SUPPRIMER: DROP TABLE IF EXISTS vehicles CASCADE;
+�?�️ DOUBLON D�?TECT�? | fleet_memberships | flotte_adhesions | SUPPRIMER: DROP TABLE IF EXISTS fleet_memberships CASCADE;
+�?�️ DOUBLON D�?TECT�? | driver_shift_closures | clotures_creneaux | SUPPRIMER: DROP TABLE IF EXISTS driver_shift_closures CASCADE;
 ```
 
 **Interprétation :** Les tables françaises sont toutes présentes, mais certaines tables anglaises existent encore (doublons).
@@ -367,19 +367,19 @@ Statut global: ⚠️ AVERTISSEMENTS
 ### Exemple 3 : Rapport avec tables manquantes
 
 ```
-📊 STATISTIQUES GLOBALES
+�??? STATISTIQUES GLOBALES
 Tables françaises attendues: 15
 Tables françaises trouvées: 12
 Tables anglaises restantes (doublons): 0
 Pourcentage de complétion: 80%
-Statut global: ❌ ERREURS
+Statut global: �? ERREURS
 ```
 
 **Section 2 - Tables françaises :**
 ```
-❌ | vehicules | vehicles | CRITIQUE | ACTION REQUISE - Table manquante
-❌ | affectations_vehicules | driver_vehicle_assignments | CRITIQUE | ACTION REQUISE - Table manquante
-❌ | creneaux_conducteurs | driver_shifts | CRITIQUE | ACTION REQUISE - Table manquante
+�? | vehicules | vehicles | CRITIQUE | ACTION REQUISE - Table manquante
+�? | affectations_vehicules | driver_vehicle_assignments | CRITIQUE | ACTION REQUISE - Table manquante
+�? | creneaux_conducteurs | driver_shifts | CRITIQUE | ACTION REQUISE - Table manquante
 ```
 
 **Interprétation :** Certaines tables françaises critiques sont manquantes. La migration n'est pas complète.
@@ -391,14 +391,14 @@ Statut global: ❌ ERREURS
 
 ---
 
-## 🔧 Dépannage
+## �??� Dépannage
 
 ### Problème : Le script ne s'exécute pas
 
 **Solutions :**
 - Vérifiez que vous êtes connecté à Supabase
 - Vérifiez que vous avez les droits d'administration sur le projet
-- Essayez d'exécuter le script section par section dans Supabase SQL Editor
+- Essayez d'exécuter le script section par section dans Supabase �diteur SQL
 
 ### Problème : Des tables sont marquées comme manquantes mais elles existent
 
@@ -428,7 +428,7 @@ Statut global: ❌ ERREURS
 
 ---
 
-## ✅ Bonnes pratiques
+## �?? Bonnes pratiques
 
 ### Quand exécuter ce script
 
@@ -439,9 +439,9 @@ Statut global: ❌ ERREURS
 
 ### Fréquence recommandée
 
-- **Après chaque migration** : ✅ Obligatoire
-- **Avant chaque déploiement** : ✅ Recommandé
-- **Mensuellement** : ✅ Pour maintenance préventive
+- **Après chaque migration** : �?? Obligatoire
+- **Avant chaque déploiement** : �?? Recommandé
+- **Mensuellement** : �?? Pour maintenance préventive
 
 ### Workflow recommandé
 
@@ -450,13 +450,13 @@ Statut global: ❌ ERREURS
 3. Si des problèmes sont détectés :
    - Copiez les commandes de la Section 7
    - Vérifiez les commandes
-   - Exécutez-les dans Supabase SQL Editor
+   - Exécutez-les dans Supabase �diteur SQL
 4. Relancez le script pour vérifier que tout est corrigé
 5. Documentez les actions effectuées
 
 ---
 
-## 📚 Ressources supplémentaires
+## �??? Ressources supplémentaires
 
 - **Script de migration** : `supabase/migrations/20241202000000_migrate_to_french.sql`
 - **Script PowerShell** : `scripts/verify-migration-status.ps1`
@@ -464,7 +464,7 @@ Statut global: ❌ ERREURS
 
 ---
 
-## ❓ Questions fréquentes
+## �? Questions fréquentes
 
 **Q : Le script modifie-t-il ma base de données ?**
 R : Non, le script est en lecture seule. Il génère uniquement un rapport et des recommandations.

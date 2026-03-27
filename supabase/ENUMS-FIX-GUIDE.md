@@ -28,21 +28,21 @@ Le schéma actuel utilise `CREATE TYPE` sans vérification préalable, ce qui pe
 
 ## 🚀 Instructions d'Exécution
 
-### Option 1: Via Supabase Dashboard (Recommandé)
+### Option 1 : Via le tableau de bord Supabase (recommandé)
 
 1. Ouvrez votre projet Supabase
-2. Allez dans **SQL Editor**
+2. Allez dans **�diteur SQL**
 3. Copiez le contenu de `supabase/fix-enums-idempotent.sql`
 4. Collez et exécutez le script
 5. Vérifiez les messages `NOTICE` pour confirmer les actions
 
-### Option 2: Via PowerShell
+### Option 2 : Via PowerShell
 
 ```powershell
 .\scripts\fix-enums.ps1
 ```
 
-### Option 3: Via Supabase CLI
+### Option 3 : Via Supabase CLI
 
 ```bash
 supabase db execute -f supabase/fix-enums-idempotent.sql

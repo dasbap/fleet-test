@@ -24,7 +24,7 @@ Le script `fix-orgs-rls-policies.sql` crée les politiques RLS nécessaires pour
 
 ## 📋 Instructions d'exécution
 
-1. Ouvrez le **Supabase SQL Editor**
+1. Ouvrez le **Supabase �diteur SQL**
 2. Copiez-collez le contenu de `supabase/fix-orgs-rls-policies.sql`
 3. Exécutez le script
 4. Vérifiez que les politiques ont été créées (dernière requête SELECT du script)

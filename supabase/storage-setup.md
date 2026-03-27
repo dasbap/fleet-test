@@ -7,7 +7,7 @@
 **Description** : Stockage des preuves de maintenance (photos, documents)
 
 **Configuration** :
-1. Allez dans Supabase Dashboard → Storage
+1. Allez dans tableau de bord Supabase → Storage
 2. Créez un nouveau bucket nommé `maintenance-evidence`
 3. Configurez les politiques d'accès :
 
@@ -76,7 +76,7 @@ USING (
 
 ## Structure des fichiers
 
-### Maintenance Evidence
+### Preuves de maintenance
 - Chemin : `{job_id}/{filename}`
 - Exemple : `550e8400-e29b-41d4-a716-446655440000/photo-maintenance.jpg`
 
@@ -106,7 +106,7 @@ const { data, error } = await supabase.storage
 
 ## Notes importantes
 
-- Les buckets doivent être créés manuellement dans Supabase Dashboard
+- Les buckets doivent être créés manuellement dans tableau de bord Supabase
 - Les politiques RLS doivent être configurées pour la sécurité
 - Utilisez `upsert: true` pour les avatars afin de remplacer l'ancien
 - Limitez la taille des fichiers (ex: 5MB pour avatars, 10MB pour maintenance)

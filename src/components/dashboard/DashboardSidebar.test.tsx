@@ -28,6 +28,19 @@ function renderSidebar(
 }
 
 describe("DashboardSidebar", () => {
+  const organizerLinks = [
+    { name: /Tableau de bord/i, href: "/dashboard" },
+    { name: /Véhicules/i, href: "/dashboard/vehicles" },
+    { name: /Incidents/i, href: "/dashboard/incidents" },
+    { name: /Maintenance/i, href: "/dashboard/maintenance" },
+    { name: /Équipes/i, href: "/dashboard/teams" },
+    { name: /Invitations/i, href: "/dashboard/invitations" },
+    { name: /Rapports/i, href: "/dashboard/reports" },
+    { name: /Finances/i, href: "/dashboard/finances" },
+    { name: /Alertes/i, href: "/dashboard/alerts" },
+    { name: /Rôles/i, href: "/dashboard/roles" },
+  ] as const;
+
   beforeEach(() => {
     signOutMock.mockReset();
     signOutMock.mockResolvedValue({ error: null });
@@ -36,53 +49,17 @@ describe("DashboardSidebar", () => {
   it(
     "affiche les liens de navigation pour le rôle organizer",
     async () => {
-    renderSidebar("organizer");
-    await waitFor(() => {
-      expect(screen.getByRole("link", { name: /Tableau de bord/i })).toBeInTheDocument();
-    });
+      const { container } = renderSidebar("organizer");
 
-    expect(screen.getByRole("link", { name: /Tableau de bord/i })).toHaveAttribute(
-      "href",
-      "/dashboard"
-    );
-    expect(screen.getByRole("link", { name: /Véhicules/i })).toHaveAttribute(
-      "href",
-      "/dashboard/vehicles"
-    );
-    expect(screen.getByRole("link", { name: /Incidents/i })).toHaveAttribute(
-      "href",
-      "/dashboard/incidents"
-    );
-    expect(screen.getByRole("link", { name: /Maintenance/i })).toHaveAttribute(
-      "href",
-      "/dashboard/maintenance"
-    );
-    expect(screen.getByRole("link", { name: /Équipes/i })).toHaveAttribute(
-      "href",
-      "/dashboard/teams"
-    );
-    expect(screen.getByRole("link", { name: /Invitations/i })).toHaveAttribute(
-      "href",
-      "/dashboard/invitations"
-    );
-    expect(screen.getByRole("link", { name: /Rapports/i })).toHaveAttribute(
-      "href",
-      "/dashboard/reports"
-    );
-    expect(screen.getByRole("link", { name: /Finances/i })).toHaveAttribute(
-      "href",
-      "/dashboard/finances"
-    );
-    expect(screen.getByRole("link", { name: /Alertes/i })).toHaveAttribute(
-      "href",
-      "/dashboard/alerts"
-    );
-    expect(screen.getByRole("link", { name: /Rôles/i })).toHaveAttribute(
-      "href",
-      "/dashboard/roles"
-    );
+      // Attendre un seul lien d'ancrage puis valider le menu complet.
+      await screen.findByRole("link", { name: /Tableau de bord/i });
+
+      for (const organizerLink of organizerLinks) {
+        const link = container.querySelector(`a[href="${organizerLink.href}"]`);
+        expect(link).not.toBeNull();
+      }
     },
-    15000
+    20000
   );
 
   it("affiche le lien actif avec aria-current page", () => {

@@ -8,13 +8,21 @@ import heroBg1920Avif from "@/assets/hero-bg-1920.avif";
 import heroBg768Webp from "@/assets/hero-bg-768.webp";
 import heroBg1280Webp from "@/assets/hero-bg-1280.webp";
 import heroBg1920Webp from "@/assets/hero-bg-1920.webp";
+import { usePageSeo } from "@/hooks/usePageSeo";
 
 const HeroSection = () => {
+  const demoVideoUrl =
+    import.meta.env.VITE_DEMO_VIDEO_URL || "https://youtu.be/7vl79App-Fs";
+
   const highlights = [
     "Gestion multi-flottes",
     "Suivi temps réel",
     "Paiements Mobile Money",
   ];
+
+  usePageSeo("landing", {
+    metas: [{ property: "og:video", content: demoVideoUrl }],
+  });
 
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
@@ -101,9 +109,17 @@ const HeroSection = () => {
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" className="group">
-              <Play className="mr-2 w-5 h-5 group-hover:text-primary transition-colors" />
-              Voir la démo
+            <Button size="lg" variant="outline" className="group" asChild>
+              <a
+                href={demoVideoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Parcours demo E-Samba - Voir la demo video YouTube"
+                aria-label="Parcours demo E-Samba. Ouvrir la video de demonstration YouTube."
+              >
+                <Play className="mr-2 w-5 h-5 group-hover:text-primary transition-colors" />
+                Voir la démo
+              </a>
             </Button>
           </div>
 

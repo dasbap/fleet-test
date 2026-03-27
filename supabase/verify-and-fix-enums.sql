@@ -214,7 +214,7 @@ order by t.typname;
 
 -- Si des valeurs manquantes sont détectées, vous avez deux options:
 -- 
--- OPTION 1: ALTER TYPE ADD VALUE (recommandé si le type est déjà utilisé)
+-- OPTION 1 : ALTER TYPE ADD VALUE (recommandé si le type est déjà utilisé)
 --   ALTER TYPE role_type ADD VALUE IF NOT EXISTS 'nouvelle_valeur';
 --   Note: Cette commande ne peut pas être dans une transaction
 --   et nécessite PostgreSQL 9.1+ avec support IF NOT EXISTS (10+)

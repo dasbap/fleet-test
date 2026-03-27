@@ -1,102 +1,102 @@
-# For detailed configuration reference documentation, visit:
+# Pour la documentation de référence détaillée de configuration, consultez :
 # https://supabase.com/docs/guides/local-development/cli/config
-# A string used to distinguish different Supabase projects on the same host. Defaults to the
-# working directory name when running `supabase init`.
+# Chaîne utilisée pour distinguer différents projets Supabase sur le même hôte.
+# Par défaut, le nom du répertoire de travail lors de l’exécution de `supabase init` est utilisé.
 project_id = "smart-fleet-africa"
 
 [api]
 enabled = true
-# Port to use for the API URL.
+# Port à utiliser pour l’URL de l’API.
 port = 54321
-# Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
-# endpoints. `public` and `graphql_public` schemas are included by default.
+# Schémas à exposer dans votre API. Les tables, vues et procédures stockées de ce schéma
+# obtiendront des endpoints API. Les schémas `public` et `graphql_public` sont inclus par défaut.
 schemas = ["public", "graphql_public"]
-# Extra schemas to add to the search_path of every request.
+# Schémas supplémentaires à ajouter au `search_path` de chaque requête.
 extra_search_path = ["public", "extensions"]
-# The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
-# for accidental or malicious requests.
+# Nombre maximum de lignes renvoyées par une vue, table ou procédure stockée.
+# Limite la taille de payload pour les requêtes accidentelles ou malveillantes.
 max_rows = 1000
 
 [api.tls]
-# Enable HTTPS endpoints locally using a self-signed certificate.
+# Activer localement les endpoints HTTPS avec un certificat auto-signé.
 enabled = false
-# Paths to self-signed certificate pair.
+# Chemins vers la paire de certificats auto-signés.
 # cert_path = "../certs/my-cert.pem"
 # key_path = "../certs/my-key.pem"
 
 [db]
-# Port to use for the local database URL.
+# Port à utiliser pour l’URL de la base locale.
 port = 54322
-# Port used by db diff command to initialize the shadow database.
+# Port utilisé par la commande `db diff` pour initialiser la base shadow.
 shadow_port = 54320
-# Maximum amount of time to wait for health check when starting the local database.
+# Durée maximale d’attente du health check au démarrage de la base locale.
 health_timeout = "2m"
-# The database major version to use. This has to be the same as your remote database's. Run `SHOW
-# server_version;` on the remote database to check.
+# Version majeure de base de données à utiliser. Elle doit être identique à celle de votre base distante.
+# Exécutez `SHOW server_version;` sur la base distante pour vérifier.
 major_version = 17
 
 [db.pooler]
 enabled = false
-# Port to use for the local connection pooler.
+# Port à utiliser pour le pooler de connexions local.
 port = 54329
-# Specifies when a server connection can be reused by other clients.
-# Configure one of the supported pooler modes: `transaction`, `session`.
+# Indique quand une connexion serveur peut être réutilisée par d’autres clients.
+# Configurez un des modes de pooler supportés : `transaction`, `session`.
 pool_mode = "transaction"
-# How many server connections to allow per user/database pair.
+# Nombre de connexions serveur autorisées par paire utilisateur/base.
 default_pool_size = 20
-# Maximum number of client connections allowed.
+# Nombre maximal de connexions client autorisées.
 max_client_conn = 100
 
 # [db.vault]
 # secret_key = "env(SECRET_VALUE)"
 
 [db.migrations]
-# If disabled, migrations will be skipped during a db push or reset.
+# Si désactivé, les migrations seront ignorées pendant un `db push` ou `db reset`.
 enabled = true
-# Specifies an ordered list of schema files that describe your database.
-# Supports glob patterns relative to supabase directory: "./schemas/*.sql"
+# Spécifie une liste ordonnée de fichiers de schéma décrivant votre base.
+# Prend en charge les motifs glob relatifs au dossier supabase : "./schemas/*.sql"
 schema_paths = []
 
 [db.seed]
-# If enabled, seeds the database after migrations during a db reset.
+# Si activé, alimente la base après les migrations lors d’un `db reset`.
 enabled = true
-# Specifies an ordered list of seed files to load during db reset.
-# Supports glob patterns relative to supabase directory: "./seeds/*.sql"
+# Spécifie une liste ordonnée de fichiers seed à charger pendant `db reset`.
+# Prend en charge les motifs glob relatifs au dossier supabase : "./seeds/*.sql"
 sql_paths = ["./seed.sql"]
 
 [db.network_restrictions]
-# Enable management of network restrictions.
+# Activer la gestion des restrictions réseau.
 enabled = false
-# List of IPv4 CIDR blocks allowed to connect to the database.
-# Defaults to allow all IPv4 connections. Set empty array to block all IPs.
+# Liste des blocs CIDR IPv4 autorisés à se connecter à la base.
+# Par défaut, toutes les connexions IPv4 sont autorisées. Mettre un tableau vide pour bloquer toutes les IP.
 allowed_cidrs = ["0.0.0.0/0"]
-# List of IPv6 CIDR blocks allowed to connect to the database.
-# Defaults to allow all IPv6 connections. Set empty array to block all IPs.
+# Liste des blocs CIDR IPv6 autorisés à se connecter à la base.
+# Par défaut, toutes les connexions IPv6 sont autorisées. Mettre un tableau vide pour bloquer toutes les IP.
 allowed_cidrs_v6 = ["::/0"]
 
 [realtime]
 enabled = true
-# Bind realtime via either IPv4 or IPv6. (default: IPv4)
+# Lier realtime via IPv4 ou IPv6. (par défaut : IPv4)
 # ip_version = "IPv6"
-# The maximum length in bytes of HTTP request headers. (default: 4096)
+# Longueur maximale en octets des en-têtes de requête HTTP. (par défaut : 4096)
 # max_header_length = 4096
 
 [studio]
 enabled = true
-# Port to use for Supabase Studio.
+# Port à utiliser pour Supabase Studio.
 port = 54323
-# External URL of the API server that frontend connects to.
+# URL externe du serveur API auquel le frontend se connecte.
 api_url = "http://127.0.0.1"
-# OpenAI API Key to use for Supabase AI in the Supabase Studio.
+# Clé API OpenAI à utiliser pour Supabase AI dans Supabase Studio.
 openai_api_key = "env(OPENAI_API_KEY)"
 
-# Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
-# are monitored, and you can view the emails that would have been sent from the web interface.
+# Serveur de test email. Les emails envoyés en local ne sont pas réellement expédiés :
+# ils sont surveillés, et vous pouvez voir ceux qui auraient été envoyés via l’interface web.
 [inbucket]
 enabled = true
-# Port to use for the email testing server web interface.
+# Port à utiliser pour l’interface web du serveur de test email.
 port = 54324
-# Uncomment to expose additional ports for testing user applications that send emails.
+# Décommentez pour exposer des ports supplémentaires pour tester des applications qui envoient des emails.
 # smtp_port = 54325
 # pop3_port = 54326
 # admin_email = "admin@email.com"
@@ -104,117 +104,118 @@ port = 54324
 
 [storage]
 enabled = true
-# The maximum file size allowed (e.g. "5MB", "500KB").
+# Taille maximale de fichier autorisée (ex. "5MB", "500KB").
 file_size_limit = "50MiB"
 
-# Uncomment to configure local storage buckets
+# Décommentez pour configurer des buckets de stockage locaux
 # [storage.buckets.images]
 # public = false
 # file_size_limit = "50MiB"
 # allowed_mime_types = ["image/png", "image/jpeg"]
 # objects_path = "./images"
 
-# Allow connections via S3 compatible clients
+# Autoriser les connexions via des clients compatibles S3
 [storage.s3_protocol]
 enabled = true
 
-# Image transformation API is available to Supabase Pro plan.
+# L’API de transformation d’image est disponible avec le plan Supabase Pro.
 # [storage.image_transformation]
 # enabled = true
 
-# Store analytical data in S3 for running ETL jobs over Iceberg Catalog
-# This feature is only available on the hosted platform.
+# Stocker les données analytiques dans S3 pour exécuter des jobs ETL sur Iceberg Catalog
+# Cette fonctionnalité est uniquement disponible sur la plateforme hébergée.
 [storage.analytics]
 enabled = false
 max_namespaces = 5
 max_tables = 10
 max_catalogs = 2
 
-# Analytics Buckets is available to Supabase Pro plan.
+# Analytics Buckets est disponible avec le plan Supabase Pro.
 # [storage.analytics.buckets.my-warehouse]
 
-# Store vector embeddings in S3 for large and durable datasets
-# This feature is only available on the hosted platform.
+# Stocker les embeddings vectoriels dans S3 pour des jeux de données volumineux et durables
+# Cette fonctionnalité est uniquement disponible sur la plateforme hébergée.
 [storage.vector]
 enabled = false
 max_buckets = 10
 max_indexes = 5
 
-# Vector Buckets is available to Supabase Pro plan.
+# Vector Buckets est disponible avec le plan Supabase Pro.
 # [storage.vector.buckets.documents-openai]
 
 [auth]
 enabled = true
-# The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
-# in emails.
+# URL de base de votre site web. Utilisée comme liste d’autorisation pour les redirections
+# et pour construire les URLs utilisées dans les emails.
 site_url = "http://127.0.0.1:3000"
-# A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
+# Liste des URLs *exactes* vers lesquelles les fournisseurs d’auth peuvent rediriger après authentification.
 # Inclut /auth pour mot de passe oublié (réinitialisation). En production hébergée, ajouter
 # les mêmes URLs dans Dashboard → Authentication → URL Configuration → Redirect URLs.
 additional_redirect_urls = ["https://127.0.0.1:3000", "http://localhost:8080/auth"]
-# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
+# Durée de validité des tokens, en secondes. Par défaut 3600 (1 heure), maximum 604800 (1 semaine).
 jwt_expiry = 3600
-# JWT issuer URL. If not set, defaults to the local API URL (http://127.0.0.1:<port>/auth/v1).
+# URL émettrice JWT. Si non définie, prend l’URL API locale par défaut (http://127.0.0.1:<port>/auth/v1).
 # jwt_issuer = ""
-# Path to JWT signing key. DO NOT commit your signing keys file to git.
+# Chemin vers la clé de signature JWT. NE COMMITTEZ PAS votre fichier de clés de signature dans git.
 # signing_keys_path = "./signing_keys.json"
-# If disabled, the refresh token will never expire.
+# Si désactivé, le refresh token n’expirera jamais.
 enable_refresh_token_rotation = true
-# Allows refresh tokens to be reused after expiry, up to the specified interval in seconds.
-# Requires enable_refresh_token_rotation = true.
+# Autorise la réutilisation des refresh tokens après expiration, jusqu’à l’intervalle indiqué en secondes.
+# Nécessite enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
-# Allow/disallow new user signups to your project.
+# Autoriser/interdire les nouvelles inscriptions utilisateur sur votre projet.
 enable_signup = true
-# Allow/disallow anonymous sign-ins to your project.
+# Autoriser/interdire les connexions anonymes à votre projet.
 enable_anonymous_sign_ins = false
-# Allow/disallow testing manual linking of accounts
+# Autoriser/interdire le test de liaison manuelle des comptes
 enable_manual_linking = false
-# Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
+# Les mots de passe plus courts que cette valeur seront rejetés comme faibles. Minimum 6, recommandé 8 ou plus.
 minimum_password_length = 6
-# Passwords that do not meet the following requirements will be rejected as weak. Supported values
-# are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
+# Les mots de passe ne respectant pas ces exigences seront rejetés comme faibles.
+# Valeurs supportées : `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
 
 [auth.rate_limit]
-# Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
+# Nombre d’emails pouvant être envoyés par heure. Nécessite auth.email.smtp activé.
 email_sent = 2
-# Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
+# Nombre de SMS pouvant être envoyés par heure. Nécessite auth.sms activé.
 sms_sent = 30
-# Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
+# Nombre de connexions anonymes possibles par heure et par adresse IP. Nécessite enable_anonymous_sign_ins = true.
 anonymous_users = 30
-# Number of sessions that can be refreshed in a 5 minute interval per IP address.
+# Nombre de sessions pouvant être rafraîchies sur un intervalle de 5 minutes par adresse IP.
 token_refresh = 150
-# Number of sign up and sign-in requests that can be made in a 5 minute interval per IP address (excludes anonymous users).
+# Nombre de requêtes d’inscription et de connexion possibles sur 5 minutes par adresse IP (hors utilisateurs anonymes).
 sign_in_sign_ups = 30
-# Number of OTP / Magic link verifications that can be made in a 5 minute interval per IP address.
+# Nombre de vérifications OTP / Magic link possibles sur 5 minutes par adresse IP.
 token_verifications = 30
-# Number of Web3 logins that can be made in a 5 minute interval per IP address.
+# Nombre de connexions Web3 possibles sur 5 minutes par adresse IP.
 web3 = 30
 
-# Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
+# Configurez un des fournisseurs captcha supportés : `hcaptcha`, `turnstile`.
 # [auth.captcha]
 # enabled = true
 # provider = "hcaptcha"
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
+# Autoriser/interdire les nouvelles inscriptions utilisateur par email.
 enable_signup = true
-# If enabled, a user will be required to confirm any email change on both the old, and new email
-# addresses. If disabled, only the new email is required to confirm.
+# Si activé, un utilisateur devra confirmer tout changement d’email sur l’ancienne et la nouvelle adresse.
+# Si désactivé, seule la nouvelle adresse devra être confirmée.
 double_confirm_changes = true
-# If enabled, users need to confirm their email address before signing in.
+# Si activé, les utilisateurs doivent confirmer leur adresse email avant de se connecter.
 enable_confirmations = false
-# If enabled, users will need to reauthenticate or have logged in recently to change their password.
+# Si activé, les utilisateurs devront se réauthentifier ou s’être connectés récemment pour changer leur mot de passe.
 secure_password_change = false
-# Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
+# Contrôle le délai minimal à respecter avant d’envoyer un nouvel email de confirmation d’inscription
+# ou de réinitialisation de mot de passe.
 max_frequency = "1s"
-# Number of characters used in the email OTP.
+# Nombre de caractères utilisés dans l’OTP email.
 otp_length = 6
-# Number of seconds before the email OTP expires (defaults to 1 hour).
+# Nombre de secondes avant expiration de l’OTP email (par défaut 1 heure).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
+# Utiliser un serveur SMTP prêt pour la production
 # [auth.email.smtp]
 # enabled = true
 # host = "smtp.sendgrid.net"
@@ -224,143 +225,146 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
+# Décommentez pour personnaliser le template email
 # [auth.email.template.invite]
-# subject = "You have been invited"
+# subject = "Vous avez été invité"
 # content_path = "./supabase/templates/invite.html"
 
-# Uncomment to customize notification email template
+# Décommentez pour personnaliser le template d’email de notification
 # [auth.email.notification.password_changed]
 # enabled = true
-# subject = "Your password has been changed"
+# subject = "Votre mot de passe a été modifié"
 # content_path = "./templates/password_changed_notification.html"
 
 [auth.sms]
-# Allow/disallow new user signups via SMS to your project.
+# Autoriser/interdire les nouvelles inscriptions utilisateur via SMS.
 enable_signup = false
-# If enabled, users need to confirm their phone number before signing in.
+# Si activé, les utilisateurs doivent confirmer leur numéro de téléphone avant de se connecter.
 enable_confirmations = false
-# Template for sending OTP to users
-template = "Your code is {{ .Code }}"
-# Controls the minimum amount of time that must pass before sending another sms otp.
+# Template pour envoyer l’OTP aux utilisateurs
+template = "Votre code est {{ .Code }}"
+# Contrôle le délai minimal à respecter avant d’envoyer un nouvel OTP SMS.
 max_frequency = "5s"
 
-# Use pre-defined map of phone number to OTP for testing.
+# Utiliser une map prédéfinie numéro de téléphone → OTP pour les tests.
 # [auth.sms.test_otp]
 # 4152127777 = "123456"
 
-# Configure logged in session timeouts.
+# Configurer les délais d’expiration des sessions connectées.
 # [auth.sessions]
-# Force log out after the specified duration.
+# Forcer la déconnexion après la durée spécifiée.
 # timebox = "24h"
-# Force log out if the user has been inactive longer than the specified duration.
+# Forcer la déconnexion si l’utilisateur est inactif plus longtemps que la durée spécifiée.
 # inactivity_timeout = "8h"
 
-# This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
+# Ce hook s’exécute avant la création d’un nouvel utilisateur et permet de rejeter la requête
+# selon l’objet utilisateur entrant.
 # [auth.hook.before_user_created]
 # enabled = true
 # uri = "pg-functions://postgres/auth/before-user-created-hook"
 
-# This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
+# Ce hook s’exécute avant l’émission d’un token et permet d’ajouter des claims supplémentaires
+# selon la méthode d’authentification utilisée.
 # [auth.hook.custom_access_token]
 # enabled = true
 # uri = "pg-functions://<database>/<schema>/<hook_name>"
 
-# Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
+# Configurez un des fournisseurs SMS supportés : `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]
 enabled = false
 account_sid = ""
 message_service_sid = ""
-# DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
+# NE COMMITTEZ PAS votre token d’auth Twilio dans git. Utilisez la substitution par variable d’environnement :
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 
-# Multi-factor-authentication is available to Supabase Pro plan.
+# L’authentification multifacteur est disponible avec le plan Supabase Pro.
 [auth.mfa]
-# Control how many MFA factors can be enrolled at once per user.
+# Contrôle combien de facteurs MFA peuvent être enrôlés en même temps par utilisateur.
 max_enrolled_factors = 10
 
-# Control MFA via App Authenticator (TOTP)
+# Contrôler la MFA via une application Authenticator (TOTP)
 [auth.mfa.totp]
 enroll_enabled = false
 verify_enabled = false
 
-# Configure MFA via Phone Messaging
+# Configurer la MFA via messagerie téléphonique
 [auth.mfa.phone]
 enroll_enabled = false
 verify_enabled = false
 otp_length = 6
-template = "Your code is {{ .Code }}"
+template = "Votre code est {{ .Code }}"
 max_frequency = "5s"
 
-# Configure MFA via WebAuthn
+# Configurer la MFA via WebAuthn
 # [auth.mfa.web_authn]
 # enroll_enabled = true
 # verify_enabled = true
 
-# Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
+# Utiliser un fournisseur OAuth externe. La liste complète des fournisseurs est : `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
 [auth.external.apple]
 enabled = false
 client_id = ""
-# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+# NE COMMITTEZ PAS le secret de votre fournisseur OAuth dans git. Utilisez la substitution
+# par variable d’environnement :
 secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
-# Overrides the default auth redirectUrl.
+# Remplace l’`auth redirectUrl` par défaut.
 redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
+# Remplace l’URL du fournisseur d’auth par défaut. Utilisé pour supporter gitlab auto-hébergé,
+# Azure mono-tenant, ou tout autre fournisseur OIDC tiers.
 url = ""
-# If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
+# Si activé, la vérification du nonce est ignorée. Requis pour la connexion locale avec Google auth.
 skip_nonce_check = false
-# If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
+# Si activé, permet à l’utilisateur de s’authentifier même si le fournisseur ne renvoie pas d’adresse email.
 email_optional = false
 
-# Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
-# You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
+# Autoriser les détenteurs de wallet Solana à se connecter via le standard Sign in with Solana (SIWS, EIP-4361).
+# Vous pouvez configurer la limite de débit "web3" dans [auth.rate_limit] et configurer [auth.captcha] en auto-hébergement.
 [auth.web3.solana]
 enabled = false
 
-# Use Firebase Auth as a third-party provider alongside Supabase Auth.
+# Utiliser Firebase Auth comme fournisseur tiers en complément de Supabase Auth.
 [auth.third_party.firebase]
 enabled = false
 # project_id = "my-firebase-project"
 
-# Use Auth0 as a third-party provider alongside Supabase Auth.
+# Utiliser Auth0 comme fournisseur tiers en complément de Supabase Auth.
 [auth.third_party.auth0]
 enabled = false
 # tenant = "my-auth0-tenant"
 # tenant_region = "us"
 
-# Use AWS Cognito (Amplify) as a third-party provider alongside Supabase Auth.
+# Utiliser AWS Cognito (Amplify) comme fournisseur tiers en complément de Supabase Auth.
 [auth.third_party.aws_cognito]
 enabled = false
 # user_pool_id = "my-user-pool-id"
 # user_pool_region = "us-east-1"
 
-# Use Clerk as a third-party provider alongside Supabase Auth.
+# Utiliser Clerk comme fournisseur tiers en complément de Supabase Auth.
 [auth.third_party.clerk]
 enabled = false
-# Obtain from https://clerk.com/setup/supabase
+# À obtenir depuis https://clerk.com/setup/supabase
 # domain = "example.clerk.accounts.dev"
 
-# OAuth server configuration
+# Configuration du serveur OAuth
 [auth.oauth_server]
-# Enable OAuth server functionality
+# Activer la fonctionnalité serveur OAuth
 enabled = false
-# Path for OAuth consent flow UI
+# Chemin de l’interface du flux de consentement OAuth
 authorization_url_path = "/oauth/consent"
-# Allow dynamic client registration
+# Autoriser l’enregistrement dynamique des clients
 allow_dynamic_registration = false
 
 [edge_runtime]
 enabled = true
-# Supported request policies: `oneshot`, `per_worker`.
-# `per_worker` (default) — enables hot reload during local development.
-# `oneshot` — fallback mode if hot reload causes issues (e.g. in large repos or with symlinks).
+# Politiques de requête supportées : `oneshot`, `per_worker`.
+# `per_worker` (par défaut) — active le hot reload en développement local.
+# `oneshot` — mode de secours si le hot reload cause des problèmes (ex. gros dépôts ou symlinks).
 policy = "per_worker"
-# Port to attach the Chrome inspector for debugging edge functions.
+# Port pour attacher l’inspecteur Chrome au débogage des edge functions.
 inspector_port = 8083
-# The Deno major version to use.
+# Version majeure de Deno à utiliser.
 deno_version = 2
 
 # [edge_runtime.secrets]
@@ -369,19 +373,19 @@ deno_version = 2
 [analytics]
 enabled = true
 port = 54327
-# Configure one of the supported backends: `postgres`, `bigquery`.
+# Configurez un des backends supportés : `postgres`, `bigquery`.
 backend = "postgres"
 
-# Experimental features may be deprecated any time
+# Les fonctionnalités expérimentales peuvent être dépréciées à tout moment
 [experimental]
-# Configures Postgres storage engine to use OrioleDB (S3)
+# Configure le moteur de stockage Postgres pour utiliser OrioleDB (S3)
 orioledb_version = ""
-# Configures S3 bucket URL, eg. <bucket_name>.s3-<region>.amazonaws.com
+# Configure l’URL du bucket S3, ex. <bucket_name>.s3-<region>.amazonaws.com
 s3_host = "env(S3_HOST)"
-# Configures S3 bucket region, eg. us-east-1
+# Configure la région du bucket S3, ex. us-east-1
 s3_region = "env(S3_REGION)"
-# Configures AWS_ACCESS_KEY_ID for S3 bucket
+# Configure AWS_ACCESS_KEY_ID pour le bucket S3
 s3_access_key = "env(S3_ACCESS_KEY)"
-# Configures AWS_SECRET_ACCESS_KEY for S3 bucket
+# Configure AWS_SECRET_ACCESS_KEY pour le bucket S3
 s3_secret_key = "env(S3_SECRET_KEY)"
 

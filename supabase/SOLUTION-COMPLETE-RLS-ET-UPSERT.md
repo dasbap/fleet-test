@@ -31,9 +31,9 @@ Le fichier `src/pages/Settings.tsx` utilise maintenant la fonction RPC `upsert_f
 
 ## 📋 Instructions d'exécution
 
-1. **Ouvrez Supabase SQL Editor**
+1. **Ouvrez Supabase �diteur SQL**
 2. **Copiez-collez** le contenu de `supabase/fix-all-issues-complete.sql`
-3. **Exécutez** le script (bouton "Run" ou F5)
+3. **Exécutez** le script (bouton "Ex�cuter" ou F5)
 4. **Vérifiez** les résultats des requêtes SELECT à la fin du script
 
 ## 🧪 Test

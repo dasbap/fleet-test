@@ -1,6 +1,6 @@
 # Approche ALTER TYPE ADD VALUE - Recommandation
 
-## ✅ Pourquoi ALTER TYPE ADD VALUE est Recommandé
+## ✅ Pourquoi ALTER TYPE ADD VALUE est recommandé
 
 ### 1. **Sécurité en Production**
 - ✅ **Ne supprime pas les données existantes**
@@ -20,7 +20,7 @@
 
 ## 🔄 Comparaison avec DROP TYPE CASCADE
 
-### ❌ DROP TYPE CASCADE (Non Recommandé)
+### ❌ DROP TYPE CASCADE (non recommandé)
 
 ```sql
 -- DANGEREUX en production
@@ -35,7 +35,7 @@ CREATE TYPE role_type AS ENUM ('organizer','manager','driver','mechanic');
 - ❌ Nécessite un arrêt de service
 - ❌ Complexe à restaurer en cas d'erreur
 
-### ✅ ALTER TYPE ADD VALUE (Recommandé)
+### ✅ ALTER TYPE ADD VALUE (recommandé)
 
 ```sql
 -- SÛR en production
@@ -155,8 +155,8 @@ WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'role_type');
 
 ## 🚀 Exécution
 
-### Via Supabase Dashboard
-1. Ouvrir SQL Editor
+### Via le tableau de bord Supabase
+1. Ouvrir �diteur SQL
 2. Copier le contenu de `fix-enums-idempotent.sql`
 3. Exécuter
 4. Vérifier les messages `NOTICE` et `WARNING`
@@ -169,7 +169,7 @@ NOTICE: ✓ Valeur "mechanic" ajoutée à role_type
 NOTICE: ✅ Tous les types enum et leurs valeurs sont correctement configurés
 ```
 
-## ✅ Checklist de Vérification
+## ✅ Liste de vérification
 
 Après exécution, vérifier:
 - [ ] Tous les types enum existent

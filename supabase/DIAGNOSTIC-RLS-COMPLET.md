@@ -15,7 +15,7 @@
 
 ## 📝 Étapes de vérification
 
-1. **Ouvrir Supabase SQL Editor**
+1. **Ouvrir Supabase �diteur SQL**
 2. Exécuter cette requête :
    ```sql
    SELECT 

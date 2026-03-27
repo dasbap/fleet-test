@@ -1,6 +1,6 @@
 -- =====================================================
 -- E-SAMBA DATABASE SCHEMA v2
--- Execute this SQL in your Supabase SQL Editor
+-- Exécutez ce SQL dans votre éditeur SQL Supabase
 -- =====================================================
 
 -- EXT
@@ -535,7 +535,7 @@ for insert with check (driver_user_id = auth.uid());
 create policy incidents_lecture_conducteur on incidents
 for select using (driver_user_id = auth.uid());
 
--- MAINTENANCE: mechanic+manager+org read; mechanic writes evidence/checklist
+-- MAINTENANCE : lecture mechanic+manager+org ; mechanic écrit preuves/checklist
 create policy travaux_lecture_mgr_org_mec on travaux_maintenance
 for select using (has_role(fleet_id,'manager') or has_role(fleet_id,'organizer') or has_role(fleet_id,'mechanic'));
 
@@ -618,11 +618,11 @@ begin
   v_invitation_code := new.raw_user_meta_data->>'invitation_code';
   
   if v_fleet_id is not null then
-    -- Add user to fleet as driver
+    -- Ajouter l'utilisateur à la flotte en tant que conducteur
     insert into public.flotte_adhesions (fleet_id, user_id, role, is_active)
     values (v_fleet_id, new.id, 'driver', true);
     
-    -- Increment invitation usage counter
+    -- Incrémenter le compteur d'utilisation de l'invitation
     if v_invitation_code is not null then
       update public.flotte_invitations 
       set current_uses = current_uses + 1 
