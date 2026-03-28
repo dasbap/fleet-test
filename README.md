@@ -70,6 +70,12 @@ Procédure détaillée (env, check-supabase, verify:connection, check:backend, s
 - `npm run lint` — lint ESLint
 - `npm run test` — tests unitaires
 - `npm run test:integration` — tests d’intégration
+- `npm run build:capacitor` — build web avec chemins relatifs (`base: './'`) pour Capacitor
+- `npm run mobile:prepare` — `build:capacitor` puis `npx cap sync` (met à jour `android/` et `ios/`)
+
+### App mobile iOS (Capacitor)
+
+Sur **Windows**, préparer le dépôt avec `npm run mobile:prepare`, puis versionner le dossier `ios/`. La compilation, l’ouverture dans Xcode et l’exécution sur simulateur ou iPhone nécessitent **macOS + Xcode** : `npx cap open ios` puis *Product → Run*, ou `npx cap run ios`. Activer dans Xcode **Signing & Capabilities** la capacité **Push Notifications** ; `Info.plist` inclut `UIBackgroundModes` → `remote-notification` pour la réception en arrière-plan. Voir aussi `capacitor.config.ts` (plugin Push) et les clés `NS*` (caméra, galerie, position) dans `ios/App/App/Info.plist`.
 
 ## Performance et CLS (Cumulative Layout Shift)
 
