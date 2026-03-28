@@ -76,7 +76,7 @@ const Profile = () => {
   if (!user) return null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto w-full max-w-4xl space-y-5 sm:space-y-6">
               <ProfileHeader
                 user={user}
                 role={role}

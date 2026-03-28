@@ -1,0 +1,1 @@
+export { GeolocationCoordinatesCard } from "./GeolocationCoordinatesCard";

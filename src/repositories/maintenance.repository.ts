@@ -59,6 +59,9 @@ export interface MaintenanceJobFilters {
   fleet_id?: string;
   vehicle_id?: string;
   status?: JobStatus;
+  /** Interventions créées à partir de cette date (ISO), ex. début de journée */
+  created_at_since?: string;
+  limit?: number;
 }
 
 /**
@@ -90,10 +93,47 @@ export class MaintenanceRepository {
       query = query.eq('status', filters.status);
     }
 
+    if (filters?.created_at_since) {
+      query = query.gte('created_at', filters.created_at_since);
+    }
+
+    if (filters?.limit != null && filters.limit > 0) {
+      query = query.limit(filters.limit);
+    }
+
     const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching maintenance jobs:', error);
+      throw new Error(error.message);
+    }
+
+    return (data || []) as MaintenanceJob[];
+  }
+
+  /**
+   * Travaux avec date planifiée (planning gestionnaire / synthèse).
+   */
+  async findScheduledForFleet(fleetId: string, limit: number = 15): Promise<MaintenanceJob[]> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const { data, error } = await supabase
+      .from('travaux_maintenance')
+      .select(
+        `
+        *,
+        vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
+        incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
+      `
+      )
+      .eq('fleet_id', fleetId)
+      .not('planned_at', 'is', null)
+      .gte('planned_at', startOfToday.toISOString())
+      .order('planned_at', { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching scheduled maintenance:', error);
       throw new Error(error.message);
     }
 

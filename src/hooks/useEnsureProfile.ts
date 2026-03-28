@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
-import type { User } from '@supabase/supabase-js';
+import { isMockAuthEnabled } from '@/lib/authMode';
+import type { AuthUser } from '@/types/auth';
 import { ProfileService } from '@/services/profile.service';
 import { ProfileRepository } from '@/repositories/profile.repository';
 import type { EnsureProfileResult } from '@/services/profile.service';
@@ -10,9 +11,9 @@ const profileService = new ProfileService(profileRepository);
 /**
  * Hook pour s'assurer que le profil utilisateur existe (délègue au service).
  */
-export function useEnsureProfile(user: User | null) {
+export function useEnsureProfile(user: AuthUser | null) {
   const ensureProfile = useCallback(async (): Promise<EnsureProfileResult | null> => {
-    if (!user) return null;
+    if (!user || isMockAuthEnabled()) return null;
     try {
       const result = await profileService.ensureProfile(user.id);
       if (result?.success && result.action !== 'no_action') {

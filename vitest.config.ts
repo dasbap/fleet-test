@@ -11,6 +11,13 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      // Évite l’échec de résolution si node_modules incomplet ou analyse transitive vers camera.service
+      "@capacitor/camera": path.resolve(
+        __dirname,
+        "./src/test/mocks/capacitor-camera.ts"
+      ),
+    },
   },
 });

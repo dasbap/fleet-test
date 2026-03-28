@@ -18,6 +18,9 @@ export * from './esamba-setup.service';
 export * from './profile.service';
 export * from './avatar.service';
 export * from './maintenance-evidence.service';
+export * from './share.service';
+export * from './deep-link.service';
+export * from './push-notification.service';
 
 // Réexporter les types pour compatibilité
 export type { Vehicle, VehicleInsert, VehicleStatus } from '@/hooks/useVehicles';

@@ -9,7 +9,10 @@ export interface Incident {
   driver_user_id: string;
   severity: IncidentSeverity;
   description: string;
+  incident_category: string | null;
   evidence_path: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
   // Joined data
   vehicle?: {
@@ -30,12 +33,16 @@ export interface IncidentInsert {
   driver_user_id: string;
   description: string;
   severity?: IncidentSeverity;
+  incident_category?: string | null;
   evidence_path?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface IncidentUpdate {
   description?: string;
   severity?: IncidentSeverity;
+  incident_category?: string | null;
   evidence_path?: string | null;
 }
 
@@ -46,6 +53,8 @@ export interface IncidentFilters {
   severity?: IncidentSeverity;
   /** Filtre incidents créés à partir de cette date (ISO) */
   created_at_since?: string;
+  /** Limite de lignes (pagination légère) */
+  limit?: number;
 }
 
 /**
@@ -84,6 +93,10 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
 
     if (filters?.created_at_since) {
       query = query.gte('created_at', filters.created_at_since);
+    }
+
+    if (filters?.limit != null && filters.limit > 0) {
+      query = query.limit(filters.limit);
     }
 
     const { data, error } = await query;
@@ -132,7 +145,16 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
         driver_user_id: incident.driver_user_id,
         description: incident.description,
         severity: incident.severity || 'medium',
+        incident_category: incident.incident_category ?? null,
         evidence_path: incident.evidence_path || null,
+        latitude:
+          incident.latitude !== undefined && incident.latitude !== null
+            ? incident.latitude
+            : null,
+        longitude:
+          incident.longitude !== undefined && incident.longitude !== null
+            ? incident.longitude
+            : null,
       })
       .select(`
         *,

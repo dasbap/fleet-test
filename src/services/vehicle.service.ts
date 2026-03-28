@@ -40,6 +40,23 @@ export class VehicleService {
   }
 
   /**
+   * Détail véhicule pour une flotte (accès restreint à la flotte courante).
+   */
+  async getVehicleDetailForFleet(
+    vehicleId: string,
+    fleetId: string | null
+  ): Promise<Vehicle | null> {
+    if (!vehicleId || !fleetId) {
+      return null;
+    }
+    const vehicle = await this.repository.findByIdWithAssignment(vehicleId);
+    if (!vehicle || vehicle.fleet_id !== fleetId) {
+      return null;
+    }
+    return vehicle;
+  }
+
+  /**
    * Crée un nouveau véhicule avec validation métier
    */
   async createVehicle(data: VehicleInsert): Promise<Vehicle> {

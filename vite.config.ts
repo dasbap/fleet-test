@@ -4,7 +4,9 @@ import path from "path";
 import { prerenderSeoPlugin } from "./scripts/vite-plugin-prerender-seo";
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // Build Capacitor : chemins relatifs pour le chargement depuis le WebView.
+  base: mode === "capacitor" ? "./" : "/",
   build: {
     sourcemap: false,
     // manualChunks : à envisager si le bundle est lourd (React, React Router, Recharts).
@@ -24,4 +26,4 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-});
+}));

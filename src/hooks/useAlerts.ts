@@ -8,10 +8,16 @@ const alertService = new AlertService(alertRepository);
 
 export type AlertSeverity = 'critical' | 'high' | 'medium' | 'low';
 
+export type AlertType =
+  | 'missing_closure'
+  | 'recurring_gap'
+  | 'risky_driver'
+  | 'vehicle_blocked';
+
 export interface Alert {
   id: string;
   fleet_id: string;
-  alert_type: 'missing_closure' | 'recurring_gap' | 'risky_driver' | 'vehicle_blocked';
+  alert_type: AlertType;
   driver_user_id: string | null;
   vehicle_id: string | null;
   shift_id: string | null;
@@ -32,6 +38,17 @@ export function useAlerts(fleetId?: string) {
     queryFn: () => (targetFleetId ? alertService.getUnresolvedAlerts(targetFleetId) : []),
     enabled: !!targetFleetId,
     refetchInterval: 60000,
+  });
+}
+
+/** Détail d’une alerte pour la flotte courante (résolue ou non). */
+export function useAlertDetail(alertId: string | undefined) {
+  const { userFleetId } = useAuth();
+  return useQuery({
+    queryKey: ['alert', alertId, userFleetId],
+    queryFn: () =>
+      alertService.getAlertByIdForFleet(alertId!, userFleetId!),
+    enabled: !!alertId && !!userFleetId,
   });
 }
 
@@ -59,6 +76,7 @@ export function useResolveAlert() {
       alertService.resolveAlert(alertId, resolvedBy),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['alert'] });
     },
   });
 }

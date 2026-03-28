@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { VehicleService } from '@/services/vehicle.service';
 import { VehicleRepository } from '@/repositories/vehicle.repository';
 
@@ -44,6 +45,7 @@ export function useVehicles(fleetId?: string) {
   return useQuery({
     queryKey: ['vehicles', fleetId],
     queryFn: () => vehicleService.getVehicles(fleetId),
+    enabled: fleetId != null && fleetId !== '',
   });
 }
 
@@ -51,6 +53,18 @@ export function useVehiclesSimple(fleetId?: string) {
   return useQuery({
     queryKey: ['vehicles-simple', fleetId],
     queryFn: () => vehicleService.getVehiclesSimple(fleetId),
+    enabled: fleetId != null && fleetId !== '',
+  });
+}
+
+/** Détail d’un véhicule pour la flotte de l’utilisateur connecté. */
+export function useVehicleDetail(vehicleId: string | undefined) {
+  const { userFleetId } = useAuth();
+  return useQuery({
+    queryKey: ['vehicle', vehicleId, userFleetId],
+    queryFn: () =>
+      vehicleService.getVehicleDetailForFleet(vehicleId!, userFleetId),
+    enabled: !!vehicleId && !!userFleetId,
   });
 }
 

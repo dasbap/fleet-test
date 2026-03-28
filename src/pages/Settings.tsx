@@ -12,7 +12,7 @@ import { PageLoader } from "@/components/dashboard/PageLoader";
 import { Settings as SettingsIcon, Zap, CheckCircle2, XCircle, RefreshCw, Users, Shield, UserCog, Car, Wrench, Phone, Loader2 } from "lucide-react";
 
 const Settings = () => {
-  const { user, role, userFleetId, isLoading: authLoading } = useAuth();
+  const { user, userFleetId, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { data: verificationStatus, isLoading: isVerifying, refetch: refetchVerification } = useEsambaDataVerification();
   const { data: fleetMembers = [], isLoading: isLoadingMembers, error: membersError, refetch: refetchMembers } = useFleetMembers(userFleetId || undefined);
@@ -96,8 +96,6 @@ const Settings = () => {
     return <PageLoader />;
   }
 
-  const userRole = role || "organizer";
-
   return (
     <div className="max-w-4xl mx-auto space-y-6">
               {/* Header */}
@@ -140,7 +138,7 @@ const Settings = () => {
                   </Alert>
 
                   <div className="space-y-2">
-                    {seedMutation.isLoading && (
+                    {seedMutation.isPending && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                         Création automatique en cours...
@@ -157,7 +155,7 @@ const Settings = () => {
                       variant={seedMutation.isSuccess ? "outline" : "default"}
                       className="w-full"
                     >
-                      {seedMutation.isLoading 
+                      {seedMutation.isPending
                         ? "Création en cours..." 
                         : seedMutation.isSuccess
                         ? "Recréer les données ESAMBA-2024"

@@ -1,0 +1,44 @@
+import type { ReactNode } from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth, type AppRole } from "@/hooks/useAuth";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
+
+interface RequireRoleProps {
+  children: ReactNode;
+  /** Au moins un de ces rôles est requis. */
+  allow: AppRole[];
+  /** Redirection si le rôle ne convient pas (défaut : tableau de bord). */
+  fallbackTo?: string;
+}
+
+/**
+ * Garde : rôle applicatif dans la liste autorisée (session + memberships déjà résolus par useAuth).
+ */
+export function RequireRole({
+  children,
+  allow,
+  fallbackTo = ROUTE_PATHS.dashboard,
+}: RequireRoleProps) {
+  const { role, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center bg-background">
+        <div
+          className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
+          aria-hidden
+        />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to={ROUTE_PATHS.auth} replace />;
+  }
+
+  if (!role || !allow.includes(role)) {
+    return <Navigate to={fallbackTo} replace />;
+  }
+
+  return <>{children}</>;
+}

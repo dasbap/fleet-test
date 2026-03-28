@@ -6,7 +6,20 @@ import { Label } from "@/components/ui/label";
 import { Zap, ArrowLeft, Mail, Lock, User, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { signIn, signUp, useAuth } from "@/hooks/useAuth";
+import { isMockAuthEnabled } from "@/lib/authMode";
 import { mapSupabaseErrorToFrench } from "@/lib/mapSupabaseError";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  MOBILE_APP_ROLE_LABELS,
+  MOBILE_APP_ROLE_ORDER,
+  type MobileAppRole,
+} from "@/types/mobile-app-role";
 import { InvitationCodeInput } from "@/components/auth/InvitationCodeInput";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -33,6 +46,7 @@ const Auth = () => {
   const [invitationCode, setInvitationCode] = useState<string | null>(null);
   const [hasUnverifiedCode, setHasUnverifiedCode] = useState(false);
   const [showDemoCredentials, setShowDemoCredentials] = useState(false);
+  const [mockLoginRole, setMockLoginRole] = useState<MobileAppRole>("FLEET_MANAGER");
 
   const [formData, setFormData] = useState({
     email: "",
@@ -169,7 +183,11 @@ const Auth = () => {
             : "Vérifiez votre email pour confirmer votre compte.",
         });
       } else {
-        const { error } = await signIn(formData.email, formData.password);
+        const { error } = await signIn(
+          formData.email,
+          formData.password,
+          isMockAuthEnabled() ? mockLoginRole : undefined,
+        );
         if (error) {
           const description =
             error.message === "Invalid login credentials"
@@ -400,6 +418,30 @@ const Auth = () => {
                 />
               </div>
             </div>
+
+            {isMockAuthEnabled() && !isSignup && (
+              <div className="space-y-2">
+                <Label htmlFor="mock-role">Rôle (session démo)</Label>
+                <Select
+                  value={mockLoginRole}
+                  onValueChange={(v) => setMockLoginRole(v as MobileAppRole)}
+                >
+                  <SelectTrigger id="mock-role" className="w-full">
+                    <SelectValue placeholder="Choisir un rôle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOBILE_APP_ROLE_ORDER.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {MOBILE_APP_ROLE_LABELS[r]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  En mode mock, ce rôle détermine les écrans et permissions (aligné mobile Flotte E-Samba).
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">

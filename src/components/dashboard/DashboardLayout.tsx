@@ -3,10 +3,12 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { useAuth } from "@/hooks/useAuth";
+import { isNativePlatform } from "@/lib/platform";
+import MobileAppLayout from "@/layouts/MobileAppLayout";
 
 /**
  * Layout commun pour toutes les pages dashboard : sidebar, header et zone de contenu (Outlet).
- * À utiliser comme route parente des routes enfants de /dashboard.
+ * Sous Capacitor : coque mobile à onglets (sans sidebar).
  */
 export default function DashboardLayout() {
   const { user, role } = useAuth();
@@ -20,6 +22,10 @@ export default function DashboardLayout() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  if (isNativePlatform()) {
+    return <MobileAppLayout userRole={role} />;
+  }
 
   return (
     <SidebarProvider>

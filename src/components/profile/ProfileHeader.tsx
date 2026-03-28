@@ -27,10 +27,10 @@ export default function ProfileHeader({
   const userMetadata = user.user_metadata || {};
 
   return (
-    <Card className="animate-fade-in">
-      <CardContent className="pt-6">
-        <div className="flex flex-col md:flex-row items-center gap-6">
-          <Avatar className="h-24 w-24 border-4 border-primary/20">
+    <Card className="animate-fade-in border-border/80 shadow-sm">
+      <CardContent className="pt-6 sm:pt-8">
+        <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
+          <Avatar className="h-24 w-24 border-4 border-primary/20 shadow-sm">
             <AvatarImage src={userMetadata.avatar_url} />
             <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
               {initials}

@@ -33,6 +33,20 @@ export class AlertRepository {
     return (data || []) as AlertRow[];
   }
 
+  async findById(id: string): Promise<AlertRow | null> {
+    const { data, error } = await supabase
+      .from('alertes_automatiques')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching alert:', error);
+      throw new Error(error.message);
+    }
+    return (data ?? null) as AlertRow | null;
+  }
+
   async generateAlerts(fleetId: string): Promise<unknown> {
     const { data, error } = await supabase.rpc('generer_alertes_automatiques', {
       p_fleet_id: fleetId,

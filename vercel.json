@@ -50,6 +50,8 @@
     { "source": "/dashboard/my-vehicle/", "destination": "/dashboard/my-vehicle/index.html" },
     { "source": "/dashboard/history", "destination": "/dashboard/history/index.html" },
     { "source": "/dashboard/history/", "destination": "/dashboard/history/index.html" },
+    { "source": "/dashboard/operations", "destination": "/dashboard/operations/index.html" },
+    { "source": "/dashboard/operations/", "destination": "/dashboard/operations/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

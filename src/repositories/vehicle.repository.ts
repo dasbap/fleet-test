@@ -144,6 +144,50 @@ export class VehicleRepository implements IRepository<Vehicle, VehicleInsert, Ve
   }
 
   /**
+   * Détail d’un véhicule avec affectation active (conducteur) si présente.
+   */
+  async findByIdWithAssignment(id: string): Promise<Vehicle | null> {
+    const vehicle = await this.findById(id);
+    if (!vehicle) {
+      return null;
+    }
+
+    const { data: assignmentRow } = await supabase
+      .from("affectations_vehicules")
+      .select(
+        `
+        id,
+        vehicle_id,
+        driver_user_id,
+        driver:profils!affectations_vehicules_driver_user_id_fkey(user_id, full_name)
+      `
+      )
+      .eq("vehicle_id", id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!assignmentRow) {
+      return { ...vehicle, active_assignment: null };
+    }
+
+    const rawDriver = assignmentRow.driver as unknown;
+    const driverRow = Array.isArray(rawDriver) ? rawDriver[0] : rawDriver;
+    const driver =
+      driverRow && typeof driverRow === "object"
+        ? (driverRow as { user_id: string; full_name: string | null })
+        : undefined;
+
+    return {
+      ...vehicle,
+      active_assignment: {
+        id: assignmentRow.id,
+        driver_user_id: assignmentRow.driver_user_id,
+        driver,
+      },
+    } as Vehicle;
+  }
+
+  /**
    * Crée un nouveau véhicule
    */
   async create(vehicle: VehicleInsert): Promise<Vehicle> {

@@ -4,7 +4,9 @@ import DashboardStats from "@/components/dashboard/DashboardStats";
 import FleetOverview from "@/components/dashboard/FleetOverview";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import { SystemHealthAlert } from "@/components/dashboard/SystemHealthAlert";
+import { MobileHomeDashboard } from "@/components/mobile/home/MobileHomeDashboard";
 import { useAuth } from "@/hooks/useAuth";
+import { isNativePlatform } from "@/lib/platform";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 const Dashboard = () => {
@@ -19,6 +21,15 @@ const Dashboard = () => {
       navigate("/dashboard/create-fleet");
     }
   }, [isLoading, userFleetId, role, navigate]);
+
+  if (isNativePlatform()) {
+    return (
+      <div className="mx-auto w-full max-w-lg space-y-5">
+        <SystemHealthAlert />
+        <MobileHomeDashboard />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

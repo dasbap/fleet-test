@@ -138,8 +138,13 @@
     @apply border-border;
   }
 
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -148,6 +153,14 @@
 }
 
 @layer utilities {
+  /* Mobile natif (Capacitor) : zones sûres pour encoches / barre système */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
   }
@@ -158,5 +171,11 @@
   
   .glass-dark {
     @apply bg-card/80 backdrop-blur-md border border-border/50;
+  }
+
+  /** Conteneur page mobile : gouttières cohérentes avec encoches (safe area). */
+  .mobile-gutter-x {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
   }
 }

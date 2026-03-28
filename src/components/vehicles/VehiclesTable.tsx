@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Car, MoreVertical, User, AlertCircle, CheckCircle, UserPlus } from "lucide-react";
 import {
   Table,
@@ -138,9 +139,12 @@ const VehiclesTable = ({ fleetId }: VehiclesTableProps) => {
               return (
                 <TableRow key={vehicle.id}>
                   <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Car className="w-5 h-5 text-primary" />
+                    <Link
+                      to={`/dashboard/vehicles/${vehicle.id}`}
+                      className="flex items-center gap-3 rounded-md outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                        <Car className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <div className="font-medium">
@@ -150,10 +154,15 @@ const VehiclesTable = ({ fleetId }: VehiclesTableProps) => {
                           {vehicle.year}
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   </TableCell>
                   <TableCell>
-                    <span className="font-mono font-semibold">{vehicle.registration}</span>
+                    <Link
+                      to={`/dashboard/vehicles/${vehicle.id}`}
+                      className="font-mono font-semibold text-foreground underline-offset-4 hover:underline"
+                    >
+                      {vehicle.registration}
+                    </Link>
                   </TableCell>
                   <TableCell>
                     <span className="font-medium">{vehicle.current_km.toLocaleString()}</span>
@@ -191,7 +200,9 @@ const VehiclesTable = ({ fleetId }: VehiclesTableProps) => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Voir détails</DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to={`/dashboard/vehicles/${vehicle.id}`}>Voir détails</Link>
+                        </DropdownMenuItem>
                         <DropdownMenuItem>Modifier</DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleAssignClick(vehicle.id, vehicle.registration)}

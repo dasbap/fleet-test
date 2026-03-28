@@ -65,6 +65,7 @@ export function useMaintenanceJobs(fleetId?: string, status?: JobStatus) {
   return useQuery({
     queryKey: ['maintenance-jobs', fleetId, status],
     queryFn: () => maintenanceService.getMaintenanceJobs(fleetId, status),
+    enabled: fleetId != null && fleetId !== '',
   });
 }
 

@@ -13,10 +13,11 @@ export const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
+        // Cibles tactiles ~44px sur mobile, hauteur classique sur md+
+        default: "h-11 min-h-[2.75rem] px-4 py-2 md:h-10 md:min-h-0",
+        sm: "h-9 min-h-9 rounded-md px-3",
+        lg: "h-12 min-h-12 rounded-md px-8 md:h-11 md:min-h-0",
+        icon: "h-11 w-11 min-h-[2.75rem] min-w-[2.75rem] md:h-10 md:w-10 md:min-h-0 md:min-w-0",
       },
     },
     defaultVariants: {

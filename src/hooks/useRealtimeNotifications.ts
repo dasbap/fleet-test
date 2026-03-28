@@ -1,13 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { RealtimeFleetRepository } from "@/repositories/realtime-fleet.repository";
 
-interface NotificationPayload {
-  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
-  new: Record<string, unknown>;
-  old: Record<string, unknown>;
-}
+const realtimeFleetRepository = new RealtimeFleetRepository();
 
 export function useRealtimeNotifications(fleetId?: string) {
   const queryClient = useQueryClient();
@@ -16,182 +13,148 @@ export function useRealtimeNotifications(fleetId?: string) {
   useEffect(() => {
     if (!fleetId) return;
 
-    // Create a unique channel for this fleet
     const channel = supabase.channel(`fleet-notifications-${fleetId}`);
     channelRef.current = channel;
 
-    // Listen for new driver shift closures
     channel.on(
-      'postgres_changes',
+      "postgres_changes",
       {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'clotures_creneaux',
+        event: "INSERT",
+        schema: "public",
+        table: "clotures_creneaux",
       },
       async (payload) => {
-        const closure = payload.new;
-        
-        // Fetch the related shift and assignment to check fleet_id
-        const { data: shift } = await supabase
-          .from('creneaux_conducteurs')
-          .select(`
-            assignment_id,
-            assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
-              fleet_id,
-              driver_user_id
-            )
-          `)
-          .eq('id', closure.shift_id)
-          .single();
+        const closure = payload.new as { shift_id?: string; revenue_declared?: number | null };
+        if (!closure.shift_id) return;
 
-        if (shift?.assignment?.fleet_id === fleetId) {
-          // Get driver profile
-          const { data: profile } = await supabase
-            .from('profils')
-            .select('full_name')
-            .eq('user_id', shift.assignment.driver_user_id)
-            .single();
+        const ctx = await realtimeFleetRepository.getClosureNotificationContext(
+          closure.shift_id,
+          closure,
+          fleetId,
+        );
+        if (!ctx) return;
 
-          toast({
-            title: '🔔 Nouvelle clôture de créneau',
-            description: `${profile?.full_name || 'Un chauffeur'} a terminé son créneau avec ${closure.revenue_declared} FCFA de revenus.`,
-          });
+        toast({
+          title: "🔔 Nouvelle clôture de créneau",
+          description: `${ctx.driverFullName || "Un chauffeur"} a terminé son créneau avec ${ctx.revenueDeclared} FCFA de revenus.`,
+        });
 
-          // Invalidate queries to refresh data
-          queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-          queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
-        }
-      }
+        queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
+      },
     );
 
-    // Listen for new incidents
     channel.on(
-      'postgres_changes',
+      "postgres_changes",
       {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'incidents',
+        event: "INSERT",
+        schema: "public",
+        table: "incidents",
       },
       async (payload) => {
-        const incident = payload.new;
+        const incident = payload.new as {
+          vehicle_id?: string;
+          severity?: string;
+          description?: string;
+        };
+        if (!incident.vehicle_id) return;
 
-        // Get vehicle info to check fleet_id
-        const { data: vehicle } = await supabase
-          .from('vehicules')
-          .select('registration, fleet_id')
-          .eq('id', incident.vehicle_id)
-          .single();
+        const vehicle = await realtimeFleetRepository.getVehicleForIncident(incident.vehicle_id);
+        if (!vehicle || vehicle.fleet_id !== fleetId) return;
 
-        if (vehicle?.fleet_id === fleetId) {
+        const severityLabels: Record<string, string> = {
+          low: "faible",
+          medium: "moyenne",
+          high: "haute",
+          critical: "critique",
+        };
 
-          const severityLabels: Record<string, string> = {
-            low: 'faible',
-            medium: 'moyenne',
-            high: 'haute',
-            critical: 'critique',
-          };
+        toast({
+          title: `⚠️ Nouvel incident (${severityLabels[incident.severity ?? ""] || incident.severity})`,
+          description: `Véhicule ${vehicle.registration || "inconnu"}: ${String(incident.description ?? "").slice(0, 50)}...`,
+          variant: incident.severity === "critical" ? "destructive" : "default",
+        });
 
-          toast({
-            title: `⚠️ Nouvel incident (${severityLabels[incident.severity] || incident.severity})`,
-            description: `Véhicule ${vehicle?.registration || 'inconnu'}: ${incident.description?.slice(0, 50)}...`,
-            variant: incident.severity === 'critical' ? 'destructive' : 'default',
-          });
-
-          // Invalidate queries
-          queryClient.invalidateQueries({ queryKey: ['incidents'] });
-          queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-          queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
-        }
-      }
+        queryClient.invalidateQueries({ queryKey: ["incidents"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
+      },
     );
 
-    // Listen for new maintenance jobs
     channel.on(
-      'postgres_changes',
+      "postgres_changes",
       {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'travaux_maintenance',
+        event: "INSERT",
+        schema: "public",
+        table: "travaux_maintenance",
       },
       async (payload) => {
-        const job = payload.new;
+        const job = payload.new as { fleet_id?: string; vehicle_id?: string; priority?: string };
+        if (job.fleet_id !== fleetId || !job.vehicle_id) return;
 
-        if (job.fleet_id === fleetId) {
-          // Get vehicle info
-          const { data: vehicle } = await supabase
-            .from('vehicules')
-            .select('registration')
-            .eq('id', job.vehicle_id)
-            .single();
+        const registration = await realtimeFleetRepository.getVehicleRegistration(job.vehicle_id);
 
-          const priorityLabels: Record<string, string> = {
-            low: 'basse',
-            medium: 'moyenne',
-            high: 'haute',
-            critical: 'critique',
-          };
+        const priorityLabels: Record<string, string> = {
+          low: "basse",
+          medium: "moyenne",
+          high: "haute",
+          critical: "critique",
+        };
 
-          toast({
-            title: '🔧 Nouvelle intervention de maintenance',
-            description: `Véhicule ${vehicle?.registration || 'inconnu'} - Priorité ${priorityLabels[job.priority] || job.priority}`,
-          });
+        toast({
+          title: "🔧 Nouvelle intervention de maintenance",
+          description: `Véhicule ${registration || "inconnu"} - Priorité ${priorityLabels[job.priority ?? ""] || job.priority}`,
+        });
 
-          // Invalidate queries
-          queryClient.invalidateQueries({ queryKey: ['maintenance-jobs'] });
-          queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-        }
-      }
+        queryClient.invalidateQueries({ queryKey: ["maintenance-jobs"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      },
     );
 
-    // Listen for maintenance job status updates
     channel.on(
-      'postgres_changes',
+      "postgres_changes",
       {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'travaux_maintenance',
+        event: "UPDATE",
+        schema: "public",
+        table: "travaux_maintenance",
       },
       async (payload) => {
-        const job = payload.new;
-        const oldJob = payload.old;
+        const job = payload.new as {
+          id?: string;
+          fleet_id?: string;
+          vehicle_id?: string;
+          status?: string;
+        };
+        const oldJob = payload.old as { status?: string };
+        if (job.fleet_id !== fleetId || job.status === oldJob.status || !job.vehicle_id) return;
 
-        if (job.fleet_id === fleetId && job.status !== oldJob.status) {
-          // Get vehicle info
-          const { data: vehicle } = await supabase
-            .from('vehicules')
-            .select('registration')
-            .eq('id', job.vehicle_id)
-            .single();
+        const registration = await realtimeFleetRepository.getVehicleRegistration(job.vehicle_id);
 
-          const statusLabels: Record<string, string> = {
-            queued: 'en attente',
-            in_progress: 'en cours',
-            ready: 'terminée ✅',
-            blocked: 'bloquée ⛔',
-          };
+        const statusLabels: Record<string, string> = {
+          queued: "en attente",
+          in_progress: "en cours",
+          ready: "terminée ✅",
+          blocked: "bloquée ⛔",
+        };
 
-          toast({
-            title: '🔧 Statut maintenance mis à jour',
-            description: `${vehicle?.registration || 'Véhicule'}: ${statusLabels[job.status] || job.status}`,
-          });
+        toast({
+          title: "🔧 Statut maintenance mis à jour",
+          description: `${registration || "Véhicule"}: ${statusLabels[job.status ?? ""] || job.status}`,
+        });
 
-          // Invalidate queries
-          queryClient.invalidateQueries({ queryKey: ['maintenance-jobs'] });
-          queryClient.invalidateQueries({ queryKey: ['maintenance-job', job.id] });
-        }
-      }
+        queryClient.invalidateQueries({ queryKey: ["maintenance-jobs"] });
+        queryClient.invalidateQueries({ queryKey: ["maintenance-job", job.id] });
+      },
     );
 
-    // Subscribe to the channel
     channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        console.log('✅ Real-time notifications active for fleet:', fleetId);
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error('❌ Real-time subscription error');
+      if (status === "SUBSCRIBED") {
+        console.log("✅ Real-time notifications active for fleet:", fleetId);
+      } else if (status === "CHANNEL_ERROR") {
+        console.error("❌ Real-time subscription error");
       }
     });
 
-    // Cleanup on unmount
     return () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);

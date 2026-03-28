@@ -12,6 +12,7 @@ export const SEO_ROUTE_KEYS = {
   drivers: "drivers",
   closure: "closure",
   incidents: "incidents",
+  incidentDeclare: "incidentDeclare",
   maintenance: "maintenance",
   reports: "reports",
   invitations: "invitations",
@@ -25,6 +26,7 @@ export const SEO_ROUTE_KEYS = {
   roles: "roles",
   myVehicle: "myVehicle",
   history: "history",
+  operations: "operations",
   notFound: "notFound",
 } as const;
 
@@ -86,6 +88,11 @@ export const SEO_BY_ROUTE_KEY: Record<SeoRouteKey, SeoRouteConfig> = {
   roles: { title: "Roles - E-Samba", description: "Gestion des roles et permissions.", canonicalPath: "/dashboard/roles" },
   myVehicle: { title: "Mon vehicule - E-Samba", description: "Vehicule assigne et etat du service.", canonicalPath: "/dashboard/my-vehicle" },
   history: { title: "Historique - E-Samba", description: "Historique des activites et services.", canonicalPath: "/dashboard/history" },
+  operations: {
+    title: "Operations - E-Samba",
+    description: "Missions, taches et acces rapide aux flux terrain.",
+    canonicalPath: "/dashboard/operations",
+  },
   notFound: {
     title: "E-Samba",
     description:
@@ -102,6 +109,7 @@ const PATH_TO_ROUTE_KEY: Record<string, SeoRouteKey> = {
   "/dashboard/drivers": SEO_ROUTE_KEYS.drivers,
   "/dashboard/closure": SEO_ROUTE_KEYS.closure,
   "/dashboard/incidents": SEO_ROUTE_KEYS.incidents,
+  "/dashboard/incidents/declare": SEO_ROUTE_KEYS.incidentDeclare,
   "/dashboard/maintenance": SEO_ROUTE_KEYS.maintenance,
   "/dashboard/reports": SEO_ROUTE_KEYS.reports,
   "/dashboard/invitations": SEO_ROUTE_KEYS.invitations,
@@ -115,6 +123,7 @@ const PATH_TO_ROUTE_KEY: Record<string, SeoRouteKey> = {
   "/dashboard/roles": SEO_ROUTE_KEYS.roles,
   "/dashboard/my-vehicle": SEO_ROUTE_KEYS.myVehicle,
   "/dashboard/history": SEO_ROUTE_KEYS.history,
+  "/dashboard/operations": SEO_ROUTE_KEYS.operations,
 };
 
 export function getCanonicalUrlFromPath(path: string): string {
