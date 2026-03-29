@@ -5,8 +5,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/hooks/useAuth";
 import { useFleetReport } from "@/hooks/useFleetReport";
-import { generateFleetPDF } from "@/lib/generateFleetPDF";
 import { generateFleetExcel } from "@/lib/generateFleetExcel";
+import { toast } from "@/hooks/use-toast";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
 import { RevenueChart } from "@/components/reports/RevenueChart";
@@ -40,6 +40,7 @@ export default function Reports() {
   });
   
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+  const [isPdfExporting, setIsPdfExporting] = useState(false);
 
   const { data: report, isLoading, error } = useFleetReport(dateRange.from, dateRange.to);
 
@@ -73,9 +74,22 @@ export default function Reports() {
     };
   }, [report, selectedVehicle]);
 
-  const handleExportPDF = () => {
-    if (report) {
-      generateFleetPDF(report);
+  const handleExportPDF = async () => {
+    if (!report) return;
+    setIsPdfExporting(true);
+    try {
+      const { generateFleetPDF } = await import("@/lib/generateFleetPDF");
+      await generateFleetPDF(report);
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Export PDF impossible",
+        description:
+          e instanceof Error ? e.message : "Une erreur est survenue lors de la génération du PDF.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPdfExporting(false);
     }
   };
 
@@ -111,12 +125,16 @@ export default function Reports() {
                 </div>
                 <div className="flex gap-2">
                   <Button 
-                    onClick={handleExportPDF} 
-                    disabled={!report || isLoading}
+                    onClick={() => void handleExportPDF()} 
+                    disabled={!report || isLoading || isPdfExporting}
                     size="lg"
                   >
-                    <Download className="mr-2 h-5 w-5" />
-                    Télécharger PDF
+                    {isPdfExporting ? (
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-5 w-5" />
+                    )}
+                    {isPdfExporting ? "Préparation du PDF…" : "Télécharger PDF"}
                   </Button>
                   <Button 
                     onClick={handleExportExcel} 

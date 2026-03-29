@@ -1,30 +1,7 @@
+import { lazy } from "react";
 import { Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import MobileHomePage from "@/pages/mobile/MobileHomePage";
-import Drivers from "@/pages/Drivers";
-import ShiftClosure from "@/pages/ShiftClosure";
-import Incidents from "@/pages/Incidents";
-import Maintenance from "@/pages/Maintenance";
-import Reports from "@/pages/Reports";
-import Invitations from "@/pages/Invitations";
-import Settings from "@/pages/Settings";
-import Teams from "@/pages/Teams";
-import CreateFleet from "@/pages/CreateFleet";
-import Finances from "@/pages/Finances";
-import Collections from "@/pages/Collections";
-import Dashboard from "@/pages/Dashboard";
-import FleetVehicleDetailPage from "@/features/fleet/screens/FleetVehicleDetailPage";
-import IncidentAlertDetailPage from "@/features/alerts/screens/IncidentAlertDetailPage";
-import History from "@/pages/History";
-import MobileFleetPage from "@/pages/mobile/MobileFleetPage";
-import MobileDriverFleetPage from "@/pages/mobile/MobileDriverFleetPage";
-import MobileAlertsPage from "@/pages/mobile/MobileAlertsPage";
-import MobileOperationsPage from "@/pages/mobile/MobileOperationsPage";
-import OperationsMissionDetailPage from "@/pages/mobile/OperationsMissionDetailPage";
-import OperationsInterventionDetailPage from "@/pages/mobile/OperationsInterventionDetailPage";
-import MobileAccountPage from "@/pages/mobile/MobileAccountPage";
-import { RolesHubScreen } from "@/features/roles";
 import { RequireRole } from "@/navigation/guards/RequireRole";
 import {
   DASHBOARD_BACKOFFICE_ROLES,
@@ -32,12 +9,46 @@ import {
   DASHBOARD_FINANCES_ROLES,
   DASHBOARD_HISTORY_ROLES,
 } from "@/navigation/dashboardRouteRoles";
-import DeclareIncidentPage from "@/pages/mobile/DeclareIncidentPage";
+
+const MobileHomePage = lazy(() => import("@/pages/mobile/MobileHomePage"));
+const FleetVehicleDetailPage = lazy(
+  () => import("@/features/fleet/screens/FleetVehicleDetailPage")
+);
+const Drivers = lazy(() => import("@/pages/Drivers"));
+const ShiftClosure = lazy(() => import("@/pages/ShiftClosure"));
+const Incidents = lazy(() => import("@/pages/Incidents"));
+const Maintenance = lazy(() => import("@/pages/Maintenance"));
+const Reports = lazy(() => import("@/pages/Reports"));
+const Invitations = lazy(() => import("@/pages/Invitations"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const Teams = lazy(() => import("@/pages/Teams"));
+const CreateFleet = lazy(() => import("@/pages/CreateFleet"));
+const Finances = lazy(() => import("@/pages/Finances"));
+const Collections = lazy(() => import("@/pages/Collections"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const IncidentAlertDetailPage = lazy(
+  () => import("@/features/alerts/screens/IncidentAlertDetailPage")
+);
+const History = lazy(() => import("@/pages/History"));
+const MobileFleetPage = lazy(() => import("@/pages/mobile/MobileFleetPage"));
+const MobileDriverFleetPage = lazy(() => import("@/pages/mobile/MobileDriverFleetPage"));
+const MobileAlertsPage = lazy(() => import("@/pages/mobile/MobileAlertsPage"));
+const MobileOperationsPage = lazy(() => import("@/pages/mobile/MobileOperationsPage"));
+const OperationsMissionDetailPage = lazy(
+  () => import("@/pages/mobile/OperationsMissionDetailPage")
+);
+const OperationsInterventionDetailPage = lazy(
+  () => import("@/pages/mobile/OperationsInterventionDetailPage")
+);
+const MobileAccountPage = lazy(() => import("@/pages/mobile/MobileAccountPage"));
+const RolesHubScreen = lazy(() =>
+  import("@/features/roles").then((m) => ({ default: m.RolesHubScreen }))
+);
+const DeclareIncidentPage = lazy(() => import("@/pages/mobile/DeclareIncidentPage"));
 
 /**
  * Arbre de routes sous `/dashboard` : layout commun + écrans métier (web + mobile natif).
- * Navigation mobile (onglets) : Accueil → index, Flotte → vehicles ou my-vehicle,
- * Alertes, Opérations, Compte → profile (voir `mobileTabs.ts` + `BottomTabBar`).
+ * Chaque écran est chargé à la demande (code-splitting) pour réduire le bundle initial.
  */
 export function DashboardRouteGroup() {
   return (

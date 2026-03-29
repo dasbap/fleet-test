@@ -1,10 +1,16 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { FleetReportData } from '@/hooks/useFleetReport';
 
-export function generateFleetPDF(data: FleetReportData): void {
+/**
+ * Génère le PDF côté client. Charge jspdf et jspdf-autotable uniquement à l’appel (chunk séparé).
+ */
+export async function generateFleetPDF(data: FleetReportData): Promise<void> {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 20;

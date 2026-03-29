@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { BottomTabBar } from "@/components/mobile/BottomTabBar";
 import type { AppRole } from "@/hooks/useAuth";
 import { useMobileTabTracking } from "@/hooks/mobile/useMobileTabTracking";
@@ -26,7 +28,9 @@ export default function MobileAppLayout({ userRole }: MobileAppLayoutProps) {
             outletShellClass
           )}
         >
-          <Outlet />
+          <Suspense fallback={<RoutePageFallback />}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
       <BottomTabBar userRole={userRole} />

@@ -1,13 +1,18 @@
 import * as Sentry from "@sentry/react";
+import { lazy, Suspense } from "react";
 import { PageSEO } from "@/components/PageSEO";
 import Providers from "@/components/Providers";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
-import { DashboardRouteGroup } from "@/app/DashboardRouteGroup";
+import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { DeepLinkListener } from "@/components/navigation/DeepLinkListener";
 import { PushNotificationBridge } from "@/components/mobile/PushNotificationBridge";
+
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const DashboardRouteGroup = lazy(() =>
+  import("@/app/DashboardRouteGroup").then((m) => ({ default: m.DashboardRouteGroup }))
+);
 
 const App = () => (
   <Sentry.ErrorBoundary
@@ -31,16 +36,18 @@ const App = () => (
         <DeepLinkListener />
         <PushNotificationBridge />
         <PageSEO />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route
-            path="/settings"
-            element={<Navigate to="/dashboard/settings" replace />}
-          />
-          <DashboardRouteGroup />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<RoutePageFallback />}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route
+              path="/settings"
+              element={<Navigate to="/dashboard/settings" replace />}
+            />
+            <DashboardRouteGroup />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </Providers>
   </Sentry.ErrorBoundary>

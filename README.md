@@ -38,6 +38,10 @@ Identifiants pour les utilisateurs de démo créés par `supabase/create-demo-or
 
 Procédure détaillée (env, check-supabase, verify:connection, check:backend, scripts SQL) : [docs/verification-connexion-bdd.md](docs/verification-connexion-bdd.md).
 
+## Déploiement production (Vercel / e-samba.com)
+
+Checklist : prévisualisations 401, variables `VITE_*`, auth Supabase, DNS et domaines — [docs/deployment-e-samba-vercel.md](docs/deployment-e-samba-vercel.md).
+
 ## Onboarding base de données (baseline + deltas)
 
 - **Nouvel environnement** :

@@ -9,7 +9,24 @@ export default defineConfig(({ mode }) => ({
   base: mode === "capacitor" ? "./" : "/",
   build: {
     sourcemap: false,
-    // manualChunks : à envisager si le bundle est lourd (React, React Router, Recharts).
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          const n = id.replace(/\\/g, "/");
+          if (
+            n.includes("/react-dom/") ||
+            n.includes("/react-router") ||
+            (n.includes("/react/") && !n.includes("react-query"))
+          ) {
+            return "vendor-react";
+          }
+          if (n.includes("@supabase")) return "vendor-supabase";
+          if (n.includes("@tanstack")) return "vendor-query";
+          if (n.includes("recharts")) return "vendor-charts";
+        },
+      },
+    },
   },
   server: {
     host: "localhost",

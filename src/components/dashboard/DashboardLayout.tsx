@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
+import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
@@ -14,11 +16,16 @@ export default function DashboardLayout() {
   const { user, role } = useAuth();
   const userRole = role || "organizer";
   const userMetadata = user?.user_metadata || {};
+  const rawFromMeta = userMetadata.full_name;
+  const nameFromMeta =
+    typeof rawFromMeta === "string" && rawFromMeta.trim() !== ""
+      ? rawFromMeta.trim()
+      : undefined;
   const fullName =
-    userMetadata.full_name || user?.email?.split("@")[0] || "Utilisateur";
+    nameFromMeta ?? user?.email?.split("@")[0] ?? "Utilisateur";
   const initials = fullName
     .split(" ")
-    .map((n: string) => n[0])
+    .map((n) => n[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
@@ -38,7 +45,9 @@ export default function DashboardLayout() {
             initials={initials}
           />
           <main className="flex-1 p-6 overflow-auto">
-            <Outlet />
+            <Suspense fallback={<RoutePageFallback />}>
+              <Outlet />
+            </Suspense>
           </main>
         </SidebarInset>
       </div>
