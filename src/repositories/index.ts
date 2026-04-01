@@ -22,3 +22,4 @@ export * from './profile.repository';
 export * from './avatar.repository';
 export * from './maintenance-evidence.repository';
 export * from './operations.repository';
+export * from './notification.repository';

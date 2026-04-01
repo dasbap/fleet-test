@@ -1,5 +1,5 @@
 import { VehicleRepository } from '@/repositories/vehicle.repository';
-import type { Vehicle, VehicleInsert, VehicleStatus } from '@/hooks/useVehicles';
+import type { VehicleDto, VehicleInsertDto } from '@/types/dto/vehicle.dto';
 import type { VehicleFilters, VehicleUpdate } from '@/repositories/vehicle.repository';
 
 /**
@@ -11,28 +11,28 @@ export class VehicleService {
   /**
    * Récupère tous les véhicules avec leurs affectations actives
    */
-  async getVehicles(fleetId?: string): Promise<Vehicle[]> {
+  async getVehicles(fleetId?: string): Promise<VehicleDto[]> {
     return this.repository.findAllWithAssignments(fleetId);
   }
 
   /**
    * Récupère tous les véhicules simples (sans affectations)
    */
-  async getVehiclesSimple(fleetId?: string): Promise<Vehicle[]> {
+  async getVehiclesSimple(fleetId?: string): Promise<VehicleDto[]> {
     return this.repository.findAllSimple(fleetId);
   }
 
   /**
    * Récupère tous les véhicules avec filtres
    */
-  async getAllVehicles(filters?: VehicleFilters): Promise<Vehicle[]> {
+  async getAllVehicles(filters?: VehicleFilters): Promise<VehicleDto[]> {
     return this.repository.findAll(filters);
   }
 
   /**
    * Récupère un véhicule par son ID
    */
-  async getVehicleById(id: string): Promise<Vehicle | null> {
+  async getVehicleById(id: string): Promise<VehicleDto | null> {
     if (!id) {
       throw new Error('L\'ID du véhicule est requis');
     }
@@ -45,7 +45,7 @@ export class VehicleService {
   async getVehicleDetailForFleet(
     vehicleId: string,
     fleetId: string | null
-  ): Promise<Vehicle | null> {
+  ): Promise<VehicleDto | null> {
     if (!vehicleId || !fleetId) {
       return null;
     }
@@ -59,7 +59,7 @@ export class VehicleService {
   /**
    * Crée un nouveau véhicule avec validation métier
    */
-  async createVehicle(data: VehicleInsert): Promise<Vehicle> {
+  async createVehicle(data: VehicleInsertDto): Promise<VehicleDto> {
     // Validation métier
     if (!data.registration || data.registration.trim() === '') {
       throw new Error('Le numéro d\'immatriculation est requis');
@@ -70,7 +70,7 @@ export class VehicleService {
     }
 
     // Normalisation des données
-    const normalizedData: VehicleInsert = {
+    const normalizedData: VehicleInsertDto = {
       ...data,
       registration: data.registration.trim().toUpperCase(),
       current_km: data.current_km || 0,
@@ -82,7 +82,7 @@ export class VehicleService {
   /**
    * Met à jour un véhicule avec validation métier
    */
-  async updateVehicle(id: string, updates: VehicleUpdate): Promise<Vehicle> {
+  async updateVehicle(id: string, updates: VehicleUpdate): Promise<VehicleDto> {
     if (!id) {
       throw new Error('L\'ID du véhicule est requis');
     }
@@ -99,7 +99,7 @@ export class VehicleService {
   /**
    * Bloque un véhicule avec validation métier
    */
-  async blockVehicle(id: string, reason: string): Promise<Vehicle> {
+  async blockVehicle(id: string, reason: string): Promise<VehicleDto> {
     if (!id) {
       throw new Error('L\'ID du véhicule est requis');
     }
@@ -117,7 +117,7 @@ export class VehicleService {
   /**
    * Débloque un véhicule
    */
-  async unblockVehicle(id: string): Promise<Vehicle> {
+  async unblockVehicle(id: string): Promise<VehicleDto> {
     if (!id) {
       throw new Error('L\'ID du véhicule est requis');
     }
@@ -131,7 +131,7 @@ export class VehicleService {
   /**
    * Met à jour le kilométrage d'un véhicule avec validation
    */
-  async updateKilometerage(id: string, current_km: number): Promise<Vehicle> {
+  async updateKilometerage(id: string, current_km: number): Promise<VehicleDto> {
     if (!id) {
       throw new Error('L\'ID du véhicule est requis');
     }

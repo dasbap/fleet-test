@@ -21,8 +21,12 @@ export * from './maintenance-evidence.service';
 export * from './share.service';
 export * from './deep-link.service';
 export * from './push-notification.service';
+export * from './notifications.service';
+export * from './notification.service';
+export * from './camera.service';
 
 // Réexporter les types pour compatibilité
+export type { VehicleDto, VehicleInsertDto, VehicleStatusDto } from '@/types/dto/vehicle.dto';
 export type { Vehicle, VehicleInsert, VehicleStatus } from '@/hooks/useVehicles';
 export type { FleetMember, AddMemberData } from '@/hooks/useFleetMembers';
 export type {

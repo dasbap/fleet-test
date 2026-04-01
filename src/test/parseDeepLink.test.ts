@@ -11,6 +11,14 @@ describe("parseDeepLink", () => {
     expect(r).toEqual({ ok: true, kind: "alert", alertId: "alert-1" });
   });
 
+  it("parse liste alertes", () => {
+    expect(parseDeepLink("esamba://alerts")).toEqual({ ok: true, kind: "alerts_list" });
+  });
+
+  it("parse liste flotte", () => {
+    expect(parseDeepLink("esamba://fleet")).toEqual({ ok: true, kind: "fleet_list" });
+  });
+
   it("parse véhicule (fleet)", () => {
     const r = parseDeepLink("esamba://fleet/v-99");
     expect(r).toEqual({ ok: true, kind: "vehicle", vehicleId: "v-99" });
@@ -52,6 +60,8 @@ describe("parseDeepLink", () => {
   });
 
   it("buildEsambaDeepLinkUrl génère des URLs routables", () => {
+    expect(buildEsambaDeepLinkUrl({ screen: "alerts_list" })).toBe("esamba://alerts");
+    expect(buildEsambaDeepLinkUrl({ screen: "fleet_list" })).toBe("esamba://fleet");
     expect(buildEsambaDeepLinkUrl({ screen: "alert", id: "a1" })).toBe("esamba://alerts/a1");
     expect(buildEsambaDeepLinkUrl({ screen: "vehicle", id: "v1" })).toBe("esamba://fleet/v1");
     expect(buildEsambaDeepLinkUrl({ screen: "mission", id: "m1" })).toBe(

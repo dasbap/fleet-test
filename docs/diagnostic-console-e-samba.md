@@ -12,7 +12,46 @@ npx playwright install chromium
 npm run diagnostic:e-samba
 ```
 
-Le script charge `https://e-samba.com/` et `https://www.e-samba.com/`, affiche les messages **console** de type `error`, les **pageerror** et les **requêtes réseau** échouées pertinentes. Code : [`scripts/diagnostic-e-samba-console.mjs`](../scripts/diagnostic-e-samba-console.mjs).
+**Test local en mode verbose** (tous les messages console, idéal pour le débogage) :
+
+```bash
+npx playwright install chromium
+npm run diagnostic:e-samba -- --verbose
+```
+
+Le `--` sépare les arguments npm des arguments du script (`--verbose` ou `-v`).
+
+Par défaut, le script charge `https://e-samba.com/` et `https://www.e-samba.com/`, affiche les messages **console** de type `error`, les **pageerror** et les **requêtes réseau** échouées pertinentes. Code : [`scripts/diagnostic-e-samba-console.mjs`](../scripts/diagnostic-e-samba-console.mjs).
+
+### Cibler d’autres URLs (prod, prévisualisation Vercel, etc.)
+
+| Variable | Rôle |
+|----------|------|
+| `E_SAMBA_DIAGNOSTIC_URL` | Une seule URL (ex. `https://www.e-samba.com/`) |
+| `E_SAMBA_DIAGNOSTIC_URLS` | Plusieurs URLs séparées par des **virgules** (prioritaire sur `E_SAMBA_DIAGNOSTIC_URL` si les deux sont définies) |
+
+Exemples (PowerShell) :
+
+```powershell
+$env:E_SAMBA_DIAGNOSTIC_URL="https://www.e-samba.com/"; npm run diagnostic:e-samba
+```
+
+```powershell
+$env:E_SAMBA_DIAGNOSTIC_URLS="https://www.e-samba.com/,https://e-samba.com/"; npm run diagnostic:e-samba
+```
+
+**Note** : une prévisualisation Vercel protégée (**401 Deployment Protection**) échouera à la navigation ; voir [`deployment-e-samba-vercel.md`](deployment-e-samba-vercel.md) §1.
+
+### Mode verbose (tous les types de messages console)
+
+Utile pour le débogage : liste aussi `log`, `warning`, etc. Le **code de sortie** reste basé uniquement sur les **erreurs** (console `error`, `pageerror`, requêtes filtrées en échec).
+
+- Ligne de commande : `npm run diagnostic:e-samba -- --verbose` (ou `-v`)
+- Environnement : `E_SAMBA_DIAGNOSTIC_VERBOSE=1` (ou `true` / `yes`)
+
+### CI GitHub Actions
+
+Workflow manuel : [`.github/workflows/diagnostic-e-samba-console.yml`](../.github/workflows/diagnostic-e-samba-console.yml) — onglet **Actions** → **Diagnostic console e-samba** → **Run workflow**. Par défaut il teste `https://www.e-samba.com/` ; vous pouvez ajuster la variable d’environnement du workflow si besoin.
 
 - Code de sortie **0** : aucun problème évident détecté sur cette exécution.
 - Code de sortie **1** : au moins une erreur ou un échec réseau listé — analyser la sortie.
@@ -64,6 +103,7 @@ Heure (UTC si possible) :
 
 
 --- Résultat de : npm run diagnostic:e-samba (sortie complète) ---
+   (si URLs personnalisées : indiquer E_SAMBA_DIAGNOSTIC_URL / E_SAMBA_DIAGNOSTIC_URLS)
 ```
 
 ---

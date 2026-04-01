@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     sourcemap: false,
     rollupOptions: {
+      external: ["firebase/app", "firebase/messaging"],
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;

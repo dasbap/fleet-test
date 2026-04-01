@@ -4,6 +4,8 @@
 
 | Lien | Écran SPA |
 |------|-----------|
+| `esamba://alerts` | `/dashboard/alerts` (liste) |
+| `esamba://fleet` | `/dashboard/vehicles` (liste) |
 | `esamba://alerts/:id` | `/dashboard/alerts/:id` |
 | `esamba://fleet/:id` | `/dashboard/vehicles/:id` |
 | `esamba://operations/mission/:id` | `/dashboard/operations/mission/:id` |
@@ -28,8 +30,8 @@ Un UUID seul dans `esamba://operations/:id` **sans** `?kind=` / `?type=` ni pré
 
 ## Notifications push (préparation)
 
-- `deepLinkService.dispatchFromPushPayload({ esambaUrl })`, `{ internalPath: '/dashboard/...' }` ou `{ deepLinkTarget: { screen: 'alert', id: '…' } }` déclenchent la même navigation que l’ouverture depuis un lien natif.
-- Helpers : `deepLinkService.buildPushUrl({ screen, id })`, `deepLinkService.buildOperationsPushUrl(id, 'mission' | 'intervention')`.
+- `deepLinkService.dispatchFromPushPayload({ esambaUrl })`, `{ internalPath: '/dashboard/...' }` ou `{ deepLinkTarget: { screen: 'alert', id: '…' } }` (ou `{ screen: 'alerts_list' }` / `{ screen: 'fleet_list' }` pour les listes) déclenchent la même navigation que l’ouverture depuis un lien natif.
+- Helpers : `deepLinkService.buildPushUrl({ screen, id })` (ou sans `id` pour `alerts_list` / `fleet_list`), `deepLinkService.buildOperationsPushUrl(id, 'mission' | 'intervention')`.
 - File d’attente optionnelle : `queuePendingDeepLink` / `consumePendingDeepLink` (`src/lib/deepLinks/pendingDeepLink.ts`) si le plugin livre le payload avant le montage du routeur.
 
 ## Après modification native

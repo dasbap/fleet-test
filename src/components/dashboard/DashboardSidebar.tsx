@@ -21,6 +21,7 @@ import {
   Users,
   User,
   Bell,
+  LayoutGrid,
   Settings,
   LogOut,
   BarChart3,
@@ -29,32 +30,46 @@ import {
 } from "lucide-react";
 import { signOut } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { hasModuleAccess } from "@/auth/permissions";
+import type { AppRole } from "@/types/auth";
 
 interface DashboardSidebarProps {
-  userRole: "organizer" | "manager" | "driver" | "mechanic";
+  userRole: AppRole;
 }
+
+const organizerNavCore = [
+  { icon: LayoutDashboard, label: "Tableau de bord", href: "/dashboard" },
+  { icon: Car, label: "Véhicules", href: "/dashboard/vehicles" },
+  { icon: Wrench, label: "Incidents", href: "/dashboard/incidents" },
+  { icon: Fuel, label: "Maintenance", href: "/dashboard/maintenance" },
+  { icon: LayoutGrid, label: "Opérations", href: "/dashboard/operations" },
+  { icon: Users, label: "Équipes", href: "/dashboard/teams" },
+  { icon: Ticket, label: "Invitations", href: "/dashboard/invitations" },
+  { icon: BarChart3, label: "Rapports", href: "/dashboard/reports" },
+  { icon: DollarSign, label: "Finances", href: "/dashboard/finances" },
+  { icon: Bell, label: "Alertes", href: "/dashboard/alerts" },
+] as const;
+
+const organizerRolesLink = {
+  icon: Shield,
+  label: "Rôles",
+  href: "/dashboard/roles",
+} as const;
 
 const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
   const location = useLocation();
 
   const menuItems = {
     organizer: [
-      { icon: LayoutDashboard, label: "Tableau de bord", href: "/dashboard" },
-      { icon: Car, label: "Véhicules", href: "/dashboard/vehicles" },
-      { icon: Wrench, label: "Incidents", href: "/dashboard/incidents" },
-      { icon: Fuel, label: "Maintenance", href: "/dashboard/maintenance" },
-      { icon: Users, label: "Équipes", href: "/dashboard/teams" },
-      { icon: Ticket, label: "Invitations", href: "/dashboard/invitations" },
-      { icon: BarChart3, label: "Rapports", href: "/dashboard/reports" },
-      { icon: DollarSign, label: "Finances", href: "/dashboard/finances" },
-      { icon: Bell, label: "Alertes", href: "/dashboard/alerts" },
-      { icon: Shield, label: "Rôles", href: "/dashboard/roles" },
+      ...organizerNavCore,
+      ...(hasModuleAccess(userRole, "roles_sidebar_link") ? [organizerRolesLink] : []),
     ],
     manager: [
       { icon: LayoutDashboard, label: "Tableau de bord", href: "/dashboard" },
       { icon: Car, label: "Véhicules", href: "/dashboard/vehicles" },
       { icon: Wrench, label: "Incidents", href: "/dashboard/incidents" },
       { icon: Fuel, label: "Maintenance", href: "/dashboard/maintenance" },
+      { icon: LayoutGrid, label: "Opérations", href: "/dashboard/operations" },
       { icon: Users, label: "Équipes", href: "/dashboard/teams" },
       { icon: Users, label: "Chauffeurs", href: "/dashboard/drivers" },
       { icon: Ticket, label: "Invitations", href: "/dashboard/invitations" },

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { getUnauthenticatedLoginPath } from "@/navigation/loginRedirectPath";
 
 interface RequireAuthProps {
   children: ReactNode;
@@ -26,7 +26,7 @@ export function RequireAuth({ children }: RequireAuthProps) {
   }
 
   if (!user) {
-    return <Navigate to={ROUTE_PATHS.auth} replace />;
+    return <Navigate to={getUnauthenticatedLoginPath()} replace />;
   }
 
   return <>{children}</>;

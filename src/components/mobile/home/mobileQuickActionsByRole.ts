@@ -1,68 +1,31 @@
 import { AlertTriangle, Car, Wrench } from "lucide-react";
 import type { AppRole } from "@/hooks/useAuth";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 import type { QuickActionItem } from "./MobileQuickActions";
 
 /** Actions rapides et routes selon le rôle (aligné sur App.tsx). */
 export function getQuickActionsForRole(role: AppRole | null): QuickActionItem[] {
   const r = role ?? "organizer";
-
-  if (r === "driver") {
-    return [
-      {
-        to: "/dashboard/incidents/declare",
-        label: "Déclarer un incident",
-        description: "Signalement terrain",
-        icon: AlertTriangle,
-      },
-      {
-        to: "/dashboard/my-vehicle",
-        label: "Voir mon véhicule",
-        description: "Véhicule assigné",
-        icon: Car,
-      },
-      {
-        to: "/dashboard/maintenance",
-        label: "Demander une intervention",
-        description: "Atelier / maintenance",
-        icon: Wrench,
-      },
-    ];
-  }
-
-  if (r === "mechanic") {
-    return [
-      {
-        to: "/dashboard/maintenance",
-        label: "Interventions",
-        description: "Atelier / maintenance",
-        icon: Wrench,
-      },
-      {
-        to: "/dashboard/vehicles",
-        label: "Voir la flotte",
-        description: "Véhicules et statuts",
-        icon: Car,
-      },
-    ];
-  }
+  const fleetPath =
+    r === "driver" ? ROUTE_PATHS.dashboardMyVehicle : ROUTE_PATHS.dashboardVehicles;
 
   return [
     {
-      to: "/dashboard/incidents/declare",
-      label: "Déclarer un incident",
-      description: "Signalement sécurisé",
+      to: `${ROUTE_PATHS.dashboardIncidents}/declare`,
+      label: "Déclarer incident",
+      description: "Signaler un incident rapidement",
       icon: AlertTriangle,
     },
     {
-      to: "/dashboard/vehicles",
-      label: "Voir la flotte",
-      description: "Véhicules et statuts",
+      to: fleetPath,
+      label: "Voir flotte",
+      description: r === "driver" ? "Consulter votre véhicule assigné" : "Consulter la flotte",
       icon: Car,
     },
     {
-      to: "/dashboard/maintenance",
+      to: ROUTE_PATHS.dashboardMaintenance,
       label: "Créer une intervention",
-      description: "Atelier et maintenance",
+      description: "Ouvrir une demande atelier",
       icon: Wrench,
     },
   ];

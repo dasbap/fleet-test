@@ -6,6 +6,8 @@
 export const ROUTE_PATHS = {
   home: "/",
   auth: "/auth",
+  /** Connexion mobile-first (session mockée si VITE_USE_MOCK_AUTH). */
+  login: "/login",
   dashboard: "/dashboard",
   dashboardVehicles: "/dashboard/vehicles",
   dashboardVehicleDetail: (vehicleId: string) =>

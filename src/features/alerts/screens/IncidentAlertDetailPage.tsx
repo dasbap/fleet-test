@@ -5,10 +5,9 @@ import { fr } from "date-fns/locale/fr";
 import {
   ArrowLeft,
   Camera,
-  History,
   MessageSquare,
   Paperclip,
-  Phone,
+  Share2,
   UserCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,16 +30,10 @@ import { INCIDENT_KIND_LABELS } from "@/features/alerts/lib/incidentLabels";
 import { IncidentAttachmentPlaceholder } from "@/features/alerts/components/IncidentAttachmentPlaceholder";
 import { IncidentSeverityBadge } from "@/features/alerts/components/IncidentSeverityBadge";
 import { IncidentStatusBadge } from "@/features/alerts/components/IncidentStatusBadge";
-import { MOCK_INCIDENT_ASSIGNEES } from "@/features/alerts/data/mockAssignees";
-import {
-  addIncidentComment,
-  assignIncident,
-  resolveAssigneeById,
-  updateIncidentStatus,
-  useIncidentAlertDetail,
-} from "@/features/alerts/store/incidentAlertsMockStore";
+import { useAlertDetail, useUpdateAlertStatus, useAssignAlert, useAlertComments, useAddAlertComment } from "@/hooks/useAlerts";
 import type { IncidentWorkflowStatus } from "@/types/incident-alert";
 import { cn } from "@/lib/utils";
+import { shareContent, buildAlertDtoDocumentSharePayload } from "@/services/share.service";
 
 function displayNameFromUser(user: AuthUser | null): string {
   if (!user) return "Utilisateur";
@@ -57,51 +50,67 @@ const STATUS_OPTIONS: { value: IncidentWorkflowStatus; label: string }[] = [
 ];
 
 /**
- * Détail d’une alerte incident (mock session + actions locales).
+ * Détail d’une alerte incident (persistant via Supabase + actions statut/assignation/commentaires).
  */
 export default function IncidentAlertDetailPage() {
   const { alertId } = useParams<{ alertId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const alert = useIncidentAlertDetail(alertId);
+  const { data: alertDto } = useAlertDetail(alertId);
+  const { data: comments = [] } = useAlertComments(alertId);
+  const { mutate: updateStatus, isLoading: isUpdatingStatus } = useUpdateAlertStatus();
+  const { mutate: assignAlert, isLoading: isAssigning } = useAssignAlert();
+  const { mutate: addComment, isLoading: isAddingComment } = useAddAlertComment(alertId);
   const [commentDraft, setCommentDraft] = useState("");
   const authorName = useMemo(() => displayNameFromUser(user), [user]);
 
-  const assigneeSelectValue = alert?.assignee?.id ?? "none";
+  const assigneeSelectValue = alertDto?.assignee_user_id ?? "none";
 
   const handleStatus = useCallback(
     (status: IncidentWorkflowStatus) => {
       if (!alertId) return;
-      updateIncidentStatus(alertId, status);
+      updateStatus({ alertId, status });
       toast({
         title: "Statut mis à jour",
         description: `L’alerte est passée en « ${STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status} ».`,
       });
     },
-    [alertId]
+    [alertId, updateStatus]
   );
 
   const handleAssignee = useCallback(
     (value: string) => {
       if (!alertId) return;
-      assignIncident(alertId, resolveAssigneeById(value));
+      const assigneeUserId = value === "none" ? null : value;
+      assignAlert({ alertId, assigneeUserId });
       toast({
         title: "Responsable mis à jour",
-        description: "L’affectation a été enregistrée (session démo).",
+        description: "L’affectation a été enregistrée.",
       });
     },
-    [alertId]
+    [alertId, assignAlert]
   );
 
   const handleComment = useCallback(() => {
-    if (!alertId || !commentDraft.trim()) return;
-    addIncidentComment(alertId, authorName, commentDraft);
-    setCommentDraft("");
-    toast({
-      title: "Commentaire ajouté",
-      description: "Visible dans l’historique de l’alerte.",
+    if (!commentDraft.trim()) return;
+    addComment(commentDraft, {
+      onSuccess: () => {
+        setCommentDraft("");
+        toast({
+          title: "Commentaire ajouté",
+          description: "Visible dans l’historique de l’alerte.",
+        });
+      },
+      onError: (error: unknown) => {
+        const message = error instanceof Error ? error.message : "Impossible d’ajouter le commentaire.";
+        toast({
+          title: "Erreur",
+          description: message,
+          variant: "destructive",
+        });
+      },
     });
-  }, [alertId, authorName, commentDraft]);
+  }, [addComment, commentDraft]);
 
   const handlePhotoLater = useCallback(() => {
     toast({
@@ -111,7 +120,36 @@ export default function IncidentAlertDetailPage() {
     });
   }, []);
 
-  if (!alert) {
+  const handleShare = useCallback(async () => {
+    if (!alertDto || !alertId) return;
+    const path = ROUTE_PATHS.dashboardAlertDetail(alertId);
+    const rows = comments.map((c) => ({
+      body: c.body,
+      created_at: c.created_at,
+      author_user_id: c.author_user_id,
+    }));
+    const payload = buildAlertDtoDocumentSharePayload(alertDto, path, rows);
+    const { outcome } = await shareContent(payload);
+    if (outcome === "shared") {
+      toast({
+        title: "Partage",
+        description: "Le document peut être envoyé via le menu système.",
+      });
+    } else if (outcome === "copied") {
+      toast({
+        title: "Copié",
+        description: "Le résumé a été copié dans le presse-papiers.",
+      });
+    } else if (outcome === "unavailable") {
+      toast({
+        title: "Partage indisponible",
+        description: "Impossible d’ouvrir le partage sur cet appareil.",
+        variant: "destructive",
+      });
+    }
+  }, [alertDto, alertId, comments]);
+
+  if (!alertDto) {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" asChild className="-ml-2">
@@ -129,7 +167,7 @@ export default function IncidentAlertDetailPage() {
     );
   }
 
-  const created = format(new Date(alert.createdAt), "d MMMM yyyy à HH:mm", {
+  const created = format(new Date(alertDto.created_at), "d MMMM yyyy à HH:mm", {
     locale: fr,
   });
 
@@ -145,16 +183,26 @@ export default function IncidentAlertDetailPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="font-heading text-xl font-bold md:text-2xl line-clamp-2">
-          {alert.title}
+        <h1 className="font-heading min-w-0 flex-1 text-xl font-bold md:text-2xl line-clamp-2">
+          {alertDto.message}
         </h1>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0"
+          onClick={() => void handleShare()}
+          aria-label="Partager l’alerte"
+        >
+          <Share2 className="h-5 w-5" aria-hidden />
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <IncidentSeverityBadge severity={alert.severity} />
-        <IncidentStatusBadge status={alert.status} />
+        <IncidentSeverityBadge severity={alertDto.severity as "critical" | "high" | "medium" | "low"} />
+        <IncidentStatusBadge status={alertDto.status} />
         <span className="text-muted-foreground self-center text-sm">
-          {INCIDENT_KIND_LABELS[alert.kind]}
+          {INCIDENT_KIND_LABELS["maintenance_due"]}
         </span>
       </div>
 
@@ -165,13 +213,13 @@ export default function IncidentAlertDetailPage() {
         <CardContent className="space-y-3 text-sm">
           <p>
             <span className="text-muted-foreground">Véhicule : </span>
-            <span className="font-medium">{alert.vehicleLabel}</span>
+            <span className="font-medium">{alertDto.vehicle_id ?? "—"}</span>
           </p>
           <p>
             <span className="text-muted-foreground">Créée le : </span>
             {created}
           </p>
-          <p className="text-foreground leading-relaxed">{alert.description}</p>
+          <p className="text-foreground leading-relaxed">{alertDto.message}</p>
         </CardContent>
       </Card>
 
@@ -191,11 +239,6 @@ export default function IncidentAlertDetailPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Non assigné</SelectItem>
-                {MOCK_INCIDENT_ASSIGNEES.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.fullName} — {u.role}
-                  </SelectItem>
-                ))}
               </SelectContent>
             </Select>
           </div>
@@ -213,8 +256,8 @@ export default function IncidentAlertDetailPage() {
                 key={value}
                 type="button"
                 size="sm"
-                variant={alert.status === value ? "default" : "outline"}
-                className={cn(alert.status === value && "pointer-events-none")}
+                variant={alertDto.status === value ? "default" : "outline"}
+                className={cn(alertDto.status === value && "pointer-events-none")}
                 onClick={() => handleStatus(value)}
               >
                 {label}
@@ -224,39 +267,7 @@ export default function IncidentAlertDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Phone className="h-5 w-5 text-primary" aria-hidden />
-            Contacter
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {alert.driverContact && (
-            <Button variant="outline" size="sm" asChild className="gap-2">
-              <a href={`tel:${alert.driverContact.phone.replace(/\s/g, "")}`}>
-                <Phone className="h-4 w-4" aria-hidden />
-                Conducteur ({alert.driverContact.name})
-              </a>
-            </Button>
-          )}
-          {alert.technicianContact && (
-            <Button variant="outline" size="sm" asChild className="gap-2">
-              <a
-                href={`tel:${alert.technicianContact.phone.replace(/\s/g, "")}`}
-              >
-                <Phone className="h-4 w-4" aria-hidden />
-                Technicien / atelier ({alert.technicianContact.name})
-              </a>
-            </Button>
-          )}
-          {!alert.driverContact && !alert.technicianContact && (
-            <p className="text-muted-foreground text-sm">
-              Aucun contact téléphonique renseigné pour cette alerte.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      {/* Contacts détaillés non disponibles dans le modèle persistant actuel */}
 
       <div className="flex flex-wrap gap-2">
         <Button
@@ -279,44 +290,11 @@ export default function IncidentAlertDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <IncidentAttachmentPlaceholder attachments={alert.attachments} />
+          <IncidentAttachmentPlaceholder attachments={[]} />
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <History className="h-5 w-5 text-primary" aria-hidden />
-            Historique
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-3">
-            {alert.history.length === 0 ? (
-              <li className="text-muted-foreground text-sm">Aucun événement.</li>
-            ) : (
-              [...alert.history]
-                .sort(
-                  (a, b) =>
-                    new Date(b.at).getTime() - new Date(a.at).getTime()
-                )
-                .map((h) => (
-                  <li
-                    key={h.id}
-                    className="border-l-2 border-border pl-3 text-sm"
-                  >
-                    <p className="text-muted-foreground text-xs">
-                      {format(new Date(h.at), "d MMM yyyy à HH:mm", {
-                        locale: fr,
-                      })}
-                    </p>
-                    <p className="font-medium">{h.label}</p>
-                  </li>
-                ))
-            )}
-          </ul>
-        </CardContent>
-      </Card>
+      {/* Historique détaillé non encore implémenté côté persistance */}
 
       <Card>
         <CardHeader className="pb-2">
@@ -327,19 +305,19 @@ export default function IncidentAlertDetailPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <ul className="space-y-3">
-            {alert.comments.length === 0 ? (
+            {comments.length === 0 ? (
               <li className="text-muted-foreground text-sm">
                 Aucun commentaire pour l’instant.
               </li>
             ) : (
-              alert.comments.map((c) => (
+              comments.map((c) => (
                 <li
                   key={c.id}
                   className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
                 >
                   <p className="text-xs text-muted-foreground">
-                    {c.authorName} ·{" "}
-                    {format(new Date(c.createdAt), "d MMM yyyy à HH:mm", {
+                    {c.author_user_id ?? "Utilisateur"} ·{" "}
+                    {format(new Date(c.created_at), "d MMM yyyy à HH:mm", {
                       locale: fr,
                     })}
                   </p>
@@ -358,7 +336,7 @@ export default function IncidentAlertDetailPage() {
               onChange={(e) => setCommentDraft(e.target.value)}
               rows={3}
             />
-            <Button type="button" onClick={handleComment}>
+            <Button type="button" onClick={handleComment} disabled={isAddingComment}>
               Publier le commentaire
             </Button>
           </div>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import IncidentsTable from "@/components/incidents/IncidentsTable";
 import IncidentFormDialog from "@/components/incidents/IncidentFormDialog";
 import { useIncidents } from "@/hooks/useIncidents";
@@ -9,6 +10,7 @@ import { PageLoader } from "@/components/dashboard/PageLoader";
 
 const Incidents = () => {
   const { role, userFleetId, isLoading: authLoading } = useAuth();
+  const { canReportIncident } = usePermissions();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { data: incidents = [], isLoading, refetch } = useIncidents(userFleetId ?? undefined);
 
@@ -36,7 +38,7 @@ const Incidents = () => {
                       : "Gérez tous les incidents de votre flotte"}
                   </p>
                 </div>
-                {(role === "driver" || role === "organizer" || role === "manager") && userFleetId && (
+                {canReportIncident && userFleetId && (
                   <Button onClick={() => setIsFormOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Signaler un incident
@@ -48,7 +50,6 @@ const Incidents = () => {
               <IncidentsTable 
                 incidents={incidents} 
                 isLoading={isLoading}
-                userRole={role || "driver"}
                 onRefresh={refetch}
               />
       </div>

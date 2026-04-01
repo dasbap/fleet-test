@@ -2,7 +2,16 @@ import { Share } from "@capacitor/share";
 import { isNativePlatform } from "@/lib/platform";
 import type { SharePayload, ShareResult, ShareOutcome } from "@/types/share";
 import type { Vehicle } from "@/hooks/useVehicles";
-import type { Alert, AlertSeverity, AlertType } from "@/hooks/useAlerts";
+import type { Alert, AlertType } from "@/hooks/useAlerts";
+import { buildVehicleHistoryEvents } from "@/features/fleet/lib/vehicleHistory";
+import { buildEsambaDeepLinkUrl } from "@/lib/deepLinks/parseDeepLink";
+import type {
+  AlertDto,
+  IncidentWorkflowStatusDto,
+  OperationalAlertSeverityDto,
+  OperationalAlertTypeDto,
+} from "@/types/dto/alert.dto";
+import type { VehicleDto } from "@/types/dto/vehicle.dto";
 
 function isUserCancelled(error: unknown): boolean {
   if (error == null) return false;
@@ -147,6 +156,64 @@ export function buildVehicleSharePayload(vehicle: Vehicle, detailPath: string): 
   };
 }
 
+/**
+ * Texte structuré pour export (fiche + historique unifié).
+ */
+export function buildVehicleHistoryDocumentText(
+  vehicle: VehicleDto,
+  alerts: AlertDto[],
+): string {
+  const events = buildVehicleHistoryEvents(vehicle, alerts);
+  const header = [
+    "══════════════════════════════════════",
+    "Flotte E-Samba — Fiche véhicule (export)",
+    "══════════════════════════════════════",
+    `Immatriculation : ${vehicle.registration}`,
+    `${vehicle.brand ?? ""} ${vehicle.model ?? ""}`.trim() || "—",
+    `Kilométrage : ${vehicle.current_km.toLocaleString("fr-FR")} km`,
+    `Statut : ${vehicle.status === "blocked" ? "Bloqué" : "Actif"}`,
+  ];
+  if (vehicle.blocked_reason) {
+    header.push(`Motif de blocage : ${vehicle.blocked_reason}`);
+  }
+  header.push("", "--- Historique ---", "");
+  for (const e of events) {
+    const when = new Date(e.at).toLocaleString("fr-FR");
+    header.push(`• ${when} — ${e.title}`);
+    if (e.description) {
+      header.push(`  ${e.description}`);
+    }
+  }
+  return header.join("\n");
+}
+
+/**
+ * Partage résumé + document .txt (Web Share API) et lien `esamba://` dans le corps.
+ */
+export function buildVehicleDocumentSharePayload(
+  vehicle: VehicleDto,
+  alerts: AlertDto[],
+  detailPath: string,
+): SharePayload {
+  const base = buildVehicleSharePayload(vehicle, detailPath);
+  const docRest = buildVehicleHistoryDocumentText(vehicle, alerts);
+  const esambaUrl = buildEsambaDeepLinkUrl({ screen: "vehicle", id: vehicle.id });
+  const fullText = `${base.text}\n\n---\n\n${docRest}\n\nOuverture app : ${esambaUrl}`;
+  const safeName = vehicle.registration.replace(/[^a-zA-Z0-9_-]+/g, "_");
+  const file =
+    typeof File !== "undefined"
+      ? new File([fullText], `fiche-vehicule-${safeName}.txt`, {
+          type: "text/plain;charset=utf-8",
+        })
+      : undefined;
+  return {
+    title: base.title,
+    text: fullText,
+    url: base.url,
+    files: file ? [file] : undefined,
+  };
+}
+
 const ALERT_TYPE_FR: Record<AlertType, string> = {
   missing_closure: "Clôture manquante",
   recurring_gap: "Écart récurrent",
@@ -154,23 +221,112 @@ const ALERT_TYPE_FR: Record<AlertType, string> = {
   vehicle_blocked: "Véhicule bloqué",
 };
 
-const SEVERITY_FR: Record<AlertSeverity, string> = {
+const WORKFLOW_STATUS_FR: Record<IncidentWorkflowStatusDto, string> = {
+  NOUVEAU: "Nouveau",
+  EN_COURS: "En cours",
+  RESOLU: "Résolu",
+};
+
+const DTO_ALERT_TYPE_FR: Record<OperationalAlertTypeDto, string> = {
+  missing_closure: "Clôture manquante",
+  recurring_gap: "Écart récurrent",
+  risky_driver: "Chauffeur à risque",
+  vehicle_blocked: "Véhicule bloqué",
+};
+
+const DTO_SEVERITY_FR: Record<OperationalAlertSeverityDto, string> = {
   critical: "Critique",
   high: "Élevée",
   medium: "Moyenne",
   low: "Faible",
 };
 
-export function buildAlertSharePayload(alert: Alert, detailPath: string): SharePayload {
+/**
+ * Partage basé sur l’alerte persistante (`AlertDto`) — lien web + lien natif `esamba://`.
+ */
+export function buildAlertDtoSharePayload(alert: AlertDto, detailPath: string): SharePayload {
   const url = getAbsoluteUrl(detailPath);
-  const typeLabel = ALERT_TYPE_FR[alert.alert_type] ?? alert.alert_type;
-  const sev = SEVERITY_FR[alert.severity] ?? alert.severity;
+  const esambaUrl = buildEsambaDeepLinkUrl({ screen: "alert", id: alert.id });
+  const typeLabel = DTO_ALERT_TYPE_FR[alert.alert_type] ?? alert.alert_type;
+  const sev = DTO_SEVERITY_FR[alert.severity] ?? alert.severity;
+  const statusLabel = WORKFLOW_STATUS_FR[alert.status] ?? alert.status;
   const dateStr = new Date(alert.created_at).toLocaleString("fr-FR");
   const text = [
     "Flotte E-Samba — Alerte",
     `Type : ${typeLabel}`,
     `Gravité : ${sev}`,
-    `Statut : ${alert.resolved ? "Résolue" : "Active"}`,
+    `Statut workflow : ${statusLabel}`,
+    `Véhicule (id) : ${alert.vehicle_id ?? "—"}`,
+    "",
+    alert.message,
+    "",
+    `Créée le ${dateStr}`,
+    "",
+    `Lien web : ${url}`,
+    `Ouverture app : ${esambaUrl}`,
+  ].join("\n");
+
+  return {
+    title: `Alerte — ${typeLabel}`,
+    text,
+    url,
+  };
+}
+
+export interface AlertCommentShareRow {
+  body: string;
+  created_at: string;
+  author_user_id?: string | null;
+}
+
+/**
+ * Document texte (.txt sur le web si le navigateur le permet) + résumé et commentaires.
+ */
+export function buildAlertDtoDocumentSharePayload(
+  alert: AlertDto,
+  detailPath: string,
+  comments?: AlertCommentShareRow[],
+): SharePayload {
+  const base = buildAlertDtoSharePayload(alert, detailPath);
+  let block = base.text;
+  if (comments?.length) {
+    const lines = comments.map((c) => {
+      const when = new Date(c.created_at).toLocaleString("fr-FR");
+      const who = c.author_user_id?.trim() || "—";
+      return `[${when}] (${who})\n${c.body.trim()}`;
+    });
+    block += `\n\n--- Commentaires ---\n\n${lines.join("\n\n")}`;
+  }
+  const file =
+    typeof File !== "undefined"
+      ? new File([block], `alerte-flotte-${alert.id.replace(/[^a-zA-Z0-9_-]+/g, "_")}.txt`, {
+          type: "text/plain;charset=utf-8",
+        })
+      : undefined;
+  return {
+    title: base.title,
+    text: block,
+    url: base.url,
+    files: file ? [file] : undefined,
+  };
+}
+
+/** @deprecated Préférer `buildAlertDtoSharePayload` avec les données persistées. */
+export function buildAlertSharePayload(alert: Alert, detailPath: string): SharePayload {
+  const url = getAbsoluteUrl(detailPath);
+  const typeLabel = ALERT_TYPE_FR[alert.type] ?? alert.type;
+  const sev =
+    alert.severity === "critical"
+      ? "Critique"
+      : alert.severity === "warning"
+        ? "Avertissement"
+        : "Info";
+  const dateStr = new Date(alert.createdAt).toLocaleString("fr-FR");
+  const text = [
+    "Flotte E-Samba — Alerte",
+    `Type : ${typeLabel}`,
+    `Gravité : ${sev}`,
+    `Statut : ${alert.status === "resolved" ? "Résolue" : "Active"}`,
     "",
     alert.message,
     "",

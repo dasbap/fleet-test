@@ -60,6 +60,7 @@ import {
   Ticket,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useFleetMembers, useAddFleetMember, useUpdateMemberRole, useRemoveFleetMember, type FleetMember, type AddMemberData } from "@/hooks/useFleetMembers";
 import { useSearchUsers, type SearchedUser } from "@/hooks/useSearchUsers";
 import { toast } from "@/hooks/use-toast";
@@ -84,6 +85,7 @@ type AddMemberFormValues = z.infer<typeof addMemberSchema>;
 
 const Teams = () => {
   const { user, role, userFleetId, isLoading: authLoading } = useAuth();
+  const { canAccessBackoffice } = usePermissions();
   const navigate = useNavigate();
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false);
   const [removeConfirm, setRemoveConfirm] = useState<{ membershipId: string; displayName: string } | null>(null);
@@ -253,8 +255,7 @@ const Teams = () => {
     return <PageLoader />;
   }
 
-  // Seuls organizer et manager peuvent accéder à la page Équipes (aligné avec Invitations)
-  const canManageTeam = role === "organizer" || role === "manager";
+  const canManageTeam = canAccessBackoffice;
   if (!canManageTeam) {
     return <Navigate to="/dashboard" replace />;
   }

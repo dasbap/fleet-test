@@ -4,9 +4,9 @@ import { useCamera } from "@/hooks/useCamera";
 import { cn } from "@/lib/utils";
 
 interface IncidentPhotoCaptureProps {
-  /** Data URL pour préremplissage / contrôle formulaire */
+  /** Donnée image prête à l'upload (data URL ou base64) pour le formulaire. */
   value: string | null | undefined;
-  onChange: (dataUrl: string | null) => void;
+  onChange: (uploadData: string | null) => void;
   disabled?: boolean;
   className?: string;
 }
@@ -27,7 +27,7 @@ export function IncidentPhotoCapture({
     clearError();
     const out = await captureFromCamera();
     if (out.ok) {
-      onChange(out.result.displayUrl);
+      onChange(out.result.uploadData);
     }
   };
 

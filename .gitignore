@@ -1,4 +1,4 @@
-﻿# Logs
+# Logs
 logs
 *.log
 npm-debug.log*
@@ -34,7 +34,7 @@ dist-ssr
 # Vercel
 .vercel
 
-# Cursor / IDE — tout sauf la config MCP (partage équipe)
+# Cursor / IDE - tout sauf la config MCP (partage equipe)
 .cursor/*
 !.cursor/mcp.json
 
@@ -42,3 +42,16 @@ dist-ssr
 TEST-REPORT-*.json
 !.cursor/rules/
 !.cursor/rules/*.mdc
+
+# Android - ressources natives (mipmaps, splash) : versionnees pour CI / builds reproductibles.
+# Icones sources : resources/icon.svg, resources/icon.png (regeneres via npm run cap:assets).
+# Ne pas ignorer android/app/src/main/res/ ni le dossier resources/ a la racine.
+
+# Android - publication Play (ne jamais versionner)
+android/keystore.properties
+android/*.jks
+android/*.keystore
+android/app/*.jks
+android/app/*.keystore
+android/.github-android-secrets.local.txt
+

@@ -6,7 +6,6 @@ export interface MobileHomeCopy {
   labels?: Partial<{
     active: string;
     immobilized: string;
-    maintenance: string;
     alerts: string;
   }>;
 }
@@ -30,7 +29,6 @@ const copyByRole: Record<NonNullable<AppRole>, MobileHomeCopy> = {
     labels: {
       active: "Véhicule assigné (actif)",
       immobilized: "Immobilisé",
-      maintenance: "Entretien prévu (sem.)",
       alerts: "Mes alertes critiques",
     },
   },

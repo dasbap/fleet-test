@@ -20,3 +20,6 @@ export interface FleetUserPreferences {
   locale: "fr" | "en";
   notificationsEnabled: boolean;
 }
+
+/** Alias du modèle utilisateur métier (évite la confusion avec AuthUser / session). */
+export type User = FleetUser;

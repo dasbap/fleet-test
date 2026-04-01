@@ -1,8 +1,8 @@
-# Architecture du projet - Smart Fleet Africa
+# Architecture du projet - Smart Fleet Africa / Flotte E-Samba
 
 ## Vue d'ensemble
 
-Le projet utilise une architecture en couches basée sur le pattern **Repository** et **Services**, combinée avec **React Query** pour la gestion des données côté client.
+Le projet utilise une architecture en couches basée sur le pattern **Repository** et **Services**, combinée avec **React Query** pour la gestion des données côté client. Le produit **Flotte E-Samba** (web + shell mobile Capacitor) partage ce dépôt ; la cartographie des dossiers `src/` (app, pages, features, mobile-first) est décrite dans [docs/structure-flotte-e-samba.md](docs/structure-flotte-e-samba.md).
 
 ## Décisions d'architecture
 

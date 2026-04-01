@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { isMockAuthEnabled } from "@/lib/authMode";
+import { enableDemoAuthFallback, isMockAuthEnabled } from "@/lib/authMode";
 import { normalizeLoginRole } from "@/lib/mobile/mobileRoleBridge";
 import { mockAuthService } from "@/services/mock-auth.service";
 import type { AppRole } from "@/types/auth";
@@ -11,6 +11,28 @@ export function notifyMockAuthChanged(): void {
   window.dispatchEvent(new CustomEvent(MOCK_AUTH_CHANGED_EVENT));
 }
 
+function isDemoAccount(identifier: string): boolean {
+  return identifier.trim().toLowerCase().endsWith("@esamba.test");
+}
+
+function roleFromDemoEmail(email: string): AppRole {
+  const normalized = email.trim().toLowerCase();
+  if (normalized.includes("organizer")) return "organizer";
+  if (normalized.includes("mechanic")) return "mechanic";
+  if (normalized.includes("driver")) return "driver";
+  return "manager";
+}
+
+function isSupabaseNetworkError(error: unknown): boolean {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
+  return message.toLowerCase().includes("failed to fetch");
+}
+
 /**
  * Connexion : en mode mock, identifiant = email ou téléphone ; sinon email Supabase.
  */
@@ -19,21 +41,42 @@ export async function signIn(
   password: string,
   loginRole?: AppRole | string,
 ) {
+  const normalizedIdentifier = identifier.trim();
+  const appRole = normalizeLoginRole(loginRole);
+
   if (isMockAuthEnabled()) {
-    const appRole = normalizeLoginRole(loginRole);
     const { error } = mockAuthService.signInWithPassword(
-      identifier,
+      normalizedIdentifier,
       password,
       appRole,
     );
     if (!error) notifyMockAuthChanged();
     return { data: null as unknown, error };
   }
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: identifier.trim(),
-    password,
-  });
-  return { data, error };
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: normalizedIdentifier,
+      password,
+    });
+    return { data, error };
+  } catch (error) {
+    // Fallback robuste pour les comptes démo quand Supabase n'est pas accessible localement.
+    if (isDemoAccount(normalizedIdentifier) && isSupabaseNetworkError(error)) {
+      enableDemoAuthFallback();
+      const { error: mockError } = mockAuthService.signInWithPassword(
+        normalizedIdentifier,
+        password,
+        appRole ?? roleFromDemoEmail(normalizedIdentifier),
+      );
+      if (!mockError) notifyMockAuthChanged();
+      return { data: null as unknown, error: mockError };
+    }
+    return {
+      data: null as unknown,
+      error: error instanceof Error ? error : new Error("Erreur de connexion."),
+    };
+  }
 }
 
 export async function signUp(

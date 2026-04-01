@@ -4,6 +4,21 @@ Ce document applique la procédure de mise en ligne : domaine de production, var
 
 Références dans le dépôt : [`vercel.json`](../vercel.json) (redirect apex → `www`, rewrites SPA), [`index.html`](../index.html) et [`src/lib/seo.ts`](../src/lib/seo.ts) (URL canonique, `VITE_APP_URL`).
 
+### Runtime Node.js (build Vercel et Capacitor)
+
+Le dépôt impose **`engines.node` ≥ 22** ([`package.json`](../package.json)), aligné sur **@capacitor/cli** 8.x. Vercel utilise en général la version indiquée par `package.json` ou [`.node-version`](../.node-version) ; vérifier après déploiement les logs d’installation (`node -v` attendu : **v22.x**). Cela supprime l’avertissement npm **EBADENGINE** sur les builds.
+
+### Build WebView Capacitor (iOS / Android)
+
+Le déploiement **Vercel** sert l’app web ; le **shell natif** charge le même bundle via WebView après un build dédié :
+
+```bash
+npm run build:capacitor
+npx cap sync
+```
+
+Raccourci : `npm run mobile:prepare` (build + `cap sync`). Le mode Vite `capacitor` applique `base: "./"` pour des chemins relatifs corrects dans la WebView ([`vite.config.ts`](../vite.config.ts)). Un workflow GitHub vérifie que `npm run build:capacitor` réussit sur les PR vers `main`. La structure des dossiers `src/` pour Flotte E-Samba est décrite dans [structure-flotte-e-samba.md](./structure-flotte-e-samba.md).
+
 ---
 
 ## 1. Prévisualisation Vercel : erreur 401 Unauthorized

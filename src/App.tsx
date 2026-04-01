@@ -1,52 +1,40 @@
 import * as Sentry from "@sentry/react";
-import { lazy, Suspense } from "react";
-import { PageSEO } from "@/components/PageSEO";
+import { Suspense } from "react";
 import Providers from "@/components/Providers";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { PageSEO } from "@/components/PageSEO";
+import { OfflinePendingSyncBridge } from "@/components/OfflinePendingSyncBridge";
+import { BrowserRouter, Routes } from "react-router-dom";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { DeepLinkListener } from "@/components/navigation/DeepLinkListener";
 import { PushNotificationBridge } from "@/components/mobile/PushNotificationBridge";
-
-const Index = lazy(() => import("./pages/Index"));
-const Auth = lazy(() => import("./pages/Auth"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const DashboardRouteGroup = lazy(() =>
-  import("@/app/DashboardRouteGroup").then((m) => ({ default: m.DashboardRouteGroup }))
-);
+import { appRoutes } from "@/app/routes/app.routes";
+import { AppErrorFallback } from "@/components/errors/AppErrorFallback";
+import { logError } from "@/lib/logging";
 
 const App = () => (
   <Sentry.ErrorBoundary
-    fallback={({ resetError }) => (
-      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center gap-4 p-4">
-        <p className="text-muted-foreground text-center">
-          Une erreur est survenue. Veuillez recharger la page.
-        </p>
-        <button
-          type="button"
-          onClick={() => (resetError ? resetError() : window.location.reload())}
-          className="text-sm font-medium text-primary underline underline-offset-4 hover:no-underline"
-        >
-          Recharger la page
-        </button>
-      </div>
-    )}
+    fallback={AppErrorFallback}
+    onError={(error, componentStack, eventId) => {
+      logError("Erreur capturée par la boundary racine", error, {
+        source: "error-boundary",
+        componentStack,
+        eventId,
+      });
+    }}
   >
     <Providers>
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <DeepLinkListener />
         <PushNotificationBridge />
         <PageSEO />
+        <OfflinePendingSyncBridge />
         <Suspense fallback={<RoutePageFallback />}>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route
-              path="/settings"
-              element={<Navigate to="/dashboard/settings" replace />}
-            />
-            <DashboardRouteGroup />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Routes>{appRoutes}</Routes>
         </Suspense>
       </BrowserRouter>
     </Providers>

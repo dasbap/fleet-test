@@ -7,6 +7,14 @@ import {
 export type ParsedDeepLink =
   | {
       ok: true;
+      kind: "alerts_list";
+    }
+  | {
+      ok: true;
+      kind: "fleet_list";
+    }
+  | {
+      ok: true;
       kind: "alert";
       alertId: string;
     }
@@ -68,6 +76,8 @@ function parseOperationsTypedSegment(segment: string): ParsedDeepLink | null {
 /**
  * Parse une URL de deep link Flotte E-Samba.
  * Formats supportés :
+ * - esamba://alerts (liste des alertes)
+ * - esamba://fleet (liste des véhicules)
  * - esamba://alerts/:id
  * - esamba://fleet/:id  (fiche véhicule)
  * - esamba://operations/mission/:id
@@ -114,8 +124,22 @@ export function parseDeepLink(rawUrl: string): ParsedDeepLink {
 
   const segments = trimSegments(pathPart.split("/"));
 
-  if (segments.length < 2) {
-    return { ok: false, reason: "Chemin incomplet (domaine et id requis)" };
+  if (segments.length === 0) {
+    return { ok: false, reason: "Chemin vide" };
+  }
+
+  if (segments.length === 1) {
+    const only = segments[0]!.toLowerCase();
+    if (only === "alerts") {
+      return { ok: true, kind: "alerts_list" };
+    }
+    if (only === "fleet") {
+      return { ok: true, kind: "fleet_list" };
+    }
+    return {
+      ok: false,
+      reason: `Segment unique non reconnu : ${only} (attendu alerts ou fleet pour les listes)`,
+    };
   }
 
   const [domain, a, b] = segments;
@@ -172,6 +196,8 @@ export function parseDeepLink(rawUrl: string): ParsedDeepLink {
 
 /** Cible pour générer une URL esamba:// (payload push, tests). */
 export type EsambaDeepLinkBuildTarget =
+  | { screen: "alerts_list" }
+  | { screen: "fleet_list" }
   | { screen: "alert"; id: string }
   | { screen: "vehicle"; id: string }
   | { screen: "mission"; id: string }
@@ -183,6 +209,10 @@ export type EsambaDeepLinkBuildTarget =
 export function buildEsambaDeepLinkUrl(target: EsambaDeepLinkBuildTarget): string {
   const enc = encodeURIComponent;
   switch (target.screen) {
+    case "alerts_list":
+      return `${ESAMBA_DEEP_LINK_PREFIX}alerts`;
+    case "fleet_list":
+      return `${ESAMBA_DEEP_LINK_PREFIX}fleet`;
     case "alert":
       return `${ESAMBA_DEEP_LINK_PREFIX}alerts/${enc(target.id)}`;
     case "vehicle":

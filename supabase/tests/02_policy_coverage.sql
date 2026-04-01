@@ -20,7 +20,9 @@ BEGIN
       'abonnements',
       'droits_vehicules',
       'jetons_qr',
-      'plans'
+      'plans',
+      'notification_tokens',
+      'alert_comments'
     ]) AS table_name
   ),
   policy_counts AS (

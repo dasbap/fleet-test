@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Get npm global prefix
@@ -53,9 +53,9 @@ jobs:
           path: |
             ${{ steps.npm-global-prefix.outputs.prefix }}/lib/node_modules/supabase
             ${{ steps.npm-global-prefix.outputs.prefix }}/bin/supabase
-          key: supabase-cli-global-${{ runner.os }}-node-20-${{ env.SUPABASE_CLI_VERSION }}
+          key: supabase-cli-global-${{ runner.os }}-node-22-${{ env.SUPABASE_CLI_VERSION }}
           restore-keys: |
-            supabase-cli-global-${{ runner.os }}-node-20-
+            supabase-cli-global-${{ runner.os }}-node-22-
             supabase-cli-global-${{ runner.os }}-
 
       - name: Check cache status

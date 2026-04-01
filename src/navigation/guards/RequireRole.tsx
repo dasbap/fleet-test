@@ -1,25 +1,26 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
+import type { MobileAppRole } from "@/types/mobile-app-role";
+import { toAppRole } from "@/lib/mobile/mobileRoleBridge";
+import { getUnauthenticatedLoginPath } from "@/navigation/loginRedirectPath";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 interface RequireRoleProps {
   children: ReactNode;
-  /** Au moins un de ces rôles est requis. */
-  allow: AppRole[];
+  /** Au moins un de ces rôles est requis (persistance et/ou nomenclature métier). */
+  allow: readonly (AppRole | MobileAppRole)[];
   /** Redirection si le rôle ne convient pas (défaut : tableau de bord). */
   fallbackTo?: string;
 }
 
-/**
- * Garde : rôle applicatif dans la liste autorisée (session + memberships déjà résolus par useAuth).
- */
-export function RequireRole({
+function RoleGate({
   children,
   allow,
   fallbackTo = ROUTE_PATHS.dashboard,
 }: RequireRoleProps) {
   const { role, isLoading, user } = useAuth();
+  const allowedAppRoles = allow.map((r) => toAppRole(r));
 
   if (isLoading) {
     return (
@@ -33,12 +34,19 @@ export function RequireRole({
   }
 
   if (!user) {
-    return <Navigate to={ROUTE_PATHS.auth} replace />;
+    return <Navigate to={getUnauthenticatedLoginPath()} replace />;
   }
 
-  if (!role || !allow.includes(role)) {
+  if (!role || !allowedAppRoles.includes(role)) {
     return <Navigate to={fallbackTo} replace />;
   }
 
   return <>{children}</>;
 }
+
+/**
+ * Garde : rôle applicatif dans la liste autorisée (session + memberships déjà résolus par useAuth).
+ */
+export const RequireRole = RoleGate;
+
+export const RoleGuard = RoleGate;

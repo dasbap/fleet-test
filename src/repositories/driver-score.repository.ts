@@ -28,7 +28,6 @@ export class DriverScoreRepository {
       .order('financial_score', { ascending: true });
 
     if (error) {
-      console.error('Error fetching driver scores:', error);
       throw new Error(error.message);
     }
     return (data || []) as DriverScoreRow[];

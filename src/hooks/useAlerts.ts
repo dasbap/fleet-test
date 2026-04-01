@@ -1,33 +1,26 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from './useAuth';
-import { AlertService } from '@/services/alert.service';
-import { AlertRepository } from '@/repositories/alert.repository';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "./useAuth";
+import { AlertService } from "@/services/alert.service";
+import { AlertRepository } from "@/repositories/alert.repository";
+import type {
+  AlertDto,
+  OperationalAlertSeverityDto,
+  OperationalAlertTypeDto,
+  IncidentWorkflowStatusDto,
+} from "@/types/dto/alert.dto";
+import type { Alert, AlertFilters } from "@/types/alert";
 
 const alertRepository = new AlertRepository();
 const alertService = new AlertService(alertRepository);
 
-export type AlertSeverity = 'critical' | 'high' | 'medium' | 'low';
+/** @deprecated Utiliser `OperationalAlertSeverityDto` depuis `@/types/dto/alert.dto`. */
+export type AlertSeverity = OperationalAlertSeverityDto;
 
-export type AlertType =
-  | 'missing_closure'
-  | 'recurring_gap'
-  | 'risky_driver'
-  | 'vehicle_blocked';
+/** @deprecated Utiliser `OperationalAlertTypeDto` depuis `@/types/dto/alert.dto`. */
+export type AlertType = OperationalAlertTypeDto;
 
-export interface Alert {
-  id: string;
-  fleet_id: string;
-  alert_type: AlertType;
-  driver_user_id: string | null;
-  vehicle_id: string | null;
-  shift_id: string | null;
-  severity: AlertSeverity;
-  message: string;
-  resolved: boolean;
-  resolved_by: string | null;
-  resolved_at: string | null;
-  created_at: string;
-}
+export type { AlertDto, OperationalAlertSeverityDto, OperationalAlertTypeDto };
+export type { Alert };
 
 export function useAlerts(fleetId?: string) {
   const { userFleetId } = useAuth();
@@ -37,6 +30,45 @@ export function useAlerts(fleetId?: string) {
     queryKey: ['alerts', targetFleetId],
     queryFn: () => (targetFleetId ? alertService.getUnresolvedAlerts(targetFleetId) : []),
     enabled: !!targetFleetId,
+    refetchInterval: 60000,
+  });
+}
+
+export function useAlertsList(partialFilters?: Omit<AlertFilters, "fleetId">) {
+  const { userFleetId } = useAuth();
+  const fleetId = userFleetId;
+
+  const filters: AlertFilters | undefined = fleetId
+    ? {
+        fleetId,
+        status: partialFilters?.status,
+        severity: partialFilters?.severity,
+        type: partialFilters?.type,
+        search: partialFilters?.search,
+      }
+    : undefined;
+
+  return useQuery({
+    queryKey: ["alerts-list", filters],
+    queryFn: () =>
+      filters ? alertService.getAlertsForFleetWithFilters(filters) : [],
+    enabled: !!filters?.fleetId,
+    staleTime: 60_000,
+  });
+}
+
+/** Alertes opérationnelles non résolues liées à un véhicule donné pour la flotte courante. */
+export function useVehicleAlerts(vehicleId: string | undefined) {
+  const { userFleetId } = useAuth();
+  const enabled = !!vehicleId && !!userFleetId;
+
+  return useQuery({
+    queryKey: ["vehicleAlerts", vehicleId, userFleetId],
+    queryFn: () =>
+      enabled
+        ? alertService.getVehicleAlertsForFleet(vehicleId!, userFleetId!)
+        : [],
+    enabled,
     refetchInterval: 60000,
   });
 }
@@ -77,6 +109,61 @@ export function useResolveAlert() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
       queryClient.invalidateQueries({ queryKey: ['alert'] });
+    },
+  });
+}
+
+export function useUpdateAlertStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { alertId: string; status: IncidentWorkflowStatusDto }) =>
+      alertService.updateAlertStatus(payload.alertId, payload.status),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["alert", variables.alertId] });
+    },
+  });
+}
+
+export function useAssignAlert() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { alertId: string; assigneeUserId: string | null }) =>
+      alertService.assignAlert(payload.alertId, payload.assigneeUserId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["alert", variables.alertId] });
+    },
+  });
+}
+
+export function useAlertComments(alertId: string | undefined) {
+  return useQuery({
+    queryKey: ["alertComments", alertId],
+    queryFn: () => (alertId ? alertService.getAlertComments(alertId) : []),
+    enabled: !!alertId,
+  });
+}
+
+export function useAddAlertComment(alertId: string | undefined) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: (body: string) => {
+      if (!alertId) {
+        throw new Error("alertId manquant");
+      }
+      const userId = user?.id;
+      if (!userId) {
+        throw new Error("Utilisateur non authentifié");
+      }
+      return alertService.addAlertComment(alertId, userId, body);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alertComments", alertId] });
     },
   });
 }

@@ -28,6 +28,7 @@ import {
 import { Ticket, Plus, Copy, Check, MoreVertical, Trash2, Calendar, Users, Loader2, UsersRound } from "lucide-react";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useInvitations, useDeleteInvitation } from "@/hooks/useInvitations";
 import { CreateInvitationDialog } from "@/components/invitations/CreateInvitationDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +37,7 @@ const Invitations = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, role, userFleetId, isLoading: authLoading } = useAuth();
+  const { canAccessBackoffice } = usePermissions();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [invitationToDelete, setInvitationToDelete] = useState<string | null>(null);
@@ -44,8 +46,7 @@ const Invitations = () => {
   const { data: invitations = [], isLoading, refetch } = useInvitations(userFleetId || undefined);
   const deleteInvitation = useDeleteInvitation();
 
-  // Seuls les organizers et managers peuvent voir cette page
-  const canManageInvitations = role === "organizer" || role === "manager";
+  const canManageInvitations = canAccessBackoffice;
 
   // L'authentification est gérée par ProtectedRoute. Redirection des rôles non autorisés via Navigate ci-dessous.
 

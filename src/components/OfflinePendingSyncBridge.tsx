@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { useAuth } from "@/hooks/useAuth";
 import { useNetworkOnline } from "@/features/account/hooks/useNetworkOnline";
-import { countPendingIncidentDrafts } from "@/lib/storage/flotteEsambaLocalCache";
-import { syncPendingIncidentDrafts } from "@/services/offlineIncidentSync.service";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { countPendingIncidentDrafts } from "@/lib/storage/flotteEsambaLocalCache";
+import { migrateLegacyIncidentDraftsToQueue, runOfflineSyncOnce } from "@/services/offlineSyncOrchestrator.service";
 
 /**
  * Tente d’envoyer les brouillons d’incidents lorsque le réseau revient (ou au montage si en ligne).
@@ -17,18 +17,21 @@ export function OfflinePendingSyncBridge() {
 
   useEffect(() => {
     if (!user || !online) return;
-    if (countPendingIncidentDrafts() === 0) return;
 
     void (async () => {
-      const { synced, failed } = await syncPendingIncidentDrafts();
-      if (synced > 0) {
+      if (countPendingIncidentDrafts() > 0) {
+        migrateLegacyIncidentDraftsToQueue();
+      }
+
+      const { succeeded, failed } = await runOfflineSyncOnce();
+      if (succeeded > 0) {
         await queryClient.invalidateQueries({ queryKey: ["incidents"] });
         toast({
           title: "Synchronisation",
           description:
-            synced === 1
+            succeeded === 1
               ? "Un signalement hors ligne a été envoyé."
-              : `${synced} signalements hors ligne ont été envoyés.`,
+              : `${succeeded} signalements hors ligne ont été envoyés.`,
         });
       }
       if (failed > 0) {

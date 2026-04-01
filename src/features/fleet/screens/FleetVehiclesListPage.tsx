@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import VehicleFormDialog from "@/components/vehicles/VehicleFormDialog";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FleetVehicleFilterTab } from "@/types/fleet-vehicle";
 import {
@@ -17,6 +18,12 @@ import {
 import { filterFleetVehicleList } from "@/features/fleet/lib/filterFleetVehicles";
 import { VehicleCard } from "@/features/fleet/components/VehicleCard";
 import { cn } from "@/lib/utils";
+import {
+  mobileScreenRootList,
+  mobileScreenStack,
+  mobileScreenSubtitle,
+  mobileScreenTitle,
+} from "@/lib/mobile/mobileUiTokens";
 
 const FILTER_TABS: { id: FleetVehicleFilterTab; label: string }[] = [
   { id: "all", label: "Tous" },
@@ -30,10 +37,10 @@ const FILTER_TABS: { id: FleetVehicleFilterTab; label: string }[] = [
  * Liste des véhicules — filtres, recherche, cartes (données mock en démo).
  */
 export default function FleetVehiclesListPage() {
-  const { role, userFleetId, isLoading: authLoading } = useAuth();
+  const { userFleetId, isLoading: authLoading } = useAuth();
+  const { canWriteFleet } = usePermissions();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const userRole = role || "driver";
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [tab, setTab] = useState<FleetVehicleFilterTab>("all");
   const [search, setSearch] = useState("");
@@ -75,18 +82,20 @@ export default function FleetVehiclesListPage() {
     );
   }
 
-  const showAdd =
-    !MOCK_FLEET_USE_DEMO_DATA &&
-    (userRole === "manager" || userRole === "organizer");
+  const showAdd = !MOCK_FLEET_USE_DEMO_DATA && canWriteFleet;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-5 px-0 sm:space-y-6 lg:max-w-7xl">
+    <div
+      className={cn(
+        mobileScreenRootList,
+        mobileScreenStack,
+        "xl:max-w-7xl",
+      )}
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="font-heading text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
-            Flotte — véhicules
-          </h1>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          <h1 className={cn(mobileScreenTitle, "md:text-3xl")}>Flotte — véhicules</h1>
+          <p className={cn(mobileScreenSubtitle, "mt-1.5")}>
             Statut, entretien, localisation et alertes du parc
           </p>
         </div>
@@ -151,8 +160,7 @@ export default function FleetVehiclesListPage() {
         </ul>
       )}
 
-      {!MOCK_FLEET_USE_DEMO_DATA &&
-        (userRole === "manager" || userRole === "organizer") && (
+      {!MOCK_FLEET_USE_DEMO_DATA && canWriteFleet && (
           <VehicleFormDialog
             open={isFormOpen}
             onOpenChange={setIsFormOpen}

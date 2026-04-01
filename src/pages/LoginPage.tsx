@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -22,10 +22,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { signIn, useAuth } from "@/hooks/useAuth";
+import { signIn } from "@/hooks/useAuth";
 import type { AppRole } from "@/types/auth";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { cn } from "@/lib/utils";
+import {
+  DEMO_CREDENTIAL_ACCOUNTS,
+  DEMO_SHARED_PASSWORD,
+} from "@/features/auth/data/demoCredentials";
 
 const loginSchema = z.object({
   identifier: z
@@ -60,8 +64,6 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { user, isLoading: authLoading } = useAuth();
-
   const redirectTo = useMemo(() => {
     const raw = searchParams.get("redirect");
     if (!raw || !raw.startsWith("/")) return ROUTE_PATHS.dashboard;
@@ -76,12 +78,6 @@ export default function LoginPage() {
       testRole: "manager",
     },
   });
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      navigate(redirectTo, { replace: true });
-    }
-  }, [user, authLoading, navigate, redirectTo]);
 
   async function onSubmit(values: LoginForm) {
     const { error } = await signIn(
@@ -104,15 +100,9 @@ export default function LoginPage() {
     navigate(redirectTo, { replace: true });
   }
 
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
-          aria-hidden
-        />
-      </div>
-    );
+  function fillDemoCredentials(email: string): void {
+    form.setValue("identifier", email, { shouldValidate: true, shouldDirty: true });
+    form.setValue("password", DEMO_SHARED_PASSWORD, { shouldValidate: true, shouldDirty: true });
   }
 
   return (
@@ -233,6 +223,27 @@ export default function LoginPage() {
               >
                 {form.formState.isSubmitting ? "Connexion…" : "Se connecter"}
               </Button>
+
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground">
+                  Identifiants démo rapides (mot de passe commun :{" "}
+                  <code className="rounded bg-muted px-1 py-0.5">{DEMO_SHARED_PASSWORD}</code>)
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {DEMO_CREDENTIAL_ACCOUNTS.map((account) => (
+                    <Button
+                      key={account.email}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={cn("h-auto max-w-full truncate")}
+                      onClick={() => fillDemoCredentials(account.email)}
+                    >
+                      {account.role}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </form>
           </Form>
 

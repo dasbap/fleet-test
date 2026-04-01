@@ -6,6 +6,8 @@ import { isUserCancellationMessage } from "@/lib/cameraCancellation";
 export interface CameraCaptureResult {
   /** URL utilisable dans `<img src={...} />` (Capacitor webPath ou dataUrl). */
   displayUrl: string;
+  /** Chaîne prête pour le téléversement (data URL ou base64 brut). */
+  uploadData: string;
   format: string;
   /** Chemin natif si présent (Filesystem / upload). */
   nativePath?: string;
@@ -92,6 +94,10 @@ export class CameraService {
   }
 
   private photoToResult(photo: Photo): CameraCaptureResult {
+    const uploadData = photo.dataUrl ?? photo.base64String ?? "";
+    if (!uploadData) {
+      throw new CameraServiceError("Photo reçue sans donnée exploitable pour l'envoi.", "unavailable");
+    }
     const displayUrl =
       photo.webPath ?? photo.dataUrl ?? (photo.base64String ? `data:image/jpeg;base64,${photo.base64String}` : "");
     if (!displayUrl) {
@@ -99,6 +105,7 @@ export class CameraService {
     }
     return {
       displayUrl,
+      uploadData,
       format: photo.format,
       nativePath: photo.path,
       base64: photo.base64String,
@@ -119,7 +126,7 @@ export class CameraService {
       const photo = await Camera.getPhoto({
         quality: options?.quality ?? 85,
         allowEditing: false,
-        resultType: CameraResultType.Uri,
+        resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera,
         correctOrientation: true,
         width: options?.maxWidth,
@@ -164,7 +171,7 @@ export class CameraService {
       const photo = await Camera.getPhoto({
         quality: options?.quality ?? 85,
         allowEditing: false,
-        resultType: CameraResultType.Uri,
+        resultType: CameraResultType.DataUrl,
         source: CameraSource.Photos,
         width: options?.maxWidth,
         height: options?.maxHeight,

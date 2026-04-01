@@ -175,11 +175,38 @@ export function getOfflineCacheSnapshot(): {
   pendingDrafts: number;
   sync: LocalSyncState;
 } {
-  return {
+  const nextSnapshot = {
     session: getLocalSessionSnapshot(),
     recentMissions: getRecentMissions(),
     recentVehicles: getRecentVehicles(),
     pendingDrafts: countPendingIncidentDrafts(),
     sync: getLocalSyncState(),
   };
+
+  const nextKey = JSON.stringify({
+    sessionId: nextSnapshot.session?.userId ?? null,
+    recentMissionIds: nextSnapshot.recentMissions.map((m) => m.id),
+    recentVehicleIds: nextSnapshot.recentVehicles.map((v) => v.vehicleId),
+    pendingDrafts: nextSnapshot.pendingDrafts,
+    sync: nextSnapshot.sync,
+  });
+
+  if (nextKey === offlineCacheSnapshotCacheKey && offlineCacheSnapshotCache != null) {
+    return offlineCacheSnapshotCache;
+  }
+
+  offlineCacheSnapshotCache = nextSnapshot;
+  offlineCacheSnapshotCacheKey = nextKey;
+  return nextSnapshot;
 }
+
+let offlineCacheSnapshotCache:
+  | {
+      session: LocalSessionSnapshot | null;
+      recentMissions: CachedRecentMission[];
+      recentVehicles: CachedRecentVehicle[];
+      pendingDrafts: number;
+      sync: LocalSyncState;
+    }
+  | null = null;
+let offlineCacheSnapshotCacheKey = "";

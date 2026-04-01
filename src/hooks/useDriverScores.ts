@@ -26,7 +26,15 @@ export function useDriverScores(fleetId?: string) {
 
   return useQuery({
     queryKey: ['driver-scores', targetFleetId],
-    queryFn: () => (targetFleetId ? driverScoreService.getDriverScores(targetFleetId) : []),
+    queryFn: async () => {
+      if (!targetFleetId) return [];
+      try {
+        return await driverScoreService.getDriverScores(targetFleetId);
+      } catch {
+        // En mode démo/offline, on garde le dashboard fonctionnel sans bloquer le rendu.
+        return [];
+      }
+    },
     enabled: !!targetFleetId,
   });
 }

@@ -19,12 +19,11 @@ import { MoreHorizontal, Wrench, Eye, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Incident, useCreateMaintenanceFromIncident } from "@/hooks/useIncidents";
-import { AppRole } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface IncidentsTableProps {
   incidents: Incident[];
   isLoading: boolean;
-  userRole: AppRole;
   onRefresh: () => void;
 }
 
@@ -35,10 +34,11 @@ const severityConfig = {
   critical: { label: "Critique", variant: "destructive" as const },
 };
 
-const IncidentsTable = ({ incidents, isLoading, userRole, onRefresh }: IncidentsTableProps) => {
+const IncidentsTable = ({ incidents, isLoading, onRefresh }: IncidentsTableProps) => {
   const createMaintenance = useCreateMaintenanceFromIncident();
+  const { canCreateMaintenanceFromIncident } = usePermissions();
 
-  const canCreateMaintenance = userRole === "mechanic" || userRole === "organizer" || userRole === "manager";
+  const canCreateMaintenance = canCreateMaintenanceFromIncident;
 
   const handleCreateMaintenance = async (incident: Incident) => {
     if (!incident.vehicle?.fleet_id) return;

@@ -22,6 +22,7 @@ Comptes créés par le script `supabase/create-demo-organization-complete.sql` p
 1. Lancer l’application (ex. `npm run dev`).
 2. Aller sur la page de connexion.
 3. Saisir l’email du compte (ex. `demo.organizer@esamba.test`) et le mot de passe `Demo2025!`.
+4. Option rapide : sur les écrans de connexion, cliquer un compte démo pour préremplir automatiquement email + mot de passe.
 
 ## Sécurité
 

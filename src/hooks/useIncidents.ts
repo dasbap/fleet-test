@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { storageService } from '@/lib/storage/storageService';
+import { OfflineQueueService } from '@/services/offlineQueue.service';
 import { IncidentService } from '@/services/incident.service';
 import { IncidentRepository } from '@/repositories/incident.repository';
 import { IncidentEvidenceRepository } from '@/repositories/incident-evidence.repository';
@@ -13,6 +14,7 @@ import type { IncidentCategory } from '@/types/incident-declaration';
 const incidentRepository = new IncidentRepository();
 const incidentEvidenceRepository = new IncidentEvidenceRepository();
 const incidentService = new IncidentService(incidentRepository, incidentEvidenceRepository);
+const offlineQueueService = new OfflineQueueService();
 const maintenanceRepository = new MaintenanceRepository();
 const maintenanceService = new MaintenanceService(maintenanceRepository);
 
@@ -119,6 +121,20 @@ export function useCreateIncident() {
           description: incident.description,
           severity: incident.severity ?? 'medium',
         });
+
+        offlineQueueService.enqueueIncidentCreate({
+          draftId: draft.id,
+          fleetId: userFleetId,
+          vehicleId: incident.vehicle_id,
+          driverUserId: user.id,
+          description: incident.description,
+          severity: incident.severity ?? 'medium',
+          incidentCategory: null,
+          latitude: null,
+          longitude: null,
+          evidenceDataUrl: null,
+        });
+
         return { kind: 'queued' as const, draftId: draft.id };
       }
 
@@ -186,6 +202,19 @@ export function useDeclareIncident() {
           Number.isFinite(input.latitude) &&
           Number.isFinite(input.longitude);
         const draft = storageService.saveIncidentDeclarationDraft({
+          fleetId: userFleetId,
+          vehicleId: input.vehicle_id,
+          driverUserId: user.id,
+          description: base.description,
+          severity: base.severity ?? 'medium',
+          incidentCategory: input.incident_category,
+          latitude: hasGeo ? input.latitude! : null,
+          longitude: hasGeo ? input.longitude! : null,
+          evidenceDataUrl: evidence,
+        });
+
+        offlineQueueService.enqueueIncidentCreate({
+          draftId: draft.id,
           fleetId: userFleetId,
           vehicleId: input.vehicle_id,
           driverUserId: user.id,

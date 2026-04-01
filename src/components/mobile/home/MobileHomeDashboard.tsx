@@ -3,16 +3,22 @@ import {
   Car,
   Gauge,
   MapPin,
-  Wrench,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMobileHomeKpis } from "@/hooks/useMobileHomeKpis";
 import { getMobileHomeCopy } from "@/lib/mobileHomeCopy";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MobileKpiCard } from "./MobileKpiCard";
 import { MobileQuickActions } from "./MobileQuickActions";
 import { getQuickActionsForRole } from "./mobileQuickActionsByRole";
+import {
+  mobileHomeBrandOverline,
+  mobileHomeHeroSubtitle,
+  mobileHomeHeroTitle,
+  mobileScreenStackRelaxed,
+} from "@/lib/mobile/mobileUiTokens";
 
 const roleLabel: Record<string, string> = {
   organizer: "Organisateur",
@@ -27,7 +33,6 @@ function KpiGridSkeleton() {
       {Array.from({ length: 4 }).map((_, i) => (
         <Skeleton key={i} className="h-[110px] rounded-xl" />
       ))}
-      <Skeleton className="col-span-2 h-[110px] rounded-xl" />
     </div>
   );
 }
@@ -45,15 +50,11 @@ export function MobileHomeDashboard() {
   const L = copy.labels;
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-6 pb-safe">
+    <div className={cn("mx-auto w-full max-w-lg pb-safe", mobileScreenStackRelaxed)}>
       <header className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary/90">
-          Flotte E-Samba
-        </p>
-        <h1 className="font-heading text-[1.65rem] font-bold leading-[1.2] tracking-tight">
-          Bonjour, {greeting}
-        </h1>
-        <p className="text-[15px] leading-relaxed text-muted-foreground">{copy.subtitle}</p>
+        <p className={mobileHomeBrandOverline}>Flotte E-Samba</p>
+        <h1 className={mobileHomeHeroTitle}>Bonjour, {greeting}</h1>
+        <p className={mobileHomeHeroSubtitle}>{copy.subtitle}</p>
       </header>
 
       {isError ? (
@@ -87,25 +88,16 @@ export function MobileHomeDashboard() {
                 variant={kpis.immobilizedVehicles > 0 ? "warning" : "default"}
               />
               <MobileKpiCard
-                icon={Wrench}
-                label={L?.maintenance ?? "Entretiens cette semaine"}
-                value={kpis.maintenanceDueThisWeek}
-                variant={kpis.maintenanceDueThisWeek > 5 ? "warning" : "default"}
-              />
-              <MobileKpiCard
                 icon={Gauge}
-                label={L?.alerts ?? "Alertes critiques non traitées"}
+                label={L?.alerts ?? "Alertes critiques"}
                 value={kpis.criticalAlertsOpen}
                 variant={kpis.criticalAlertsOpen > 0 ? "destructive" : "success"}
               />
-            </div>
-            <div className="mt-3.5">
               <MobileKpiCard
                 icon={MapPin}
                 label={copy.missionsLabel}
                 value={kpis.missionsInProgress}
                 variant="default"
-                className="col-span-2"
               />
             </div>
           </>

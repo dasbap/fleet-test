@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Dialog,
   DialogContent,
@@ -13,13 +14,13 @@ import {
 } from '@/components/ui/dialog';
 
 export function SystemHealthAlert() {
-  const { role, userFleetId } = useAuth();
+  const { userFleetId } = useAuth();
+  const { canViewSystemHealth } = usePermissions();
   const { status, isLoading, error, checkHealth, repairOrphanUser } = useSystemHealth();
   const [showDetails, setShowDetails] = useState(false);
   const [repairing, setRepairing] = useState<string | null>(null);
 
-  // Only show for organizers and managers
-  if (role !== 'organizer' && role !== 'manager') {
+  if (!canViewSystemHealth) {
     return null;
   }
 

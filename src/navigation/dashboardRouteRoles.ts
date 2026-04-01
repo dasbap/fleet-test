@@ -1,13 +1,13 @@
-import type { AppRole } from "@/types/auth";
+/**
+ * Rôles autorisés par zone du dashboard web.
+ * Source unique : {@link MODULE_ACCESS} dans `@/auth/permissions`.
+ */
+export {
+  DASHBOARD_FINANCES_ROLES,
+  DASHBOARD_BACKOFFICE_ROLES,
+  DASHBOARD_COLLECTIONS_ROLES,
+  DASHBOARD_HISTORY_ROLES,
+  DASHBOARD_ROLES_HUB_ROLES,
+} from "@/auth/permissions";
 
-/** Aligné sur la sidebar web : finances réservées à l’organisateur. */
-export const DASHBOARD_FINANCES_ROLES: AppRole[] = ["organizer"];
-
-/** Rapports, équipes, invitations, chauffeurs : back-office flotte. */
-export const DASHBOARD_BACKOFFICE_ROLES: AppRole[] = ["organizer", "manager"];
-
-/** Encaissements (manager) ; l’organisateur peut aussi consulter. */
-export const DASHBOARD_COLLECTIONS_ROLES: AppRole[] = ["organizer", "manager"];
-
-/** Historique atelier / interventions. */
-export const DASHBOARD_HISTORY_ROLES: AppRole[] = ["organizer", "manager", "mechanic"];
+export { MODULE_ACCESS } from "@/auth/permissions";

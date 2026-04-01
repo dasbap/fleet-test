@@ -26,6 +26,19 @@ export function appRoleToMobileRole(role: AppRole | null): MobileAppRole | null 
   return APP_ROLE_TO_MOBILE_ROLE[role];
 }
 
+/** Normalise une entrée AppRole ou MobileAppRole vers AppRole (persistance). */
+export function toAppRole(role: AppRole | MobileAppRole): AppRole {
+  if (
+    role === "SUPERVISOR" ||
+    role === "FLEET_MANAGER" ||
+    role === "MECHANIC" ||
+    role === "DRIVER"
+  ) {
+    return mobileRoleToAppRole(role);
+  }
+  return role;
+}
+
 /** Normalise une entrée connexion (mock) : accepte AppRole ou MobileAppRole. */
 export function normalizeLoginRole(
   role: AppRole | MobileAppRole | string | undefined

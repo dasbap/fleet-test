@@ -126,9 +126,13 @@ export function MaintenanceDetailDialog({
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-            <Wrench className="h-5 w-5" />
-            Détails de l'intervention
-          </DialogTitle>
+              <Wrench className="h-5 w-5" />
+              Détails de l'intervention
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Le détail de l'intervention n'a pas pu être chargé. Vous pouvez réessayer ou
+              fermer la fenêtre.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center justify-center py-8 gap-4">
             <p className="text-sm text-destructive text-center">
@@ -152,6 +156,12 @@ export function MaintenanceDetailDialog({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Détails de l'intervention</DialogTitle>
+            <DialogDescription className="sr-only">
+              Chargement de l'intervention
+            </DialogDescription>
+          </DialogHeader>
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>

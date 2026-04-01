@@ -105,9 +105,9 @@ describe("MaintenanceDetailDialog", () => {
     } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
   });
 
-  it("affiche le spinner pendant le chargement (pas de titre Détails)", () => {
+  it("affiche le spinner pendant le chargement", () => {
     renderDialog();
-    expect(screen.queryByRole("heading", { name: /Détails de l'intervention/i })).not.toBeInTheDocument();
+    // Titre possible en sr-only (Radix) : présent pour l’accessibilité, pas affiché visuellement.
     expect(document.querySelector(".animate-spin")).toBeInTheDocument();
   });
 

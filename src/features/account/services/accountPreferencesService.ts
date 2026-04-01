@@ -29,7 +29,7 @@ export class AccountPreferencesService {
   }
 
   async reportSyncStatus(status: AccountSyncDisplayStatus): Promise<void> {
-    setAccountSyncStatus(status);
+    setLocalSyncDisplayStatus(status);
     // Optionnel : POST /api/sync/heartbeat côté serveur
   }
 }

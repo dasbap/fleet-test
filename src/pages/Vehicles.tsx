@@ -6,13 +6,14 @@ import VehicleFormDialog from "@/components/vehicles/VehicleFormDialog";
 import { Button } from "@/components/ui/button";
 import { Plus, Car } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 
 const Vehicles = () => {
-  const { role, userFleetId, isLoading: authLoading } = useAuth();
+  const { userFleetId, isLoading: authLoading } = useAuth();
+  const { canWriteFleet } = usePermissions();
   const navigate = useNavigate();
-  const userRole = role || "driver";
   const queryClient = useQueryClient();
   const [isFormOpen, setIsFormOpen] = useState(false);
 
@@ -60,7 +61,7 @@ const Vehicles = () => {
                     Gérez les véhicules de votre flotte
                   </p>
                 </div>
-                {(userRole === "manager" || userRole === "organizer") && (
+                {canWriteFleet && (
                   <Button onClick={() => setIsFormOpen(true)} className="gap-2">
                     <Plus className="w-4 h-4" />
                     Ajouter un véhicule

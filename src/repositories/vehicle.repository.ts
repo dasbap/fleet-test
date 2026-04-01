@@ -1,5 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { Vehicle, VehicleInsert, VehicleStatus } from '@/hooks/useVehicles';
+import type {
+  VehicleDto,
+  VehicleInsertDto,
+  VehicleStatusDto,
+} from '@/types/dto/vehicle.dto';
 import type { IRepository } from './base.repository';
 
 export interface VehicleFilters {
@@ -12,18 +16,18 @@ export interface VehicleUpdate {
   model?: string | null;
   year?: number | null;
   current_km?: number;
-  status?: VehicleStatus;
+  status?: VehicleStatusDto;
   blocked_reason?: string | null;
 }
 
 /**
  * Repository pour l'accès aux données des véhicules
  */
-export class VehicleRepository implements IRepository<Vehicle, VehicleInsert, VehicleUpdate> {
+export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertDto, VehicleUpdate> {
   /**
    * Récupère tous les véhicules, optionnellement filtrés par flotte
    */
-  async findAll(filters?: VehicleFilters): Promise<Vehicle[]> {
+  async findAll(filters?: VehicleFilters): Promise<VehicleDto[]> {
     let query = supabase
       .from('vehicules')
       .select('*')
@@ -40,13 +44,13 @@ export class VehicleRepository implements IRepository<Vehicle, VehicleInsert, Ve
       throw new Error(error.message);
     }
 
-    return (data || []) as Vehicle[];
+    return (data || []) as VehicleDto[];
   }
 
   /**
    * Récupère tous les véhicules avec leurs affectations actives
    */
-  async findAllWithAssignments(fleetId?: string): Promise<Vehicle[]> {
+  async findAllWithAssignments(fleetId?: string): Promise<VehicleDto[]> {
     let query = supabase
       .from('vehicules')
       .select('*')
@@ -64,10 +68,10 @@ export class VehicleRepository implements IRepository<Vehicle, VehicleInsert, Ve
     }
 
     const vehicles = vehiclesData || [];
-    const vehicleIds = vehicles.map((v: Vehicle) => v.id);
+    const vehicleIds = vehicles.map((v: VehicleDto) => v.id);
 
     if (vehicleIds.length === 0) {
-      return [] as Vehicle[];
+      return [] as VehicleDto[];
     }
 
     // Récupérer les affectations actives avec les profils des conducteurs
@@ -95,13 +99,13 @@ export class VehicleRepository implements IRepository<Vehicle, VehicleInsert, Ve
     return vehicles.map((vehicle) => ({
       ...vehicle,
       active_assignment: assignmentMap.get(vehicle.id) || null,
-    })) as Vehicle[];
+    })) as VehicleDto[];
   }
 
   /**
    * Récupère tous les véhicules triés par immatriculation
    */
-  async findAllSimple(fleetId?: string): Promise<Vehicle[]> {
+  async findAllSimple(fleetId?: string): Promise<VehicleDto[]> {
     let query = supabase
       .from('vehicules')
       .select('*')
@@ -118,13 +122,13 @@ export class VehicleRepository implements IRepository<Vehicle, VehicleInsert, Ve
       throw new Error(error.message);
     }
 
-    return (data || []) as Vehicle[];
+    return (data || []) as VehicleDto[];
   }
 
   /**
    * Récupère un véhicule par son ID
    */
-  async findById(id: string): Promise<Vehicle | null> {
+  async findById(id: string): Promise<VehicleDto | null> {
     const { data, error } = await supabase
       .from('vehicules')
       .select('*')
@@ -140,13 +144,13 @@ export class VehicleRepository implements IRepository<Vehicle, VehicleInsert, Ve
       throw new Error(error.message);
     }
 
-    return data as Vehicle;
+    return data as VehicleDto;
   }
 
   /**
    * Détail d’un véhicule avec affectation active (conducteur) si présente.
    */
-  async findByIdWithAssignment(id: string): Promise<Vehicle | null> {
+  async findByIdWithAssignment(id: string): Promise<VehicleDto | null> {
     const vehicle = await this.findById(id);
     if (!vehicle) {
       return null;
@@ -210,13 +214,13 @@ export class VehicleRepository implements IRepository<Vehicle, VehicleInsert, Ve
       throw new Error(error.message);
     }
 
-    return data as Vehicle;
+    return data as VehicleDto;
   }
 
   /**
    * Met à jour un véhicule existant
    */
-  async update(id: string, updates: VehicleUpdate): Promise<Vehicle> {
+  async update(id: string, updates: VehicleUpdate): Promise<VehicleDto> {
     const { data, error } = await supabase
       .from('vehicules')
       .update(updates)
@@ -229,13 +233,13 @@ export class VehicleRepository implements IRepository<Vehicle, VehicleInsert, Ve
       throw new Error(error.message);
     }
 
-    return data as Vehicle;
+    return data as VehicleDto;
   }
 
   /**
    * Met à jour le kilométrage d'un véhicule
    */
-  async updateKilometerage(id: string, current_km: number): Promise<Vehicle> {
+  async updateKilometerage(id: string, current_km: number): Promise<VehicleDto> {
     return this.update(id, { current_km });
   }
 

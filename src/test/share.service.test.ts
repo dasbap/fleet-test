@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { shareContent, getAbsoluteUrl, buildInterventionSharePayload } from "@/services/share.service";
+import {
+  shareContent,
+  getAbsoluteUrl,
+  buildInterventionSharePayload,
+  buildAlertDtoSharePayload,
+} from "@/services/share.service";
 
 vi.mock("@capacitor/share", () => ({
   Share: {
@@ -55,6 +60,32 @@ describe("share.service (web / fallback)", () => {
     expect(p.text).toContain("INT-001");
     expect(p.text).toContain("Iveco Daily");
     expect(p.url).toContain("/dashboard/maintenance");
+  });
+
+  it("buildAlertDtoSharePayload inclut lien web et esamba://", () => {
+    const p = buildAlertDtoSharePayload(
+      {
+        id: "a1",
+        fleet_id: "f1",
+        alert_type: "vehicle_blocked",
+        driver_user_id: null,
+        vehicle_id: "v1",
+        shift_id: null,
+        severity: "high",
+        message: "Test message",
+        resolved: false,
+        resolved_by: null,
+        resolved_at: null,
+        created_at: "2025-01-01T12:00:00.000Z",
+        status: "NOUVEAU",
+        assignee_user_id: null,
+        assigned_at: null,
+        status_updated_at: null,
+      },
+      "/dashboard/alerts/a1",
+    );
+    expect(p.text).toContain("esamba://alerts/a1");
+    expect(p.text).toContain("Ouverture app");
   });
 });
 

@@ -9,6 +9,10 @@ import { parseDeepLink, type ParsedDeepLink } from "@/lib/deepLinks/parseDeepLin
 
 function parsedToPath(parsed: Extract<ParsedDeepLink, { ok: true }>): string {
   switch (parsed.kind) {
+    case "alerts_list":
+      return ROUTE_PATHS.dashboardAlerts;
+    case "fleet_list":
+      return ROUTE_PATHS.dashboardVehicles;
     case "alert":
       return ROUTE_PATHS.dashboardAlertDetail(parsed.alertId);
     case "vehicle":

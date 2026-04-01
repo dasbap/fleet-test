@@ -1,3 +1,10 @@
+export * from "./MobileCard";
+export * from "./MobileButton";
+export * from "./MobileBadge";
+export * from "./MobileHeader";
+export * from "./MobileListItem";
+export * from "./MobileSectionTitle";
+
 /**
  * Design system mobile Flotte E-Samba — primitives réutilisables (B2B, sobre, tactile).
  * Importer depuis `@/components/mobile/ui`.

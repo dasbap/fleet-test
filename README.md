@@ -4,12 +4,12 @@ Application web de gestion intelligente de flotte en Afrique Centrale. Suivi des
 
 ## Prérequis
 
-- Node.js (LTS recommandé)
+- Node.js **22** ou supérieur (voir `engines` dans `package.json` ; requis notamment pour Capacitor CLI 8.x)
 - npm
 
 [Installation de Node.js avec nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-## Démarrage
+## Démarrage (web)
 
 ```sh
 # Cloner le dépôt
@@ -75,11 +75,45 @@ Checklist : prévisualisations 401, variables `VITE_*`, auth Supabase, DNS et do
 - `npm run test` — tests unitaires
 - `npm run test:integration` — tests d’intégration
 - `npm run build:capacitor` — build web avec chemins relatifs (`base: './'`) pour Capacitor
-- `npm run mobile:prepare` — `build:capacitor` puis `npx cap sync` (met à jour `android/` et `ios/`)
+- `npm run cap:sync` — synchronise Capacitor (Android/iOS) avec un runtime Node 22 isolé
+- `npm run mobile:prepare` — `build:capacitor` puis `cap:sync` (met à jour `android/` et `ios/`)
+- `npm run cap:assets` — régénère icônes et splash natifs à partir de `assets/logo.svg` (@capacitor/assets)
+- `npm run store:screenshots` — génère les visuels type captures boutique dans `store-assets/`
 
-### App mobile iOS (Capacitor)
+### App mobile (Capacitor)
 
-Sur **Windows**, préparer le dépôt avec `npm run mobile:prepare`, puis versionner le dossier `ios/`. La compilation, l’ouverture dans Xcode et l’exécution sur simulateur ou iPhone nécessitent **macOS + Xcode** : `npx cap open ios` puis *Product → Run*, ou `npx cap run ios`. Activer dans Xcode **Signing & Capabilities** la capacité **Push Notifications** ; `Info.plist` inclut `UIBackgroundModes` → `remote-notification` pour la réception en arrière-plan. Voir aussi `capacitor.config.ts` (plugin Push) et les clés `NS*` (caméra, galerie, position) dans `ios/App/App/Info.plist`.
+Pour préparer l’app mobile (Android/iOS) :
+
+- `npm run build:capacitor` — build web avec `base: './'` (dossier `dist/` utilisé par Capacitor)
+- `npm run cap:sync` — synchronise les projets natifs (`android/`, `ios/`) avec ce build
+
+Sur **Windows**, exécuter `npm run mobile:prepare` (équivalent à `build:capacitor` puis `cap:sync`), puis versionner le dossier `ios/` si besoin. La compilation, l’ouverture dans Xcode et l’exécution sur simulateur ou iPhone nécessitent **macOS + Xcode** : `npm run cap:open:ios` puis *Product → Run*.
+
+### Validation visuelle des assets
+
+Après un build synchronisé (`npm run mobile:prepare`, ou régénération des icônes / splash avec `npm run cap:assets` puis `npm run cap:sync`) :
+
+- **Android** : `npm run cap:open:android`, lancer l’app sur un émulateur ou un appareil USB. Vérifier l’écran de lancement (splash) et l’icône dans le lanceur. Sous **Android 12+**, le splash système peut se limiter à une **icône centrée** sur fond coloré.
+- **iOS** : sur **macOS**, `npm run cap:open:ios`, puis exécuter sur simulateur ou iPhone. Vérifier le splash au démarrage à froid et l’icône sur l’écran d’accueil.
+
+**Captures pour les fiches magasin** (placeholders générés) : dossier `store-assets/` ; régénération : `npm run store:screenshots`.
+
+**iOS — configuration dans le dépôt**
+
+- **Push (APNs)** : `AppDelegate.swift` relaie le token vers `@capacitor/push-notifications` ; entitlements versionnés `ios/App/App/App.debug.entitlements` (`aps-environment` = development) et `App.release.entitlements` (production). Dans Xcode, confirmer **Signing & Capabilities** → **Push Notifications** pour l’App ID `com.esamba.flotte`. `Info.plist` : `UIBackgroundModes` → `remote-notification`.
+- **Permissions usage** : clés `NS*` (caméra, photothèque, position) dans `ios/App/App/Info.plist` ; voir aussi `capacitor.config.ts` (plugin Push).
+- **Confidentialité (App Store)** : `ios/App/App/PrivacyInfo.xcprivacy` (API UserDefaults / raison CA92.1). Aligner les déclarations App Store Connect (nutrition labels) avec la réalité du produit.
+- **Export compliance** : `ITSAppUsesNonExemptEncryption` = false dans `Info.plist` tant que l’app n’utilise que le chiffrement standard (ex. TLS) — cohérent avec le questionnaire App Store Connect.
+
+**Avant soumission / TestFlight**
+
+1. Compte développeur Apple, certificats et profil de distribution ; capacité Push activée pour l’App ID.
+2. Archiver en **Release** (entitlements **production** pour les builds store / TestFlight).
+3. *Product → Archive* puis **Validate App** avant l’upload vers App Store Connect.
+4. Captures d’écran, textes boutique, classification d’âge — à compléter dans App Store Connect.
+
+
+Si votre terminal local est en Node 20, les scripts `cap:*` du projet utilisent automatiquement un runtime Node 22 pour la CLI Capacitor, afin d’éviter l’erreur `The Capacitor CLI requires NodeJS >=22.0.0`.
 
 ## Performance et CLS (Cumulative Layout Shift)
 

@@ -1,5 +1,7 @@
 import type { AppRole } from "@/hooks/useAuth";
 import { LayoutGrid } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { mobileScreenSubtitle, mobileScreenTitle } from "@/lib/mobile/mobileUiTokens";
 
 const roleCopy: Record<NonNullable<AppRole>, { title: string; subtitle: string }> = {
   organizer: {
@@ -36,8 +38,8 @@ export function OperationsPageHeader({ role }: OperationsPageHeaderProps) {
           <LayoutGrid className="h-6 w-6" aria-hidden />
         </div>
         <div className="min-w-0 pt-0.5">
-          <h1 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">{copy.title}</h1>
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{copy.subtitle}</p>
+          <h1 className={mobileScreenTitle}>{copy.title}</h1>
+          <p className={cn(mobileScreenSubtitle, "mt-1")}>{copy.subtitle}</p>
         </div>
       </div>
     </header>

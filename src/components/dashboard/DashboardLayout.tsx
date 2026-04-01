@@ -4,9 +4,10 @@ import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import { NotificationsPermissionGate } from "@/components/notifications/NotificationsPermissionGate";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativePlatform } from "@/lib/platform";
-import MobileAppLayout from "@/layouts/MobileAppLayout";
+import MobileLayout from "@/layouts/MobileLayout";
 
 /**
  * Layout commun pour toutes les pages dashboard : sidebar, header et zone de contenu (Outlet).
@@ -31,7 +32,7 @@ export default function DashboardLayout() {
     .slice(0, 2);
 
   if (isNativePlatform()) {
-    return <MobileAppLayout userRole={role} />;
+    return <MobileLayout userRole={role} />;
   }
 
   return (
@@ -45,6 +46,7 @@ export default function DashboardLayout() {
             initials={initials}
           />
           <main className="flex-1 p-6 overflow-auto">
+            <NotificationsPermissionGate />
             <Suspense fallback={<RoutePageFallback />}>
               <Outlet />
             </Suspense>

@@ -1,15 +1,18 @@
-export type { MobileAppRole } from "./mobile-app-role";
+export type { MobileAppRole, Role } from "./mobile-app-role";
 export {
   MOBILE_APP_ROLE_LABELS,
   MOBILE_APP_ROLE_ORDER,
 } from "./mobile-app-role";
-export type { FleetRole } from "./role";
+export type { FleetRole, Role } from "./role";
 export {
   FLEET_ROLE_LABELS,
   FLEET_ROLE_PRIORITY,
   fleetRoleAtLeast,
 } from "./role";
-export type { FleetUser, FleetUserPreferences } from "./user";
+/**
+ * Types domaine : `User` = utilisateur métier (`FleetUser`), pas la session Supabase (`AuthUser` dans `./auth`).
+ */
+export type { FleetUser, FleetUserPreferences, User } from "./user";
 export type {
   Vehicle,
   VehicleOperationalStatus,
@@ -41,3 +44,12 @@ export type {
   IncidentStatusFilter,
   IncidentWorkflowStatus,
 } from "./incident-alert";
+/** DTO persistance (tables) — distincts des types domaine ci-dessus. */
+export type {
+  AlertDto,
+  OperationalAlertSeverityDto,
+  OperationalAlertTypeDto,
+  VehicleDto,
+  VehicleInsertDto,
+  VehicleStatusDto,
+} from "./dto";

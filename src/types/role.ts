@@ -22,6 +22,9 @@ export const FLEET_ROLE_PRIORITY: FleetRole[] = [
   "driver",
 ];
 
+/** Alias du rôle applicatif dans une flotte. */
+export type Role = FleetRole;
+
 export function fleetRoleAtLeast(
   userRole: FleetRole | null,
   minimum: FleetRole

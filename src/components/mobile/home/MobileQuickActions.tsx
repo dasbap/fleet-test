@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { mobileFormLabelOverline } from "@/lib/mobile/mobileUiTokens";
 
 export interface QuickActionItem {
   to: string;
@@ -21,9 +22,7 @@ interface MobileQuickActionsProps {
 export function MobileQuickActions({ actions, className }: MobileQuickActionsProps) {
   return (
     <div className={cn("space-y-3", className)}>
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        Actions rapides
-      </h2>
+      <h2 className={mobileFormLabelOverline}>Actions rapides</h2>
       <ul className="flex flex-col gap-2.5">
         {actions.map((action) => {
           const Icon = action.icon;

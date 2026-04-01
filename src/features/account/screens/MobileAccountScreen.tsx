@@ -34,6 +34,12 @@ import {
   SyncStatusIndicator,
 } from "@/features/account/components";
 import { useOfflineSyncStatus } from "@/hooks/useOfflineSyncStatus";
+import { cn } from "@/lib/utils";
+import {
+  mobileScreenRootColumn,
+  mobileScreenSubtitle,
+  mobileScreenTitle,
+} from "@/lib/mobile/mobileUiTokens";
 
 function displayNameFromUser(user: ReturnType<typeof useAuth>["user"]) {
   if (!user) return "Utilisateur";
@@ -61,6 +67,7 @@ export default function MobileAccountScreen() {
     useAuth();
   const { fleetById, isLoading: fleetsLoading } = useUserFleets(memberships);
   const prefs = useAccountPreferences();
+  const offlineSync = useOfflineSyncStatus();
   const [loggingOut, setLoggingOut] = useState(false);
 
   const fullName = useMemo(() => displayNameFromUser(user), [user]);
@@ -131,10 +138,10 @@ export default function MobileAccountScreen() {
   }
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col gap-6 pb-8">
+    <div className={cn(mobileScreenRootColumn, "flex flex-col gap-7 pb-8")}>
       <div>
-        <h1 className="font-heading text-2xl font-bold">Compte</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
+        <h1 className={mobileScreenTitle}>Compte</h1>
+        <p className={cn(mobileScreenSubtitle, "mt-1")}>
           Profil et paramètres Flotte E-Samba
         </p>
       </div>
@@ -212,10 +219,10 @@ export default function MobileAccountScreen() {
 
       <SettingsSection
         title="Synchronisation"
-        description="État réseau et file d’attente hors ligne (simulation)."
+        description="État réseau et file d’attente hors ligne."
       >
         <SettingsRow>
-          <SyncStatusIndicator syncStatus={prefs.syncStatus} />
+          <SyncStatusIndicator syncStatus={offlineSync.displayStatus} />
         </SettingsRow>
       </SettingsSection>
 

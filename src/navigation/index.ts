@@ -7,4 +7,5 @@ export {
   type MobileTabId,
 } from "./mobileTabs";
 export { RequireAuth } from "./guards/RequireAuth";
-export { RequireRole } from "./guards/RequireRole";
+export { RequireGuest } from "./guards/RequireGuest";
+export { RequireRole, RoleGuard } from "./guards/RequireRole";

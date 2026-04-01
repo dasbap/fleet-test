@@ -3,43 +3,26 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { VehicleService } from '@/services/vehicle.service';
 import { VehicleRepository } from '@/repositories/vehicle.repository';
+import type {
+  VehicleDto,
+  VehicleInsertDto,
+  VehicleStatusDto,
+} from '@/types/dto/vehicle.dto';
 
 // Instances singleton des services et repositories
 const vehicleRepository = new VehicleRepository();
 const vehicleService = new VehicleService(vehicleRepository);
 
-export type VehicleStatus = 'ok' | 'blocked';
+/** @deprecated Utiliser `VehicleStatusDto` depuis `@/types/dto/vehicle.dto`. */
+export type VehicleStatus = VehicleStatusDto;
 
-export interface Vehicle {
-  id: string;
-  fleet_id: string;
-  registration: string;
-  brand: string | null;
-  model: string | null;
-  year: number | null;
-  current_km: number;
-  status: VehicleStatus;
-  blocked_reason: string | null;
-  created_at: string;
-  // Joined data
-  active_assignment?: {
-    id: string;
-    driver_user_id: string;
-    driver?: {
-      user_id: string;
-      full_name: string | null;
-    } | null;
-  } | null;
-}
+/** @deprecated Utiliser `VehicleDto` depuis `@/types/dto/vehicle.dto`. */
+export type Vehicle = VehicleDto;
 
-export interface VehicleInsert {
-  fleet_id: string;
-  registration: string;
-  brand?: string;
-  model?: string;
-  year?: number;
-  current_km?: number;
-}
+/** @deprecated Utiliser `VehicleInsertDto` depuis `@/types/dto/vehicle.dto`. */
+export type VehicleInsert = VehicleInsertDto;
+
+export type { VehicleDto, VehicleInsertDto, VehicleStatusDto };
 
 export function useVehicles(fleetId?: string) {
   return useQuery({
@@ -72,7 +55,7 @@ export function useCreateVehicle() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (vehicle: VehicleInsert) => vehicleService.createVehicle(vehicle),
+    mutationFn: (vehicle: VehicleInsertDto) => vehicleService.createVehicle(vehicle),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles-simple'] });
@@ -95,7 +78,7 @@ export function useUpdateVehicle() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Vehicle> & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: Partial<VehicleDto> & { id: string }) => {
       return vehicleService.updateVehicle(id, updates);
     },
     onSuccess: () => {

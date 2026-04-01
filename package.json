@@ -12,18 +12,24 @@
     "README.md"
   ],
   "engines": {
-    "node": "20.x"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "build:capacitor": "vite build --mode capacitor",
     "build:dev": "vite build --mode development",
-    "cap:sync": "npx cap sync",
-    "cap:copy": "npx cap copy",
-    "mobile:prepare": "npm run build:capacitor && npx cap sync",
-    "cap:open:android": "npx cap open android",
-    "cap:open:ios": "npx cap open ios",
+    "cap:cli": "npx -y node@22 node_modules/@capacitor/cli/bin/capacitor",
+    "cap:sync": "npm run cap:cli -- sync",
+    "cap:copy": "npm run cap:cli -- copy",
+    "mobile:prepare": "npm run build:capacitor && npm run cap:sync",
+    "mobile:sync-version": "node scripts/sync-mobile-version.mjs",
+    "setup:android-keystore": "powershell -ExecutionPolicy Bypass -File scripts/setup-android-keystore.ps1",
+    "secrets:github-android": "node scripts/push-github-android-secrets.mjs",
+    "cap:open:android": "npm run cap:cli -- open android",
+    "cap:open:ios": "npm run cap:cli -- open ios",
+    "cap:assets": "node scripts/capacitor-assets.mjs",
+    "store:screenshots": "node scripts/generate-store-screenshots.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "preview": "vite preview",
@@ -63,6 +69,7 @@
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.0.3",
     "@capacitor/share": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.1",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -99,6 +106,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
+    "firebase": "^12.11.0",
     "input-otp": "^1.4.2",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",
@@ -120,6 +128,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.6.0",

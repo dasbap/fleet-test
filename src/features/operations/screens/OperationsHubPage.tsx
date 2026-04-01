@@ -1,5 +1,10 @@
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { OperationsPageHeader } from "@/components/operations/OperationsPageHeader";
+import { cn } from "@/lib/utils";
+import {
+  mobileScreenRootList,
+  mobileScreenStack,
+} from "@/lib/mobile/mobileUiTokens";
 import {
   OrganizerOperationsView,
   DriverOperationsView,
@@ -25,7 +30,7 @@ export default function OperationsHubPage() {
   const { role } = useAuth();
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 sm:space-y-8">
+    <div className={cn(mobileScreenRootList, mobileScreenStack, "sm:space-y-8")}>
       <OperationsPageHeader role={role} />
       <OperationsBody role={role} />
     </div>

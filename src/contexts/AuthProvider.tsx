@@ -7,7 +7,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { isMockAuthEnabled } from "@/lib/authMode";
+import { AUTH_MODE_CHANGED_EVENT, isMockAuthEnabled } from "@/lib/authMode";
 import { MOCK_AUTH_CHANGED_EVENT } from "@/lib/auth-actions";
 import { mockAuthService } from "@/services/mock-auth.service";
 import { checkPendingInvitation, acceptInvitation } from "@/hooks/useAcceptInvitation";
@@ -100,9 +100,58 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    let cancelled = false;
+
+    const initSession = async (): Promise<void> => {
+      try {
+        const {
+          data: { session: localSession },
+        } = await supabase.auth.getSession();
+
+        if (cancelled) return;
+
+        if (localSession?.user) {
+          const {
+            data: { user: serverUser },
+            error: userError,
+          } = await supabase.auth.getUser();
+
+          if (cancelled) return;
+
+          if (userError || !serverUser) {
+            await supabase.auth.signOut();
+            if (cancelled) return;
+            setSession(null);
+            setUser(null);
+            setRole(null);
+            setMemberships([]);
+            return;
+          }
+
+          setSession(localSession);
+          setUser(serverUser);
+          await fetchMemberships(serverUser);
+        } else {
+          setSession(localSession);
+          setUser(null);
+        }
+      } catch (e) {
+        console.error("Erreur lors de l’initialisation de session :", e);
+        setRole(null);
+        setMemberships([]);
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
+      if (event === "INITIAL_SESSION") {
+        return;
+      }
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       try {
@@ -121,30 +170,24 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    supabase.auth
-      .getSession()
-      .then(async ({ data: { session: initial } }) => {
-        setSession(initial);
-        setUser(initial?.user ?? null);
-        try {
-          if (initial?.user) {
-            await fetchMemberships(initial.user);
-          }
-        } catch (e) {
-          console.error("Erreur lors du chargement des memberships (getSession):", e);
-          setRole(null);
-          setMemberships([]);
-        } finally {
-          setIsLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.error("Erreur getSession:", err);
-        setIsLoading(false);
-      });
+    void initSession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, [fetchMemberships]);
+
+  useEffect(() => {
+    const onVisibility = (): void => {
+      if (document.visibilityState !== "visible") return;
+      void supabase.auth.refreshSession().catch(() => {
+        /* hors ligne ou session non renouvelable */
+      });
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
 
   useEffect(() => {
     if (memberships.length === 0) {
@@ -188,10 +231,22 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     const {
+      data: { user: nextUser },
+      error,
+    } = await supabase.auth.getUser();
+    if (error || !nextUser) {
+      await supabase.auth.signOut();
+      setSession(null);
+      setUser(null);
+      setRole(null);
+      setMemberships([]);
+      return;
+    }
+    const {
       data: { session: newSession },
     } = await supabase.auth.getSession();
     setSession(newSession);
-    setUser(newSession?.user ?? null);
+    setUser(nextUser);
   }, []);
 
   const value = useMemo(
@@ -279,7 +334,15 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  if (isMockAuthEnabled()) {
+  const [mockEnabled, setMockEnabled] = useState(() => isMockAuthEnabled());
+
+  useEffect(() => {
+    const syncMode = () => setMockEnabled(isMockAuthEnabled());
+    window.addEventListener(AUTH_MODE_CHANGED_EVENT, syncMode);
+    return () => window.removeEventListener(AUTH_MODE_CHANGED_EVENT, syncMode);
+  }, []);
+
+  if (mockEnabled) {
     return <MockAuthProvider>{children}</MockAuthProvider>;
   }
   return <SupabaseAuthProvider>{children}</SupabaseAuthProvider>;
