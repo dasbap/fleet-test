@@ -2,23 +2,47 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Déboguer l'application React",
+      "name": "Déboguer l'application React (Vite)",
       "type": "chrome",
       "request": "launch",
+      "preLaunchTask": "Démarrer le serveur de développement",
       "url": "http://localhost:8080",
-      "webRoot": "${workspaceFolder}/src",
+      "webRoot": "${workspaceFolder}",
       "sourceMaps": true,
       "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/*"
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///src/*": "${webRoot}/src/*",
+        "/@fs/*": "${webRoot}/*",
+        "/@id/*": "${webRoot}/*"
       }
     },
     {
-      "name": "Attacher au Chrome",
+      "name": "Déboguer (serveur déjà lancé sur :8080)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:8080",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///src/*": "${webRoot}/src/*",
+        "/@fs/*": "${webRoot}/*",
+        "/@id/*": "${webRoot}/*"
+      }
+    },
+    {
+      "name": "Attacher à Chrome",
       "type": "chrome",
       "request": "attach",
       "port": 9222,
-      "webRoot": "${workspaceFolder}/src",
-      "sourceMaps": true
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///src/*": "${webRoot}/src/*",
+        "/@fs/*": "${webRoot}/*",
+        "/@id/*": "${webRoot}/*"
+      }
     }
   ]
 }

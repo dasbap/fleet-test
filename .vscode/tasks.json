@@ -5,10 +5,21 @@
       "label": "Démarrer le serveur de développement",
       "type": "npm",
       "script": "dev",
-      "problemMatcher": [],
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "(ready in [0-9]+ ms|Local:.*8080|http://localhost:8080)"
+        }
+      },
       "presentation": {
         "reveal": "always",
-        "panel": "new"
+        "panel": "dedicated",
+        "focus": false
       },
       "isBackground": true,
       "runOptions": {
