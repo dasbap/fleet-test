@@ -6,8 +6,8 @@
   "redirects": [
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.e-samba.com" }],
-      "destination": "https://e-samba.com/:path*",
+      "has": [{ "type": "host", "value": "e-samba.com" }],
+      "destination": "https://www.e-samba.com/:path*",
       "permanent": true
     }
   ],
