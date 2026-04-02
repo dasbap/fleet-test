@@ -52,6 +52,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Guardrail - no critical Vite externals
+        run: npm run check:vite-external
+
       - name: Build (capacitor mode)
         run: npm run build:capacitor
 

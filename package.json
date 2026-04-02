@@ -19,6 +19,7 @@
     "build": "vite build",
     "build:capacitor": "vite build --mode capacitor",
     "build:dev": "vite build --mode development",
+    "check:vite-external": "node scripts/check-vite-external.mjs",
     "cap:cli": "npx -y node@22 node_modules/@capacitor/cli/bin/capacitor",
     "cap:sync": "npm run cap:cli -- sync",
     "cap:copy": "npm run cap:cli -- copy",
