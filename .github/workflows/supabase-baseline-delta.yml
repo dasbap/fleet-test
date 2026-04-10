@@ -22,6 +22,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  SUPABASE_CLI_VERSION: latest
 
 jobs:
   validate-baseline-delta:
@@ -29,40 +30,82 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v5
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: npm ci
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
+      - name: Get npm Global Prefix
+        id: npm-global-prefix
+        run: |
+          NPM_PREFIX=$(npm config get prefix)
+          if [ -z "$NPM_PREFIX" ]; then
+            echo "⚠️ Préfixe npm non trouvé, utilisation du préfixe par défaut"
+            NPM_PREFIX="/usr/local"
+          fi
+          echo "prefix=$NPM_PREFIX" >> $GITHUB_OUTPUT
+          echo "npm global prefix: $NPM_PREFIX"
 
-      - name: Prepare CI log directory
+      - name: Cache Supabase CLI
+        uses: actions/cache@v4
+        id: cache-supabase-cli
+        with:
+          path: |
+            ${{ steps.npm-global-prefix.outputs.prefix }}/lib/node_modules/supabase
+            ${{ steps.npm-global-prefix.outputs.prefix }}/bin/supabase
+          key: supabase-cli-global-${{ runner.os }}-node-22-${{ env.SUPABASE_CLI_VERSION }}
+          restore-keys: |
+            supabase-cli-global-${{ runner.os }}-node-22-
+            supabase-cli-global-${{ runner.os }}-
+
+      - name: Check Cache Status
+        run: |
+          if [ "${{ steps.cache-supabase-cli.outputs.cache-hit }}" == "true" ]; then
+            echo "✅ Cache trouvé - Supabase CLI sera restauré depuis le cache"
+          else
+            echo "ℹ️ Cache non trouvé - Supabase CLI sera installé"
+          fi
+
+      - name: Install Supabase CLI
+        if: steps.cache-supabase-cli.outputs.cache-hit != 'true'
+        run: |
+          echo "Installation de Supabase CLI (version: ${{ env.SUPABASE_CLI_VERSION }})..."
+          if [ "${{ env.SUPABASE_CLI_VERSION }}" == "latest" ]; then
+            npm install -g supabase@latest
+          else
+            npm install -g supabase@${{ env.SUPABASE_CLI_VERSION }}
+          fi
+          echo "✅ Supabase CLI installé avec succès"
+          supabase --version
+
+      - name: Verify Supabase CLI Installation
+        run: |
+          supabase --version
+
+      - name: Prepare CI Log Directory
         shell: pwsh
         run: New-Item -ItemType Directory -Path "supabase-ci-logs" -Force | Out-Null
 
-      - name: Run baseline + delta validation
+      - name: Run Baseline + Delta Validation
         shell: pwsh
         env:
           CI_SUPABASE_DEBUG: "true"
         run: ./scripts/test-baseline-delta.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/baseline-delta.log"
 
-      - name: Run SQL security tests
+      - name: Run SQL Security Tests
         shell: pwsh
         env:
           CI_SUPABASE_DEBUG: "true"
         run: ./scripts/test-sql-security.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/sql-security.log"
 
-      - name: Upload Supabase debug logs
+      - name: Upload Supabase Debug Logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -75,10 +118,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v5
 
-      - name: Validate delta migration list
+      - name: Validate Delta Migration List
         run: |
           while IFS= read -r file; do
             if [ -z "$file" ]; then

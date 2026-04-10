@@ -1,8 +1,14 @@
 -- Durcissement recherche véhicules : sécurité + RPC paginée + score de similarité.
 
 -- Restreindre l'accès direct à la vue (usage via RPC uniquement).
-revoke all on table public.vehicles_search_view from anon;
-revoke all on table public.vehicles_search_view from authenticated;
+do $$
+begin
+  if to_regclass('public.vehicles_search_view') is not null then
+    execute 'revoke all on table public.vehicles_search_view from anon';
+    execute 'revoke all on table public.vehicles_search_view from authenticated';
+  end if;
+end;
+$$;
 
 create or replace function public.rechercher_vehicules_flotte(
   p_fleet_id uuid,

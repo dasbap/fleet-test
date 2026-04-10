@@ -5,7 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Zap, ArrowLeft, Mail, Lock, User, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { signIn, signUp } from "@/hooks/useAuth";
+import {
+  requestPasswordReset,
+  signIn,
+  signUp,
+  updateCurrentUserPassword,
+} from "@/hooks/useAuth";
 import { isMockAuthEnabled } from "@/lib/authMode";
 import { mapSupabaseErrorToFrench } from "@/lib/mapSupabaseError";
 import {
@@ -21,7 +26,6 @@ import {
   type MobileAppRole,
 } from "@/types/mobile-app-role";
 import { InvitationCodeInput } from "@/components/auth/InvitationCodeInput";
-import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -84,9 +88,10 @@ const Auth = () => {
     }
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth`,
-      });
+      const { error } = await requestPasswordReset(
+        email,
+        `${window.location.origin}/auth`
+      );
       if (error) {
         toast({
           title: "Erreur",
@@ -119,7 +124,7 @@ const Auth = () => {
     }
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: recoveryPassword });
+      const { error } = await updateCurrentUserPassword(recoveryPassword);
       if (error) {
         toast({ title: "Erreur", description: error.message, variant: "destructive" });
         setIsLoading(false);

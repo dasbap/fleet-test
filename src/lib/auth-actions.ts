@@ -120,3 +120,18 @@ export async function signOut() {
   const { error } = await supabase.auth.signOut();
   return { error };
 }
+
+/**
+ * Envoi d’un email de réinitialisation du mot de passe.
+ */
+export async function requestPasswordReset(email: string, redirectTo: string) {
+  const normalizedEmail = email.trim();
+  return supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+}
+
+/**
+ * Mise à jour du mot de passe de la session courante (flux recovery).
+ */
+export async function updateCurrentUserPassword(password: string) {
+  return supabase.auth.updateUser({ password });
+}

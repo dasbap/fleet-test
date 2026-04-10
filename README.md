@@ -53,6 +53,13 @@ Checklist : prévisualisations 401, variables `VITE_*`, auth Supabase, DNS et do
   2. Appliquer uniquement les deltas sécurité/RLS/search_path
 - **Freeze de référence distant** : `npm run freeze:remote-schema` (exports dans `supabase/snapshots/`)
 
+### Convention de nommage des migrations
+
+- Format obligatoire pour les nouvelles migrations : `YYYYMMDDHHMMSS_description.sql`
+- Exemple : `20260410170000_fix_vehicles_search_view_order.sql`
+- Pourquoi : évite les ambiguïtés de tri et garantit un ordre d'exécution stable
+- Contrôle automatique : workflow GitHub `Supabase Migrations Replay` (replay sur environnement propre avant merge)
+
 ## Technologies
 
 - Vite
@@ -75,6 +82,7 @@ Checklist : prévisualisations 401, variables `VITE_*`, auth Supabase, DNS et do
 - `npm run test` — tests unitaires
 - `npm run test:integration` — tests d’intégration
 - `npm run build:capacitor` — build web avec chemins relatifs (`base: './'`) pour Capacitor
+- `npm run cap:doctor` — diagnostic Node/Capacitor (explique pourquoi `npx cap sync` peut échouer)
 - `npm run cap:sync` — synchronise Capacitor (Android/iOS) avec un runtime Node 22 isolé
 - `npm run mobile:prepare` — `build:capacitor` puis `cap:sync` (met à jour `android/` et `ios/`)
 - `npm run cap:assets` — régénère icônes et splash natifs à partir de `assets/logo.svg` (@capacitor/assets)
@@ -86,6 +94,23 @@ Pour préparer l’app mobile (Android/iOS) :
 
 - `npm run build:capacitor` — build web avec `base: './'` (dossier `dist/` utilisé par Capacitor)
 - `npm run cap:sync` — synchronise les projets natifs (`android/`, `ios/`) avec ce build
+
+Si `npx cap sync` échoue avec `The Capacitor CLI requires NodeJS >=22.0.0`, lancez d’abord `npm run cap:doctor`, puis utilisez `npm run cap:sync` (commande recommandée du projet).
+
+#### Structure mobile actuelle (routes + layout)
+
+- Point d’entrée des routes app : `src/app/routes/app.routes.tsx`
+- Groupe dashboard (web + mobile) : `src/app/routes/dashboard.routes.tsx`
+- Layout mobile sous Capacitor : `src/layouts/MobileLayout.tsx` (activé via `src/components/dashboard/DashboardLayout.tsx`)
+- Écrans mobile principaux :
+  - `src/features/home/screens/MobileHomePage.tsx`
+  - `src/features/fleet/screens/MobileFleetPage.tsx`
+  - `src/features/fleet/screens/MobileDriverFleetPage.tsx`
+  - `src/features/alerts/screens/MobileAlertsPage.tsx`
+  - `src/features/operations/screens/MobileOperationsPage.tsx`
+  - `src/features/account/screens/MobileAccountPage.tsx`
+- Onglets + chemins centralisés : `src/navigation/mobileTabs.ts`, `src/navigation/routePaths.ts`
+- Guards d’accès : `src/navigation/guards/RequireAuth.tsx`, `src/navigation/guards/RequireRole.tsx`
 
 Sur **Windows**, exécuter `npm run mobile:prepare` (équivalent à `build:capacitor` puis `cap:sync`), puis versionner le dossier `ios/` si besoin. La compilation, l’ouverture dans Xcode et l’exécution sur simulateur ou iPhone nécessitent **macOS + Xcode** : `npm run cap:open:ios` puis *Product → Run*.
 

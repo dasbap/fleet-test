@@ -26,7 +26,7 @@ jobs:
       SUPABASE_CLI_VERSION: latest  # Version de Supabase CLI à installer
     
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -35,7 +35,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Get npm global prefix
+      - name: Get npm Global Prefix
         id: npm-global-prefix
         run: |
           NPM_PREFIX=$(npm config get prefix)
@@ -58,7 +58,7 @@ jobs:
             supabase-cli-global-${{ runner.os }}-node-22-
             supabase-cli-global-${{ runner.os }}-
 
-      - name: Check cache status
+      - name: Check Cache Status
         run: |
           if [ "${{ steps.cache-supabase-cli.outputs.cache-hit }}" == "true" ]; then
             echo "✅ Cache trouvé - Supabase CLI sera restauré depuis le cache"
@@ -78,11 +78,11 @@ jobs:
           echo "✅ Supabase CLI installé avec succès"
           supabase --version
 
-      - name: Verify Supabase CLI installation
+      - name: Verify Supabase CLI Installation
         run: |
           supabase --version
 
-      - name: Link Supabase project
+      - name: Link Supabase Project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
@@ -91,7 +91,7 @@ jobs:
           supabase link --project-ref $SUPABASE_PROJECT_REF --password ${{ secrets.SUPABASE_DB_PASSWORD }}
         continue-on-error: true
 
-      - name: Execute migration verification script
+      - name: Execute Migration Verification Script
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
@@ -113,7 +113,7 @@ jobs:
             echo "::warning::Warnings detected in migration verification"
           fi
 
-      - name: Upload migration report
+      - name: Upload Migration Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -121,7 +121,7 @@ jobs:
           path: migration-report.txt
           retention-days: 30
 
-      - name: Comment PR with results
+      - name: Comment PR with Results
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:

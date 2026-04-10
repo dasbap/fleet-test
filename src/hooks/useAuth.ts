@@ -10,4 +10,10 @@ export function useAuth() {
   return useAuthContext();
 }
 
-export { signIn, signUp, signOut } from "@/lib/auth-actions";
+export {
+  requestPasswordReset,
+  signIn,
+  signOut,
+  signUp,
+  updateCurrentUserPassword,
+} from "@/lib/auth-actions";
