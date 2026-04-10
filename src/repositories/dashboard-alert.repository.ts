@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { DashboardAlert } from "@/types/dashboard";
 
-interface DashboardAlertRow {
+export interface DashboardAlertRow {
   id: string;
   plate: string;
   message: string;

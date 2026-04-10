@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -9,11 +9,6 @@ import { generateFleetExcel } from "@/lib/generateFleetExcel";
 import { toast } from "@/hooks/use-toast";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
-import { RevenueChart } from "@/components/reports/RevenueChart";
-import { KilometersChart } from "@/components/reports/KilometersChart";
-import { IncidentsPieChart } from "@/components/reports/IncidentsPieChart";
-import { RevenueTimelineChart } from "@/components/reports/RevenueTimelineChart";
-import { MaintenanceTrendsChart } from "@/components/reports/MaintenanceTrendsChart";
 import { RecentIncidentsTable } from "@/components/reports/RecentIncidentsTable";
 import { VehicleFilter } from "@/components/reports/VehicleFilter";
 import {
@@ -29,6 +24,26 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const RevenueChart = lazy(() =>
+  import("@/components/reports/RevenueChart").then((module) => ({ default: module.RevenueChart }))
+);
+const KilometersChart = lazy(() =>
+  import("@/components/reports/KilometersChart").then((module) => ({ default: module.KilometersChart }))
+);
+const IncidentsPieChart = lazy(() =>
+  import("@/components/reports/IncidentsPieChart").then((module) => ({ default: module.IncidentsPieChart }))
+);
+const RevenueTimelineChart = lazy(() =>
+  import("@/components/reports/RevenueTimelineChart").then((module) => ({
+    default: module.RevenueTimelineChart,
+  }))
+);
+const MaintenanceTrendsChart = lazy(() =>
+  import("@/components/reports/MaintenanceTrendsChart").then((module) => ({
+    default: module.MaintenanceTrendsChart,
+  }))
+);
 
 export default function Reports() {
   const { role } = useAuth();
@@ -93,9 +108,19 @@ export default function Reports() {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (report) {
-      generateFleetExcel(report);
+      try {
+        await generateFleetExcel(report);
+      } catch (e) {
+        console.error(e);
+        toast({
+          title: "Export Excel impossible",
+          description:
+            e instanceof Error ? e.message : "Une erreur est survenue lors de la génération du fichier Excel.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -286,30 +311,40 @@ export default function Reports() {
 
                   {/* Revenue Timeline Chart */}
                   <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
-                    <RevenueTimelineChart 
-                      closures={filteredReport.timeline} 
-                      startDate={dateRange.from} 
-                      endDate={dateRange.to} 
-                    />
+                    <Suspense fallback={<ChartSkeleton />}>
+                      <RevenueTimelineChart
+                        closures={filteredReport.timeline}
+                        startDate={dateRange.from}
+                        endDate={dateRange.to}
+                      />
+                    </Suspense>
                   </div>
 
                   {/* Interactive Charts */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="animate-fade-in" style={{ animationDelay: '250ms' }}>
-                      <RevenueChart data={filteredReport.revenue.byVehicle} />
+                      <Suspense fallback={<ChartSkeleton />}>
+                        <RevenueChart data={filteredReport.revenue.byVehicle} />
+                      </Suspense>
                     </div>
                     <div className="animate-fade-in" style={{ animationDelay: '300ms' }}>
-                      <KilometersChart data={filteredReport.kilometers.byVehicle} />
+                      <Suspense fallback={<ChartSkeleton />}>
+                        <KilometersChart data={filteredReport.kilometers.byVehicle} />
+                      </Suspense>
                     </div>
                   </div>
 
                   {/* Detailed Cards */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="animate-fade-in" style={{ animationDelay: '350ms' }}>
-                      <IncidentsPieChart data={filteredReport.incidents.bySeverity} />
+                      <Suspense fallback={<ChartSkeleton />}>
+                        <IncidentsPieChart data={filteredReport.incidents.bySeverity} />
+                      </Suspense>
                     </div>
                     <div className="animate-fade-in" style={{ animationDelay: '400ms' }}>
-                      <MaintenanceTrendsChart data={filteredReport.maintenance} />
+                      <Suspense fallback={<ChartSkeleton />}>
+                        <MaintenanceTrendsChart data={filteredReport.maintenance} />
+                      </Suspense>
                     </div>
                   </div>
 
@@ -383,5 +418,15 @@ export default function Reports() {
                 </>
               )}
     </div>
+  );
+}
+
+function ChartSkeleton() {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="h-72 animate-pulse rounded-md bg-muted/40" />
+      </CardContent>
+    </Card>
   );
 }

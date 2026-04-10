@@ -10,7 +10,7 @@ import {
   signIn,
   signUp,
   updateCurrentUserPassword,
-} from "@/hooks/useAuth";
+} from "@/lib/auth-actions";
 import { isMockAuthEnabled } from "@/lib/authMode";
 import { mapSupabaseErrorToFrench } from "@/lib/mapSupabaseError";
 import {

@@ -5,7 +5,7 @@ import type { VehicleDto } from '@/types/dto/vehicle.dto';
 interface OnboardingUpsertPayload {
   org_id: string;
   user_id: string;
-  step: 1 | 2 | 3;
+  step: 1 | 2 | 3 | 4;
   completed: boolean;
   data: OnboardingData;
   updated_at: string;

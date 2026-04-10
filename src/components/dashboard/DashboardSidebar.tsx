@@ -28,7 +28,7 @@ import {
   Shield,
   Ticket,
 } from "lucide-react";
-import { signOut } from "@/hooks/useAuth";
+import { signOut } from "@/lib/auth-actions";
 import { toast } from "@/hooks/use-toast";
 import { hasModuleAccess } from "@/auth/permissions";
 import type { AppRole } from "@/types/auth";

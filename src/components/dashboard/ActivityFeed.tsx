@@ -4,6 +4,6 @@ interface Props {
   orgId?: string | null;
 }
 
-export function ActivityFeed({ orgId }: Props) {
+export function ActivityFeed({ orgId: _orgId }: Props) {
   return <RecentActivity />;
 }

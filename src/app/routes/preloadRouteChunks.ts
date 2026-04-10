@@ -1,0 +1,76 @@
+type RoutePreloadTask = {
+  test: (pathname: string) => boolean;
+  preload: () => Promise<unknown>;
+};
+
+const isDashboardPath = (pathname: string) => pathname.startsWith("/dashboard");
+
+const dashboardLeafTasks: RoutePreloadTask[] = [
+  { test: (p) => p === "/dashboard" || p === "/dashboard/", preload: () => import("@/features/home/screens/MobileHomePage") },
+  { test: (p) => p.startsWith("/dashboard/reports"), preload: () => import("@/pages/Reports") },
+  { test: (p) => p.startsWith("/dashboard/maintenance"), preload: () => import("@/pages/Maintenance") },
+  { test: (p) => p.startsWith("/dashboard/incidents/declare"), preload: () => import("@/features/incidents/screens/DeclareIncidentPage") },
+  { test: (p) => p.startsWith("/dashboard/incidents"), preload: () => import("@/pages/Incidents") },
+  { test: (p) => p.startsWith("/dashboard/vehicles/"), preload: () => import("@/features/fleet/screens/FleetVehicleDetailPage") },
+  { test: (p) => p.startsWith("/dashboard/vehicles"), preload: () => import("@/features/fleet/screens/MobileFleetPage") },
+  { test: (p) => p.startsWith("/dashboard/drivers"), preload: () => import("@/pages/Drivers") },
+  { test: (p) => p.startsWith("/dashboard/shift") || p.startsWith("/dashboard/closure"), preload: () => import("@/pages/ShiftClosure") },
+  { test: (p) => p.startsWith("/dashboard/settings"), preload: () => import("@/pages/Settings") },
+  { test: (p) => p.startsWith("/dashboard/invitations"), preload: () => import("@/pages/Invitations") },
+  { test: (p) => p.startsWith("/dashboard/teams"), preload: () => import("@/pages/Teams") },
+  { test: (p) => p.startsWith("/dashboard/finances"), preload: () => import("@/pages/Finances") },
+  { test: (p) => p.startsWith("/dashboard/collections"), preload: () => import("@/pages/Collections") },
+  { test: (p) => p.startsWith("/dashboard/operations"), preload: () => import("@/features/operations/screens/MobileOperationsPage") },
+  { test: (p) => p.startsWith("/dashboard/alerts/"), preload: () => import("@/features/alerts/screens/IncidentAlertDetailPage") },
+  { test: (p) => p.startsWith("/dashboard/alerts"), preload: () => import("@/features/alerts/screens/MobileAlertsPage") },
+  { test: (p) => p.startsWith("/dashboard/profile"), preload: () => import("@/features/account/screens/MobileAccountPage") },
+  { test: (p) => p.startsWith("/dashboard/my-vehicle"), preload: () => import("@/features/fleet/screens/MobileDriverFleetPage") },
+  { test: (p) => p.startsWith("/dashboard/history"), preload: () => import("@/pages/History") },
+  { test: (p) => p.startsWith("/dashboard/scan"), preload: () => import("@/pages/Scan") },
+];
+
+const rootTasks: RoutePreloadTask[] = [
+  { test: (p) => p === "/", preload: () => import("@/pages/Index") },
+  { test: (p) => p.startsWith("/auth"), preload: () => import("@/features/auth/screens/AuthPage") },
+  { test: (p) => p.startsWith("/login"), preload: () => import("@/features/auth/screens/MobileLoginScreen") },
+  { test: (p) => p.startsWith("/onboarding"), preload: () => import("@/components/auth/OnboardingRoute") },
+];
+
+const hasFastConnection = () => {
+  const nav = navigator as Navigator & {
+    connection?: { saveData?: boolean; effectiveType?: string };
+  };
+  if (nav.connection?.saveData) return false;
+  return nav.connection?.effectiveType !== "2g";
+};
+
+const scheduleIdle = (task: () => void) => {
+  if ("requestIdleCallback" in window) {
+    (window as Window & { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback(task, {
+      timeout: 1200,
+    });
+    return;
+  }
+  window.setTimeout(task, 0);
+};
+
+export function preloadRouteChunksForPath(pathname: string) {
+  if (!hasFastConnection()) return;
+
+  const tasks: Array<() => Promise<unknown>> = [];
+  const normalizedPath = pathname || "/";
+
+  if (isDashboardPath(normalizedPath)) {
+    tasks.push(() => import("@/components/dashboard/DashboardLayout"));
+    const matchedDashboardTask = dashboardLeafTasks.find((task) => task.test(normalizedPath));
+    if (matchedDashboardTask) tasks.push(matchedDashboardTask.preload);
+  } else {
+    const matchedRootTask = rootTasks.find((task) => task.test(normalizedPath));
+    if (matchedRootTask) tasks.push(matchedRootTask.preload);
+  }
+
+  if (tasks.length === 0) return;
+  scheduleIdle(() => {
+    tasks.forEach((task) => void task());
+  });
+}

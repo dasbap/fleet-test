@@ -3,6 +3,7 @@ import type { DashboardAlert, KpiSummary } from "@/types/dashboard";
 import {
   DashboardAlertRepository,
   mapDashboardAlertRowToDomain,
+  type DashboardAlertRow,
 } from "@/repositories/dashboard-alert.repository";
 
 export class DashboardAlertService {
@@ -48,5 +49,14 @@ export class DashboardAlertService {
 
   unsubscribe(channel: RealtimeChannel): void {
     this.repository.removeChannel(channel);
+  }
+
+  /** Mappe une ligne Realtime (postgres_changes) vers le domaine applicatif. */
+  mapRealtimePayloadToAlert(payload: unknown): DashboardAlert {
+    const row = payload as DashboardAlertRow;
+    if (!row || typeof row.id !== "string") {
+      throw new Error("Payload Realtime alerte invalide");
+    }
+    return mapDashboardAlertRowToDomain(row);
   }
 }

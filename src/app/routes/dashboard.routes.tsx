@@ -1,7 +1,5 @@
 import { lazy } from "react";
 import { Route } from "react-router-dom";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { RoleGuard } from "@/navigation/guards/RequireRole";
 import {
   DASHBOARD_BACKOFFICE_ROLES,
@@ -52,6 +50,11 @@ const RolesHubScreen = lazy(() =>
 );
 const DeclareIncidentPage = lazy(
   () => import("@/features/incidents/screens/DeclareIncidentPage")
+);
+const Scan = lazy(() => import("@/pages/Scan"));
+const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
+const ProtectedRoute = lazy(() =>
+  import("@/components/auth/ProtectedRoute").then((m) => ({ default: m.ProtectedRoute })),
 );
 
 /**
@@ -135,6 +138,7 @@ export const dashboardRoutes = (
           </RoleGuard>
         }
       />
+      <Route path="scan" element={<Scan />} />
       <Route
         path="roles"
         element={

@@ -2,9 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
 import { DashboardService } from '@/services/dashboard.service';
 import { DashboardRepository } from '@/repositories/dashboard.repository';
+import { DashboardAlertRepository } from '@/repositories/dashboard-alert.repository';
+import { DashboardAlertService } from '@/services/dashboard-alert.service';
+import type { KpiSummary } from '@/types/dashboard';
 
 const dashboardRepository = new DashboardRepository();
 const dashboardService = new DashboardService(dashboardRepository);
+const dashboardAlertRepository = new DashboardAlertRepository();
+const dashboardAlertService = new DashboardAlertService(dashboardAlertRepository);
 
 export interface DashboardStats {
   activeVehicles: number;
@@ -30,6 +35,12 @@ const emptyStats: DashboardStats = {
   maintenanceInProgress: 0,
 };
 
+/** Onglet caché : pas de polling (moins de travail main thread ; refresh au retour via refetchOnWindowFocus). */
+const refetchIntervalWhenVisible = (visibleMs: number) => {
+  if (typeof document === "undefined") return visibleMs;
+  return document.visibilityState === "hidden" ? false : visibleMs;
+};
+
 export function useDashboardStats() {
   const { userFleetId } = useAuth();
 
@@ -40,7 +51,25 @@ export function useDashboardStats() {
       return dashboardService.getDashboardStats(userFleetId);
     },
     enabled: !!userFleetId,
-    refetchInterval: 30000,
+    staleTime: 20_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: () => refetchIntervalWhenVisible(30_000),
+  });
+}
+
+export function useDashboardKpis() {
+  const { orgId } = useAuth();
+
+  return useQuery({
+    queryKey: ['dashboard-kpis', orgId],
+    queryFn: async (): Promise<KpiSummary | null> => {
+      if (!orgId) return null;
+      return dashboardAlertService.getKpiSummary(orgId);
+    },
+    enabled: !!orgId,
+    staleTime: 20_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: () => refetchIntervalWhenVisible(30_000),
   });
 }
 
@@ -51,7 +80,9 @@ export function useRecentActivity() {
     queryKey: ['recent-activity', userFleetId],
     queryFn: () => (userFleetId ? dashboardService.getRecentActivity(userFleetId) : []),
     enabled: !!userFleetId,
-    refetchInterval: 30000,
+    staleTime: 25_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: () => refetchIntervalWhenVisible(30_000),
   });
 }
 
@@ -62,5 +93,7 @@ export function useFleetVehicles() {
     queryKey: ['fleet-vehicles-overview', userFleetId],
     queryFn: () => (userFleetId ? dashboardService.getFleetVehiclesOverview(userFleetId) : []),
     enabled: !!userFleetId,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
 }

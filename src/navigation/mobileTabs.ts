@@ -35,6 +35,10 @@ export function getMobileTabsForRole(
   role: AppRole | null
 ): MobileTabDefinition[] {
   const fleetPath = getFleetPathForRole(role);
+  const operationsTab =
+    role === "driver"
+      ? { id: "operations" as const, label: "Scan", to: ROUTE_PATHS.dashboardScan, icon: LayoutGrid }
+      : { id: "operations" as const, label: "Opérations", to: ROUTE_PATHS.dashboardOperations, icon: LayoutGrid };
   return [
     {
       id: "home",
@@ -49,12 +53,7 @@ export function getMobileTabsForRole(
       to: ROUTE_PATHS.dashboardAlerts,
       icon: Bell,
     },
-    {
-      id: "operations",
-      label: "Opérations",
-      to: ROUTE_PATHS.dashboardOperations,
-      icon: LayoutGrid,
-    },
+    operationsTab,
     {
       id: "account",
       label: "Compte",
@@ -85,7 +84,7 @@ export function isTabActive(
     return pathname.startsWith("/dashboard/alerts");
   }
   if (tab.id === "operations") {
-    return pathname.startsWith("/dashboard/operations");
+    return pathname.startsWith("/dashboard/operations") || pathname.startsWith("/dashboard/scan");
   }
   if (tab.id === "account") {
     return (

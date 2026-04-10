@@ -16,7 +16,7 @@ export function useOnboarding(orgId?: string) {
   });
 
   const saveStepMutation = useMutation({
-    mutationFn: async (params: { step: 1 | 2 | 3; data: Partial<OnboardingData>; completed?: boolean }) => {
+    mutationFn: async (params: { step: 1 | 2 | 3 | 4; data: Partial<OnboardingData>; completed?: boolean }) => {
       if (!orgId) {
         throw new Error("L'identifiant d'organisation est requis.");
       }
@@ -59,7 +59,7 @@ export function useOnboarding(orgId?: string) {
 
   return {
     ...progressQuery,
-    saveStep: async (step: 1 | 2 | 3, data: Partial<OnboardingData>, completed = false) =>
+    saveStep: async (step: 1 | 2 | 3 | 4, data: Partial<OnboardingData>, completed = false) =>
       saveStepMutation.mutateAsync({ step, data, completed }),
     saveStep1: (data: OnboardingStep1Data) => saveStep1Mutation.mutateAsync(data),
     complete: () => completeMutation.mutateAsync(),

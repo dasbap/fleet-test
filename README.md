@@ -7,6 +7,12 @@ Application web de gestion intelligente de flotte en Afrique Centrale. Suivi des
 - Node.js **22** ou supérieur (voir `engines` dans `package.json` ; requis notamment pour Capacitor CLI 8.x)
 - npm
 
+Fichiers de version : [`.node-version`](.node-version) et [`.nvmrc`](.nvmrc) (ex. `nvm install` puis `nvm use`, ou équivalent **fnm** / **asdf**). Si `npm install` affiche **EBADENGINE**, votre shell n’est pas en Node 22 : alignez la version locale pour coller à la CI et supprimer l’avertissement.
+
+**CI (GitHub Actions)** : les jobs qui installent les dépendances npm utilisent `actions/setup-node` en **Node 22** (voir [`.github/workflows/`](.github/workflows/)). Les workflows qui ne font que du shell (ex. contrôle de nommage des migrations) n’ont pas besoin de Node pour `npm install`.
+
+**Local (avant `npm install`)** : `node -v` doit afficher **v22.x**. Sinon : **fnm** (`fnm install` puis `fnm use`, lit `.node-version`), **nvm** (`nvm install` puis `nvm use`, lit `.nvmrc`), ou sous **Windows** : installateur officiel Node 22 LTS ou **nvm-windows** (`nvm install 22` puis `nvm use 22`). Le fichier [`.npmrc`](.npmrc) contient `engine-strict=true` : une version Node incompatible fait **échouer** l’installation.
+
 [Installation de Node.js avec nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
 ## Démarrage (web)

@@ -15,7 +15,7 @@ export class OnboardingService {
 
   async saveStep(
     orgId: string,
-    step: 1 | 2 | 3,
+    step: 1 | 2 | 3 | 4,
     patch: Partial<OnboardingData>,
     completed = false,
   ): Promise<OnboardingProgress> {

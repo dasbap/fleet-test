@@ -17,6 +17,7 @@ export const ROUTE_PATHS = {
   dashboardAlertDetail: (alertId: string) =>
     `/dashboard/alerts/${alertId}` as const,
   dashboardOperations: "/dashboard/operations",
+  dashboardScan: "/dashboard/scan",
   dashboardMissionDetail: (missionId: string) =>
     `/dashboard/operations/mission/${missionId}` as const,
   dashboardInterventionDetail: (ticketId: string) =>

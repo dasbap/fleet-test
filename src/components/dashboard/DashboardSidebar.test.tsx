@@ -6,7 +6,7 @@ import DashboardSidebar from "./DashboardSidebar";
 
 const signOutMock = vi.fn();
 
-vi.mock("@/hooks/useAuth", () => ({
+vi.mock("@/lib/auth-actions", () => ({
   signOut: (...args: unknown[]) => signOutMock(...args),
 }));
 

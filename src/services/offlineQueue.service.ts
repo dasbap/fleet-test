@@ -7,6 +7,7 @@ import type {
 } from "@/types/offline-queue";
 
 const MAX_ATTEMPTS = 5;
+const MAX_QUEUE_SIZE = 200;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -42,6 +43,9 @@ function updateJobStatus(
 export class OfflineQueueService {
   enqueueIncidentCreate(payload: OfflineIncidentCreatePayload): OfflineIncidentCreateJob {
     const jobs = readOfflineJobs();
+    if (jobs.length >= MAX_QUEUE_SIZE) {
+      throw new Error("La file hors ligne est pleine. Synchronisez avant de continuer.");
+    }
     const job: OfflineIncidentCreateJob = {
       id: crypto.randomUUID(),
       type: "incident:create",
@@ -107,6 +111,19 @@ export class OfflineQueueService {
       };
     });
     writeOfflineJobs(next);
+  }
+
+  getQueueStats(): { pending: number; syncing: number; failed: number } {
+    const jobs = readOfflineJobs();
+    return jobs.reduce(
+      (acc, job) => {
+        if (job.status === "pending") acc.pending += 1;
+        if (job.status === "syncing") acc.syncing += 1;
+        if (job.status === "failed") acc.failed += 1;
+        return acc;
+      },
+      { pending: 0, syncing: 0, failed: 0 }
+    );
   }
 }
 

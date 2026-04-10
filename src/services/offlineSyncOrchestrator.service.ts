@@ -1,5 +1,6 @@
 import { countPendingIncidentDrafts, getIncidentDrafts } from "@/lib/storage/flotteEsambaLocalCache";
 import { patchLocalSyncState } from "@/lib/storage/flotteEsambaLocalCache";
+import { getLocalSyncMetrics, patchLocalSyncMetrics } from "@/lib/storage/flotteEsambaLocalCache";
 import { OfflineQueueService } from "@/services/offlineQueue.service";
 import { IncidentRepository } from "@/repositories/incident.repository";
 import { IncidentEvidenceRepository } from "@/repositories/incident-evidence.repository";
@@ -20,6 +21,7 @@ export interface SyncResultSummary {
 }
 
 export async function runOfflineSyncOnce(): Promise<SyncResultSummary> {
+  const startedAt = Date.now();
   if (syncLock) {
     return { processed: 0, succeeded: 0, failed: 0 };
   }
@@ -67,6 +69,17 @@ export async function runOfflineSyncOnce(): Promise<SyncResultSummary> {
     } else if (stillPending === 0) {
       patchLocalSyncState({ displayStatus: "synced", lastSyncError: null });
     }
+
+    const endedAtIso = new Date().toISOString();
+    const previous = getLocalSyncMetrics();
+    patchLocalSyncMetrics({
+      runs: previous.runs + 1,
+      processedJobs: previous.processedJobs + processed,
+      succeededJobs: previous.succeededJobs + succeeded,
+      failedJobs: previous.failedJobs + failed,
+      lastRunAt: endedAtIso,
+      lastDurationMs: Date.now() - startedAt,
+    });
 
     return { processed, succeeded, failed };
   } finally {

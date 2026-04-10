@@ -6,6 +6,9 @@ import DashboardHeader from "./DashboardHeader";
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: vi.fn(() => ({ userFleetId: "fleet-test-1" })),
+}));
+
+vi.mock("@/lib/auth-actions", () => ({
   signOut: vi.fn(() => Promise.resolve()),
 }));
 

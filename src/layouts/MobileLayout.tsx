@@ -1,12 +1,16 @@
-import { Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { BottomTabBar } from "@/components/mobile/BottomTabBar";
-import { NotificationsPermissionGate } from "@/components/notifications/NotificationsPermissionGate";
 import type { AppRole } from "@/hooks/useAuth";
 import { useMobileTabTracking } from "@/hooks/mobile/useMobileTabTracking";
 import { getMobileOutletShellClass } from "@/lib/mobileOutletShellClass";
 import { cn } from "@/lib/utils";
+const NotificationsPermissionGate = lazy(() =>
+  import("@/components/notifications/NotificationsPermissionGate").then((module) => ({
+    default: module.NotificationsPermissionGate,
+  }))
+);
 
 interface MobileLayoutProps {
   userRole: AppRole | null;
@@ -30,7 +34,9 @@ export default function MobileLayout({ userRole }: MobileLayoutProps) {
             outletShellClass
           )}
         >
-          <NotificationsPermissionGate />
+          <Suspense fallback={null}>
+            <NotificationsPermissionGate />
+          </Suspense>
           <Suspense fallback={<RoutePageFallback />}>
             <Outlet />
           </Suspense>

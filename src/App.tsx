@@ -1,15 +1,19 @@
 import * as Sentry from "@sentry/react";
-import { Suspense } from "react";
+import { lazy, Suspense } from "react";
 import Providers from "@/components/Providers";
 import { PageSEO } from "@/components/PageSEO";
-import { OfflinePendingSyncBridge } from "@/components/OfflinePendingSyncBridge";
 import { BrowserRouter, Routes } from "react-router-dom";
+import { WebVitalsRouteSync } from "@/components/WebVitalsRouteSync";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
-import { DeepLinkListener } from "@/components/navigation/DeepLinkListener";
-import { PushNotificationBridge } from "@/components/mobile/PushNotificationBridge";
 import { appRoutes } from "@/app/routes/app.routes";
 import { AppErrorFallback } from "@/components/errors/AppErrorFallback";
 import { logError } from "@/lib/logging";
+
+const DeepLinkListener = lazy(() =>
+  import("@/components/navigation/DeepLinkListener").then((module) => ({
+    default: module.DeepLinkListener,
+  }))
+);
 
 const App = () => (
   <Sentry.ErrorBoundary
@@ -29,10 +33,11 @@ const App = () => (
           v7_relativeSplatPath: true,
         }}
       >
-        <DeepLinkListener />
-        <PushNotificationBridge />
+        <WebVitalsRouteSync />
+        <Suspense fallback={null}>
+          <DeepLinkListener />
+        </Suspense>
         <PageSEO />
-        <OfflinePendingSyncBridge />
         <Suspense fallback={<RoutePageFallback />}>
           <Routes>{appRoutes}</Routes>
         </Suspense>

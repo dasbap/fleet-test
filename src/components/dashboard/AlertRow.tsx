@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import type { DashboardAlert } from '@/types/dashboard'
+import { toast } from '@/hooks/use-toast'
 
 interface Props {
   alert: DashboardAlert
@@ -28,8 +29,17 @@ export function AlertRow({ alert, onResolve }: Props) {
 
   async function handleAction() {
     setState('loading')
-    await onResolve(alert.id, alert.action)
-    setState('done')
+    try {
+      await onResolve(alert.id, alert.action)
+      setState('done')
+    } catch {
+      setState('idle')
+      toast({
+        title: 'Action indisponible',
+        description: "Impossible de traiter cette alerte pour le moment. Veuillez reessayer.",
+        variant: 'destructive',
+      })
+    }
   }
 
   const timeAgo = formatDistanceToNow(new Date(alert.createdAt), {

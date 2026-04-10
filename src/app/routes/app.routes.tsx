@@ -1,11 +1,16 @@
 import { lazy } from "react";
 import { Route, Navigate } from "react-router-dom";
 import { dashboardRoutes } from "@/app/routes/dashboard.routes";
-import { authPublicRoutes } from "@/features/auth";
-import { OnboardingRoute } from "@/components/auth/OnboardingRoute";
+import { authPublicRoutes } from "@/features/auth/routes";
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const AuthProviderLayout = lazy(() => import("@/components/auth/AuthProviderLayout"));
+const OnboardingRoute = lazy(() =>
+  import("@/components/auth/OnboardingRoute").then((module) => ({
+    default: module.OnboardingRoute,
+  }))
+);
 
 /**
  * Arbre de routes racine : pages publiques, redirections, dashboard, 404.
@@ -14,10 +19,12 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 export const appRoutes = (
   <>
     <Route path="/" element={<Index />} />
-    {authPublicRoutes}
     <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
-    <Route path="/onboarding" element={<OnboardingRoute />} />
-    {dashboardRoutes}
+    <Route element={<AuthProviderLayout />}>
+      {authPublicRoutes}
+      <Route path="/onboarding" element={<OnboardingRoute />} />
+      {dashboardRoutes}
+    </Route>
     <Route path="*" element={<NotFound />} />
   </>
 );

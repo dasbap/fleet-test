@@ -1,7 +1,9 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import "@/pwa";
 import { reportWebVitals } from "./reportWebVitals";
 import { I18nProvider } from "@/i18n/useI18n";
+import { preloadRouteChunksForPath } from "@/app/routes/preloadRouteChunks";
 
 // En dev : log des requêtes Supabase en échec (URL = table ou RPC) pour diagnostic
 if (import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL) {
@@ -23,6 +25,12 @@ if (import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL) {
       return res;
     });
   };
+}
+
+if (import.meta.env.DEV) {
+  void import("@/lib/performance/measureINP").then(({ measureINP }) => {
+    measureINP();
+  });
 }
 
 const renderBootstrapError = (message: string) => {
@@ -48,6 +56,7 @@ const bootstrap = async () => {
 
   try {
     await import("./instrument");
+    preloadRouteChunksForPath(window.location.pathname);
     const { default: App } = await import("./App.tsx");
     createRoot(rootEl).render(
       <I18nProvider>

@@ -1,20 +1,25 @@
-import { Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { NotificationsPermissionGate } from "@/components/notifications/NotificationsPermissionGate";
 import { useAuth } from "@/hooks/useAuth";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { isNativePlatform } from "@/lib/platform";
 import MobileLayout from "@/layouts/MobileLayout";
+const NotificationsPermissionGate = lazy(() =>
+  import("@/components/notifications/NotificationsPermissionGate").then((module) => ({
+    default: module.NotificationsPermissionGate,
+  }))
+);
 
 /**
  * Layout commun pour toutes les pages dashboard : sidebar, header et zone de contenu (Outlet).
  * Sous Capacitor : coque mobile à onglets (sans sidebar).
  */
 export default function DashboardLayout() {
-  const { user, role } = useAuth();
+  const { user, role, userFleetId } = useAuth();
   const userRole = role || "organizer";
   const userMetadata = user?.user_metadata || {};
   const rawFromMeta = userMetadata.full_name;
@@ -30,6 +35,7 @@ export default function DashboardLayout() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+  useRealtimeNotifications(userFleetId);
 
   if (isNativePlatform()) {
     return <MobileLayout userRole={role} />;
@@ -46,7 +52,9 @@ export default function DashboardLayout() {
             initials={initials}
           />
           <main className="flex-1 p-6 overflow-auto">
-            <NotificationsPermissionGate />
+            <Suspense fallback={null}>
+              <NotificationsPermissionGate />
+            </Suspense>
             <Suspense fallback={<RoutePageFallback />}>
               <Outlet />
             </Suspense>

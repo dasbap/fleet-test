@@ -1,18 +1,47 @@
-import { useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useDashboardKpis } from "@/hooks/useDashboardStats";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { AlertRow } from "@/components/dashboard/AlertRow";
-import { FleetTable } from "@/components/dashboard/FleetTable";
-import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { ActivityFeedSkeleton } from "@/components/dashboard/ActivityFeedSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/mobile/ui";
 import { useAuth } from "@/hooks/useAuth";
+import { Car } from "lucide-react";
 
 type Filter = "all" | "critical" | "maintenance" | "overdue";
+const FleetTable = lazy(() =>
+  import("@/components/dashboard/FleetTable").then((module) => ({
+    default: module.FleetTable,
+  }))
+);
+const ActivityFeed = lazy(() =>
+  import("@/components/dashboard/ActivityFeed").then((module) => ({
+    default: module.ActivityFeed,
+  }))
+);
+const FunnelTelemetryCard = lazy(() =>
+  import("@/components/dashboard/FunnelTelemetryCard").then((module) => ({
+    default: module.FunnelTelemetryCard,
+  }))
+);
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const { orgId, isLoading: authLoading } = useAuth();
-  const { alerts, kpis, loading, resolveAlert } = useDashboard(orgId ?? "");
+  const { alerts, loading: alertsLoading, resolveAlert } = useDashboard(orgId ?? "");
+  const { data: kpis, isLoading: kpisLoading } = useDashboardKpis();
   const [filter, setFilter] = useState<Filter>("all");
+  const valueActivatedPct = useMemo(() => {
+    if (!kpis) return 0;
+    const score = Math.min(
+      100,
+      Math.max(0, kpis.activeVehicles * 25 + kpis.inMaintenance * 10 + (kpis.overdueServices === 0 ? 25 : 0)),
+    );
+    return score;
+  }, [kpis]);
 
   const filtered = alerts.filter((a) => {
     if (filter === "all") return true;
@@ -23,7 +52,7 @@ export default function DashboardPage() {
     return true;
   });
 
-  if (authLoading || loading || !kpis) return <DashboardSkeleton />;
+  if (authLoading || alertsLoading || kpisLoading || !kpis) return <DashboardSkeleton />;
 
   return (
     <div className="p-6 space-y-5">
@@ -73,6 +102,23 @@ export default function DashboardPage() {
         />
       </div>
 
+      <div className="rounded-card border border-surface-raised bg-surface p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Valeur activée</p>
+            <p className="text-xs text-slate-500">Progression vers une flotte pleinement opérationnelle.</p>
+          </div>
+          <p className="text-sm font-semibold">{valueActivatedPct}%</p>
+        </div>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-raised">
+          <div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${valueActivatedPct}%` }} />
+        </div>
+      </div>
+
+      <Suspense fallback={<FunnelTelemetryCardSkeleton />}>
+        <FunnelTelemetryCard />
+      </Suspense>
+
       {/* Panel alertes avec filtre synchronisé aux KPIs */}
       <div className="border border-surface-raised rounded-card overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 bg-surface-raised border-b border-surface-raised">
@@ -106,12 +152,67 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {kpis.activeVehicles === 0 ? (
+        <div className="rounded-card border border-surface-raised bg-surface p-2">
+          <EmptyState
+            icon={Car}
+            title="Ajouter mon véhicule"
+            description="Ajoutez un premier véhicule pour activer le suivi, les alertes realtime et les actions en 1 clic."
+            actionLabel="Ajouter mon véhicule"
+            onAction={() => navigate("/dashboard/vehicles")}
+          />
+        </div>
+      ) : null}
+
       {/* Section basse */}
       <div className="grid grid-cols-2 gap-4">
-        <FleetTable orgId={orgId} />
-        <ActivityFeed orgId={orgId} />
+        <Suspense fallback={<FleetColumnSkeleton />}>
+          <FleetTable orgId={orgId} />
+        </Suspense>
+        <Suspense fallback={<ActivityFeedSkeleton />}>
+          <ActivityFeed orgId={orgId} />
+        </Suspense>
       </div>
     </div>
+  );
+}
+
+/** Aligné sur {@link FleetOverview} (chargement) pour limiter le CLS. */
+function FleetColumnSkeleton() {
+  return (
+    <Card className="h-full min-h-[26rem]">
+      <CardHeader>
+        <CardTitle className="font-heading">Aperçu de la flotte</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4 rounded-lg bg-muted/30 p-4">
+              <Skeleton className="h-12 w-12 shrink-0 rounded-lg" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FunnelTelemetryCardSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Suivi funnel (30 jours)</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-4 w-44" />
+        <Skeleton className="h-4 w-48" />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -132,6 +233,19 @@ function DashboardSkeleton() {
         ))}
       </div>
 
+      <div className="rounded-card border border-surface-raised bg-surface p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-64 max-w-full" />
+          </div>
+          <Skeleton className="h-5 w-10" />
+        </div>
+        <Skeleton className="mt-3 h-1.5 w-full rounded-full" />
+      </div>
+
+      <FunnelTelemetryCardSkeleton />
+
       <div className="border border-surface-raised rounded-card overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 bg-surface-raised border-b border-surface-raised">
           <Skeleton className="h-5 w-40" />
@@ -148,8 +262,8 @@ function DashboardSkeleton() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Skeleton className="h-80 rounded-card" />
-        <Skeleton className="h-80 rounded-card" />
+        <FleetColumnSkeleton />
+        <ActivityFeedSkeleton />
       </div>
     </div>
   );

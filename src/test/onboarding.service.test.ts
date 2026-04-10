@@ -48,6 +48,17 @@ describe('OnboardingService', () => {
         step: 1,
         completed: false,
         data: { step1: step1Data },
+      } satisfies OnboardingProgress)
+      .mockResolvedValueOnce({
+        id: 'progress-1',
+        org_id: 'org-1',
+        user_id: 'user-1',
+        step: 2,
+        completed: false,
+        data: {
+          step1: step1Data,
+          step2: { alerts: { oil: true, revision: false, tires: true, brakes: true } },
+        },
       } satisfies OnboardingProgress);
     repo.getAuthenticatedUserId = vi.fn<OnboardingRepository['getAuthenticatedUserId']>().mockResolvedValue('user-1');
     repo.upsertProgress = vi.fn<OnboardingRepository['upsertProgress']>().mockImplementation(async (payload) => payload);
@@ -56,15 +67,18 @@ describe('OnboardingService', () => {
 
     await svc.saveStep('org-1', 1, { step1: step1Data });
     await svc.saveStep('org-1', 2, { step2: { alerts: { oil: true, revision: false, tires: true, brakes: true } } });
+    await svc.saveStep('org-1', 4, { step4: { confirmed: true } }, true);
 
     expect(repo.upsertProgress).toHaveBeenNthCalledWith(
-      2,
+      3,
       expect.objectContaining({
         org_id: 'org-1',
-        step: 2,
+        step: 4,
+        completed: true,
         data: expect.objectContaining({
           step1: step1Data,
           step2: { alerts: { oil: true, revision: false, tires: true, brakes: true } },
+          step4: { confirmed: true },
         }),
       }),
     );
@@ -122,5 +136,15 @@ describe('OnboardingService', () => {
 
     expect(result?.id).toBe('veh-existing');
     expect(repo.createVehicleForFleet).not.toHaveBeenCalled();
+  });
+
+  it('marque l\'onboarding comme terminé', async () => {
+    const repo = createRepositoryMock();
+    repo.markCompleted = vi.fn<OnboardingRepository['markCompleted']>().mockResolvedValue(undefined);
+    const svc = new OnboardingService(repo as unknown as OnboardingRepository);
+
+    await svc.markCompleted('org-1');
+
+    expect(repo.markCompleted).toHaveBeenCalledWith('org-1');
   });
 });

@@ -58,7 +58,11 @@
     "freeze:remote-schema": "powershell -ExecutionPolicy Bypass -File scripts/freeze-remote-schema.ps1",
     "test:baseline-delta": "powershell -ExecutionPolicy Bypass -File scripts/test-baseline-delta.ps1",
     "test:sql-security": "powershell -ExecutionPolicy Bypass -File scripts/test-sql-security.ps1",
-    "diagnostic:e-samba": "node scripts/diagnostic-e-samba-console.mjs"
+    "diagnostic:e-samba": "node scripts/diagnostic-e-samba-console.mjs",
+    "verify:vendor-supabase-runtime": "npm run build && node scripts/verify-vendor-supabase-runtime.mjs",
+    "report:chunks": "node scripts/report-build-chunks.mjs",
+    "check:bundle-budget": "node scripts/check-initial-js-budget.mjs",
+    "analyze:bundle": "npm run build && npm run report:chunks && npm run check:bundle-budget"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",
@@ -156,6 +160,7 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^7.3.1",
+    "vite-plugin-pwa": "^1.2.0",
     "vitest": "^3.2.4"
   }
 }

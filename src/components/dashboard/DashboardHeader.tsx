@@ -12,7 +12,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { signOut } from "@/hooks/useAuth";
+import { signOut } from "@/lib/auth-actions";
 import type { AppRole } from "@/hooks/useAuth";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardVehicleSearch } from "@/components/dashboard/DashboardVehicleSearch";

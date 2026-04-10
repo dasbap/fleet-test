@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { VehicleService } from '@/services/vehicle.service';
 import { VehicleRepository } from '@/repositories/vehicle.repository';
+import { prefetchVehicleDetails } from "@/features/vehicles/prefetchVehicleDetails";
 import type { VehicleApi, VehicleInsertApi, VehicleStatusApi } from '@/types/api/vehicles';
 import type { VehicleFilters, VehicleListItemDto } from '@/repositories/vehicle.repository';
 
@@ -33,11 +35,31 @@ export function useVehicles(fleetId?: string) {
 }
 
 export function useVehicleList(filters: VehicleListFilters) {
-  return useQuery({
+  const { userFleetId } = useAuth();
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
     queryKey: ['vehicles-list', filters],
     queryFn: () => vehicleService.getVehicleList(filters),
     enabled: filters.fleet_id != null && filters.fleet_id !== '',
   });
+
+  useEffect(() => {
+    if (!query.data?.length || !userFleetId) {
+      return;
+    }
+
+    void prefetchVehicleDetails(
+      query.data.map((vehicle) => vehicle.id),
+      (vehicleId) =>
+        queryClient.prefetchQuery({
+          queryKey: ["vehicle", vehicleId, userFleetId],
+          queryFn: () => vehicleService.getVehicleDetailForFleet(vehicleId, userFleetId),
+        })
+    );
+  }, [query.data, queryClient, userFleetId]);
+
+  return query;
 }
 
 export function useVehiclesSimple(fleetId?: string) {

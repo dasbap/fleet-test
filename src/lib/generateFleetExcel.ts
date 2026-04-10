@@ -1,9 +1,9 @@
-import * as XLSX from 'xlsx';
 import { FleetReportData } from '@/hooks/useFleetReport';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-export function generateFleetExcel(data: FleetReportData) {
+export async function generateFleetExcel(data: FleetReportData) {
+  const XLSX = await import("xlsx");
   const workbook = XLSX.utils.book_new();
   
   // Summary sheet

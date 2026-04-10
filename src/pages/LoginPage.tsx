@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { signIn } from "@/hooks/useAuth";
+import { signIn } from "@/lib/auth-actions";
 import type { AppRole } from "@/types/auth";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { cn } from "@/lib/utils";

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useFleetVehicles } from "@/hooks/useDashboardStats";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
+import { EmptyState } from "@/components/mobile/ui";
 
 // Note: Le statut "Actif" nécessite maintenant une assignation active
 // Ceci sera géré dans le composant en vérifiant hasActiveAssignment
@@ -26,7 +27,7 @@ const FleetOverview = () => {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="h-full min-h-[26rem]">
         <CardHeader>
           <CardTitle className="font-heading">Aperçu de la flotte</CardTitle>
         </CardHeader>
@@ -48,7 +49,7 @@ const FleetOverview = () => {
   }
 
   return (
-    <Card>
+    <Card className="h-full min-h-[26rem]">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="font-heading">Aperçu de la flotte</CardTitle>
         <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/vehicles')}>
@@ -57,12 +58,14 @@ const FleetOverview = () => {
       </CardHeader>
       <CardContent>
         {!vehicles || vehicles.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Car className="w-12 h-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Aucun véhicule dans la flotte</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/dashboard/vehicles')}>
-              Ajouter un véhicule
-            </Button>
+          <div className="rounded-md border border-dashed border-border bg-muted/20">
+            <EmptyState
+              icon={Car}
+              title="Aucun véhicule dans la flotte"
+              description="Ajoutez un véhicule pour suivre les statuts, les kilomètres et les alertes de maintenance."
+              actionLabel="Ajouter un véhicule"
+              onAction={() => navigate('/dashboard/vehicles')}
+            />
           </div>
         ) : (
           <div className="space-y-4">
