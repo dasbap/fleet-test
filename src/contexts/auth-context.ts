@@ -8,6 +8,7 @@ export interface AuthContextValue {
   role: AppRole | null;
   memberships: FleetMembership[];
   userFleetId: string | null;
+  orgId: string | null;
   isLoading: boolean;
   refreshMemberships: () => Promise<FleetMembership[]>;
   refreshUser: () => Promise<void>;

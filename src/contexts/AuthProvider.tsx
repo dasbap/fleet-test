@@ -10,9 +10,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { AUTH_MODE_CHANGED_EVENT, isMockAuthEnabled } from "@/lib/authMode";
 import { MOCK_AUTH_CHANGED_EVENT } from "@/lib/auth-actions";
 import { mockAuthService } from "@/services/mock-auth.service";
-import { checkPendingInvitation, acceptInvitation } from "@/hooks/useAcceptInvitation";
+import {
+  checkPendingInvitation,
+  acceptInvitation,
+} from "@/hooks/useAcceptInvitation";
 import { FleetMemberService } from "@/services/fleet-member.service";
+import { FleetService } from "@/services/fleet.service";
 import { FleetMemberRepository } from "@/repositories/fleet-member.repository";
+import { FleetRepository } from "@/repositories/fleet.repository";
 import {
   clearLocalSessionSnapshot,
   setLocalSessionSnapshot,
@@ -22,8 +27,11 @@ import { AuthContext, type AuthContextValue } from "@/contexts/auth-context";
 
 const fleetMemberRepository = new FleetMemberRepository();
 const fleetMemberService = new FleetMemberService(fleetMemberRepository);
+const fleetRepository = new FleetRepository();
+const fleetService = new FleetService(fleetRepository);
 
-const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
+const isDev =
+  typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
 const devLog = (...args: unknown[]) => {
   if (isDev) console.log(...args);
 };
@@ -48,6 +56,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [memberships, setMemberships] = useState<FleetMembership[]>([]);
+  const [orgId, setOrgId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const processPendingInvitation = async (sessionUser: User): Promise<void> => {
@@ -67,17 +76,42 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     async (sessionUser: User): Promise<FleetMembership[]> => {
       try {
         await processPendingInvitation(sessionUser);
-        devLog("🔄 Récupération des memberships pour l'utilisateur:", sessionUser.id);
-        const list = await fleetMemberService.getActiveMembershipsForUser(sessionUser.id);
+        devLog(
+          "🔄 Récupération des memberships pour l'utilisateur:",
+          sessionUser.id
+        );
+        const list = await fleetMemberService.getActiveMembershipsForUser(
+          sessionUser.id
+        );
 
         if (list.length > 0) {
           const membershipsList = list as FleetMembership[];
           setMemberships(membershipsList);
-          const roleHierarchy: AppRole[] = ["organizer", "manager", "mechanic", "driver"];
+          const roleHierarchy: AppRole[] = [
+            "organizer",
+            "manager",
+            "mechanic",
+            "driver",
+          ];
           const userRoles = list.map((m) => m.role as AppRole);
           const highestRole =
             roleHierarchy.find((r) => userRoles.includes(r)) || "driver";
           setRole(highestRole);
+
+          const effectiveFleetId = membershipsList[0].fleet_id;
+          try {
+            const fleets = await fleetService.getFleetsByIds([
+              effectiveFleetId,
+            ]);
+            setOrgId(fleets[0]?.orgId ?? null);
+          } catch (error) {
+            console.error(
+              "Erreur lors de la récupération de l'orgId de la flotte:",
+              error
+            );
+            setOrgId(null);
+          }
+
           devLog("✅ Memberships mis à jour:", {
             count: list.length,
             role: highestRole,
@@ -96,7 +130,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         return [];
       }
     },
-    [],
+    []
   );
 
   useEffect(() => {
@@ -125,6 +159,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             setUser(null);
             setRole(null);
             setMemberships([]);
+            setOrgId(null);
             return;
           }
 
@@ -139,6 +174,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         console.error("Erreur lors de l’initialisation de session :", e);
         setRole(null);
         setMemberships([]);
+        setOrgId(null);
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -160,9 +196,13 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         } else {
           setRole(null);
           setMemberships([]);
+          setOrgId(null);
         }
       } catch (e) {
-        console.error("Erreur lors du chargement des memberships (onAuthStateChange):", e);
+        console.error(
+          "Erreur lors du chargement des memberships (onAuthStateChange):",
+          e
+        );
         setRole(null);
         setMemberships([]);
       } finally {
@@ -191,7 +231,9 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (memberships.length === 0) {
-      devLog("[Auth] userFleetId dérivé (aucun membership)", { userFleetId: null });
+      devLog("[Auth] userFleetId dérivé (aucun membership)", {
+        userFleetId: null,
+      });
       return;
     }
     const effectiveFleetId = memberships[0].fleet_id;
@@ -218,7 +260,9 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     });
   }, [user, userFleetId, role]);
 
-  const refreshMemberships = useCallback(async (): Promise<FleetMembership[]> => {
+  const refreshMemberships = useCallback(async (): Promise<
+    FleetMembership[]
+  > => {
     devLog("[Auth] refreshMemberships appelé", { userId: user?.id ?? null });
     if (!user) {
       devWarn("[Auth] refreshMemberships ignoré (pas d'utilisateur)");
@@ -256,6 +300,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       role,
       memberships,
       userFleetId,
+      orgId,
       isLoading,
       refreshMemberships,
       refreshUser,
@@ -266,10 +311,11 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       role,
       memberships,
       userFleetId,
+      orgId,
       isLoading,
       refreshMemberships,
       refreshUser,
-    ],
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -278,7 +324,9 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 const EMPTY_MEMBERSHIPS: FleetMembership[] = [];
 
 function MockAuthProvider({ children }: { children: ReactNode }) {
-  const [snapshot, setSnapshot] = useState(() => mockAuthService.loadPersisted());
+  const [snapshot, setSnapshot] = useState(() =>
+    mockAuthService.loadPersisted()
+  );
 
   useEffect(() => {
     const sync = () => setSnapshot(mockAuthService.loadPersisted());
@@ -291,10 +339,13 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
   const role = snapshot?.role ?? null;
   const memberships = useMemo(
     () => snapshot?.memberships ?? EMPTY_MEMBERSHIPS,
-    [snapshot?.memberships],
+    [snapshot?.memberships]
   );
 
-  const refreshMemberships = useCallback(async () => memberships, [memberships]);
+  const refreshMemberships = useCallback(
+    async () => memberships,
+    [memberships]
+  );
 
   const refreshUser = useCallback(async () => {
     setSnapshot(mockAuthService.loadPersisted());
@@ -323,11 +374,12 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
       role,
       memberships,
       userFleetId,
+      orgId: null,
       isLoading: false,
       refreshMemberships,
       refreshUser,
     }),
-    [user, role, memberships, userFleetId, refreshMemberships, refreshUser],
+    [user, role, memberships, userFleetId, refreshMemberships, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,5 @@
-import { Bell, Search, User, Settings } from "lucide-react";
+import { Bell, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -15,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { signOut } from "@/hooks/useAuth";
 import type { AppRole } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
+import { DashboardVehicleSearch } from "@/components/dashboard/DashboardVehicleSearch";
 
 interface DashboardHeaderProps {
   userRole: AppRole;
@@ -30,6 +31,8 @@ const roleLabels = {
 };
 
 const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderProps) => {
+  const { userFleetId } = useAuth();
+
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
       <div className="h-full px-4 flex items-center justify-between gap-4">
@@ -37,14 +40,7 @@ const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderPro
         <div className="flex items-center gap-4">
           <SidebarTrigger className="-ml-1" />
           
-          {/* Search */}
-          <div className="hidden md:flex relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher..."
-              className="pl-9 w-64 bg-background"
-            />
-          </div>
+          <DashboardVehicleSearch fleetId={userFleetId} />
         </div>
 
         {/* Right */}

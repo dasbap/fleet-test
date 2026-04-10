@@ -1,13 +1,22 @@
-import { Outlet } from "react-router-dom";
-import { RequireAuth } from "@/navigation/guards/RequireAuth";
+import { Navigate, Outlet } from 'react-router-dom';
+import { RequireAuth } from '@/navigation/guards/RequireAuth';
+import { PageLoader } from '@/components/dashboard/PageLoader';
+import { useRouteAccess } from '@/hooks/useRouteAccess';
 
 /**
- * Garde d'authentification pour les routes dashboard (délègue à RequireAuth + Outlet).
+ * Garde principale dashboard :
+ * - authentification
+ * - vérification de l'état d'onboarding via service/repository
  */
 export function ProtectedRoute() {
+  const access = useRouteAccess();
+
   return (
     <RequireAuth>
-      <Outlet />
+      {access.state === 'loading' && <PageLoader />}
+      {access.state === 'unauth' && <Navigate to="/auth" replace />}
+      {access.state === 'onboarding' && <Navigate to="/onboarding" replace />}
+      {access.state === 'ready' && <Outlet />}
     </RequireAuth>
   );
 }

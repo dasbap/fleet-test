@@ -1,11 +1,10 @@
 import { lazy } from "react";
 import { Route, Navigate } from "react-router-dom";
-import { dashboardRoutes } from "@/app/DashboardRouteGroup";
-import { RequireGuest } from "@/navigation/guards/RequireGuest";
+import { dashboardRoutes } from "@/app/routes/dashboard.routes";
+import { authPublicRoutes } from "@/features/auth";
+import { OnboardingRoute } from "@/components/auth/OnboardingRoute";
 
 const Index = lazy(() => import("@/pages/Index"));
-const Auth = lazy(() => import("@/features/auth/screens/AuthPage"));
-const MobileLoginScreen = lazy(() => import("@/features/auth/screens/MobileLoginScreen"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 /**
@@ -15,23 +14,9 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 export const appRoutes = (
   <>
     <Route path="/" element={<Index />} />
-    <Route
-      path="/login"
-      element={
-        <RequireGuest>
-          <MobileLoginScreen />
-        </RequireGuest>
-      }
-    />
-    <Route
-      path="/auth"
-      element={
-        <RequireGuest>
-          <Auth />
-        </RequireGuest>
-      }
-    />
+    {authPublicRoutes}
     <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
+    <Route path="/onboarding" element={<OnboardingRoute />} />
     {dashboardRoutes}
     <Route path="*" element={<NotFound />} />
   </>

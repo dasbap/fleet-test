@@ -6,6 +6,7 @@ export * from './incident.service';
 export * from './maintenance.service';
 export * from './invitation.service';
 export * from './dashboard.service';
+export * from './dashboard-alert.service';
 export * from './fleet-report.service';
 export * from './fleet.service';
 export * from './assignment.service';
@@ -21,9 +22,12 @@ export * from './maintenance-evidence.service';
 export * from './share.service';
 export * from './deep-link.service';
 export * from './push-notification.service';
-export * from './notifications.service';
+export * from './push-notifications-client.service';
 export * from './notification.service';
 export * from './camera.service';
+export * from './onboarding.service';
+export * from './vehicle-search.service';
+export * from './feedback.service';
 
 // Réexporter les types pour compatibilité
 export type { VehicleDto, VehicleInsertDto, VehicleStatusDto } from '@/types/dto/vehicle.dto';

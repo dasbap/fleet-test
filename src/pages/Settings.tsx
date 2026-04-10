@@ -9,6 +9,12 @@ import { useEsambaDataVerification } from "@/hooks/useEsambaDataVerification";
 import { useFleetMembers, type FleetMember } from "@/hooks/useFleetMembers";
 import { useSeedEsambaData } from "@/hooks/useSeedEsambaData";
 import { PageLoader } from "@/components/dashboard/PageLoader";
+import {
+  ESAMBA_DEMO_FLEET_NAME,
+  ESAMBA_DEMO_INVITATION_CODE,
+  ESAMBA_DEMO_ORG_NAME,
+  ESAMBA_DEMO_VEHICLE_REGISTRATION,
+} from "@/constants/esamba-demo.constants";
 import { Settings as SettingsIcon, Zap, CheckCircle2, XCircle, RefreshCw, Users, Shield, UserCog, Car, Wrench, Phone, Loader2 } from "lucide-react";
 
 const Settings = () => {
@@ -19,7 +25,7 @@ const Settings = () => {
   const seedMutation = useSeedEsambaData();
 
   // Note: L'exécution automatique a été désactivée pour éviter les problèmes
-  // L'utilisateur doit cliquer manuellement sur le bouton "Créer les données ESAMBA-2024"
+  // L'utilisateur doit cliquer manuellement sur le bouton de création des données de démo (code invitation défini dans esamba-demo.constants).
 
   // Fonctions helper pour les rôles
   const getRoleLabel = (role: string) => {
@@ -120,20 +126,20 @@ const Settings = () => {
                   </CardTitle>
                   <CardDescription>
                     Crée automatiquement une organisation, une flotte, un véhicule et une invitation
-                    <span className="font-mono font-semibold"> ESAMBA-2024</span> dans votre base.
+                    <span className="font-mono font-semibold"> {ESAMBA_DEMO_INVITATION_CODE}</span> dans votre base.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Alert>
                     <AlertTitle>Ce que fait ce bouton</AlertTitle>
                     <AlertDescription>
-                      - Crée <strong>Organisation ESAMBA</strong> et <strong>Flotte ESAMBA</strong>
+                      - Crée <strong>{ESAMBA_DEMO_ORG_NAME}</strong> et <strong>{ESAMBA_DEMO_FLEET_NAME}</strong>
                       <br />
                       - Vous ajoute comme <strong>organisateur</strong> de cette flotte
                       <br />
-                      - Ajoute un véhicule <strong>ESAMBA-001</strong>
+                      - Ajoute un véhicule <strong>{ESAMBA_DEMO_VEHICLE_REGISTRATION}</strong>
                       <br />
-                      - Crée l&apos;invitation <strong>ESAMBA-2024</strong>
+                      - Crée l&apos;invitation <strong>{ESAMBA_DEMO_INVITATION_CODE}</strong>
                     </AlertDescription>
                   </Alert>
 
@@ -158,8 +164,8 @@ const Settings = () => {
                       {seedMutation.isPending
                         ? "Création en cours..." 
                         : seedMutation.isSuccess
-                        ? "Recréer les données ESAMBA-2024"
-                        : "Créer les données ESAMBA-2024"}
+                        ? `Recréer les données ${ESAMBA_DEMO_INVITATION_CODE}`
+                        : `Créer les données ${ESAMBA_DEMO_INVITATION_CODE}`}
                     </Button>
                   </div>
                 </CardContent>
@@ -190,7 +196,7 @@ const Settings = () => {
                 <CardContent className="space-y-3">
                   {/* Organisation ESAMBA */}
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <span className="text-sm font-medium">Organisation ESAMBA</span>
+                    <span className="text-sm font-medium">{ESAMBA_DEMO_ORG_NAME}</span>
                     {isVerifying ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                     ) : verificationStatus?.organisation ? (
@@ -208,7 +214,7 @@ const Settings = () => {
 
                   {/* Flotte ESAMBA */}
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <span className="text-sm font-medium">Flotte ESAMBA</span>
+                    <span className="text-sm font-medium">{ESAMBA_DEMO_FLEET_NAME}</span>
                     {isVerifying ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                     ) : verificationStatus?.flotte ? (
@@ -244,7 +250,7 @@ const Settings = () => {
 
                   {/* Véhicule ESAMBA-001 */}
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <span className="text-sm font-medium">Véhicule ESAMBA-001</span>
+                    <span className="text-sm font-medium">Véhicule {ESAMBA_DEMO_VEHICLE_REGISTRATION}</span>
                     {isVerifying ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                     ) : verificationStatus?.vehicule_esamba_001 ? (
@@ -262,7 +268,7 @@ const Settings = () => {
 
                   {/* Invitation ESAMBA-2024 */}
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <span className="text-sm font-medium">Invitation ESAMBA-2024</span>
+                    <span className="text-sm font-medium">Invitation {ESAMBA_DEMO_INVITATION_CODE}</span>
                     {isVerifying ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                     ) : verificationStatus?.invitation_esamba_2024 ? (

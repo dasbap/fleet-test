@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { reportWebVitals } from "./reportWebVitals";
+import { I18nProvider } from "@/i18n/useI18n";
 
 // En dev : log des requêtes Supabase en échec (URL = table ou RPC) pour diagnostic
 if (import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL) {
@@ -48,7 +49,11 @@ const bootstrap = async () => {
   try {
     await import("./instrument");
     const { default: App } = await import("./App.tsx");
-    createRoot(rootEl).render(<App />);
+    createRoot(rootEl).render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>
+    );
     reportWebVitals();
   } catch (error) {
     const message =

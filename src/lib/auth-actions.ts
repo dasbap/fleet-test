@@ -62,7 +62,8 @@ export async function signIn(
     return { data, error };
   } catch (error) {
     // Fallback robuste pour les comptes démo quand Supabase n'est pas accessible localement.
-    if (isDemoAccount(normalizedIdentifier) && isSupabaseNetworkError(error)) {
+    // Limité au mode développement pour éviter toute activation accidentelle en production.
+    if (import.meta.env.DEV && isDemoAccount(normalizedIdentifier) && isSupabaseNetworkError(error)) {
       enableDemoAuthFallback();
       const { error: mockError } = mockAuthService.signInWithPassword(
         normalizedIdentifier,
