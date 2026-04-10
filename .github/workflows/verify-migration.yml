@@ -35,48 +35,10 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Get npm Global Prefix
-        id: npm-global-prefix
-        run: |
-          NPM_PREFIX=$(npm config get prefix)
-          if [ -z "$NPM_PREFIX" ]; then
-            echo "⚠️ Préfixe npm non trouvé, utilisation du préfixe par défaut"
-            NPM_PREFIX="/usr/local"
-          fi
-          echo "prefix=$NPM_PREFIX" >> $GITHUB_OUTPUT
-          echo "npm global prefix: $NPM_PREFIX"
-
-      - name: Cache Supabase CLI
-        uses: actions/cache@v4
-        id: cache-supabase-cli
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
         with:
-          path: |
-            ${{ steps.npm-global-prefix.outputs.prefix }}/lib/node_modules/supabase
-            ${{ steps.npm-global-prefix.outputs.prefix }}/bin/supabase
-          key: supabase-cli-global-${{ runner.os }}-node-22-${{ env.SUPABASE_CLI_VERSION }}
-          restore-keys: |
-            supabase-cli-global-${{ runner.os }}-node-22-
-            supabase-cli-global-${{ runner.os }}-
-
-      - name: Check Cache Status
-        run: |
-          if [ "${{ steps.cache-supabase-cli.outputs.cache-hit }}" == "true" ]; then
-            echo "✅ Cache trouvé - Supabase CLI sera restauré depuis le cache"
-          else
-            echo "ℹ️ Cache non trouvé - Supabase CLI sera installé"
-          fi
-
-      - name: Install Supabase CLI
-        if: steps.cache-supabase-cli.outputs.cache-hit != 'true'
-        run: |
-          echo "Installation de Supabase CLI (version: ${{ env.SUPABASE_CLI_VERSION }})..."
-          if [ "${{ env.SUPABASE_CLI_VERSION }}" == "latest" ]; then
-            npm install -g supabase@latest
-          else
-            npm install -g supabase@${{ env.SUPABASE_CLI_VERSION }}
-          fi
-          echo "✅ Supabase CLI installé avec succès"
-          supabase --version
+          version: ${{ env.SUPABASE_CLI_VERSION }}
 
       - name: Verify Supabase CLI Installation
         run: |

@@ -26,12 +26,27 @@ jobs:
       - name: Validate migration naming convention
         run: |
           set -euo pipefail
-          invalid_files="$(find supabase/migrations -maxdepth 1 -type f -name "*.sql" ! -regex ".*/[0-9]\{14\}_[a-z0-9_]\+\.sql" | sort || true)"
-          if [ -n "$invalid_files" ]; then
+          bash scripts/report-legacy-migrations.sh
+          shopt -s nullglob
+          invalid_files=()
+
+          for file in supabase/migrations/*.sql; do
+            filename="$(basename "$file")"
+
+            # Format strict attendu.
+            if [[ "$filename" =~ ^[0-9]{14}_[a-z0-9_]+\.sql$ ]]; then
+              continue
+            fi
+
+            invalid_files+=("$file")
+          done
+
+          if [ ${#invalid_files[@]} -gt 0 ]; then
             echo "::error::Fichiers de migration invalides détectés (format attendu: YYYYMMDDHHMMSS_description.sql)"
-            echo "$invalid_files"
+            printf '%s\n' "${invalid_files[@]}" | sort
             exit 1
           fi
+
           echo "Convention de nommage des migrations OK."
 
   replay-migrations:
