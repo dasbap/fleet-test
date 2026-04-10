@@ -17,6 +17,11 @@ on:
       - 'supabase/verify-migration-status.sql'
   workflow_dispatch: # Permet d'exécuter manuellement depuis GitHub
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   verify-migration:
     name: Verify Migration to French
@@ -59,7 +64,7 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
           echo "Executing migration verification script..."
-          supabase db execute --file supabase/verify-migration-status.sql > migration-report.txt 2>&1 || true
+          supabase db query < supabase/verify-migration-status.sql > migration-report.txt 2>&1 || true
           
           # Afficher le rapport
           echo "=== MIGRATION VERIFICATION REPORT ==="
@@ -83,8 +88,13 @@ jobs:
           path: migration-report.txt
           retention-days: 30
 
+      - name: Log PR Comment Skip Reason
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "ℹ️ Commentaire PR ignoré : la PR provient d'un fork, le token GitHub Actions n'a pas les permissions d'écriture nécessaires."
+
       - name: Comment PR with Results
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         with:
           script: |
