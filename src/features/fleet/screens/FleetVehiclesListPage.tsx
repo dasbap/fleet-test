@@ -1,22 +1,18 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Car, Info } from "lucide-react";
+import { Search, Car } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale/fr";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import VehicleFormDialog from "@/components/vehicles/VehicleFormDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
-import type { FleetVehicleFilterTab } from "@/types/fleet-vehicle";
-import {
-  MOCK_FLEET_USE_DEMO_DATA,
-  MOCK_FLEET_VEHICLES,
-} from "@/features/fleet/data/mockFleetVehicles";
-import { filterFleetVehicleList } from "@/features/fleet/lib/filterFleetVehicles";
-import { VehicleCard } from "@/features/fleet/components/VehicleCard";
+import { useVehicleList, type VehicleStatusApi } from "@/hooks/useVehicles";
 import { cn } from "@/lib/utils";
 import {
   mobileScreenRootList,
@@ -25,16 +21,16 @@ import {
   mobileScreenTitle,
 } from "@/lib/mobile/mobileUiTokens";
 
-const FILTER_TABS: { id: FleetVehicleFilterTab; label: string }[] = [
+type StatusFilter = "all" | VehicleStatusApi;
+
+const FILTER_TABS: { id: StatusFilter; label: string }[] = [
   { id: "all", label: "Tous" },
-  { id: "available", label: "Disponible" },
-  { id: "on_mission", label: "En mission" },
-  { id: "stopped", label: "À l’arrêt" },
-  { id: "maintenance", label: "Maintenance" },
+  { id: "ok", label: "Actif" },
+  { id: "blocked", label: "Bloqué" },
 ];
 
 /**
- * Liste des véhicules — filtres, recherche, cartes (données mock en démo).
+ * Liste des véhicules (desktop + mobile): recherche, filtre statut, prochain entretien.
  */
 export default function FleetVehiclesListPage() {
   const { userFleetId, isLoading: authLoading } = useAuth();
@@ -42,17 +38,23 @@ export default function FleetVehiclesListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [tab, setTab] = useState<FleetVehicleFilterTab>("all");
+  const [tab, setTab] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
 
   const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ["vehicles"] });
   };
 
-  const filtered = useMemo(
-    () => filterFleetVehicleList(MOCK_FLEET_VEHICLES, tab, search),
-    [tab, search]
+  const listFilters = useMemo(
+    () => ({
+      fleet_id: userFleetId ?? undefined,
+      search,
+      status: tab === "all" ? undefined : tab,
+    }),
+    [userFleetId, search, tab]
   );
+
+  const { data: vehicles = [], isLoading, error } = useVehicleList(listFilters);
 
   if (authLoading) {
     return <PageLoader />;
@@ -82,7 +84,7 @@ export default function FleetVehiclesListPage() {
     );
   }
 
-  const showAdd = !MOCK_FLEET_USE_DEMO_DATA && canWriteFleet;
+  const showAdd = canWriteFleet;
 
   return (
     <div
@@ -105,17 +107,6 @@ export default function FleetVehiclesListPage() {
           </Button>
         )}
       </div>
-
-      {MOCK_FLEET_USE_DEMO_DATA && (
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertTitle>Données de démonstration</AlertTitle>
-          <AlertDescription>
-            Les véhicules affichés sont fictifs. Branchez le service API pour
-            afficher vos données réelles.
-          </AlertDescription>
-        </Alert>
-      )}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-wrap gap-2">
@@ -144,7 +135,19 @@ export default function FleetVehiclesListPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Chargement des véhicules...
+          </CardContent>
+        </Card>
+      ) : error ? (
+        <Card>
+          <CardContent className="py-12 text-center text-destructive">
+            Impossible de charger les véhicules pour le moment.
+          </CardContent>
+        </Card>
+      ) : vehicles.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             Aucun véhicule ne correspond à ces critères.
@@ -152,15 +155,37 @@ export default function FleetVehiclesListPage() {
         </Card>
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((v) => (
+          {vehicles.map((v) => (
             <li key={v.id}>
-              <VehicleCard vehicle={v} />
+              <Card className="h-full">
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-mono text-base font-semibold">{v.registration}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {[v.brand, v.model].filter(Boolean).join(" ")}
+                      </p>
+                    </div>
+                    <Badge variant={v.status === "blocked" ? "destructive" : "secondary"}>
+                      {v.status === "blocked" ? "Bloqué" : "Actif"}
+                    </Badge>
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-xs text-muted-foreground">Prochain entretien</p>
+                    <p className="font-medium">
+                      {v.next_maintenance_at
+                        ? format(new Date(v.next_maintenance_at), "d MMM yyyy", { locale: fr })
+                        : "Non planifié"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </li>
           ))}
         </ul>
       )}
 
-      {!MOCK_FLEET_USE_DEMO_DATA && canWriteFleet && (
+      {canWriteFleet && (
           <VehicleFormDialog
             open={isFormOpen}
             onOpenChange={setIsFormOpen}

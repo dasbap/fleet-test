@@ -5,7 +5,12 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import DashboardHeader from "./DashboardHeader";
 
 vi.mock("@/hooks/useAuth", () => ({
+  useAuth: vi.fn(() => ({ userFleetId: "fleet-test-1" })),
   signOut: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock("@/components/dashboard/DashboardVehicleSearch", () => ({
+  DashboardVehicleSearch: () => <div data-testid="dashboard-vehicle-search-mock" />,
 }));
 
 function renderHeader(props: {

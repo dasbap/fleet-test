@@ -8,6 +8,8 @@ import type { IRepository } from './base.repository';
 
 export interface VehicleFilters {
   fleet_id?: string;
+  status?: VehicleStatusDto;
+  search?: string;
 }
 
 export interface VehicleUpdate {
@@ -18,6 +20,10 @@ export interface VehicleUpdate {
   current_km?: number;
   status?: VehicleStatusDto;
   blocked_reason?: string | null;
+}
+
+export interface VehicleListItemDto extends VehicleDto {
+  next_maintenance_at: string | null;
 }
 
 /**
@@ -36,6 +42,13 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
     if (filters?.fleet_id) {
       query = query.eq('fleet_id', filters.fleet_id);
     }
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+    if (filters?.search) {
+      const search = `%${filters.search}%`;
+      query = query.or(`registration.ilike.${search},brand.ilike.${search},model.ilike.${search}`);
+    }
 
     const { data, error } = await query;
 
@@ -45,6 +58,81 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
     }
 
     return (data || []) as VehicleDto[];
+  }
+
+  /**
+   * Récupère les véhicules avec affectation active et prochain entretien.
+   */
+  async findListItems(filters?: VehicleFilters): Promise<VehicleListItemDto[]> {
+    let query = supabase
+      .from('vehicules')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (filters?.fleet_id) {
+      query = query.eq('fleet_id', filters.fleet_id);
+    }
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+    if (filters?.search) {
+      const search = `%${filters.search}%`;
+      query = query.or(`registration.ilike.${search},brand.ilike.${search},model.ilike.${search}`);
+    }
+
+    const { data: vehiclesData, error } = await query;
+
+    if (error) {
+      console.error('Error fetching vehicle list items:', error);
+      throw new Error(error.message);
+    }
+
+    const vehicles = (vehiclesData || []) as VehicleDto[];
+    const vehicleIds = vehicles.map((v) => v.id);
+
+    if (vehicleIds.length === 0) {
+      return [];
+    }
+
+    const { data: assignmentsData } = await supabase
+      .from('affectations_vehicules')
+      .select(`
+        id,
+        vehicle_id,
+        driver_user_id,
+        driver:profils!affectations_vehicules_driver_user_id_fkey(user_id, full_name)
+      `)
+      .in('vehicle_id', vehicleIds)
+      .eq('is_active', true);
+
+    const assignmentMap = new Map<string, unknown>();
+    (assignmentsData || []).forEach((a) => {
+      assignmentMap.set(a.vehicle_id, {
+        id: a.id,
+        driver_user_id: a.driver_user_id,
+        driver: a.driver,
+      });
+    });
+
+    const { data: maintenanceData } = await supabase
+      .from('travaux_maintenance')
+      .select('vehicle_id, planned_at')
+      .in('vehicle_id', vehicleIds)
+      .not('planned_at', 'is', null)
+      .order('planned_at', { ascending: true });
+
+    const nextMaintenanceMap = new Map<string, string>();
+    (maintenanceData || []).forEach((row) => {
+      if (!nextMaintenanceMap.has(row.vehicle_id) && row.planned_at) {
+        nextMaintenanceMap.set(row.vehicle_id, row.planned_at);
+      }
+    });
+
+    return vehicles.map((vehicle) => ({
+      ...vehicle,
+      active_assignment: (assignmentMap.get(vehicle.id) as VehicleDto['active_assignment']) || null,
+      next_maintenance_at: nextMaintenanceMap.get(vehicle.id) || null,
+    }));
   }
 
   /**
@@ -188,13 +276,13 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
         driver_user_id: assignmentRow.driver_user_id,
         driver,
       },
-    } as Vehicle;
+    } as VehicleDto;
   }
 
   /**
    * Crée un nouveau véhicule
    */
-  async create(vehicle: VehicleInsert): Promise<Vehicle> {
+  async create(vehicle: VehicleInsertDto): Promise<VehicleDto> {
     const { data, error } = await supabase
       .from('vehicules')
       .insert({

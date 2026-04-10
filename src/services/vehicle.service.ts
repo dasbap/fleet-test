@@ -1,6 +1,10 @@
 import { VehicleRepository } from '@/repositories/vehicle.repository';
-import type { VehicleDto, VehicleInsertDto } from '@/types/dto/vehicle.dto';
-import type { VehicleFilters, VehicleUpdate } from '@/repositories/vehicle.repository';
+import type { VehicleDto, VehicleInsertDto, VehicleStatusDto } from '@/types/dto/vehicle.dto';
+import type {
+  VehicleFilters,
+  VehicleListItemDto,
+  VehicleUpdate,
+} from '@/repositories/vehicle.repository';
 
 /**
  * Service pour la logique métier des véhicules
@@ -13,6 +17,20 @@ export class VehicleService {
    */
   async getVehicles(fleetId?: string): Promise<VehicleDto[]> {
     return this.repository.findAllWithAssignments(fleetId);
+  }
+
+  /**
+   * Récupère une liste de véhicules filtrable (statut + recherche) avec prochain entretien.
+   */
+  async getVehicleList(
+    filters?: VehicleFilters & { fleet_id?: string; status?: VehicleStatusDto; search?: string }
+  ): Promise<VehicleListItemDto[]> {
+    const normalizedFilters: VehicleFilters = {
+      ...filters,
+      search: filters?.search?.trim() || undefined,
+    };
+
+    return this.repository.findListItems(normalizedFilters);
   }
 
   /**
