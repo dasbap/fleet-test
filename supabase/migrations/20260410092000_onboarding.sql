@@ -1,6 +1,6 @@
 create table public.onboarding_progress (
   id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references organizations (id) on delete cascade,
+  org_id uuid not null references public.organisations (id) on delete cascade,
   user_id uuid not null references auth.users (id),
   step integer not null default 1,
   completed boolean not null default false,

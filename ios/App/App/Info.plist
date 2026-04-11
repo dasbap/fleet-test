@@ -68,5 +68,7 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Flotte E-Samba utilise Face ID pour déverrouiller l’application après une absence.</string>
 </dict>
 </plist>

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthProvider";
+import { AnalyticsUserSync } from "@/components/analytics/AnalyticsUserSync";
 
 const PushNotificationBridge = lazy(() =>
   import("@/components/mobile/PushNotificationBridge").then((module) => ({
@@ -12,6 +13,11 @@ const OfflinePendingSyncBridge = lazy(() =>
     default: module.OfflinePendingSyncBridge,
   }))
 );
+const BiometricLockBridge = lazy(() =>
+  import("@/components/mobile/BiometricLockBridge").then((module) => ({
+    default: module.BiometricLockBridge,
+  }))
+);
 
 /**
  * Sous-arbre nécessitant l'authentification applicative.
@@ -20,9 +26,11 @@ const OfflinePendingSyncBridge = lazy(() =>
 export default function AuthProviderLayout() {
   return (
     <AuthProvider>
+      <AnalyticsUserSync />
       <Suspense fallback={null}>
         <PushNotificationBridge />
         <OfflinePendingSyncBridge />
+        <BiometricLockBridge />
       </Suspense>
       <Outlet />
     </AuthProvider>

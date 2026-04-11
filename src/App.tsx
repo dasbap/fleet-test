@@ -4,6 +4,7 @@ import Providers from "@/components/Providers";
 import { PageSEO } from "@/components/PageSEO";
 import { BrowserRouter, Routes } from "react-router-dom";
 import { WebVitalsRouteSync } from "@/components/WebVitalsRouteSync";
+import { PostHogPageViewSync } from "@/components/analytics/PostHogPageViewSync";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { appRoutes } from "@/app/routes/app.routes";
 import { AppErrorFallback } from "@/components/errors/AppErrorFallback";
@@ -34,6 +35,7 @@ const App = () => (
         }}
       >
         <WebVitalsRouteSync />
+        <PostHogPageViewSync />
         <Suspense fallback={null}>
           <DeepLinkListener />
         </Suspense>

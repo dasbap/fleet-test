@@ -39,6 +39,30 @@ describe("FeedbackService", () => {
       user_id: "user-1",
       message: "Service top",
       rating: 4,
+      nps_trigger: null,
+      entity_id: null,
+      entity_type: null,
     });
+  });
+
+  it("remplace un message vide par une formulation « note seule »", async () => {
+    const repo = createRepositoryMock();
+    const service = new FeedbackService(repo as unknown as FeedbackRepository);
+
+    await service.submitFeedback({
+      fleetId: "fleet-1",
+      userId: "user-1",
+      message: "   ",
+      rating: 5,
+      npsTrigger: "manual",
+    });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Note seule : 5/5",
+        rating: 5,
+        nps_trigger: "manual",
+      }),
+    );
   });
 });

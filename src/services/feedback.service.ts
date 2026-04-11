@@ -1,3 +1,4 @@
+import type { FeedbackNpsTrigger } from "@/repositories/feedback.repository";
 import { FeedbackRepository } from "@/repositories/feedback.repository";
 
 export interface SubmitFeedbackInput {
@@ -5,6 +6,9 @@ export interface SubmitFeedbackInput {
   userId: string;
   message: string;
   rating: 1 | 2 | 3 | 4 | 5;
+  npsTrigger?: FeedbackNpsTrigger | null;
+  entityId?: string | null;
+  entityType?: "vehicle" | "maintenance" | "alert" | null;
 }
 
 export class FeedbackService {
@@ -19,9 +23,10 @@ export class FeedbackService {
       throw new Error("Utilisateur non authentifié.");
     }
 
-    const normalizedMessage = input.message.trim();
+    let normalizedMessage = input.message.trim();
     if (!normalizedMessage) {
-      throw new Error("Le message de feedback est requis.");
+      // Note seule : le message reste obligatoire côté base ; formulation explicite pour l’analyse.
+      normalizedMessage = `Note seule : ${input.rating}/5`;
     }
 
     if (input.rating < 1 || input.rating > 5) {
@@ -33,6 +38,9 @@ export class FeedbackService {
       user_id: input.userId,
       message: normalizedMessage,
       rating: input.rating,
+      nps_trigger: input.npsTrigger ?? null,
+      entity_id: input.entityId ?? null,
+      entity_type: input.entityType ?? null,
     });
   }
 }

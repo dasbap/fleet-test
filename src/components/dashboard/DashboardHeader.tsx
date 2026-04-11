@@ -15,7 +15,7 @@ import { Link } from "react-router-dom";
 import { signOut } from "@/lib/auth-actions";
 import type { AppRole } from "@/hooks/useAuth";
 import { useAuth } from "@/hooks/useAuth";
-import { DashboardVehicleSearch } from "@/components/dashboard/DashboardVehicleSearch";
+import { UniversalSearch } from "@/components/dashboard/UniversalSearch";
 
 interface DashboardHeaderProps {
   userRole: AppRole;
@@ -40,7 +40,7 @@ const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderPro
         <div className="flex items-center gap-4">
           <SidebarTrigger className="-ml-1" />
           
-          <DashboardVehicleSearch fleetId={userFleetId} />
+          <UniversalSearch fleetId={userFleetId} />
         </div>
 
         {/* Right */}

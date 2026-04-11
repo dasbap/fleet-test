@@ -48,7 +48,7 @@ exports[`DashboardHeader > correspond au snapshot (régression structure / thèm
           </span>
         </button>
         <div
-          data-testid="dashboard-vehicle-search-mock"
+          data-testid="universal-search-mock"
         />
       </div>
       <div

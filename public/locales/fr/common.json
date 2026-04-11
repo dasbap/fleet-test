@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "fleet": "Flotte",
+    "maintenance": "Entretiens",
+    "alerts": "Alertes",
+    "reports": "Rapports",
+    "settings": "Paramètres"
+  },
+  "actions": {
+    "add": "Ajouter",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "back": "Retour",
+    "next": "Suivant",
+    "close": "Fermer",
+    "plan": "Planifier",
+    "resolve": "Résoudre",
+    "export": "Exporter",
+    "search": "Rechercher"
+  },
+  "status": {
+    "active": "Actif",
+    "maintenance": "En entretien",
+    "inactive": "Inactif",
+    "resolved": "Résolu",
+    "pending": "En attente",
+    "overdue": "En retard"
+  },
+  "severity": {
+    "critical": "Critique",
+    "warning": "Alerte",
+    "info": "Info"
+  },
+  "empty": {
+    "noVehicles": "Aucun véhicule dans la flotte",
+    "noAlerts": "Aucune alerte active",
+    "noMaintenance": "Aucun entretien planifié"
+  },
+  "settingsPage": {
+    "title": "Paramètres",
+    "description": "Outils d'administration et configuration de votre espace E-Samba.",
+    "languageSectionTitle": "Langue",
+    "languageSectionDescription": "Choisissez la langue affichée dans l'interface. Le Lingala couvre surtout l'usage terrain (chauffeurs)."
+  },
+  "languageSwitcher": {
+    "ariaLabel": "Langue de l'interface"
+  },
+  "loading": "Chargement…",
+  "error": "Une erreur est survenue"
+}

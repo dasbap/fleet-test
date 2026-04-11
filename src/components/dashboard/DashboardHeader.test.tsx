@@ -12,8 +12,8 @@ vi.mock("@/lib/auth-actions", () => ({
   signOut: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock("@/components/dashboard/DashboardVehicleSearch", () => ({
-  DashboardVehicleSearch: () => <div data-testid="dashboard-vehicle-search-mock" />,
+vi.mock("@/components/dashboard/UniversalSearch", () => ({
+  UniversalSearch: () => <div data-testid="universal-search-mock" />,
 }));
 
 function renderHeader(props: {

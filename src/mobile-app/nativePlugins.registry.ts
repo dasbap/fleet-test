@@ -10,7 +10,8 @@ export type NativePluginId =
   | "preferences"
   | "share"
   | "app"
-  | "push_notifications";
+  | "push_notifications"
+  | "native_biometric";
 
 export interface NativePluginEntry {
   id: NativePluginId;
@@ -54,5 +55,10 @@ export const NATIVE_PLUGINS_REGISTRY: readonly NativePluginEntry[] = [
     id: "push_notifications",
     npmPackage: "@capacitor/push-notifications",
     purpose: "Alertes opérationnelles (bridge existant côté app)",
+  },
+  {
+    id: "native_biometric",
+    npmPackage: "@capgo/capacitor-native-biometric",
+    purpose: "Déverrouillage biométrique + stockage sécurisé du jeton de session (terrain)",
   },
 ] as const;

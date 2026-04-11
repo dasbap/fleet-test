@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import "@/pwa";
+import "@/i18n";
 import { reportWebVitals } from "./reportWebVitals";
-import { I18nProvider } from "@/i18n/useI18n";
+import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { preloadRouteChunksForPath } from "@/app/routes/preloadRouteChunks";
 
 // En dev : log des requêtes Supabase en échec (URL = table ou RPC) pour diagnostic
@@ -59,9 +61,9 @@ const bootstrap = async () => {
     preloadRouteChunksForPath(window.location.pathname);
     const { default: App } = await import("./App.tsx");
     createRoot(rootEl).render(
-      <I18nProvider>
+      <Suspense fallback={<RoutePageFallback />}>
         <App />
-      </I18nProvider>
+      </Suspense>
     );
     reportWebVitals();
   } catch (error) {

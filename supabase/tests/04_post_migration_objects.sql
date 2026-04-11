@@ -31,5 +31,9 @@ BEGIN
   IF to_regprocedure('public.rechercher_utilisateurs(text,integer)') IS NULL THEN
     RAISE EXCEPTION 'Objet manquant: RPC public.rechercher_utilisateurs(text,int)';
   END IF;
+
+  IF to_regproc('public.get_inactive_members_for_nudge(integer,integer)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: RPC public.get_inactive_members_for_nudge(integer,integer)';
+  END IF;
 END
 $$;

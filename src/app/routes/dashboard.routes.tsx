@@ -6,6 +6,7 @@ import {
   DASHBOARD_COLLECTIONS_ROLES,
   DASHBOARD_FINANCES_ROLES,
   DASHBOARD_HISTORY_ROLES,
+  DASHBOARD_RETENTION_ANALYTICS_ROLES,
   DASHBOARD_ROLES_HUB_ROLES,
 } from "@/navigation/dashboardRouteRoles";
 import { MODULE_ACCESS } from "@/navigation/dashboardRouteRoles";
@@ -19,6 +20,11 @@ const ShiftClosure = lazy(() => import("@/pages/ShiftClosure"));
 const Incidents = lazy(() => import("@/pages/Incidents"));
 const Maintenance = lazy(() => import("@/pages/Maintenance"));
 const Reports = lazy(() => import("@/pages/Reports"));
+const RetentionDashboard = lazy(() =>
+  import("@/features/analytics/screens/RetentionDashboard").then((m) => ({
+    default: m.RetentionDashboard,
+  })),
+);
 const Invitations = lazy(() => import("@/pages/Invitations"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Teams = lazy(() => import("@/pages/Teams"));
@@ -84,6 +90,14 @@ export const dashboardRoutes = (
       <Route path="incidents" element={<Incidents />} />
       <Route path="maintenance" element={<Maintenance />} />
       <Route path="reports" element={<Reports />} />
+      <Route
+        path="analytics/retention"
+        element={
+          <RoleGuard allow={DASHBOARD_RETENTION_ANALYTICS_ROLES}>
+            <RetentionDashboard />
+          </RoleGuard>
+        }
+      />
       <Route path="invitations" element={<Invitations />} />
       <Route path="settings" element={<Settings />} />
       <Route path="profile" element={<MobileAccountPage />} />

@@ -30,7 +30,9 @@ export type ModuleKey =
   /** Détail mission (fiche opérationnelle). */
   | "operations_mission_detail"
   /** Détail intervention atelier (ticket maintenance). */
-  | "operations_intervention_detail";
+  | "operations_intervention_detail"
+  /** Analytics rétention (vues Supabase agrégées par org). */
+  | "retention_analytics";
 
 /**
  * Matrice : module → rôles autorisés (AppRole / persistance).
@@ -49,6 +51,7 @@ export const MODULE_ACCESS: Record<ModuleKey, readonly AppRole[]> = {
   operations_hub: ["organizer", "manager", "driver", "mechanic"],
   operations_mission_detail: ["organizer", "manager", "driver"],
   operations_intervention_detail: ["organizer", "manager", "mechanic"],
+  retention_analytics: ["organizer"],
 };
 
 /** Rôles autorisés pour les routes dashboard (alias de la matrice). */
@@ -57,6 +60,7 @@ export const DASHBOARD_BACKOFFICE_ROLES = MODULE_ACCESS.backoffice;
 export const DASHBOARD_COLLECTIONS_ROLES = MODULE_ACCESS.collections;
 export const DASHBOARD_HISTORY_ROLES = MODULE_ACCESS.history_workshop;
 export const DASHBOARD_ROLES_HUB_ROLES = MODULE_ACCESS.roles_hub;
+export const DASHBOARD_RETENTION_ANALYTICS_ROLES = MODULE_ACCESS.retention_analytics;
 
 export function hasModuleAccess(
   role: AppRole | null | undefined,

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,9 +16,12 @@ import {
   ESAMBA_DEMO_ORG_NAME,
   ESAMBA_DEMO_VEHICLE_REGISTRATION,
 } from "@/constants/esamba-demo.constants";
-import { Settings as SettingsIcon, Zap, CheckCircle2, XCircle, RefreshCw, Users, Shield, UserCog, Car, Wrench, Phone, Loader2 } from "lucide-react";
+import { Settings as SettingsIcon, Zap, CheckCircle2, XCircle, RefreshCw, Users, Shield, UserCog, Car, Wrench, Phone, Loader2, Languages } from "lucide-react";
+import { BiometricLockSettingsCard } from "@/components/mobile/BiometricLockSettingsCard";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 
 const Settings = () => {
+  const { t } = useTranslation("common");
   const { user, userFleetId, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { data: verificationStatus, isLoading: isVerifying, refetch: refetchVerification } = useEsambaDataVerification();
@@ -109,13 +113,28 @@ const Settings = () => {
                 <div>
                   <h1 className="text-2xl md:text-3xl font-heading font-bold flex items-center gap-2">
                     <SettingsIcon className="h-7 w-7" />
-                    Paramètres
+                    {t("settingsPage.title")}
                   </h1>
                   <p className="text-muted-foreground mt-1">
-                    Outils d&apos;administration et configuration de votre espace E-Samba.
+                    {t("settingsPage.description")}
                   </p>
                 </div>
               </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Languages className="h-5 w-5" />
+                    {t("settingsPage.languageSectionTitle")}
+                  </CardTitle>
+                  <CardDescription>{t("settingsPage.languageSectionDescription")}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <LanguageSwitcher />
+                </CardContent>
+              </Card>
+
+              <BiometricLockSettingsCard />
 
               {/* Carte de seed ESAMBA */}
               <Card className="animate-fade-in">

@@ -30,6 +30,7 @@ export default defineConfig(({ mode }) => {
           if (n.includes("@supabase")) return "vendor-supabase";
           if (n.includes("@tanstack")) return "vendor-query";
           if (n.includes("@sentry")) return "vendor-observability";
+          if (n.includes("posthog-js")) return "vendor-analytics";
           if (n.includes("firebase")) return "vendor-firebase";
           /* jspdf / xlsx : pas de manualChunk dédié — sinon Rollup regroupe souvent __vitePreload avec ces libs
            * et Vite émet un modulepreload énorme sur la première page. Chargement uniquement via import() dynamique. */
@@ -58,60 +59,186 @@ export default defineConfig(({ mode }) => {
       injectRegister: "auto",
       includeAssets: ["favicon.svg", "robots.txt", "offline.html"],
       manifest: {
-        name: "E-Samba",
+        name: "E-Samba — Gestion de flotte",
         short_name: "E-Samba",
-        description: "Catalogue véhicules accessible même avec réseau instable",
+        description:
+          "Gestion intelligente de flotte · Afrique centrale — utilisable avec réseau instable",
+        lang: "fr",
         start_url: "/",
         display: "standalone",
-        background_color: "#ffffff",
-        theme_color: "#0f172a",
+        orientation: "portrait-primary",
+        background_color: "#0f172a",
+        theme_color: "#10b981",
         icons: [
           {
-            src: "/pwa-192x192.png",
+            src: "/icons/icon-192.webp",
             sizes: "192x192",
-            type: "image/png",
+            type: "image/webp",
           },
           {
-            src: "/pwa-512x512.png",
+            src: "/icons/icon-512.webp",
             sizes: "512x512",
-            type: "image/png",
+            type: "image/webp",
           },
           {
-            src: "/maskable-icon-512x512.png",
+            src: "/icons/icon-512.webp",
             sizes: "512x512",
-            type: "image/png",
+            type: "image/webp",
             purpose: "maskable",
+          },
+        ],
+        shortcuts: [
+          {
+            name: "Alertes",
+            short_name: "Alertes",
+            url: "/dashboard/alerts",
+            icons: [{ src: "/icons/icon-96.webp", sizes: "96x96", type: "image/webp" }],
+          },
+          {
+            name: "Ma flotte",
+            short_name: "Flotte",
+            url: "/dashboard/vehicles",
+            icons: [{ src: "/icons/icon-96.webp", sizes: "96x96", type: "image/webp" }],
           },
         ],
       },
       workbox: {
         cleanupOutdatedCaches: true,
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
+        skipWaiting: true,
+        clientsClaim: true,
+        globPatterns: [
+          "**/*.{js,css,html,ico,svg,woff2,webp}",
+          "icons/*.webp",
+        ],
+        globIgnores: ["**/node_modules/**", "**/.git/**"],
         sourcemap: false,
-        navigateFallback: "/offline.html",
+        // Shell SPA : navigations → index.html (offline.html reste dans includeAssets pour liens directs)
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
         runtimeCaching: [
+          // Polices Google — très stables
           {
-            urlPattern: ({ request }) => request.mode === "navigate",
-            handler: "NetworkFirst",
+            urlPattern: /^https:\/\/fonts\.(?:gstatic|googleapis)\.com\/.*/i,
+            handler: "CacheFirst",
             options: {
-              cacheName: "pages",
-              networkTimeoutSeconds: 4,
-              cacheableResponse: { statuses: [200] },
+              cacheName: "esamba-google-fonts",
+              cacheableResponse: { statuses: [0, 200] },
               expiration: {
                 maxEntries: 20,
+                maxAgeSeconds: 365 * 24 * 60 * 60,
+              },
+            },
+          },
+          // Auth Supabase — jamais de cache des jetons
+          {
+            urlPattern: ({ url }) =>
+              url.hostname.includes("supabase.co") &&
+              url.pathname.startsWith("/auth/"),
+            handler: "NetworkOnly",
+          },
+          // Liste véhicules — réseau d’abord, cache 24h (2G/3G)
+          {
+            urlPattern: ({ url }) =>
+              url.hostname.includes("supabase.co") &&
+              url.pathname.includes("/rest/v1/vehicules") &&
+              !/(?:^|&)id=eq\./.test(url.search),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "esamba-vehicules-liste",
+              networkTimeoutSeconds: 5,
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 24 * 60 * 60,
+              },
+            },
+          },
+          // Détail véhicule (id=eq.) — cache plus long
+          {
+            urlPattern: ({ url }) =>
+              url.hostname.includes("supabase.co") &&
+              url.pathname.includes("/rest/v1/vehicules") &&
+              /(?:^|&)id=eq\./.test(url.search),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "esamba-vehicule-detail",
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 14 * 24 * 60 * 60,
+              },
+            },
+          },
+          // Alertes — données volatiles
+          {
+            urlPattern: ({ url }) =>
+              url.hostname.includes("supabase.co") &&
+              url.pathname.startsWith("/rest/v1/alertes_automatiques"),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "esamba-alertes",
+              networkTimeoutSeconds: 3,
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 30 * 60,
+              },
+            },
+          },
+          // Maintenance — cache intermédiaire
+          {
+            urlPattern: ({ url }) =>
+              url.hostname.includes("supabase.co") &&
+              url.pathname.startsWith("/rest/v1/travaux_maintenance"),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "esamba-maintenance",
+              networkTimeoutSeconds: 4,
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: {
+                maxEntries: 300,
+                maxAgeSeconds: 12 * 60 * 60,
+              },
+            },
+          },
+          // Stockage Supabase (fichiers)
+          {
+            urlPattern: ({ url }) =>
+              url.hostname.includes("supabase.co") &&
+              url.pathname.startsWith("/storage/v1/"),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "esamba-storage",
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: {
+                maxEntries: 500,
                 maxAgeSeconds: 7 * 24 * 60 * 60,
               },
             },
           },
+          // Assets JS/CSS/worker
           {
             urlPattern: ({ request }) =>
               ["style", "script", "worker"].includes(request.destination),
             handler: "StaleWhileRevalidate",
             options: {
-              cacheName: "static-assets",
+              cacheName: "esamba-static-assets",
               cacheableResponse: { statuses: [200] },
               expiration: {
                 maxEntries: 100,
+                maxAgeSeconds: 30 * 24 * 60 * 60,
+              },
+            },
+          },
+          // Images par extension (y compris fetch sans destination "image")
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|webp|avif|svg|gif)$/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "esamba-images-ext",
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: {
+                maxEntries: 150,
                 maxAgeSeconds: 30 * 24 * 60 * 60,
               },
             },
@@ -120,52 +247,11 @@ export default defineConfig(({ mode }) => {
             urlPattern: ({ request }) => request.destination === "image",
             handler: "CacheFirst",
             options: {
-              cacheName: "vehicle-images",
-              cacheableResponse: { statuses: [200] },
+              cacheName: "esamba-images",
+              cacheableResponse: { statuses: [0, 200] },
               expiration: {
                 maxEntries: 400,
                 maxAgeSeconds: 60 * 24 * 60 * 60,
-              },
-            },
-          },
-          {
-            urlPattern: ({ url }) =>
-              url.pathname.includes("/rest/v1/vehicules") &&
-              !/(?:^|&)id=eq\./.test(url.search),
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-vehicles-list",
-              networkTimeoutSeconds: 5,
-              cacheableResponse: { statuses: [200] },
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 24 * 60 * 60,
-              },
-            },
-          },
-          {
-            urlPattern: ({ url }) =>
-              url.pathname.includes("/rest/v1/vehicules") &&
-              /(?:^|&)id=eq\./.test(url.search),
-            handler: "CacheFirst",
-            options: {
-              cacheName: "supabase-vehicle-detail",
-              cacheableResponse: { statuses: [200] },
-              expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 14 * 24 * 60 * 60,
-              },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.(?:gstatic|googleapis)\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "google-fonts",
-              cacheableResponse: { statuses: [0, 200] },
-              expiration: {
-                maxEntries: 20,
-                maxAgeSeconds: 365 * 24 * 60 * 60,
               },
             },
           },
@@ -173,6 +259,9 @@ export default defineConfig(({ mode }) => {
       },
       devOptions: {
         enabled: true,
+        type: "module",
+        navigateFallback: "/index.html",
+        suppressWarnings: true,
       },
     }),
   ],

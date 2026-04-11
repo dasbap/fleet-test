@@ -76,6 +76,10 @@ const baseAlert: DashboardAlert = {
 describe("useDashboard", () => {
   const wrapper = createQueryClientWrapper();
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetActiveAlerts.mockResolvedValue([baseAlert]);
@@ -141,8 +145,4 @@ describe("useDashboard", () => {
 
     expect(mockSubscribeToAlerts).not.toHaveBeenCalled();
   });
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
 });

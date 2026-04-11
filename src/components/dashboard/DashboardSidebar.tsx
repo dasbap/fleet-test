@@ -25,12 +25,14 @@ import {
   Settings,
   LogOut,
   BarChart3,
+  LineChart,
   Shield,
   Ticket,
 } from "lucide-react";
 import { signOut } from "@/lib/auth-actions";
 import { toast } from "@/hooks/use-toast";
 import { hasModuleAccess } from "@/auth/permissions";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 import type { AppRole } from "@/types/auth";
 
 interface DashboardSidebarProps {
@@ -50,6 +52,12 @@ const organizerNavCore = [
   { icon: Bell, label: "Alertes", href: "/dashboard/alerts" },
 ] as const;
 
+const organizerRetentionLink = {
+  icon: LineChart,
+  label: "Rétention",
+  href: ROUTE_PATHS.dashboardRetentionAnalytics,
+} as const;
+
 const organizerRolesLink = {
   icon: Shield,
   label: "Rôles",
@@ -62,6 +70,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
   const menuItems = {
     organizer: [
       ...organizerNavCore,
+      ...(hasModuleAccess(userRole, "retention_analytics") ? [organizerRetentionLink] : []),
       ...(hasModuleAccess(userRole, "roles_sidebar_link") ? [organizerRolesLink] : []),
     ],
     manager: [

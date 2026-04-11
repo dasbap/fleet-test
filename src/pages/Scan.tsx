@@ -68,7 +68,7 @@ export default function Scan() {
             <Input
               value={rawValue}
               onChange={(event) => setRawValue(event.target.value)}
-              placeholder="Ex: esamba://vehicle/{id}, VEH:AB-123-CD, PART:REF-001"
+              placeholder="Ex: https://www.e-samba.com/vehicule/{id}, esamba://vehicle/{id}, VEH:AB-123-CD"
             />
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={isLoading || !rawValue.trim()}>

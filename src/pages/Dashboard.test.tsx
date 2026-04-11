@@ -4,12 +4,22 @@ import { describe, expect, it, vi } from "vitest";
 import DashboardPage from "@/pages/Dashboard";
 
 vi.mock("@/hooks/useAuth", () => ({
-  useAuth: vi.fn(() => ({ orgId: "org-1", isLoading: false })),
+  useAuth: vi.fn(() => ({
+    orgId: "org-1",
+    userFleetId: "fleet-1",
+    user: {
+      id: "user-1",
+      created_at: "2020-01-01T00:00:00.000Z",
+      user_metadata: {},
+      email: "test@example.com",
+    },
+    isLoading: false,
+  })),
 }));
 
-vi.mock("@/hooks/useDashboardStats", () => ({
-  useDashboardKpis: vi.fn(() => ({
-    data: {
+vi.mock("@/hooks/useActionableDashboard", () => ({
+  useActionableDashboard: vi.fn(() => ({
+    kpis: {
       activeVehicles: 0,
       inMaintenance: 0,
       criticalAlerts: 0,
@@ -17,31 +27,25 @@ vi.mock("@/hooks/useDashboardStats", () => ({
       deltaCritical: 0,
       deltaActive: 0,
     },
-    isLoading: false,
-  })),
-}));
-
-vi.mock("@/hooks/useDashboard", () => ({
-  useDashboard: vi.fn(() => ({
     alerts: [],
-    loading: false,
     resolveAlert: vi.fn(),
+    scheduledJobs: [],
+    avgKm: 0,
+    todayRevenueXaf: 0,
+    totalVehicles: 0,
+    loading: false,
   })),
 }));
 
-vi.mock("@/components/dashboard/FleetTable", () => ({
-  FleetTable: () => <div>FleetTableMock</div>,
-}));
-
-vi.mock("@/components/dashboard/ActivityFeedSkeleton", () => ({
-  ActivityFeedSkeleton: () => <div data-testid="activity-feed-skeleton" />,
-}));
-vi.mock("@/components/dashboard/ActivityFeed", () => ({
-  ActivityFeed: () => <div>ActivityFeedMock</div>,
-}));
-
-vi.mock("@/components/dashboard/FunnelTelemetryCard", () => ({
-  FunnelTelemetryCard: () => <div>FunnelTelemetryCardMock</div>,
+vi.mock("@/hooks/useFeedbackPrompt", () => ({
+  useFeedbackPrompt: () => ({
+    show: false,
+    trigger: "manual" as const,
+    entityId: undefined,
+    entityType: undefined,
+    dismiss: vi.fn(),
+    fire: vi.fn(),
+  }),
 }));
 
 describe("DashboardPage", () => {
@@ -52,8 +56,8 @@ describe("DashboardPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("button", { name: "Ajouter mon véhicule" })).toBeInTheDocument();
-    expect(screen.getByText(/activer le suivi/i)).toBeInTheDocument();
-    expect(screen.getByText("Valeur activée")).toBeInTheDocument();
+    expect(await screen.findByText(/Bienvenue/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ajouter maintenant" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tableau de bord" })).toBeInTheDocument();
   });
 });

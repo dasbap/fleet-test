@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { enableDemoAuthFallback, isMockAuthEnabled } from "@/lib/authMode";
+import { clearBiometricLockStorage } from "@/services/biometric-lock.service";
 import { normalizeLoginRole } from "@/lib/mobile/mobileRoleBridge";
 import { mockAuthService } from "@/services/mock-auth.service";
 import type { AppRole } from "@/types/auth";
@@ -116,6 +117,11 @@ export async function signOut() {
     mockAuthService.clearSession();
     notifyMockAuthChanged();
     return { error: null };
+  }
+  try {
+    await clearBiometricLockStorage();
+  } catch {
+    /* non bloquant */
   }
   const { error } = await supabase.auth.signOut();
   return { error };

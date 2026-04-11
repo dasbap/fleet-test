@@ -62,4 +62,40 @@ describe("DashboardAlertService", () => {
     expect(repo.resolveById).toHaveBeenCalledWith("a1");
     expect(repo.invokeAction).toHaveBeenCalledWith("book", { workshopId: "w1" });
   });
+
+  it("mapRealtimePayloadToAlert mappe une ligne Realtime vers le domaine", () => {
+    const repo = createDashboardAlertRepositoryMock();
+    const service = new DashboardAlertService(
+      repo as unknown as DashboardAlertRepository,
+    );
+    const row = {
+      id: "a1",
+      plate: "AB-123",
+      message: "Test",
+      severity: "warning" as const,
+      type: "oil" as const,
+      created_at: "2026-04-10T10:00:00Z",
+      resolved_at: null,
+      vehicle_id: "v1",
+      vehicle_name: "Toyota",
+      action: { kind: "schedule" as const, label: "Planifier", payload: {} },
+      org_id: "org-1",
+    };
+
+    const alert = service.mapRealtimePayloadToAlert(row);
+
+    expect(alert.id).toBe("a1");
+    expect(alert.vehicleId).toBe("v1");
+  });
+
+  it("mapRealtimePayloadToAlert rejette un payload invalide", () => {
+    const repo = createDashboardAlertRepositoryMock();
+    const service = new DashboardAlertService(
+      repo as unknown as DashboardAlertRepository,
+    );
+
+    expect(() => service.mapRealtimePayloadToAlert(null)).toThrow(
+      "Payload Realtime alerte invalide",
+    );
+  });
 });

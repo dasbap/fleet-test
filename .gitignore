@@ -39,6 +39,9 @@ dist-ssr
 .cursor/*
 !.cursor/mcp.json
 
+# Lighthouse CI (sorties locales de lhci autorun)
+.lighthouseci
+
 # Rapports de test temporaires
 TEST-REPORT-*.json
 !.cursor/rules/

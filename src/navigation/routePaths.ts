@@ -24,6 +24,8 @@ export const ROUTE_PATHS = {
     `/dashboard/operations/intervention/${ticketId}` as const,
   dashboardShiftClosure: "/dashboard/closure",
   dashboardReports: "/dashboard/reports",
+  /** Analytics rétention (organisateur). */
+  dashboardRetentionAnalytics: "/dashboard/analytics/retention",
   dashboardInvitations: "/dashboard/invitations",
   dashboardTeams: "/dashboard/teams",
   dashboardProfile: "/dashboard/profile",

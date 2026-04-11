@@ -1,5 +1,45 @@
 import { ScanRepository } from "@/repositories/scan.repository";
 
+const ESAMBA_PUBLIC_HOST = "e-samba.com";
+
+function normalizeHostname(host: string): string {
+  return host.replace(/^www\./i, "").toLowerCase();
+}
+
+/**
+ * Extrait l'identifiant véhicule depuis une URL publique du site (QR marketing).
+ * Hostname autorisé : e-samba.com (avec ou sans www).
+ */
+export function tryExtractVehicleIdFromPublicEsambaUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    try {
+      const withScheme = trimmed.startsWith("//")
+        ? `https:${trimmed}`
+        : trimmed.includes("://")
+          ? trimmed
+          : `https://${trimmed}`;
+      url = new URL(withScheme);
+    } catch {
+      return null;
+    }
+  }
+
+  if (normalizeHostname(url.hostname) !== ESAMBA_PUBLIC_HOST) {
+    return null;
+  }
+
+  const match = url.pathname.match(/\/vehicule\/([^/?#]+)/i);
+  if (!match?.[1]) return null;
+  const id = decodeURIComponent(match[1].trim());
+  return id || null;
+}
+
 export type ScanTarget =
   | { kind: "vehicle"; vehicleId?: string; registration?: string }
   | { kind: "part"; partRef: string };
@@ -17,6 +57,11 @@ export class ScanService {
     const raw = rawValue.trim();
     if (!raw) {
       throw new Error("Le code scanné est vide.");
+    }
+
+    const fromPublicUrl = tryExtractVehicleIdFromPublicEsambaUrl(raw);
+    if (fromPublicUrl) {
+      return { kind: "vehicle", vehicleId: fromPublicUrl };
     }
 
     if (raw.startsWith("esamba://vehicle/")) {
