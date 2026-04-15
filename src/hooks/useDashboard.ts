@@ -5,6 +5,7 @@ import { DashboardAlertRepository } from "@/repositories/dashboard-alert.reposit
 import type { DashboardAlert } from "@/types/dashboard";
 import { useTrackFunnelEvent } from "@/hooks/useFunnelTelemetry";
 import { useRealtimeWorker } from "@/hooks/useRealtimeWorker";
+import { dashboardRealtimeInvalidationService } from "@/services/dashboard-realtime-invalidation.service";
 
 const dashboardAlertRepository = new DashboardAlertRepository();
 const dashboardAlertService = new DashboardAlertService(dashboardAlertRepository);
@@ -47,7 +48,7 @@ export function useDashboard(orgId: string) {
             try {
               const alert = dashboardAlertService.mapRealtimePayloadToAlert(msg.payload);
               setAlerts((prev) => [alert, ...prev]);
-              void queryClient.invalidateQueries({ queryKey: ["dashboard-kpis", orgId] });
+              dashboardRealtimeInvalidationService.scheduleKpiRefresh(queryClient, orgId);
             } catch {
               /* payload ignoré */
             }
@@ -56,7 +57,7 @@ export function useDashboard(orgId: string) {
             try {
               const alert = dashboardAlertService.mapRealtimePayloadToAlert(msg.payload);
               setAlerts((prev) => prev.map((a) => (a.id === alert.id ? alert : a)));
-              void queryClient.invalidateQueries({ queryKey: ["dashboard-kpis", orgId] });
+              dashboardRealtimeInvalidationService.scheduleKpiRefresh(queryClient, orgId);
             } catch {
               /* payload ignoré */
             }
@@ -76,6 +77,13 @@ export function useDashboard(orgId: string) {
   });
 
   useEffect(() => {
+    if (!orgId) return;
+    return () => {
+      dashboardRealtimeInvalidationService.clear(orgId);
+    };
+  }, [orgId]);
+
+  useEffect(() => {
     if (!orgId || isSharedWorkerAvailable()) {
       return;
     }
@@ -83,15 +91,16 @@ export function useDashboard(orgId: string) {
     const channel = dashboardAlertService.subscribeToAlerts(orgId, {
       onInsert: (alert) => {
         setAlerts((prev) => [alert, ...prev]);
-        void queryClient.invalidateQueries({ queryKey: ["dashboard-kpis", orgId] });
+        dashboardRealtimeInvalidationService.scheduleKpiRefresh(queryClient, orgId);
       },
       onUpdate: (alert) => {
         setAlerts((prev) => prev.map((a) => (a.id === alert.id ? alert : a)));
-        void queryClient.invalidateQueries({ queryKey: ["dashboard-kpis", orgId] });
+        dashboardRealtimeInvalidationService.scheduleKpiRefresh(queryClient, orgId);
       },
     });
 
     return () => {
+      dashboardRealtimeInvalidationService.clear(orgId);
       dashboardAlertService.unsubscribe(channel);
     };
   }, [orgId, queryClient]);

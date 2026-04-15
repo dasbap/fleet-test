@@ -58,6 +58,9 @@ jobs:
       - name: Build (capacitor mode)
         run: npm run build:capacitor
 
+      - name: Vérifier dist/ (artefacts minimaux)
+        run: npm run verify:dist
+
       - name: Capacitor sync
         run: npm run cap:sync
 

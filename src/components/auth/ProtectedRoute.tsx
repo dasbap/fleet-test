@@ -15,7 +15,7 @@ export function ProtectedRoute() {
     <RequireAuth>
       {access.state === 'loading' && <PageLoader />}
       {access.state === 'unauth' && <Navigate to="/auth" replace />}
-      {access.state === 'onboarding' && <Navigate to="/onboarding" replace />}
+      {access.state === 'onboarding' && <Navigate to="/start" replace />}
       {access.state === 'ready' && <Outlet />}
     </RequireAuth>
   );

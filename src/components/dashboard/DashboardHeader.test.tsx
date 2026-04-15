@@ -5,7 +5,11 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import DashboardHeader from "./DashboardHeader";
 
 vi.mock("@/hooks/useAuth", () => ({
-  useAuth: vi.fn(() => ({ userFleetId: "fleet-test-1" })),
+  useAuth: vi.fn(() => ({
+    userFleetId: "fleet-test-1",
+    tenantOptions: [],
+    setActiveFleetId: vi.fn(),
+  })),
 }));
 
 vi.mock("@/lib/auth-actions", () => ({
@@ -14,6 +18,10 @@ vi.mock("@/lib/auth-actions", () => ({
 
 vi.mock("@/components/dashboard/UniversalSearch", () => ({
   UniversalSearch: () => <div data-testid="universal-search-mock" />,
+}));
+
+vi.mock("@/features/account/hooks/useNetworkOnline", () => ({
+  useNetworkOnline: vi.fn(() => true),
 }));
 
 function renderHeader(props: {

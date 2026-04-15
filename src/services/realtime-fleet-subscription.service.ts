@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { notifyManager } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimeFleetRepository } from "@/repositories/realtime-fleet.repository";
 import { RealtimeNotificationService } from "@/services/realtime-notification.service";
@@ -8,6 +9,13 @@ const realtimeNotificationService = new RealtimeNotificationService(realtimeFlee
 
 /** Délai de fusion des invalidations React Query (réduit le travail main thread). */
 const INVALIDATION_BATCH_MS = 120;
+const BROAD_INVALIDATION_FAMILIES = new Set([
+  "dashboard",
+  "alerts",
+  "recent-activity",
+  "dashboard-kpis",
+  "dashboard-stats",
+]);
 
 export type RealtimeToastPayload = {
   title: string;
@@ -25,27 +33,39 @@ export interface RealtimeFleetSubscriptionHandlers {
  */
 export class RealtimeFleetSubscriptionService {
   subscribe(fleetId: string, queryClient: QueryClient, handlers: RealtimeFleetSubscriptionHandlers): () => void {
-    const pendingKeys = new Set<string>();
+    const pendingKeys = new Map<string, readonly unknown[]>();
+    const pendingFamilies = new Set<string>();
     let flushTimer: number | null = null;
 
     const flushInvalidations = () => {
       flushTimer = null;
-      if (pendingKeys.size === 0) return;
-      const keys: string[][] = [];
-      pendingKeys.forEach((serialized) => {
-        keys.push(JSON.parse(serialized) as string[]);
-      });
+      if (pendingKeys.size === 0 && pendingFamilies.size === 0) return;
+      const keys = [...pendingKeys.values()];
+      const families = [...pendingFamilies];
       pendingKeys.clear();
-      keys.forEach((key) => {
-        void queryClient.invalidateQueries({ queryKey: key });
+      pendingFamilies.clear();
+      notifyManager.batch(() => {
+        families.forEach((family) => {
+          void queryClient.invalidateQueries({ queryKey: [family] });
+        });
+        keys.forEach((key) => {
+          const family = typeof key[0] === "string" ? key[0] : null;
+          if (family && families.includes(family)) return;
+          void queryClient.invalidateQueries({ queryKey: key });
+        });
       });
     };
 
     const scheduleInvalidation = (invalidateKeys: string[][]) => {
       invalidateKeys.forEach((key) => {
-        const normalized = key.filter(Boolean);
+        const normalized = key.filter((part) => part !== null && part !== undefined);
         if (normalized.length > 0) {
-          pendingKeys.add(JSON.stringify(normalized));
+          const family = typeof normalized[0] === "string" ? normalized[0] : null;
+          if (family && BROAD_INVALIDATION_FAMILIES.has(family)) {
+            pendingFamilies.add(family);
+            return;
+          }
+          pendingKeys.set(JSON.stringify(normalized), normalized);
         }
       });
       if (flushTimer !== null) return;
@@ -66,6 +86,79 @@ export class RealtimeFleetSubscriptionService {
           queueMicrotask(() => handlers.onToast(toastPayload));
         }
         scheduleInvalidation(result.invalidateKeys);
+      },
+    );
+
+    channel.on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "alertes_automatiques" },
+      async (payload) => {
+        const row = payload.new as {
+          fleet_id?: string;
+          message?: string;
+          alert_type?: string;
+        };
+        if (!row.fleet_id || row.fleet_id !== fleetId) {
+          return;
+        }
+
+        if (row.alert_type === "geofence_exit") {
+          queueMicrotask(() =>
+            handlers.onToast({
+              title: "Alerte geofence",
+              description: row.message ?? "Un véhicule est sorti d'une zone surveillée.",
+              variant: "destructive",
+            }),
+          );
+        }
+
+        scheduleInvalidation([
+          ["alerts"],
+          ["alerts-list"],
+          ["dashboard"],
+        ]);
+      },
+    );
+
+    channel.on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "vehicle_positions_latest" },
+      async (payload) => {
+        const row = payload.new as { fleet_id?: string; vehicle_id?: string };
+        if (!row.fleet_id || row.fleet_id !== fleetId) {
+          return;
+        }
+
+        scheduleInvalidation([
+          ["vehicle-positions-live", fleetId],
+          ["dashboard"],
+        ]);
+      },
+    );
+
+    channel.on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "geofence_events" },
+      async (payload) => {
+        const row = payload.new as { fleet_id?: string; event_type?: string; vehicle_id?: string };
+        if (!row.fleet_id || row.fleet_id !== fleetId) {
+          return;
+        }
+
+        if (row.event_type === "exit") {
+          queueMicrotask(() =>
+            handlers.onToast({
+              title: "Sortie de zone détectée",
+              description: `Le véhicule ${row.vehicle_id ?? "inconnu"} est sorti d'une zone.`,
+              variant: "destructive",
+            }),
+          );
+        }
+
+        scheduleInvalidation([
+          ["geofence-events", fleetId, 10],
+          ["alerts"],
+        ]);
       },
     );
 
@@ -143,6 +236,7 @@ export class RealtimeFleetSubscriptionService {
         flushTimer = null;
       }
       pendingKeys.clear();
+      pendingFamilies.clear();
       void supabase.removeChannel(channel);
     };
   }

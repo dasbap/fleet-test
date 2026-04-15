@@ -36,6 +36,7 @@ describe("DashboardSidebar", () => {
     { name: /Équipes/i, href: "/dashboard/teams" },
     { name: /Invitations/i, href: "/dashboard/invitations" },
     { name: /Rapports/i, href: "/dashboard/reports" },
+    { name: /Suivi GPS/i, href: "/dashboard/tracking" },
     { name: /Finances/i, href: "/dashboard/finances" },
     { name: /Alertes/i, href: "/dashboard/alerts" },
     { name: /Rôles/i, href: "/dashboard/roles" },

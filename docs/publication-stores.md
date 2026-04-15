@@ -4,6 +4,17 @@ Ce document décrit la configuration du dépôt pour produire des livrables stor
 
 **Identifiant d’application** : `com.esamba.flotte` (voir [`capacitor.config.ts`](../capacitor.config.ts)).
 
+## Checklist publication Play (étapes console)
+
+Ordre suggéré pour aligner le plan local et la console Google :
+
+1. **Compte développeur** : créer le compte [Google Play Console](https://play.google.com/console), payer la redevance unique (25 USD) et compléter le profil développeur.
+2. **Signature release** : `npm run setup:android-keystore` (ou keystore manuel + `android/keystore.properties`) — ne jamais commiter le `.jks` ni les mots de passe.
+3. **AAB** : `npm run android:bundle` — sortie attendue : `android/app/build/outputs/bundle/release/app-release.aab`.
+4. **Créer l’application** dans la console (`com.esamba.flotte`) ; privilégier une **piste de test interne** pour le premier upload, puis promouvoir vers la production.
+5. **Présentation sur le Play Store** : importer les visuels depuis `store-assets/google-play/` (`npm run store:screenshots`) — icône 512, graphique principal 1024×500, captures téléphone ; vérifier les dimensions affichées dans la console au moment de la soumission.
+6. **Conformité** : URL de **politique de confidentialité**, formulaire **Sécurité des données**, **groupe de contenu** / cible d’âge, et autres questionnaires obligatoires jusqu’à ce que la fiche affiche « prêt à être examiné ».
+
 ## Prérequis communs
 
 - Compte **Google Play Console** (accès à l’app ou création d’une fiche application).
@@ -68,11 +79,13 @@ npm run mobile:sync-version -- --build 42
    npm run mobile:prepare
    ```
 
-4. Générer l’AAB :
+4. Générer l’AAB (depuis la racine du dépôt, inclut `mobile:prepare`) :
 
    ```bash
-   cd android && ./gradlew bundleRelease
+   npm run android:bundle
    ```
+
+   Équivalent manuel : `npm run mobile:prepare` puis `cd android` et `./gradlew bundleRelease` (Linux/macOS) ou `gradlew.bat bundleRelease` (Windows).
 
    Fichier attendu : `android/app/build/outputs/bundle/release/app-release.aab`.
 
@@ -84,12 +97,33 @@ npm run mobile:sync-version -- --build 42
 
 Fichier : [`.github/workflows/release-android.yml`](../.github/workflows/release-android.yml).
 
+#### Obligatoires (signature + bundle connecté à Supabase)
+
 | Secret | Description |
 |--------|-------------|
 | `ANDROID_KEYSTORE_BASE64` | Contenu du fichier `.jks` encodé en base64 (une ligne). |
 | `ANDROID_STORE_PASSWORD` | Mot de passe du keystore (`storePassword`). |
 | `ANDROID_KEY_PASSWORD` | Mot de passe de la clé (`keyPassword`). |
 | `ANDROID_KEY_ALIAS` | Alias de la clé (ex. `upload`). |
+| `VITE_SUPABASE_URL` | URL du projet Supabase (même valeur qu’en prod dans `.env.local`). |
+| `VITE_SUPABASE_ANON_KEY` | Clé anon Supabase (publique, embarquée dans l’app). |
+
+Sans `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY`, le workflow **échoue** : l’AAB doit refléter la prod, pas des placeholders de CI.
+
+#### Optionnels (recommandés pour test interne / monitoring)
+
+| Secret | Description |
+|--------|-------------|
+| `VITE_SENTRY_DSN` | DSN Sentry — erreurs JS dans le WebView ([`src/instrument.ts`](../src/instrument.ts)). |
+| `VITE_APP_URL` | URL publique du site (canonical, og:url). |
+| `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` | Analytics produit (voir [`src/lib/analytics.ts`](../src/lib/analytics.ts)). |
+| `VITE_FIREBASE_*` | Push Web / FCM côté client (voir [`.env.example`](../.env.example)). |
+
+`VITE_APP_VERSION` est définie automatiquement dans le workflow à partir de `package.json` (pas besoin de secret).
+
+**Build local (AAB sans GitHub)** : copier [`.env.example`](../.env.example) vers `.env.local`, renseigner au minimum `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` et idéalement `VITE_SENTRY_DSN`, puis `npm run mobile:prepare` et `bundleRelease` comme ci-dessus.
+
+**Phases test interne / fermé, Sentry, P0** : voir [`docs/rollout-beta-stores.md`](rollout-beta-stores.md).
 
 Encodage local du keystore (exemple) :
 
@@ -102,6 +136,8 @@ base64 -w 0 android/upload-keystore.jks
 ```
 
 Déclencheurs : **workflow manuel** (`workflow_dispatch`) ou **tag** `v*` (ex. `v0.2.0`). L’artefact `app-release-aab` est disponible dans l’onglet Actions.
+
+Pour définir les secrets `VITE_*` sans passer par l’interface web : `gh secret set VITE_SUPABASE_URL --body "https://…"` (idem pour `VITE_SUPABASE_ANON_KEY`, `VITE_SENTRY_DSN`, etc.), en reprenant les valeurs de votre `.env.local` de production.
 
 ## App Store Connect — build local
 
@@ -133,4 +169,6 @@ Pour automatiser archive + upload, il faudra des certificats, profils et souvent
 ## Références internes
 
 - Build web Capacitor en CI : [`.github/workflows/build-capacitor.yml`](../.github/workflows/build-capacitor.yml)
+- Rollout test interne / fermé, Sentry, P0 : [`docs/rollout-beta-stores.md`](rollout-beta-stores.md)
+- Rollout production combiné (web Vercel + stores, surveillance, paliers) : [`rollout-production-web-mobile.md`](rollout-production-web-mobile.md)
 - Liens profonds : [`docs/deep-links-esamba.md`](deep-links-esamba.md)

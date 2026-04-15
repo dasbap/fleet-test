@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, CheckCircle2, Clock, Wrench, FileWarning } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRecentActivity } from "@/hooks/useDashboardStats";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ActivityFeedSkeleton } from "@/components/dashboard/ActivityFeedSkeleton";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { EmptyState } from "@/components/mobile/ui";
@@ -32,26 +32,7 @@ const RecentActivity = () => {
   const { data: activities, isLoading } = useRecentActivity();
 
   if (isLoading) {
-    return (
-      <Card className="h-full min-h-[26rem]">
-        <CardHeader>
-          <CardTitle className="font-heading">Activité récente</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-start gap-3 p-3">
-                <Skeleton className="w-8 h-8 rounded-full" />
-                <div className="flex-1">
-                  <Skeleton className="h-4 w-32 mb-2" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ActivityFeedSkeleton />;
   }
 
   return (

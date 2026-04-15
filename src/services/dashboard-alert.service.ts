@@ -5,9 +5,19 @@ import {
   mapDashboardAlertRowToDomain,
   type DashboardAlertRow,
 } from "@/repositories/dashboard-alert.repository";
+import {
+  sendWhatsappEdgeService,
+  type SendWhatsappEdgeService,
+  type SendWhatsappInput,
+} from "@/services/send-whatsapp-edge.service";
+import type { WhatsappTemplateName } from "@/constants/whatsapp-templates";
+import { getDashboardWhatsappTemplate } from "@/constants/whatsapp-template-mapping";
 
 export class DashboardAlertService {
-  constructor(private repository: DashboardAlertRepository) {}
+  constructor(
+    private repository: DashboardAlertRepository,
+    private whatsappService: SendWhatsappEdgeService = sendWhatsappEdgeService,
+  ) {}
 
   async getActiveAlerts(orgId: string): Promise<DashboardAlert[]> {
     if (!orgId) return [];
@@ -29,6 +39,7 @@ export class DashboardAlertService {
       this.repository.resolveById(alertId),
       this.repository.invokeAction(action.kind, action.payload),
     ]);
+    await this.notifyWhatsappForDashboardAction(alertId, action);
   }
 
   subscribeToAlerts(
@@ -58,5 +69,58 @@ export class DashboardAlertService {
       throw new Error("Payload Realtime alerte invalide");
     }
     return mapDashboardAlertRowToDomain(row);
+  }
+
+  private async notifyWhatsappForDashboardAction(
+    alertId: string,
+    action: DashboardAlert["action"],
+  ): Promise<void> {
+    const payload = action.payload as Record<string, unknown>;
+    const fleetId =
+      typeof payload.fleetId === "string"
+        ? payload.fleetId
+        : typeof payload.orgId === "string"
+          ? payload.orgId
+          : null;
+
+    if (!fleetId) {
+      return;
+    }
+
+    const recipientUserId =
+      typeof payload.recipientUserId === "string" ? payload.recipientUserId : undefined;
+    const recipientPhone =
+      typeof payload.recipientPhone === "string" ? payload.recipientPhone : undefined;
+
+    if (!recipientUserId && !recipientPhone) {
+      return;
+    }
+
+    const templateName = this.resolveDashboardTemplate(action.kind);
+    if (!templateName) {
+      return;
+    }
+
+    const whatsappPayload: SendWhatsappInput = {
+      fleetId,
+      alertId,
+      recipientUserId,
+      recipientPhone,
+      templateName,
+      languageCode: "fr",
+      variables: [],
+    };
+
+    try {
+      await this.whatsappService.send(whatsappPayload);
+    } catch (error) {
+      console.warn("[DashboardAlertService] Envoi WhatsApp ignoré:", error);
+    }
+  }
+
+  private resolveDashboardTemplate(
+    kind: DashboardAlert["action"]["kind"],
+  ): WhatsappTemplateName | null {
+    return getDashboardWhatsappTemplate(kind);
   }
 }

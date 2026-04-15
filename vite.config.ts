@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { visualizer } from "rollup-plugin-visualizer";
 import { VitePWA } from "vite-plugin-pwa";
 import { prerenderSeoPlugin } from "./scripts/vite-plugin-prerender-seo";
 
@@ -16,6 +17,17 @@ export default defineConfig(({ mode }) => {
   build: {
     sourcemap: false,
     rollupOptions: {
+      plugins:
+        mode === "analyze"
+          ? [
+              visualizer({
+                filename: path.resolve(__dirname, "dist/stats.html"),
+                template: "treemap",
+                gzipSize: true,
+                brotliSize: false,
+              }),
+            ]
+          : [],
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
@@ -32,10 +44,12 @@ export default defineConfig(({ mode }) => {
           if (n.includes("@sentry")) return "vendor-observability";
           if (n.includes("posthog-js")) return "vendor-analytics";
           if (n.includes("firebase")) return "vendor-firebase";
+          if (n.includes("mapbox-gl")) return "vendor-maps";
           /* jspdf / xlsx : pas de manualChunk dédié — sinon Rollup regroupe souvent __vitePreload avec ces libs
            * et Vite émet un modulepreload énorme sur la première page. Chargement uniquement via import() dynamique. */
           if (n.includes("recharts")) return "vendor-charts";
           if (n.includes("date-fns")) return "vendor-date-fns";
+          if (n.includes("qrcode")) return "vendor-qrcode";
           if (n.includes("@radix-ui")) return "vendor-radix";
         },
       },

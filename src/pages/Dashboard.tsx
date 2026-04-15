@@ -1,19 +1,62 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActionableDashboard } from "@/hooks/useActionableDashboard";
 import { ActionableDashboard, ActionableDashboardSkeleton } from "@/components/dashboard/ActionableDashboard";
-import { EmptyStateDashboard } from "@/components/dashboard/EmptyStateDashboard";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeedbackPrompt } from "@/hooks/useFeedbackPrompt";
-import { FeedbackWidget } from "@/components/shared/FeedbackWidget";
 import type { DashboardAlert } from "@/types/dashboard";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 const J30_DONE_KEY = "esamba_feedback_j30_done";
+
+/** Bloc secondaire chargé à la demande (INP : moins de JS sur le chemin critique). */
+const EmptyStateDashboardLazy = lazy(() =>
+  import("@/components/dashboard/EmptyStateDashboard").then((m) => ({ default: m.EmptyStateDashboard })),
+);
+const FailureRiskPanelLazy = lazy(() =>
+  import("@/components/dashboard/FailureRiskPanel").then((m) => ({ default: m.FailureRiskPanel })),
+);
+const WhatsappMonitoringPanelLazy = lazy(() =>
+  import("@/components/dashboard/WhatsappMonitoringPanel").then((m) => ({ default: m.WhatsappMonitoringPanel })),
+);
+const FeedbackWidgetLazy = lazy(() =>
+  import("@/components/shared/FeedbackWidget").then((m) => ({ default: m.FeedbackWidget })),
+);
+
+function EmptyStateDashboardFallback() {
+  return (
+    <div className="rounded-card border border-surface-raised bg-surface p-6 space-y-4 min-h-[12rem]">
+      <Skeleton className="h-8 w-48 mx-auto rounded-md" />
+      <Skeleton className="h-4 w-full max-w-md mx-auto" />
+      <div className="flex flex-wrap gap-2 justify-center">
+        <Skeleton className="h-10 w-32 rounded-card" />
+        <Skeleton className="h-10 w-32 rounded-card" />
+      </div>
+    </div>
+  );
+}
+
+function SecondaryPanelFallback() {
+  return (
+    <Card className="min-h-[20rem]">
+      <CardHeader>
+        <Skeleton className="h-6 w-48" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-3/4" />
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, userFleetId, isLoading: authLoading } = useAuth();
   const actionable = useActionableDashboard();
+  const { alerts, resolveAlert } = actionable;
 
   const feedbackPrompt = useFeedbackPrompt({
     userId: user?.id ?? "",
@@ -31,13 +74,13 @@ export default function DashboardPage() {
 
   const resolveAlertWithFeedback = useCallback(
     async (alertId: string, action: DashboardAlert["action"]) => {
-      const row = actionable.alerts.find((a) => a.id === alertId);
-      await actionable.resolveAlert(alertId, action);
+      const row = alerts.find((a) => a.id === alertId);
+      await resolveAlert(alertId, action);
       if (row?.severity === "critical" && user?.id && userFleetId) {
         feedbackPrompt.fire("alert_resolved", alertId, "alert");
       }
     },
-    [actionable.alerts, actionable.resolveAlert, feedbackPrompt, user?.id, userFleetId],
+    [alerts, resolveAlert, feedbackPrompt, user?.id, userFleetId],
   );
 
   useEffect(() => {
@@ -59,7 +102,7 @@ export default function DashboardPage() {
     return undefined;
   }, [user]);
 
-  if (authLoading || actionable.loading || !actionable.kpis) {
+  if (authLoading || actionable.coreLoading || !actionable.kpis) {
     return (
       <div className="p-6 space-y-5">
         <ActionableDashboardSkeleton />
@@ -81,27 +124,37 @@ export default function DashboardPage() {
         onNavigateMaintenance={() => void navigate("/dashboard/maintenance")}
         onResolveAlert={resolveAlertWithFeedback}
       />
+      <Suspense fallback={<SecondaryPanelFallback />}>
+        <FailureRiskPanelLazy />
+      </Suspense>
+      <Suspense fallback={<SecondaryPanelFallback />}>
+        <WhatsappMonitoringPanelLazy />
+      </Suspense>
 
       {actionable.kpis.activeVehicles === 0 ? (
         <div className="rounded-card border border-surface-raised bg-surface p-2">
-          <EmptyStateDashboard
-            userName={dashboardWelcomeName}
-            onAddVehicle={() => navigate("/dashboard/vehicles")}
-            onConfigureAlerts={() => navigate("/dashboard/settings")}
-            onInviteTeam={() => navigate("/dashboard/teams")}
-            onDemoData={() => navigate("/dashboard/settings")}
-          />
+          <Suspense fallback={<EmptyStateDashboardFallback />}>
+            <EmptyStateDashboardLazy
+              userName={dashboardWelcomeName}
+              onAddVehicle={() => navigate("/dashboard/vehicles")}
+              onConfigureAlerts={() => navigate("/dashboard/settings")}
+              onInviteTeam={() => navigate("/dashboard/teams")}
+              onDemoData={() => navigate("/dashboard/settings")}
+            />
+          </Suspense>
         </div>
       ) : null}
 
       {feedbackPrompt.show && user?.id && userFleetId ? (
-        <FeedbackWidget
-          trigger={feedbackPrompt.trigger}
-          entityId={feedbackPrompt.entityId}
-          entityType={feedbackPrompt.entityType}
-          onDismiss={dismissFeedbackPrompt}
-          position="bottom-right"
-        />
+        <Suspense fallback={null}>
+          <FeedbackWidgetLazy
+            trigger={feedbackPrompt.trigger}
+            entityId={feedbackPrompt.entityId}
+            entityType={feedbackPrompt.entityType}
+            onDismiss={dismissFeedbackPrompt}
+            position="bottom-right"
+          />
+        </Suspense>
       ) : null}
     </div>
   );

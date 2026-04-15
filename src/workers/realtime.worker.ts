@@ -124,6 +124,14 @@ self.addEventListener("connect", (event: Event) => {
     }
   });
 
+  // Complément au UNSUBSCRIBE explicite côté app : `close` n’est pas garanti sur tous les navigateurs.
+  port.addEventListener("close", () => {
+    ports.delete(port);
+    if (ports.size === 0) {
+      teardown();
+    }
+  });
+
   port.start();
 });
 

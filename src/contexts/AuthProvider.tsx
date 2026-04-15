@@ -29,6 +29,7 @@ const fleetMemberRepository = new FleetMemberRepository();
 const fleetMemberService = new FleetMemberService(fleetMemberRepository);
 const fleetRepository = new FleetRepository();
 const fleetService = new FleetService(fleetRepository);
+const ACTIVE_FLEET_STORAGE_KEY = "esamba.active_fleet_id";
 
 const isDev =
   typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
@@ -57,6 +58,10 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [memberships, setMemberships] = useState<FleetMembership[]>([]);
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [activeFleetId, setActiveFleetIdState] = useState<string | null>(null);
+  const [tenantOptions, setTenantOptions] = useState<
+    { orgId: string; fleetId: string; fleetName: string | null; role: AppRole }[]
+  >([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const processPendingInvitation = async (sessionUser: User): Promise<void> => {
@@ -98,19 +103,15 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             roleHierarchy.find((r) => userRoles.includes(r)) || "driver";
           setRole(highestRole);
 
-          const effectiveFleetId = membershipsList[0].fleet_id;
-          try {
-            const fleets = await fleetService.getFleetsByIds([
-              effectiveFleetId,
-            ]);
-            setOrgId(fleets[0]?.orgId ?? null);
-          } catch (error) {
-            console.error(
-              "Erreur lors de la récupération de l'orgId de la flotte:",
-              error
-            );
-            setOrgId(null);
-          }
+          const storedFleetId = localStorage.getItem(ACTIVE_FLEET_STORAGE_KEY);
+          const defaultFleetId = membershipsList[0].fleet_id;
+          const nextFleetId = membershipsList.some(
+            (membership) => membership.fleet_id === storedFleetId
+          )
+            ? storedFleetId
+            : defaultFleetId;
+          setActiveFleetIdState(nextFleetId);
+          localStorage.setItem(ACTIVE_FLEET_STORAGE_KEY, nextFleetId);
 
           devLog("✅ Memberships mis à jour:", {
             count: list.length,
@@ -122,11 +123,19 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         devLog("ℹ️ Aucun membership actif trouvé");
         setRole(null);
         setMemberships([]);
+        setActiveFleetIdState(null);
+        setOrgId(null);
+        setTenantOptions([]);
+        localStorage.removeItem(ACTIVE_FLEET_STORAGE_KEY);
         return [];
       } catch (e) {
         console.error("❌ Erreur dans fetchMemberships :", e);
         setRole(null);
         setMemberships([]);
+        setActiveFleetIdState(null);
+        setOrgId(null);
+        setTenantOptions([]);
+        localStorage.removeItem(ACTIVE_FLEET_STORAGE_KEY);
         return [];
       }
     },
@@ -160,6 +169,8 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             setRole(null);
             setMemberships([]);
             setOrgId(null);
+            setActiveFleetIdState(null);
+            setTenantOptions([]);
             return;
           }
 
@@ -197,6 +208,8 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
           setMemberships([]);
           setOrgId(null);
+          setActiveFleetIdState(null);
+          setTenantOptions([]);
         }
       } catch (e) {
         console.error(
@@ -205,6 +218,8 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         );
         setRole(null);
         setMemberships([]);
+        setActiveFleetIdState(null);
+        setTenantOptions([]);
       } finally {
         setIsLoading(false);
       }
@@ -229,22 +244,105 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
 
-  useEffect(() => {
+  const userFleetId = useMemo(() => {
     if (memberships.length === 0) {
+      return null;
+    }
+    if (
+      activeFleetId &&
+      memberships.some((membership) => membership.fleet_id === activeFleetId)
+    ) {
+      return activeFleetId;
+    }
+    return memberships[0].fleet_id;
+  }, [activeFleetId, memberships]);
+
+  useEffect(() => {
+    if (!userFleetId) {
       devLog("[Auth] userFleetId dérivé (aucun membership)", {
         userFleetId: null,
       });
+      setOrgId(null);
+      setTenantOptions([]);
       return;
     }
-    const effectiveFleetId = memberships[0].fleet_id;
+    const effectiveFleetId = userFleetId;
     devLog("[Auth] userFleetId dérivé (memberships mis à jour)", {
       userFleetId: effectiveFleetId,
       count: memberships.length,
       fleetIds: memberships.map((m) => m.fleet_id),
     });
-  }, [memberships]);
+    const fleetIds = memberships.map((membership) => membership.fleet_id);
+    void fleetService
+      .getFleetsByIds(fleetIds)
+      .then((fleets) => {
+        const fleetById = new Map(fleets.map((fleet) => [fleet.id, fleet]));
+        const nextTenantOptions = memberships
+          .map((membership) => {
+            const fleet = fleetById.get(membership.fleet_id);
+            if (!fleet?.orgId) {
+              return null;
+            }
+            return {
+              orgId: fleet.orgId,
+              fleetId: membership.fleet_id,
+              fleetName: fleet.name ?? null,
+              role: membership.role,
+            };
+          })
+          .filter((value): value is NonNullable<typeof value> => value !== null);
+        setTenantOptions(nextTenantOptions);
+        const selectedTenant = nextTenantOptions.find(
+          (tenant) => tenant.fleetId === effectiveFleetId
+        );
+        setOrgId(selectedTenant?.orgId ?? null);
+      })
+      .catch((error) => {
+        console.error(
+          "Erreur lors de la récupération de l'orgId de la flotte:",
+          error
+        );
+        setOrgId(null);
+        setTenantOptions([]);
+      });
+  }, [memberships, userFleetId]);
 
-  const userFleetId = memberships.length > 0 ? memberships[0].fleet_id : null;
+  const setActiveFleetId = useCallback(
+    (fleetId: string) => {
+      const hasMembership = memberships.some(
+        (membership) => membership.fleet_id === fleetId
+      );
+      if (!hasMembership) {
+        devWarn("[Auth] Tentative de changement vers une flotte non autorisée", {
+          fleetId,
+        });
+        return;
+      }
+      setActiveFleetIdState(fleetId);
+      localStorage.setItem(ACTIVE_FLEET_STORAGE_KEY, fleetId);
+    },
+    [memberships]
+  );
+
+  const activeTenantContext = useMemo(() => {
+    if (!user?.id || !userFleetId) {
+      return null;
+    }
+    const currentMembership = memberships.find(
+      (membership) => membership.fleet_id === userFleetId
+    );
+    if (!currentMembership) {
+      return null;
+    }
+    if (!orgId) {
+      return null;
+    }
+    return {
+      orgId,
+      fleetId: userFleetId,
+      role: currentMembership.role,
+    };
+  }, [memberships, orgId, user?.id, userFleetId]);
 
   useEffect(() => {
     if (!user) {
@@ -284,6 +382,8 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setRole(null);
       setMemberships([]);
+      setActiveFleetIdState(null);
+      setTenantOptions([]);
       return;
     }
     const {
@@ -301,9 +401,12 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       memberships,
       userFleetId,
       orgId,
+      tenantOptions,
       isLoading,
       refreshMemberships,
       refreshUser,
+      setActiveFleetId,
+      activeTenantContext,
     }),
     [
       user,
@@ -312,9 +415,12 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       memberships,
       userFleetId,
       orgId,
+      tenantOptions,
       isLoading,
       refreshMemberships,
       refreshUser,
+      setActiveFleetId,
+      activeTenantContext,
     ]
   );
 
@@ -352,6 +458,17 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const userFleetId = memberships.length > 0 ? memberships[0].fleet_id : null;
+  const activeTenantContext = useMemo(
+    () =>
+      userFleetId
+        ? {
+            orgId: "mock-org",
+            fleetId: userFleetId,
+            role: role ?? "driver",
+          }
+        : null,
+    [role, userFleetId]
+  );
 
   useEffect(() => {
     if (!user) {
@@ -374,12 +491,25 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
       role,
       memberships,
       userFleetId,
-      orgId: null,
+      orgId: activeTenantContext?.orgId ?? null,
+      activeTenantContext,
+      tenantOptions: [],
       isLoading: false,
+      setActiveFleetId: () => {
+        // En mode mock, le changement de flotte est géré par la configuration mock.
+      },
       refreshMemberships,
       refreshUser,
     }),
-    [user, role, memberships, userFleetId, refreshMemberships, refreshUser]
+    [
+      user,
+      role,
+      memberships,
+      userFleetId,
+      activeTenantContext,
+      refreshMemberships,
+      refreshUser,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

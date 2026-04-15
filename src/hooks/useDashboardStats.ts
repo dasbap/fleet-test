@@ -35,14 +35,37 @@ const emptyStats: DashboardStats = {
   maintenanceInProgress: 0,
 };
 
-/** Onglet caché : pas de polling (moins de travail main thread ; refresh au retour via refetchOnWindowFocus). */
-const refetchIntervalWhenVisible = (visibleMs: number) => {
+const RECENT_INTERACTION_WINDOW_MS = 12_000;
+let hasBoundInteractionListeners = false;
+let lastInteractionAt = 0;
+
+function bindInteractionListenersOnce() {
+  if (hasBoundInteractionListeners || typeof window === "undefined") return;
+  hasBoundInteractionListeners = true;
+  const markInteraction = () => {
+    lastInteractionAt = Date.now();
+  };
+  window.addEventListener("pointerdown", markInteraction, { passive: true });
+  window.addEventListener("keydown", markInteraction, { passive: true });
+  window.addEventListener("touchstart", markInteraction, { passive: true });
+}
+
+/** Ralentit le polling onglet caché au lieu de l’arrêter brutalement. */
+const refetchIntervalWhenVisible = (visibleMs: number, hiddenMs = visibleMs * 3) => {
   if (typeof document === "undefined") return visibleMs;
-  return document.visibilityState === "hidden" ? false : visibleMs;
+  return document.visibilityState === "hidden" ? hiddenMs : visibleMs;
+};
+
+/** Ralentit le polling juste après interaction pour protéger l'INP perçu. */
+const refetchIntervalForInteraction = (activeMs: number, relaxedMs: number) => {
+  if (typeof window === "undefined") return activeMs;
+  const elapsed = Date.now() - lastInteractionAt;
+  return elapsed <= RECENT_INTERACTION_WINDOW_MS ? relaxedMs : activeMs;
 };
 
 export function useDashboardStats() {
   const { userFleetId } = useAuth();
+  bindInteractionListenersOnce();
 
   return useQuery({
     queryKey: ['dashboard-stats', userFleetId],
@@ -51,9 +74,10 @@ export function useDashboardStats() {
       return dashboardService.getDashboardStats(userFleetId);
     },
     enabled: !!userFleetId,
-    staleTime: 20_000,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
-    refetchInterval: () => refetchIntervalWhenVisible(30_000),
+    refetchInterval: () =>
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(30_000, 45_000)),
   });
 }
 
@@ -67,9 +91,10 @@ export function useDashboardKpis() {
       return dashboardAlertService.getKpiSummary(orgId);
     },
     enabled: !!orgId,
-    staleTime: 20_000,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
-    refetchInterval: () => refetchIntervalWhenVisible(30_000),
+    refetchInterval: () =>
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(30_000, 45_000)),
   });
 }
 
@@ -80,9 +105,10 @@ export function useRecentActivity() {
     queryKey: ['recent-activity', userFleetId],
     queryFn: () => (userFleetId ? dashboardService.getRecentActivity(userFleetId) : []),
     enabled: !!userFleetId,
-    staleTime: 25_000,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
-    refetchInterval: () => refetchIntervalWhenVisible(30_000),
+    refetchInterval: () =>
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(30_000, 45_000)),
   });
 }
 
@@ -93,7 +119,9 @@ export function useFleetVehicles() {
     queryKey: ['fleet-vehicles-overview', userFleetId],
     queryFn: () => (userFleetId ? dashboardService.getFleetVehiclesOverview(userFleetId) : []),
     enabled: !!userFleetId,
-    staleTime: 30_000,
+    staleTime: 45_000,
     refetchOnWindowFocus: true,
+    refetchInterval: () =>
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(45_000, 60_000)),
   });
 }

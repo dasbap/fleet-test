@@ -10,6 +10,8 @@ Les décisions importantes (produit, UX, technique) sont documentées sous forme
 
 Pour les flux de navigation et de données entre les pages (auth, invitations, équipes, création de flotte), voir [docs/flux-navigation.md](docs/flux-navigation.md).
 
+Pour la correspondance entre exemples génériques hors ligne (REST, `syncQueue`, etc.) et le code réel (file offline, Supabase), voir [docs/cartographie-offline-snippets-vs-code.md](docs/cartographie-offline-snippets-vs-code.md).
+
 ## Structure des couches
 
 ```
@@ -181,6 +183,35 @@ Les entités suivantes ont des repositories et services implémentés :
 6. **Invitations** (`InvitationRepository`, `InvitationService`)
 7. **Dashboard** (`DashboardRepository`, `DashboardService`) — stats, activité récente, aperçu véhicules
 8. **Fleet Report** (`FleetReportRepository`, `FleetReportService`) — rapport de flotte sur une période
+
+## Module conducteurs avec scoring (MVP)
+
+Le module conducteur combine une base RH légère, la gestion des permis et un scoring comportemental versionné.
+
+### Données MVP
+- `profils` étendu : `employee_code`, `hire_date`, `contract_type`, `employment_status`, `emergency_contact_*`, `rh_notes`.
+- `driver_licenses` : permis conducteurs (statut de vérification, dates, document justificatif).
+- `incidents` étendu : `status`, `resolved_at`, `resolved_by` pour mesurer les délais de clôture.
+- `driver_score_snapshots` : historique journalier des sous-scores et du score total.
+
+### Couches applicatives
+- Repository : `driver-profile.repository.ts`, `driver-license.repository.ts`, `driver-score.repository.ts`.
+- Service : `driver-profile.service.ts`, `driver-license.service.ts`, `driver-score.service.ts`.
+- Hook React Query : `useDriverProfiles.ts`, `useDriverScores.ts`.
+- Présentation : `DriverProfileDialog` intégré à `Drivers`.
+
+### Formule scoring v1 hybride
+- Fenêtre glissante 30 jours.
+- Pondérations :
+  - incidents (sévérité + fréquence) : 35%
+  - délai de clôture incidents : 25%
+  - discipline de clôture créneaux : 25%
+  - stabilité opérationnelle : 15%
+- Sortie : `score_total` (0-100), niveau (`green`/`orange`/`red`), `model_version`, `model_metadata`.
+
+### Trajectoire scalable
+- Conserver `model_version` pour changer de formule sans casser les écrans.
+- Préparer une future bascule vers des métriques journalières (`driver_daily_metrics`) ou événements unifiés (`driver_events`) sans modifier les APIs de lecture actuelles.
 
 ## Flux de données
 

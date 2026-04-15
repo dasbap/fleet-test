@@ -79,6 +79,9 @@ Checklist : prévisualisations 401, variables `VITE_*`, auth Supabase, DNS et do
 
 - `npm run dev` — serveur de développement
 - `npm run build` — build de production
+- `npm run build:analyze` — build avec génération d’un rapport treemap des bundles (`dist/stats.html`, équivalent à webpack-bundle-analyzer pour Vite/Rollup)
+- `npm run analyze:visual` — alias de `build:analyze` (ouvrir `dist/stats.html` dans le navigateur après build)
+- `npm run analyze:bundle` — build + tailles des chunks + contrôle du budget JS initial (`report:chunks`, `check:bundle-budget`)
 - `npm run preview` — prévisualisation du build
 - `npm run init:env` — crée `.env.local` depuis `.env.example` (à faire une fois)
 - `npm run check:supabase` — vérifie la présence et la cohérence de la config Supabase (`.env.local`, client)
@@ -100,8 +103,18 @@ Pour préparer l’app mobile (Android/iOS) :
 
 - `npm run build:capacitor` — build web avec `base: './'` (dossier `dist/` utilisé par Capacitor)
 - `npm run cap:sync` — synchronise les projets natifs (`android/`, `ios/`) avec ce build
+- `npm run mobile:prepare` — `build:capacitor` puis `cap:sync` (à lancer avant une compilation Android/iOS)
+- `npm run android:assemble-release` — génère l’APK release (`android/app/build/outputs/apk/release/app-release.apk`). Nécessite le SDK Android : définir `ANDROID_HOME` ou `ANDROID_SDK_ROOT`, ou copier [`android/local.properties.example`](android/local.properties.example) vers `android/local.properties` en renseignant `sdk.dir`
+- `npm run android:bundle` — exécute `mobile:prepare` puis génère l’AAB release pour Google Play (`android/app/build/outputs/bundle/release/app-release.aab`). Mêmes prérequis SDK ; signature release via `android/keystore.properties` (voir [`docs/publication-stores.md`](docs/publication-stores.md))
 
 Si `npx cap sync` échoue avec `The Capacitor CLI requires NodeJS >=22.0.0`, lancez d’abord `npm run cap:doctor`, puis utilisez `npm run cap:sync` (commande recommandée du projet).
+
+#### QA sur appareils réels (ADB, mémoire, réseau lent)
+
+- **Parcours métier à valider** : connexion → liste véhicules / flotte mobile → formulaire de déclaration d’incident (`/dashboard/incidents/declare`). Vérifier le `.env` utilisé au `build:capacitor` (backend Supabase embarqué).
+- **Installation USB** : `adb install -r chemin/vers/app-release.apk` (plusieurs appareils : `adb -s <serial> install -r …`). La commande `adb` se trouve dans `platform-tools` du SDK Android — ajoutez ce dossier au `PATH` si besoin. Sur **Xiaomi / Redmi**, activer si besoin l’installation via USB dans les options développeur.
+- **Mémoire** : Android Studio → **View → Tool Windows → Profiler** sur le processus `com.esamba.flotte` (l’ancien *Device Monitor* n’est plus supporté). Pour la WebView : navigateur Chrome sur le PC → `chrome://inspect#devices` → inspecter la WebView Capacitor.
+- **Réseau type 3G** : avec débogage USB, inspecter la WebView → onglet **Network** → profil **Slow 3G** (ou tester la PWA dans Chrome desktop avec throttling pour comparaison).
 
 #### Structure mobile actuelle (routes + layout)
 
@@ -118,7 +131,7 @@ Si `npx cap sync` échoue avec `The Capacitor CLI requires NodeJS >=22.0.0`, lan
 - Onglets + chemins centralisés : `src/navigation/mobileTabs.ts`, `src/navigation/routePaths.ts`
 - Guards d’accès : `src/navigation/guards/RequireAuth.tsx`, `src/navigation/guards/RequireRole.tsx`
 
-Sur **Windows**, exécuter `npm run mobile:prepare` (équivalent à `build:capacitor` puis `cap:sync`), puis versionner le dossier `ios/` si besoin. La compilation, l’ouverture dans Xcode et l’exécution sur simulateur ou iPhone nécessitent **macOS + Xcode** : `npm run cap:open:ios` puis *Product → Run*.
+Sur **Windows**, exécuter `npm run mobile:prepare` (voir la liste ci-dessus), puis versionner le dossier `ios/` si besoin. La compilation, l’ouverture dans Xcode et l’exécution sur simulateur ou iPhone nécessitent **macOS + Xcode** : `npm run cap:open:ios` puis *Product → Run*.
 
 ### Validation visuelle des assets
 

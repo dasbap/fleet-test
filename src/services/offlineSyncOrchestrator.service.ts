@@ -5,12 +5,27 @@ import { OfflineQueueService } from "@/services/offlineQueue.service";
 import { IncidentRepository } from "@/repositories/incident.repository";
 import { IncidentEvidenceRepository } from "@/repositories/incident-evidence.repository";
 import { IncidentService } from "@/services/incident.service";
-import type { OfflineIncidentCreateJob, OfflineIncidentCreatePayload } from "@/types/offline-queue";
+import { DriverShiftRepository } from "@/repositories/driver-shift.repository";
+import { VehicleRepository } from "@/repositories/vehicle.repository";
+import { DriverShiftService } from "@/services/driver-shift.service";
+import { FuelRepository } from "@/repositories/fuel.repository";
+import { FuelService } from "@/services/fuel.service";
+import type {
+  OfflineIncidentCreateJob,
+  OfflineIncidentCreatePayload,
+  OfflineJob,
+  OfflineJobType,
+} from "@/types/offline-queue";
 
 const offlineQueueService = new OfflineQueueService();
 const incidentRepository = new IncidentRepository();
 const incidentEvidenceRepository = new IncidentEvidenceRepository();
 const incidentService = new IncidentService(incidentRepository, incidentEvidenceRepository);
+const driverShiftRepository = new DriverShiftRepository();
+const vehicleRepository = new VehicleRepository();
+const driverShiftService = new DriverShiftService(driverShiftRepository, vehicleRepository);
+const fuelRepository = new FuelRepository();
+const fuelService = new FuelService(fuelRepository);
 
 let syncLock = false;
 
@@ -28,7 +43,7 @@ export async function runOfflineSyncOnce(): Promise<SyncResultSummary> {
 
   syncLock = true;
   try {
-    const pendingJobs = offlineQueueService.getPendingJobs();
+    const pendingJobs = await offlineQueueService.getPendingJobs();
     if (pendingJobs.length === 0) {
       return { processed: 0, succeeded: 0, failed: 0 };
     }
@@ -40,10 +55,7 @@ export async function runOfflineSyncOnce(): Promise<SyncResultSummary> {
     let failed = 0;
 
     for (const job of pendingJobs) {
-      if (job.type !== "incident:create") {
-        continue;
-      }
-      const synced = await processIncidentCreateJob(job);
+      const synced = await processJob(job);
       processed += 1;
       if (synced) {
         succeeded += 1;
@@ -55,10 +67,17 @@ export async function runOfflineSyncOnce(): Promise<SyncResultSummary> {
     const now = new Date().toISOString();
     const stillPending = countPendingIncidentDrafts();
 
-    if (failed > 0) {
+    const queueStats = await offlineQueueService.getQueueStats();
+
+    if (failed > 0 || queueStats.failed > 0) {
       patchLocalSyncState({
         displayStatus: "error",
-        lastSyncError: "Certains signalements n’ont pas pu être envoyés.",
+        lastSyncError: "Certaines saisies hors ligne n’ont pas pu être synchronisées.",
+      });
+    } else if (queueStats.pending > 0 || stillPending > 0) {
+      patchLocalSyncState({
+        displayStatus: "pending",
+        lastSyncError: null,
       });
     } else if (succeeded > 0 && stillPending === 0) {
       patchLocalSyncState({
@@ -88,7 +107,7 @@ export async function runOfflineSyncOnce(): Promise<SyncResultSummary> {
 }
 
 async function processIncidentCreateJob(job: OfflineIncidentCreateJob): Promise<boolean> {
-  const marked = offlineQueueService.markSyncing(job.id);
+  const marked = await offlineQueueService.markSyncing(job.id);
   if (!marked) {
     return false;
   }
@@ -109,21 +128,105 @@ async function processIncidentCreateJob(job: OfflineIncidentCreateJob): Promise<
       evidenceDataUrl: payload.evidenceDataUrl ?? null,
     });
 
-    offlineQueueService.markSucceeded(marked.id);
+    await offlineQueueService.markSucceeded(marked.id);
     return true;
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erreur inconnue";
-    offlineQueueService.markFailed(marked.id, message);
+    await offlineQueueService.markFailed(marked.id, message);
     return false;
   }
 }
 
-export function migrateLegacyIncidentDraftsToQueue(): void {
+async function processShiftStartJob(job: OfflineJob): Promise<boolean> {
+  const marked = await offlineQueueService.markSyncing(job.id);
+  if (!marked || marked.type !== "shift:start") return false;
+  try {
+    const payload = marked.payload;
+    await driverShiftService.startShift({
+      assignment_id: payload.assignmentId,
+      km_start: payload.kmStart,
+    });
+    await offlineQueueService.markSucceeded(marked.id);
+    return true;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Erreur inconnue";
+    await offlineQueueService.markFailed(marked.id, message);
+    return false;
+  }
+}
+
+async function processShiftCloseJob(job: OfflineJob): Promise<boolean> {
+  const marked = await offlineQueueService.markSyncing(job.id);
+  if (!marked || marked.type !== "shift:close") return false;
+  try {
+    const payload = marked.payload;
+    await driverShiftService.closeShift({
+      shift_id: payload.shiftId,
+      km_end: payload.kmEnd,
+      revenue_declared: payload.revenueDeclared,
+      collection_mode: payload.collectionMode,
+      proof_type: payload.proofType,
+      proof_value: payload.proofValue,
+    });
+    await offlineQueueService.markSucceeded(marked.id);
+    return true;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Erreur inconnue";
+    await offlineQueueService.markFailed(marked.id, message);
+    return false;
+  }
+}
+
+async function processFuelCreateJob(job: OfflineJob): Promise<boolean> {
+  const marked = await offlineQueueService.markSyncing(job.id);
+  if (!marked || marked.type !== "fuel:create") return false;
+  try {
+    const payload = marked.payload;
+    await fuelService.createWithIdempotency(
+      {
+        fleetId: payload.fleetId,
+        vehicleId: payload.vehicleId,
+        driverUserId: payload.driverUserId,
+        liters: payload.liters,
+        amountXof: payload.amountXof,
+        odometerKm: payload.odometerKm,
+        purchasedAt: payload.purchasedAt,
+        stationName: payload.stationName,
+        receiptRef: payload.receiptRef,
+      },
+      marked.idempotencyKey,
+    );
+    await offlineQueueService.markSucceeded(marked.id);
+    return true;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Erreur inconnue";
+    await offlineQueueService.markFailed(marked.id, message);
+    return false;
+  }
+}
+
+const jobHandlers: Record<OfflineJobType, (job: OfflineJob) => Promise<boolean>> = {
+  "incident:create": (job) => processIncidentCreateJob(job as OfflineIncidentCreateJob),
+  "shift:start": processShiftStartJob,
+  "shift:close": processShiftCloseJob,
+  "fuel:create": processFuelCreateJob,
+};
+
+async function processJob(job: OfflineJob): Promise<boolean> {
+  const handler = jobHandlers[job.type];
+  if (!handler) {
+    await offlineQueueService.markFailed(job.id, `Type de job non supporté: ${job.type}`);
+    return false;
+  }
+  return handler(job);
+}
+
+export async function migrateLegacyIncidentDraftsToQueue(): Promise<void> {
   const drafts = getIncidentDrafts();
   if (!drafts.length) return;
 
   for (const draft of drafts) {
-    offlineQueueService.enqueueIncidentCreate({
+    await offlineQueueService.enqueueIncidentCreate({
       draftId: draft.id,
       fleetId: draft.fleetId,
       vehicleId: draft.vehicleId,

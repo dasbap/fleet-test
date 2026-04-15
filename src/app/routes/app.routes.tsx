@@ -11,6 +11,11 @@ const OnboardingRoute = lazy(() =>
     default: module.OnboardingRoute,
   }))
 );
+const TenantBootstrapRoute = lazy(() =>
+  import("@/components/auth/TenantBootstrapRoute").then((module) => ({
+    default: module.TenantBootstrapRoute,
+  }))
+);
 
 /**
  * Arbre de routes racine : pages publiques, redirections, dashboard, 404.
@@ -23,6 +28,7 @@ export const appRoutes = (
     <Route element={<AuthProviderLayout />}>
       {authPublicRoutes}
       <Route path="/onboarding" element={<OnboardingRoute />} />
+      <Route path="/start" element={<TenantBootstrapRoute />} />
       {dashboardRoutes}
     </Route>
     <Route path="*" element={<NotFound />} />

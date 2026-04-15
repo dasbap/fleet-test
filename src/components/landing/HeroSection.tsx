@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, CheckCircle2 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
@@ -24,22 +23,6 @@ const HeroSection = () => {
   usePageSeo("landing", {
     metas: [{ property: "og:video", content: demoVideoUrl }],
   });
-  useEffect(() => {
-    const mobile = typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
-    const href = mobile ? heroBg768Webp : heroBg1280Webp;
-
-    const preloadWebp = document.createElement("link");
-    preloadWebp.rel = "preload";
-    preloadWebp.as = "image";
-    preloadWebp.href = href;
-    preloadWebp.setAttribute("fetchpriority", "high");
-    preloadWebp.type = "image/webp";
-
-    document.head.appendChild(preloadWebp);
-    return () => {
-      document.head.removeChild(preloadWebp);
-    };
-  }, []);
 
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
@@ -63,6 +46,7 @@ const HeroSection = () => {
             height={1080}
             className="w-full h-full object-cover opacity-30"
             fetchPriority="high"
+            loading="eager"
             decoding="async"
           />
         </picture>

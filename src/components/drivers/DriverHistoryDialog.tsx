@@ -7,8 +7,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Car, Calendar, Clock } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useDriverAssignmentHistory } from "@/hooks/useAssignments";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -18,48 +17,8 @@ interface DriverHistoryDialogProps {
   driverId: string | null;
 }
 
-interface AssignmentHistory {
-  id: string;
-  starts_at: string;
-  ends_at: string | null;
-  is_active: boolean;
-  vehicle: {
-    id: string;
-    registration: string;
-    brand: string | null;
-    model: string | null;
-  } | null;
-}
-
 const DriverHistoryDialog = ({ open, onOpenChange, driverId }: DriverHistoryDialogProps) => {
-  const { data: history = [], isLoading } = useQuery({
-    queryKey: ['driver-history', driverId],
-    queryFn: async () => {
-      if (!driverId) return [];
-
-      const { data, error } = await supabase
-        .from('affectations_vehicules')
-        .select(`
-          id,
-          starts_at,
-          ends_at,
-          is_active,
-          vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(id, registration, brand, model)
-        `)
-        .eq('driver_user_id', driverId)
-        .order('starts_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching driver history:', error);
-        throw new Error(error.message);
-      }
-
-      // La requête SELECT correspond déjà à `AssignmentHistory` (surtout l’alias `vehicle:`).
-      // On caste le résultat au type attendu pour éviter les `any`.
-      return (data || []) as AssignmentHistory[];
-    },
-    enabled: !!driverId && open,
-  });
+  const { data: history = [], isLoading } = useDriverAssignmentHistory(driverId ?? undefined, open);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

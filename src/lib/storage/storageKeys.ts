@@ -7,6 +7,9 @@ export const storageKeys = {
   recentVehicles: `${STORAGE_PREFIX}recent-vehicles`,
   vehicleHistory: `${STORAGE_PREFIX}vehicle-history`,
   incidentDrafts: `${STORAGE_PREFIX}incident-drafts`,
+  offlineQueue: `${STORAGE_PREFIX}offline-queue`,
   syncState: `${STORAGE_PREFIX}sync-state`,
   syncMetrics: `${STORAGE_PREFIX}sync-metrics`,
+  /** Dernière liste véhicules consultée (hors ligne). */
+  vehicleListSnapshot: `${STORAGE_PREFIX}vehicle-list-snapshot`,
 } as const;

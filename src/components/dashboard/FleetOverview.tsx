@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useFleetVehicles } from "@/hooks/useDashboardStats";
-import { Skeleton } from "@/components/ui/skeleton";
+import { FleetOverviewSkeleton } from "@/components/dashboard/FleetOverviewSkeleton";
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "@/components/mobile/ui";
 
@@ -26,26 +26,7 @@ const FleetOverview = () => {
   const navigate = useNavigate();
 
   if (isLoading) {
-    return (
-      <Card className="h-full min-h-[26rem]">
-        <CardHeader>
-          <CardTitle className="font-heading">Aperçu de la flotte</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-muted/30">
-                <Skeleton className="w-12 h-12 rounded-lg" />
-                <div className="flex-1">
-                  <Skeleton className="h-4 w-24 mb-2" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <FleetOverviewSkeleton />;
   }
 
   return (
@@ -58,7 +39,7 @@ const FleetOverview = () => {
       </CardHeader>
       <CardContent>
         {!vehicles || vehicles.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border bg-muted/20">
+          <div className="rounded-md border border-dashed border-border bg-muted/20 min-h-[18rem]">
             <EmptyState
               icon={Car}
               title="Aucun véhicule dans la flotte"
@@ -68,7 +49,7 @@ const FleetOverview = () => {
             />
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 min-h-[18rem]">
             {vehicles.map((vehicle) => (
               <div
                 key={vehicle.id}

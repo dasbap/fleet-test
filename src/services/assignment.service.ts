@@ -1,5 +1,9 @@
 import { AssignmentRepository } from '@/repositories/assignment.repository';
-import type { DriverRow, AssignmentRow } from '@/repositories/assignment.repository';
+import type {
+  DriverRow,
+  AssignmentRow,
+  AssignmentHistoryRow,
+} from '@/repositories/assignment.repository';
 
 /**
  * Service pour les affectations véhicule–chauffeur et la liste des conducteurs.
@@ -14,6 +18,11 @@ export class AssignmentService {
 
   async getActiveAssignments(fleetId?: string): Promise<AssignmentRow[]> {
     return this.repository.getActiveAssignments(fleetId);
+  }
+
+  async getDriverAssignmentHistory(driverUserId: string): Promise<AssignmentHistoryRow[]> {
+    if (!driverUserId) return [];
+    return this.repository.getDriverAssignmentHistory(driverUserId);
   }
 
   async assignVehicle(params: {

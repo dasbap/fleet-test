@@ -5,11 +5,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { DriverShiftService } from '@/services/driver-shift.service';
 import { DriverShiftRepository } from '@/repositories/driver-shift.repository';
 import { VehicleRepository } from '@/repositories/vehicle.repository';
+import { OfflineQueueService } from '@/services/offlineQueue.service';
+import { operationsQueryKeys } from '@/hooks/useOperations';
 
 // Instances singleton des services et repositories
 const driverShiftRepository = new DriverShiftRepository();
 const vehicleRepository = new VehicleRepository();
 const driverShiftService = new DriverShiftService(driverShiftRepository, vehicleRepository);
+const offlineQueueService = new OfflineQueueService();
 
 // Réexporter les types pour compatibilité
 export type ShiftStatus = 'open' | 'closed';
@@ -86,6 +89,8 @@ export function useDriverShifts() {
 
 export function useStartShift() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const activeShiftKey = ['active-shift', user?.id] as const;
 
   return useMutation({
     mutationFn: async ({
@@ -95,17 +100,48 @@ export function useStartShift() {
       assignment_id: string;
       km_start: number;
     }) => {
+      const payload = driverShiftService.buildOfflineShiftStartPayload({ assignment_id, km_start });
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await offlineQueueService.enqueueShiftStart(payload);
+        return { kind: 'queued' as const };
+      }
       return driverShiftService.startShift({ assignment_id, km_start });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['active-shift'] });
+    onMutate: async ({ assignment_id, km_start }) => {
+      await queryClient.cancelQueries({ queryKey: activeShiftKey });
+      await queryClient.cancelQueries({ queryKey: ['driver-shifts'] });
+      const previousActive = queryClient.getQueryData<DriverShift | null>(activeShiftKey);
+      const optimisticShift: DriverShift = {
+        id: `offline-${crypto.randomUUID()}`,
+        assignment_id,
+        km_start,
+        km_end: null,
+        started_at: new Date().toISOString(),
+        ended_at: null,
+        status: 'open',
+      };
+      queryClient.setQueryData(activeShiftKey, optimisticShift);
+      return { previousActive };
+    },
+    onSuccess: (result) => {
+      if ((result as { kind?: string })?.kind === 'queued') {
+        toast({
+          title: 'Hors ligne',
+          description: 'Démarrage enregistré sur l’appareil. Synchronisation automatique au retour réseau.',
+        });
+      } else {
+        toast({
+          title: 'Journée démarrée',
+          description: 'Votre créneau a été enregistré.',
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: activeShiftKey });
       queryClient.invalidateQueries({ queryKey: ['driver-shifts'] });
-      toast({
-        title: 'Journée démarrée',
-        description: 'Votre créneau a été enregistré.',
-      });
+      queryClient.invalidateQueries({ queryKey: operationsQueryKeys.all });
     },
     onError: (error: Error) => {
+      queryClient.invalidateQueries({ queryKey: activeShiftKey });
+      queryClient.invalidateQueries({ queryKey: ['driver-shifts'] });
       toast({
         title: 'Erreur',
         description: mapSupabaseErrorToFrench(error.message),
@@ -117,22 +153,42 @@ export function useStartShift() {
 
 export function useCloseShift() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const activeShiftKey = ['active-shift', user?.id] as const;
 
   return useMutation({
     mutationFn: async (closure: ShiftClosureInsert) => {
+      const payload = driverShiftService.buildOfflineShiftClosePayload(closure);
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await offlineQueueService.enqueueShiftClose(payload);
+        return { success: true, kind: 'queued' as const };
+      }
       await driverShiftService.closeShift(closure);
-      return { success: true };
+      return { success: true, kind: 'created' as const };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['active-shift'] });
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: activeShiftKey });
+      const previousActive = queryClient.getQueryData<DriverShift | null>(activeShiftKey);
+      queryClient.setQueryData(activeShiftKey, null);
+      return { previousActive };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: activeShiftKey });
       queryClient.invalidateQueries({ queryKey: ['driver-shifts'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: operationsQueryKeys.all });
       toast({
-        title: 'Journée clôturée',
-        description: 'Votre clôture a été enregistrée avec succès.',
+        title: result.kind === 'queued' ? 'Clôture enregistrée hors ligne' : 'Journée clôturée',
+        description:
+          result.kind === 'queued'
+            ? 'La clôture sera synchronisée automatiquement à la reconnexion.'
+            : 'Votre clôture a été enregistrée avec succès.',
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.previousActive !== undefined) {
+        queryClient.setQueryData(activeShiftKey, context.previousActive);
+      }
       toast({
         title: 'Erreur',
         description: mapSupabaseErrorToFrench(error.message),

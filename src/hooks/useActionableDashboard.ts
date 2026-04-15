@@ -19,9 +19,9 @@ const EMPTY_KPIS: KpiSummary = {
 
 const maintenanceRepository = new MaintenanceRepository();
 
-const refetchIntervalWhenVisible = (visibleMs: number) => {
+const refetchIntervalWhenVisible = (visibleMs: number, hiddenMs = visibleMs * 3) => {
   if (typeof document === "undefined") return visibleMs;
-  return document.visibilityState === "hidden" ? false : visibleMs;
+  return document.visibilityState === "hidden" ? hiddenMs : visibleMs;
 };
 
 /** Interventions datées (retards + à venir) ; sinon file sans date planifiée pour le widget. */
@@ -93,6 +93,7 @@ export function useActionableDashboard() {
     statsLoading ||
     fleetLoading ||
     (!!userFleetId && scheduledQuery.isLoading);
+  const coreLoading = authLoading || alertsLoading || kpisLoading;
 
   return {
     kpis,
@@ -102,6 +103,7 @@ export function useActionableDashboard() {
     avgKm,
     todayRevenueXaf: stats?.todayRevenue ?? 0,
     totalVehicles: stats?.totalVehicles ?? 0,
+    coreLoading,
     loading,
   };
 }
@@ -114,5 +116,6 @@ export type UseActionableDashboardReturn = {
   avgKm: number;
   todayRevenueXaf: number;
   totalVehicles: number;
+  coreLoading: boolean;
   loading: boolean;
 };

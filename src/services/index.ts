@@ -24,10 +24,16 @@ export * from './deep-link.service';
 export * from './push-notification.service';
 export * from './push-notifications-client.service';
 export * from './notification.service';
+export * from './send-whatsapp-edge.service';
 export * from './camera.service';
 export * from './onboarding.service';
 export * from './vehicle-search.service';
 export * from './feedback.service';
+export * from './failure-prediction.service';
+export * from "./fleet-tracking.service";
+export * from "./tenant-access.service";
+export * from "./billing.service";
+export * from "./whatsapp-monitoring.service";
 
 // Réexporter les types pour compatibilité
 export type { VehicleDto, VehicleInsertDto, VehicleStatusDto } from '@/types/dto/vehicle.dto';

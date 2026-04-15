@@ -16,6 +16,14 @@ import { signOut } from "@/lib/auth-actions";
 import type { AppRole } from "@/hooks/useAuth";
 import { useAuth } from "@/hooks/useAuth";
 import { UniversalSearch } from "@/components/dashboard/UniversalSearch";
+import { OfflineBadge } from "@/components/dashboard/OfflineBadge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DashboardHeaderProps {
   userRole: AppRole;
@@ -31,7 +39,7 @@ const roleLabels = {
 };
 
 const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderProps) => {
-  const { userFleetId } = useAuth();
+  const { userFleetId, tenantOptions, setActiveFleetId } = useAuth();
 
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
@@ -39,12 +47,26 @@ const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderPro
         {/* Left */}
         <div className="flex items-center gap-4">
           <SidebarTrigger className="-ml-1" />
-          
+          {tenantOptions.length > 1 ? (
+            <Select value={userFleetId ?? undefined} onValueChange={setActiveFleetId}>
+              <SelectTrigger className="w-[220px] h-9">
+                <SelectValue placeholder="Sélectionner une flotte" />
+              </SelectTrigger>
+              <SelectContent>
+                {tenantOptions.map((tenant) => (
+                  <SelectItem key={tenant.fleetId} value={tenant.fleetId}>
+                    {tenant.fleetName ?? tenant.fleetId}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
           <UniversalSearch fleetId={userFleetId} />
         </div>
 
         {/* Right */}
         <div className="flex items-center gap-3">
+          <OfflineBadge />
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5" />

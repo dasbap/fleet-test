@@ -28,6 +28,7 @@ import {
   LineChart,
   Shield,
   Ticket,
+  Map,
 } from "lucide-react";
 import { signOut } from "@/lib/auth-actions";
 import { toast } from "@/hooks/use-toast";
@@ -48,6 +49,7 @@ const organizerNavCore = [
   { icon: Users, label: "Équipes", href: "/dashboard/teams" },
   { icon: Ticket, label: "Invitations", href: "/dashboard/invitations" },
   { icon: BarChart3, label: "Rapports", href: "/dashboard/reports" },
+  { icon: Map, label: "Suivi GPS", href: "/dashboard/tracking" },
   { icon: DollarSign, label: "Finances", href: "/dashboard/finances" },
   { icon: Bell, label: "Alertes", href: "/dashboard/alerts" },
 ] as const;
@@ -83,6 +85,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
       { icon: Users, label: "Chauffeurs", href: "/dashboard/drivers" },
       { icon: Ticket, label: "Invitations", href: "/dashboard/invitations" },
       { icon: BarChart3, label: "Rapports", href: "/dashboard/reports" },
+      { icon: Map, label: "Suivi GPS", href: "/dashboard/tracking" },
       { icon: DollarSign, label: "Encaissements", href: "/dashboard/collections" },
       { icon: Bell, label: "Alertes", href: "/dashboard/alerts" },
     ],

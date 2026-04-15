@@ -292,6 +292,9 @@ export function MaintenancePlannerModal({
     provider: false,
   });
 
+  /** Identifiant du premier prestataire (dérivé pour deps useEffect stables). */
+  const defaultPrestId = prestataires[0]?.id ?? "";
+
   useEffect(() => {
     if (!open) return;
     setStep(1);
@@ -303,10 +306,10 @@ export function MaintenancePlannerModal({
       durationH: 4,
       notes: "",
     });
-    setSelPrestId(prestataires[0]?.id ?? "");
+    setSelPrestId(defaultPrestId);
     setItems(DEFAULT_REVISION_ITEMS.map((it, i) => ({ ...it, id: `item-${i}` })));
     setNotif({ driver: false, manager: false, provider: false });
-  }, [open]);
+  }, [open, defaultPrestId]);
 
   useEffect(() => {
     setItems(DEFAULT_REVISION_ITEMS.map((it, i) => ({ ...it, id: `item-${i}` })));

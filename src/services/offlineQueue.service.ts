@@ -1,13 +1,21 @@
 import { readOfflineJobs, writeOfflineJobs } from "@/lib/storage/offline-queue.storage";
 import type {
+  OfflineFuelCreateJob,
+  OfflineFuelCreatePayload,
   OfflineIncidentCreateJob,
   OfflineIncidentCreatePayload,
   OfflineJob,
   OfflineJobStatus,
+  OfflineJobType,
+  OfflineShiftCloseJob,
+  OfflineShiftClosePayload,
+  OfflineShiftStartJob,
+  OfflineShiftStartPayload,
 } from "@/types/offline-queue";
 
 const MAX_ATTEMPTS = 5;
 const MAX_QUEUE_SIZE = 200;
+const OFFLINE_QUEUE_SCHEMA_VERSION = 1;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -23,33 +31,23 @@ function computeNextRetry(attemptCount: number): string | null {
   return next.toISOString();
 }
 
-function updateJobStatus(
-  job: OfflineJob,
-  status: OfflineJobStatus,
-  lastError: string | null,
-): OfflineJob {
-  const attemptCount =
-    status === "pending" || status === "syncing" ? job.attemptCount : job.attemptCount;
-
-  return {
-    ...job,
-    status,
-    attemptCount,
-    lastError,
-    updatedAt: nowIso(),
-  };
-}
-
 export class OfflineQueueService {
-  enqueueIncidentCreate(payload: OfflineIncidentCreatePayload): OfflineIncidentCreateJob {
-    const jobs = readOfflineJobs();
+  private async enqueueJob<TType extends OfflineJobType, TPayload>(
+    type: TType,
+    payload: TPayload,
+    entityRef: string | null,
+  ): Promise<OfflineJob> {
+    const jobs = await readOfflineJobs();
     if (jobs.length >= MAX_QUEUE_SIZE) {
       throw new Error("La file hors ligne est pleine. Synchronisez avant de continuer.");
     }
-    const job: OfflineIncidentCreateJob = {
+    const job: OfflineJob = {
       id: crypto.randomUUID(),
-      type: "incident:create",
+      type,
       payload,
+      schemaVersion: OFFLINE_QUEUE_SCHEMA_VERSION,
+      idempotencyKey: crypto.randomUUID(),
+      entityRef,
       status: "pending",
       attemptCount: 0,
       nextRetryAt: computeNextRetry(0),
@@ -58,12 +56,32 @@ export class OfflineQueueService {
       updatedAt: nowIso(),
     };
     jobs.push(job);
-    writeOfflineJobs(jobs);
+    await writeOfflineJobs(jobs);
     return job;
   }
 
-  getPendingJobs(now: Date = new Date()): OfflineJob[] {
-    const jobs = readOfflineJobs();
+  async enqueueIncidentCreate(payload: OfflineIncidentCreatePayload): Promise<OfflineIncidentCreateJob> {
+    const job = await this.enqueueJob("incident:create", payload, payload.draftId ?? null);
+    return job as OfflineIncidentCreateJob;
+  }
+
+  async enqueueShiftStart(payload: OfflineShiftStartPayload): Promise<OfflineShiftStartJob> {
+    const job = await this.enqueueJob("shift:start", payload, payload.assignmentId);
+    return job as OfflineShiftStartJob;
+  }
+
+  async enqueueShiftClose(payload: OfflineShiftClosePayload): Promise<OfflineShiftCloseJob> {
+    const job = await this.enqueueJob("shift:close", payload, payload.shiftId);
+    return job as OfflineShiftCloseJob;
+  }
+
+  async enqueueFuelCreate(payload: OfflineFuelCreatePayload): Promise<OfflineFuelCreateJob> {
+    const job = await this.enqueueJob("fuel:create", payload, payload.vehicleId);
+    return job as OfflineFuelCreateJob;
+  }
+
+  async getPendingJobs(now: Date = new Date()): Promise<OfflineJob[]> {
+    const jobs = await readOfflineJobs();
     return jobs.filter((job) => {
       if (job.status === "succeeded") return false;
       if (job.nextRetryAt == null) return true;
@@ -71,8 +89,8 @@ export class OfflineQueueService {
     });
   }
 
-  markSyncing(jobId: string): OfflineJob | null {
-    const jobs = readOfflineJobs();
+  async markSyncing(jobId: string): Promise<OfflineJob | null> {
+    const jobs = await readOfflineJobs();
     let updated: OfflineJob | null = null;
     const next = jobs.map((job) => {
       if (job.id !== jobId) return job;
@@ -84,18 +102,18 @@ export class OfflineQueueService {
       return updated;
     });
     if (updated) {
-      writeOfflineJobs(next);
+      await writeOfflineJobs(next);
     }
     return updated;
   }
 
-  markSucceeded(jobId: string): void {
-    const jobs = readOfflineJobs().filter((job) => job.id !== jobId);
-    writeOfflineJobs(jobs);
+  async markSucceeded(jobId: string): Promise<void> {
+    const jobs = (await readOfflineJobs()).filter((job) => job.id !== jobId);
+    await writeOfflineJobs(jobs);
   }
 
-  markFailed(jobId: string, errorMessage: string): void {
-    const jobs = readOfflineJobs();
+  async markFailed(jobId: string, errorMessage: string): Promise<void> {
+    const jobs = await readOfflineJobs();
     const now = new Date();
     const next = jobs.map((job) => {
       if (job.id !== jobId) return job;
@@ -110,11 +128,26 @@ export class OfflineQueueService {
         updatedAt: now.toISOString(),
       };
     });
-    writeOfflineJobs(next);
+    await writeOfflineJobs(next);
   }
 
-  getQueueStats(): { pending: number; syncing: number; failed: number } {
-    const jobs = readOfflineJobs();
+  async getQueueStats(): Promise<{
+    pending: number;
+    syncing: number;
+    failed: number;
+    oldestPendingAgeMs: number | null;
+  }> {
+    const jobs = await readOfflineJobs();
+    const now = Date.now();
+    let oldestPendingAgeMs: number | null = null;
+
+    for (const job of jobs) {
+      if (job.status !== "pending" && job.status !== "failed") continue;
+      const age = now - new Date(job.createdAt).getTime();
+      oldestPendingAgeMs =
+        oldestPendingAgeMs == null ? age : Math.max(oldestPendingAgeMs, age);
+    }
+
     return jobs.reduce(
       (acc, job) => {
         if (job.status === "pending") acc.pending += 1;
@@ -122,7 +155,7 @@ export class OfflineQueueService {
         if (job.status === "failed") acc.failed += 1;
         return acc;
       },
-      { pending: 0, syncing: 0, failed: 0 }
+      { pending: 0, syncing: 0, failed: 0, oldestPendingAgeMs }
     );
   }
 }

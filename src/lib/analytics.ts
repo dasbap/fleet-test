@@ -3,6 +3,7 @@
  */
 import posthog from "posthog-js";
 import i18n from "@/i18n";
+import { isNativePlatform } from "@/lib/platform";
 
 const PH_KEY = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
 /** Hôte API PostHog (variable d’environnement, repli UE si absent). */
@@ -30,24 +31,38 @@ export function initAnalytics(): void {
     }
     return;
   }
-  analyticsEnabled = true;
-  posthog.init(PH_KEY, {
-    api_host: PH_HOST,
-    persistence: "localStorage",
-    autocapture: false,
-    capture_pageview: false,
-    capture_pageleave: false,
-    session_recording: {
-      maskAllInputs: true,
-      maskInputOptions: { password: true, email: true },
-    },
-    sanitize_properties: (properties) => {
-      delete properties["$email"];
-      delete properties["phone"];
-      return properties;
-    },
-  });
-  registerPosthogSuperProps();
+  const native = isNativePlatform();
+  try {
+    posthog.init(PH_KEY, {
+      api_host: PH_HOST,
+      persistence: "localStorage",
+      autocapture: false,
+      capture_pageview: false,
+      capture_pageleave: false,
+      /** WebView natif : session replay souvent fragile ou coûteux ; le web garde le masquage champs sensibles. */
+      disable_session_recording: native,
+      ...(!native
+        ? {
+            session_recording: {
+              maskAllInputs: true,
+              maskInputOptions: { password: true, email: true },
+            },
+          }
+        : {}),
+      sanitize_properties: (properties) => {
+        delete properties["$email"];
+        delete properties["phone"];
+        return properties;
+      },
+    });
+    analyticsEnabled = true;
+    registerPosthogSuperProps();
+  } catch (e) {
+    analyticsEnabled = false;
+    if (import.meta.env.DEV) {
+      console.warn("[Analytics] Échec init PostHog — désactivé", e);
+    }
+  }
 }
 
 export function identifyAnalyticsUser(userId: string | undefined): void {

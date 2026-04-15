@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFleetDrivers, useActiveAssignments } from "@/hooks/useAssignments";
 import { cn } from "@/lib/utils";
 import DriverHistoryDialog from "@/components/drivers/DriverHistoryDialog";
+import DriverProfileDialog from "@/components/drivers/DriverProfileDialog";
 
 // Réparation : Ajout des fonctions utilitaires manquantes pour le score
 function getScoreBadgeVariant(scoreLevel: string): BadgeProps["variant"] {
@@ -66,7 +67,9 @@ const Drivers = () => {
   );
 
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [selectedDriverName, setSelectedDriverName] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     if (!userFleetId && role === null) {
@@ -88,6 +91,12 @@ const Drivers = () => {
   const handleViewHistory = (driverId: string) => {
     setSelectedDriverId(driverId);
     setHistoryOpen(true);
+  };
+
+  const handleViewProfile = (driverId: string, name?: string | null) => {
+    setSelectedDriverId(driverId);
+    setSelectedDriverName(name ?? null);
+    setProfileOpen(true);
   };
 
   if (!userFleetId) {
@@ -307,6 +316,14 @@ const Drivers = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
+                              onClick={() =>
+                                handleViewProfile(driver.user_id, driver.full_name)
+                              }
+                            >
+                              <User className="w-4 h-4 mr-2" />
+                              Voir fiche
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={() => handleViewHistory(driver.user_id)}
                             >
                               <History className="w-4 h-4 mr-2" />
@@ -332,6 +349,13 @@ const Drivers = () => {
         open={historyOpen}
         onOpenChange={setHistoryOpen}
         driverId={selectedDriverId}
+      />
+      <DriverProfileDialog
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        fleetId={userFleetId ?? undefined}
+        driverId={selectedDriverId}
+        driverName={selectedDriverName}
       />
     </>
   );

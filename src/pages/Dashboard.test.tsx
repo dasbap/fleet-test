@@ -48,6 +48,14 @@ vi.mock("@/hooks/useFeedbackPrompt", () => ({
   }),
 }));
 
+vi.mock("@/components/dashboard/FailureRiskPanel", () => ({
+  FailureRiskPanel: () => <div>failure-risk-panel-mock</div>,
+}));
+
+vi.mock("@/components/dashboard/WhatsappMonitoringPanel", () => ({
+  WhatsappMonitoringPanel: () => <div>whatsapp-monitoring-panel-mock</div>,
+}));
+
 describe("DashboardPage", () => {
   it("affiche l'empty state engageant quand aucun véhicule actif", async () => {
     render(

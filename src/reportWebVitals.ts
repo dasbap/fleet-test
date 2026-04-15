@@ -2,6 +2,7 @@ import { onCLS, onFCP, onINP, onLCP, type Metric } from "web-vitals";
 
 /** Route SPA courante (mis à jour par le routeur pour les métriques par écran). */
 let currentRoutePath = typeof window !== "undefined" ? window.location.pathname : "/";
+let missingEndpointWarned = false;
 
 export function setWebVitalsRoutePath(path: string): void {
   currentRoutePath = path;
@@ -58,7 +59,15 @@ function sendToAnalytics(metric: Metric) {
     console.log("[Web Vitals]", payload.name, payload.value, payload);
   } else {
     const endpoint = import.meta.env.VITE_WEB_VITALS_ENDPOINT;
-    if (!endpoint) return;
+    if (!endpoint) {
+      if (!missingEndpointWarned) {
+        missingEndpointWarned = true;
+        console.warn(
+          "[Web Vitals] VITE_WEB_VITALS_ENDPOINT absent: les métriques ne sont pas envoyées en production.",
+        );
+      }
+      return;
+    }
 
     const body = JSON.stringify(payload);
     if (navigator.sendBeacon) {

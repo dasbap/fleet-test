@@ -11,10 +11,12 @@ import type { AccountSyncDisplayStatus } from "@/types/account-preferences";
 import type { Mission } from "@/types/mission";
 import { storageGet, storageRemove, storageSet } from "@/lib/storage/localStorageService";
 import { storageKeys } from "@/lib/storage/storageKeys";
+import type { VehicleFilters, VehicleListItemDto } from "@/repositories/vehicle.repository";
 
 const MAX_RECENT_MISSIONS = 25;
 const MAX_RECENT_VEHICLES = 15;
 const MAX_VEHICLE_HISTORY_ENTRIES = 15;
+const MAX_VEHICLE_LIST_SNAPSHOT_ITEMS = 200;
 
 const defaultSyncState = (): LocalSyncState => ({
   lastSuccessfulSyncAt: null,
@@ -102,6 +104,50 @@ export function recordRecentVehicleView(entry: Omit<CachedRecentVehicle, "viewed
   list.unshift({ ...entry, viewedAt });
   storageSet(storageKeys.recentVehicles, list.slice(0, MAX_RECENT_VEHICLES));
   notifyLocalCache();
+}
+
+/** Clé stable des filtres liste (alignée sur `VehicleListFilters`). */
+export function vehicleListFiltersKey(
+  filters: Pick<VehicleFilters, "fleet_id" | "status" | "search">,
+): string {
+  return JSON.stringify({
+    fleet_id: filters.fleet_id,
+    status: filters.status ?? null,
+    search: filters.search ?? null,
+  });
+}
+
+export interface CachedVehicleListSnapshot {
+  fleetId: string;
+  filtersKey: string;
+  items: VehicleListItemDto[];
+  cachedAt: string;
+}
+
+/** Persiste la dernière liste pour consultation hors ligne (même flotte / filtres). */
+export function saveVehicleListSnapshot(
+  filters: Pick<VehicleFilters, "fleet_id" | "status" | "search">,
+  items: VehicleListItemDto[],
+): void {
+  if (!filters.fleet_id) return;
+  const payload: CachedVehicleListSnapshot = {
+    fleetId: filters.fleet_id,
+    filtersKey: vehicleListFiltersKey(filters),
+    items: items.slice(0, MAX_VEHICLE_LIST_SNAPSHOT_ITEMS),
+    cachedAt: new Date().toISOString(),
+  };
+  storageSet(storageKeys.vehicleListSnapshot, payload);
+}
+
+/** Données de secours si le réseau est indisponible et que la clé correspond. */
+export function getVehicleListPlaceholder(
+  filters: Pick<VehicleFilters, "fleet_id" | "status" | "search">,
+): VehicleListItemDto[] | undefined {
+  const raw = storageGet<CachedVehicleListSnapshot>(storageKeys.vehicleListSnapshot);
+  if (!raw) return undefined;
+  if (raw.fleetId !== filters.fleet_id) return undefined;
+  if (raw.filtersKey !== vehicleListFiltersKey(filters)) return undefined;
+  return raw.items;
 }
 
 /* --- Historique véhicule offline --- */

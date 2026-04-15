@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale/fr";
@@ -37,6 +37,7 @@ import {
 import { MaintenanceEvidenceRepository } from "@/repositories/maintenance-evidence.repository";
 import { shareContent, buildVehicleDocumentSharePayload } from "@/services/share.service";
 import { toast } from "@/hooks/use-toast";
+import { recordRecentVehicleView } from "@/lib/storage/flotteEsambaLocalCache";
 import type { VehicleDto } from "@/types/dto/vehicle.dto";
 import type { MaintenanceJob } from "@/repositories/maintenance.repository";
 import type { AlertDto } from "@/types/dto/alert.dto";
@@ -582,6 +583,18 @@ export default function FleetVehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const { userFleetId } = useAuth();
   const { data: vehicle, isLoading: isVehicleLoading } = useVehicleDetail(vehicleId);
+
+  useEffect(() => {
+    if (!vehicle || !userFleetId) return;
+    const label =
+      [vehicle.brand, vehicle.model].filter(Boolean).join(" ").trim() || vehicle.registration;
+    recordRecentVehicleView({
+      vehicleId: vehicle.id,
+      fleetId: userFleetId,
+      registration: vehicle.registration,
+      label,
+    });
+  }, [vehicle, userFleetId]);
   const { data: vehicleAlerts = [] } = useVehicleAlerts(vehicleId);
   const { data: maintenanceJobs = [], isLoading: jobsLoading } = useVehicleMaintenanceJobs(
     userFleetId ?? undefined,

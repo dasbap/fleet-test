@@ -5,11 +5,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/hooks/useAuth";
 import { useFleetReport } from "@/hooks/useFleetReport";
-import { generateFleetExcel } from "@/lib/generateFleetExcel";
 import { toast } from "@/hooks/use-toast";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
 import { RecentIncidentsTable } from "@/components/reports/RecentIncidentsTable";
+import { LazyWhenVisible } from "@/components/reports/LazyWhenVisible";
 import { VehicleFilter } from "@/components/reports/VehicleFilter";
 import {
   FileText,
@@ -109,18 +109,18 @@ export default function Reports() {
   };
 
   const handleExportExcel = async () => {
-    if (report) {
-      try {
-        await generateFleetExcel(report);
-      } catch (e) {
-        console.error(e);
-        toast({
-          title: "Export Excel impossible",
-          description:
-            e instanceof Error ? e.message : "Une erreur est survenue lors de la génération du fichier Excel.",
-          variant: "destructive",
-        });
-      }
+    if (!report) return;
+    try {
+      const { generateFleetExcel } = await import("@/lib/generateFleetExcel");
+      await generateFleetExcel(report);
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Export Excel impossible",
+        description:
+          e instanceof Error ? e.message : "Une erreur est survenue lors de la génération du fichier Excel.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -309,42 +309,50 @@ export default function Reports() {
                     </Card>
                   </div>
 
-                  {/* Revenue Timeline Chart */}
+                  {/* Graphiques : chargement différé jusqu’à proximité viewport (recharts) */}
                   <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
-                    <Suspense fallback={<ChartSkeleton />}>
-                      <RevenueTimelineChart
-                        closures={filteredReport.timeline}
-                        startDate={dateRange.from}
-                        endDate={dateRange.to}
-                      />
-                    </Suspense>
+                    <LazyWhenVisible fallback={<ChartSkeleton />}>
+                      <Suspense fallback={<ChartSkeleton />}>
+                        <RevenueTimelineChart
+                          closures={filteredReport.timeline}
+                          startDate={dateRange.from}
+                          endDate={dateRange.to}
+                        />
+                      </Suspense>
+                    </LazyWhenVisible>
                   </div>
 
-                  {/* Interactive Charts */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="animate-fade-in" style={{ animationDelay: '250ms' }}>
-                      <Suspense fallback={<ChartSkeleton />}>
-                        <RevenueChart data={filteredReport.revenue.byVehicle} />
-                      </Suspense>
+                      <LazyWhenVisible fallback={<ChartSkeleton />}>
+                        <Suspense fallback={<ChartSkeleton />}>
+                          <RevenueChart data={filteredReport.revenue.byVehicle} />
+                        </Suspense>
+                      </LazyWhenVisible>
                     </div>
                     <div className="animate-fade-in" style={{ animationDelay: '300ms' }}>
-                      <Suspense fallback={<ChartSkeleton />}>
-                        <KilometersChart data={filteredReport.kilometers.byVehicle} />
-                      </Suspense>
+                      <LazyWhenVisible fallback={<ChartSkeleton />}>
+                        <Suspense fallback={<ChartSkeleton />}>
+                          <KilometersChart data={filteredReport.kilometers.byVehicle} />
+                        </Suspense>
+                      </LazyWhenVisible>
                     </div>
                   </div>
 
-                  {/* Detailed Cards */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="animate-fade-in" style={{ animationDelay: '350ms' }}>
-                      <Suspense fallback={<ChartSkeleton />}>
-                        <IncidentsPieChart data={filteredReport.incidents.bySeverity} />
-                      </Suspense>
+                      <LazyWhenVisible fallback={<ChartSkeleton />}>
+                        <Suspense fallback={<ChartSkeleton />}>
+                          <IncidentsPieChart data={filteredReport.incidents.bySeverity} />
+                        </Suspense>
+                      </LazyWhenVisible>
                     </div>
                     <div className="animate-fade-in" style={{ animationDelay: '400ms' }}>
-                      <Suspense fallback={<ChartSkeleton />}>
-                        <MaintenanceTrendsChart data={filteredReport.maintenance} />
-                      </Suspense>
+                      <LazyWhenVisible fallback={<ChartSkeleton />}>
+                        <Suspense fallback={<ChartSkeleton />}>
+                          <MaintenanceTrendsChart data={filteredReport.maintenance} />
+                        </Suspense>
+                      </LazyWhenVisible>
                     </div>
                   </div>
 

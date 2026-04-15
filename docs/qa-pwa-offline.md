@@ -96,3 +96,4 @@ Déposer les fichiers sous `docs/qa-screenshots/YYYY-MM-DD/` (dossier versionné
 - Config : `vite.config.ts` (plugin `VitePWA`, `navigateFallback`, `runtimeCaching`).
 - Fallback statique : `public/offline.html`.
 - Enregistrement SW : `src/pwa.ts`, import dans `src/main.tsx`.
+- File d’incidents hors ligne, sync Android, 3G landing : voir [`qa-checklist-offline-sync.md`](qa-checklist-offline-sync.md).

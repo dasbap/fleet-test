@@ -26,3 +26,4 @@ export * from './operations.repository';
 export * from './notification.repository';
 export * from './vehicle-search.repository';
 export * from './feedback.repository';
+export * from "./fleet-tracking.repository";
