@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -24,6 +24,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useActivation } from "@/hooks/useActivation";
 
 const RevenueChart = lazy(() =>
   import("@/components/reports/RevenueChart").then((module) => ({ default: module.RevenueChart }))
@@ -56,8 +57,17 @@ export default function Reports() {
   
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
+  const { completeStep, steps } = useActivation();
 
   const { data: report, isLoading, error } = useFleetReport(dateRange.from, dateRange.to);
+
+  useEffect(() => {
+    if (!report) return;
+    const reportStep = steps.find((step) => step.id === "first_report");
+    if (!reportStep?.completed) {
+      void completeStep("first_report");
+    }
+  }, [completeStep, report, steps]);
 
   // Get unique vehicles from report data
   const availableVehicles = useMemo(() => {

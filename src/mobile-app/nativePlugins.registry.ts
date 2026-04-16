@@ -7,6 +7,7 @@ export type NativePluginId =
   | "camera"
   | "geolocation"
   | "filesystem"
+  | "haptics"
   | "preferences"
   | "share"
   | "app"
@@ -35,6 +36,11 @@ export const NATIVE_PLUGINS_REGISTRY: readonly NativePluginEntry[] = [
     id: "filesystem",
     npmPackage: "@capacitor/filesystem",
     purpose: "Cache pièces lourdes (évolution)",
+  },
+  {
+    id: "haptics",
+    npmPackage: "@capacitor/haptics",
+    purpose: "Retour tactile lors des actions critiques (scan, alertes)",
   },
   {
     id: "preferences",

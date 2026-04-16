@@ -7,12 +7,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { analytics, syncAnalyticsLanguage } from "@/lib/analytics";
+import { SUPPORTED_LANGS } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 const LANGS = [
   { code: "fr", label: "Français", flag: "🇫🇷" },
   { code: "en", label: "English", flag: "🇬🇧" },
   { code: "ln", label: "Lingala", flag: "🇨🇩" },
+  { code: "ar", label: "العربية", flag: "🇸🇦" },
+  { code: "wo", label: "Wolof", flag: "🇸🇳" },
+  { code: "sw", label: "Kiswahili", flag: "🇹🇿" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
 ] as const;
 
 interface LanguageSwitcherProps {
@@ -23,6 +28,9 @@ export function LanguageSwitcher({ className }: LanguageSwitcherProps) {
   const { i18n, t } = useTranslation("common");
   const resolved = (i18n.resolvedLanguage ?? i18n.language).split("-")[0] ?? "fr";
   const current = LANGS.find((l) => l.code === resolved) ?? LANGS[0];
+  const selectableLangs = LANGS.filter((lang) =>
+    SUPPORTED_LANGS.includes(lang.code as (typeof SUPPORTED_LANGS)[number])
+  );
 
   return (
     <Select
@@ -42,7 +50,7 @@ export function LanguageSwitcher({ className }: LanguageSwitcherProps) {
         <SelectValue placeholder={`${current.flag} ${current.label}`} />
       </SelectTrigger>
       <SelectContent>
-        {LANGS.map((lang) => (
+        {selectableLangs.map((lang) => (
           <SelectItem key={lang.code} value={lang.code}>
             <span className="mr-2" aria-hidden>
               {lang.flag}

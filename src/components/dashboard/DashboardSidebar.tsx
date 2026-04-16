@@ -35,6 +35,7 @@ import { toast } from "@/hooks/use-toast";
 import { hasModuleAccess } from "@/auth/permissions";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import type { AppRole } from "@/types/auth";
+import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
 
 interface DashboardSidebarProps {
   userRole: AppRole;
@@ -141,6 +142,12 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
                 );
               })}
             </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup className="pt-0">
+          <SidebarGroupLabel>Activation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <ActivationChecklist mode="sidebar" className="rounded-xl" />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

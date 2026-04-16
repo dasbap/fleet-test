@@ -42,6 +42,10 @@ dist-ssr
 # Lighthouse CI (sorties locales de lhci autorun)
 .lighthouseci
 
+# Expo local state
+.expo/
+apps/mobile/.expo/
+
 # Rapports de test temporaires
 TEST-REPORT-*.json
 !.cursor/rules/

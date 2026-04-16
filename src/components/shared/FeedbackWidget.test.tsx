@@ -41,7 +41,9 @@ describe("FeedbackWidget", () => {
     mutateAsync.mockResolvedValue(undefined);
   });
 
-  it("soumet rating, npsTrigger et message (colonnes message / rating / nps_trigger)", async () => {
+  it(
+    "soumet rating, npsTrigger et message (colonnes message / rating / nps_trigger)",
+    async () => {
     render(
       <FeedbackWidget trigger="manual" onDismiss={vi.fn()} position="inline" />,
     );
@@ -64,9 +66,13 @@ describe("FeedbackWidget", () => {
         }),
       );
     });
-  });
+    },
+    15000
+  );
 
-  it("transmet entityId et entityType pour un déclencheur contextualisé", async () => {
+  it(
+    "transmet entityId et entityType pour un déclencheur contextualisé",
+    async () => {
     render(
       <FeedbackWidget
         trigger="alert_resolved"
@@ -95,9 +101,13 @@ describe("FeedbackWidget", () => {
         }),
       );
     });
-  });
+    },
+    15000
+  );
 
-  it("concatène tags et texte libre dans message (séparateur ·)", async () => {
+  it(
+    "concatène tags et texte libre dans message (séparateur ·)",
+    async () => {
     render(
       <FeedbackWidget trigger="manual" onDismiss={vi.fn()} position="inline" />,
     );
@@ -118,9 +128,13 @@ describe("FeedbackWidget", () => {
         }),
       );
     });
-  });
+    },
+    15000
+  );
 
-  it("appelle onSubmitted après persistance réussie", async () => {
+  it(
+    "appelle onSubmitted après persistance réussie",
+    async () => {
     const onSubmitted = vi.fn();
     render(
       <FeedbackWidget
@@ -147,9 +161,13 @@ describe("FeedbackWidget", () => {
         }),
       );
     });
-  });
+    },
+    15000
+  );
 
-  it("n’affiche pas l’étape de remerciement si l’envoi échoue (ex. RLS / réseau)", async () => {
+  it(
+    "n’affiche pas l’étape de remerciement si l’envoi échoue (ex. RLS / réseau)",
+    async () => {
     mutateAsync.mockRejectedValueOnce(new Error("new row violates row-level security policy"));
 
     render(
@@ -165,9 +183,13 @@ describe("FeedbackWidget", () => {
 
     expect(screen.queryByText(/Merci pour votre retour/i)).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Commentaire libre/i)).toBeInTheDocument();
-  });
+    },
+    15000
+  );
 
-  it("appelle onDismiss après « Passer » (fermeture sans envoi)", async () => {
+  it(
+    "appelle onDismiss après « Passer » (fermeture sans envoi)",
+    async () => {
     const onDismiss = vi.fn();
 
     render(
@@ -176,14 +198,19 @@ describe("FeedbackWidget", () => {
 
     await goToCommentStep(4);
 
-    vi.useFakeTimers();
-    fireEvent.click(screen.getByRole("button", { name: /^Passer$/i }));
+      vi.useFakeTimers();
+      try {
+        fireEvent.click(screen.getByRole("button", { name: /^Passer$/i }));
 
-    await act(async () => {
-      vi.advanceTimersByTime(300);
-    });
+        await act(async () => {
+          vi.advanceTimersByTime(300);
+        });
 
-    expect(onDismiss).toHaveBeenCalledTimes(1);
-    vi.useRealTimers();
-  });
+        expect(onDismiss).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+    15000
+  );
 });

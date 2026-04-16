@@ -49,6 +49,27 @@
   "languageSwitcher": {
     "ariaLabel": "Interface language"
   },
+  "dialog": {
+    "close": "Close"
+  },
+  "searchPalette": {
+    "openAria": "Open search",
+    "dialogTitle": "Universal search",
+    "dialogDescription": "Search across vehicles, maintenance and alerts.",
+    "placeholder": "Search vehicle, driver, alert…",
+    "clear": "Clear search",
+    "resultsAria": "Search results",
+    "emptyTitle": "No result for \"{query}\"",
+    "emptyHint": "Try a plate number, driver name, or maintenance type.",
+    "idlePrompt": "Type at least 2 characters",
+    "hintNavigate": "Navigate",
+    "hintOpen": "Open",
+    "hintClose": "Close",
+    "hintShortcut": "Open search",
+    "loadingState": "Searching",
+    "resultsCount": "{{count}} results",
+    "noResults": "No results"
+  },
   "loading": "Loading…",
   "error": "An error occurred"
 }

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useEsambaDataVerification } from "@/hooks/useEsambaDataVerification";
 import { useFleetMembers, type FleetMember } from "@/hooks/useFleetMembers";
@@ -19,14 +20,41 @@ import {
 import { Settings as SettingsIcon, Zap, CheckCircle2, XCircle, RefreshCw, Users, Shield, UserCog, Car, Wrench, Phone, Loader2, Languages } from "lucide-react";
 import { BiometricLockSettingsCard } from "@/components/mobile/BiometricLockSettingsCard";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { recommendTutorialOfflineQuota } from "@/lib/tutorialOfflineQuotaRecommendation";
 
 const Settings = () => {
   const { t } = useTranslation("common");
   const { user, userFleetId, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const { data: verificationStatus, isLoading: isVerifying, refetch: refetchVerification } = useEsambaDataVerification();
   const { data: fleetMembers = [], isLoading: isLoadingMembers, error: membersError, refetch: refetchMembers } = useFleetMembers(userFleetId || undefined);
   const seedMutation = useSeedEsambaData();
+  const offlineQuotaRecommendation = useMemo(
+    () => recommendTutorialOfflineQuota(),
+    [],
+  );
+  const envOfflineQuotaMb = Number(import.meta.env.VITE_TUTORIAL_OFFLINE_QUOTA_MB);
+  const effectiveEnvOfflineQuotaMb = Number.isFinite(envOfflineQuotaMb)
+    ? envOfflineQuotaMb
+    : 250;
+
+  const handleCopyRecommendedQuota = async () => {
+    const envLine = `VITE_TUTORIAL_OFFLINE_QUOTA_MB=${offlineQuotaRecommendation.recommendedQuotaMb}`;
+    try {
+      await navigator.clipboard.writeText(envLine);
+      toast({
+        title: "Valeur copiée",
+        description: `${envLine} a été copié dans le presse-papiers.`,
+      });
+    } catch {
+      toast({
+        title: "Copie impossible",
+        description: "La copie automatique a échoué. Copiez la valeur manuellement.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Note: L'exécution automatique a été désactivée pour éviter les problèmes
   // L'utilisateur doit cliquer manuellement sur le bouton de création des données de démo (code invitation défini dans esamba-demo.constants).
@@ -135,6 +163,39 @@ const Settings = () => {
               </Card>
 
               <BiometricLockSettingsCard />
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Quota offline tutoriels (suggestion)</CardTitle>
+                  <CardDescription>
+                    Détection automatique du profil appareil pour proposer une valeur recommandée.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <p>
+                    Profil détecté: <strong>{offlineQuotaRecommendation.tier}</strong>
+                  </p>
+                  <p>
+                    Quota recommandé: <strong>{offlineQuotaRecommendation.recommendedQuotaMb} MB</strong>
+                  </p>
+                  <p>
+                    Quota configuré via environnement: <strong>{effectiveEnvOfflineQuotaMb} MB</strong>
+                  </p>
+                  <p className="text-muted-foreground">{offlineQuotaRecommendation.rationale}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Pour appliquer la recommandation, modifiez <code>VITE_TUTORIAL_OFFLINE_QUOTA_MB</code> dans votre
+                    fichier d’environnement.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleCopyRecommendedQuota()}
+                  >
+                    Copier la valeur recommandée
+                  </Button>
+                </CardContent>
+              </Card>
 
               {/* Carte de seed ESAMBA */}
               <Card className="animate-fade-in">

@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "dashboard": "Panel",
+    "fleet": "Flota",
+    "maintenance": "Mantenimiento",
+    "alerts": "Alertas",
+    "reports": "Informes",
+    "settings": "Configuración"
+  },
+  "actions": {
+    "add": "Añadir",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "close": "Cerrar",
+    "plan": "Planificar",
+    "resolve": "Resolver",
+    "export": "Exportar",
+    "search": "Buscar"
+  },
+  "status": {
+    "active": "Activo",
+    "maintenance": "En mantenimiento",
+    "inactive": "Inactivo",
+    "resolved": "Resuelto",
+    "pending": "Pendiente",
+    "overdue": "Atrasado"
+  },
+  "severity": {
+    "critical": "Crítico",
+    "warning": "Alerta",
+    "info": "Info"
+  },
+  "empty": {
+    "noVehicles": "No hay vehículos en la flota",
+    "noAlerts": "No hay alertas activas",
+    "noMaintenance": "No hay mantenimiento programado"
+  },
+  "settingsPage": {
+    "title": "Configuración",
+    "description": "Herramientas de administración y configuración de tu espacio E-Samba.",
+    "languageSectionTitle": "Idioma",
+    "languageSectionDescription": "Elige el idioma de la interfaz. Lingala cubre principalmente el uso en terreno (conductores)."
+  },
+  "languageSwitcher": {
+    "ariaLabel": "Idioma de la interfaz"
+  },
+  "dialog": {
+    "close": "Cerrar"
+  },
+  "searchPalette": {
+    "openAria": "Abrir búsqueda",
+    "dialogTitle": "Búsqueda universal",
+    "dialogDescription": "Buscar en vehículos, mantenimientos y alertas.",
+    "placeholder": "Buscar vehículo, conductor, alerta…",
+    "clear": "Limpiar búsqueda",
+    "resultsAria": "Resultados de búsqueda",
+    "emptyTitle": "Sin resultados para \"{query}\"",
+    "emptyHint": "Prueba matrícula, nombre del conductor o tipo de mantenimiento.",
+    "idlePrompt": "Escribe al menos 2 caracteres",
+    "hintNavigate": "Navegar",
+    "hintOpen": "Abrir",
+    "hintClose": "Cerrar",
+    "hintShortcut": "Abrir búsqueda",
+    "loadingState": "Buscando",
+    "resultsCount": "{{count}} resultados",
+    "noResults": "Sin resultados"
+  },
+  "loading": "Cargando…",
+  "error": "Se produjo un error"
+}

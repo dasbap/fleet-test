@@ -9,6 +9,9 @@ Procédure de validation pour **Flotte E-Samba** : file locale offline (incident
 
 **Complément PWA** : shell, service worker et fiche véhicule — voir [`qa-pwa-offline.md`](qa-pwa-offline.md).
 
+**Référence offline** : Les snippets couvrent bien les besoins offline (queue, statut, reprise de sync), mais il faut utiliser les primitives réelles du projet : `OfflineQueueService` et `useOfflineSyncStatus` (pas `syncQueue` / `useSyncQueue`).
+Respectez l’architecture `composants → hooks → services → repositories` et documentez uniquement les chemins/API existants pour éviter une fausse couche parallèle.
+
 ---
 
 ## Fiche de campagne

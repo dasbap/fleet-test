@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import ProofUpload, { ProofType } from "./ProofUpload";
 import { useNavigate } from "react-router-dom";
 import { useCloseShift } from "@/hooks/useDriverShifts";
+import { useActivation } from "@/hooks/useActivation";
 
 const closureFormSchema = z.object({
   kmEnd: z.coerce.number().min(0, "Kilométrage invalide"),
@@ -49,6 +50,7 @@ const ShiftClosureForm = ({ shiftId, kmStart }: ShiftClosureFormProps) => {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const navigate = useNavigate();
   const closeShiftMutation = useCloseShift();
+  const { completeStep } = useActivation();
 
   const form = useForm<ClosureFormValues>({
     resolver: zodResolver(closureFormSchema),
@@ -131,6 +133,7 @@ const ShiftClosureForm = ({ shiftId, kmStart }: ShiftClosureFormProps) => {
         proof_type: proofType,
         proof_value: finalProofValue,
       });
+      await completeStep("first_creneau");
       
       toast({
         title: "Clôture envoyée",

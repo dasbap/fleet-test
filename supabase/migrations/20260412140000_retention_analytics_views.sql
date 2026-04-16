@@ -126,7 +126,8 @@ SELECT
   (SELECT count(*)::bigint FROM jamais j WHERE j.org_id = o.id) AS never_activated,
   (SELECT count(*)::bigint FROM eligible e WHERE e.org_id = o.id AND e.ok_d7) AS eligible_d7,
   (SELECT count(*)::bigint FROM eligible e WHERE e.org_id = o.id AND e.ok_d30) AS eligible_d30
-FROM public.organisations o;
+FROM public.organisations o
+left join nouveaux n on n.org_id = o.id;
 
 COMMENT ON VIEW public.v_retention_kpis IS
   'KPIs rétention par org ; RLS sur la vue.';
@@ -344,30 +345,8 @@ ALTER VIEW public.v_retention_cohorts SET (security_invoker = false);
 ALTER VIEW public.v_daily_active_users SET (security_invoker = false);
 ALTER VIEW public.v_activation_funnel SET (security_invoker = false);
 
-ALTER VIEW public.v_retention_kpis ENABLE ROW LEVEL SECURITY;
-ALTER VIEW public.v_retention_cohorts ENABLE ROW LEVEL SECURITY;
-ALTER VIEW public.v_daily_active_users ENABLE ROW LEVEL SECURITY;
-ALTER VIEW public.v_activation_funnel ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS v_retention_kpis_select ON public.v_retention_kpis;
-CREATE POLICY v_retention_kpis_select ON public.v_retention_kpis
-  FOR SELECT TO authenticated
-  USING (public.user_can_read_retention_org(org_id));
-
-DROP POLICY IF EXISTS v_retention_cohorts_select ON public.v_retention_cohorts;
-CREATE POLICY v_retention_cohorts_select ON public.v_retention_cohorts
-  FOR SELECT TO authenticated
-  USING (public.user_can_read_retention_org(org_id));
-
-DROP POLICY IF EXISTS v_daily_active_users_select ON public.v_daily_active_users;
-CREATE POLICY v_daily_active_users_select ON public.v_daily_active_users
-  FOR SELECT TO authenticated
-  USING (public.user_can_read_retention_org(org_id));
-
-DROP POLICY IF EXISTS v_activation_funnel_select ON public.v_activation_funnel;
-CREATE POLICY v_activation_funnel_select ON public.v_activation_funnel
-  FOR SELECT TO authenticated
-  USING (public.user_can_read_retention_org(org_id));
+-- Note: Postgres ne supporte pas la RLS/policies sur les vues.
+-- L'accès doit être géré côté API (RPC) ou via des vues filtrées par auth.uid().
 
 GRANT SELECT ON public.v_retention_kpis TO authenticated;
 GRANT SELECT ON public.v_retention_cohorts TO authenticated;

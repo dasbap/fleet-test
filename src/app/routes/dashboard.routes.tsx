@@ -52,6 +52,12 @@ const OperationsInterventionDetailPage = lazy(
   () => import("@/features/operations/screens/OperationsInterventionDetailPage")
 );
 const MobileAccountPage = lazy(() => import("@/features/account/screens/MobileAccountPage"));
+const TutorialsListPage = lazy(
+  () => import("@/features/tutorials/screens/TutorialsListPage")
+);
+const TutorialPlayerPage = lazy(
+  () => import("@/features/tutorials/screens/TutorialPlayerPage")
+);
 const RolesHubScreen = lazy(() =>
   import("@/features/roles").then((m) => ({ default: m.RolesHubScreen }))
 );
@@ -130,6 +136,8 @@ export const dashboardRoutes = (
       />
       <Route path="alerts/:alertId" element={<IncidentAlertDetailPage />} />
       <Route path="alerts" element={<MobileAlertsPage />} />
+      <Route path="tutorials" element={<TutorialsListPage />} />
+      <Route path="tutorials/:tutorialId" element={<TutorialPlayerPage />} />
       <Route
         path="operations/mission/:missionId"
         element={

@@ -34,6 +34,8 @@ export * from "./fleet-tracking.service";
 export * from "./tenant-access.service";
 export * from "./billing.service";
 export * from "./whatsapp-monitoring.service";
+export * from "./haptics.service";
+export * from "./tutorial-offline.service";
 
 // Réexporter les types pour compatibilité
 export type { VehicleDto, VehicleInsertDto, VehicleStatusDto } from '@/types/dto/vehicle.dto';

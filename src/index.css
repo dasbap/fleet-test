@@ -4,6 +4,25 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 /* E-Samba Design System - Smart Mobility Africa
    Primary: Electric Green #00C853 → HSL(145, 100%, 39%)
    Background Dark: #0F0F0F → HSL(0, 0%, 6%)
@@ -171,6 +190,21 @@
   
   .glass-dark {
     @apply bg-card/80 backdrop-blur-md border border-border/50;
+  }
+
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--card)) 25%,
+      hsl(var(--background)) 50%,
+      hsl(var(--card)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
   }
 
   /** Conteneur page mobile : gouttières cohérentes avec encoches (safe area). */

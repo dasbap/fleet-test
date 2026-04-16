@@ -180,6 +180,11 @@ Le projet applique des mesures pour limiter le layout shift post-hydratation (po
 
 L’application utilise actuellement un **thème sombre forcé** (voir [ADR 0001 — Thème sombre forcé](docs/adr/0001-forced-theme-dark.md)). Pour un passage futur à un thème sélectionnable par l’utilisateur (light/dark/système), consulter la section « Notes techniques (si réactivation d’un switch thème) » de l’ADR et les commentaires dans `src/index.css`.
 
+## Référence offline
+
+Les snippets couvrent bien les besoins offline (queue, statut, reprise de sync), mais il faut utiliser les primitives réelles du projet : `OfflineQueueService` et `useOfflineSyncStatus` (pas `syncQueue` / `useSyncQueue`).
+Respectez l’architecture `composants → hooks → services → repositories` et documentez uniquement les chemins/API existants pour éviter une fausse couche parallèle.
+
 ## SEO (canonical et métas)
 
 SPA sans SSR/SSG : le HTML initial contient titre, description, canonical et balises OG pour la home (`index.html`) ; au build, un HTML par route listée dans `src/lib/site.ts` est généré avec les métas correctes, et les rewrites Vercel servent ce fichier. Côté client, `PageSEO` met à jour canonical, title, description et og:url à chaque changement de route. Détail et checklist : [docs/seo.md](docs/seo.md).

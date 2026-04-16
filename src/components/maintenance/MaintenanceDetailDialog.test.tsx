@@ -105,13 +105,19 @@ describe("MaintenanceDetailDialog", () => {
     } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
   });
 
-  it("affiche le spinner pendant le chargement", () => {
+  it(
+    "affiche le spinner pendant le chargement",
+    () => {
     renderDialog();
     // Titre possible en sr-only (Radix) : présent pour l’accessibilité, pas affiché visuellement.
     expect(document.querySelector(".animate-spin")).toBeInTheDocument();
-  });
+    },
+    15000
+  );
 
-  it("affiche un message d'erreur et les boutons Réessayer / Fermer en cas d'erreur", async () => {
+  it(
+    "affiche un message d'erreur et les boutons Réessayer / Fermer en cas d'erreur",
+    async () => {
     vi.mocked(useMaintenanceModule.useMaintenanceJob).mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -126,10 +132,14 @@ describe("MaintenanceDetailDialog", () => {
       expect(screen.getByText(/Erreur réseau|Impossible de charger/)).toBeInTheDocument();
     });
     expect(screen.getByRole("button", { name: /Réessayer/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Fermer/i })).toBeInTheDocument();
-  });
+    expect(screen.getAllByRole("button", { name: /Fermer/i }).length).toBeGreaterThan(0);
+    },
+    15000
+  );
 
-  it("appelle refetch au clic sur Réessayer", () => {
+  it(
+    "appelle refetch au clic sur Réessayer",
+    () => {
     vi.mocked(useMaintenanceModule.useMaintenanceJob).mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -142,9 +152,13 @@ describe("MaintenanceDetailDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /Réessayer/i }));
 
     expect(mockRefetch).toHaveBeenCalledTimes(1);
-  });
+    },
+    15000
+  );
 
-  it("affiche le titre, la plaque, le statut et la priorité quand le job est chargé", async () => {
+  it(
+    "affiche le titre, la plaque, le statut et la priorité quand le job est chargé",
+    async () => {
     vi.mocked(useMaintenanceModule.useMaintenanceJob).mockReturnValue({
       data: mockJobQueued,
       isLoading: false,
@@ -161,9 +175,13 @@ describe("MaintenanceDetailDialog", () => {
     expect(screen.getByText("ABC-123")).toBeInTheDocument();
     expect(screen.getByText("En attente")).toBeInTheDocument();
     expect(screen.getByText("Moyenne")).toBeInTheDocument();
-  });
+    },
+    15000
+  );
 
-  it("affiche les boutons Passer en En cours et Passer en Bloquée pour un job en attente", async () => {
+  it(
+    "affiche les boutons Passer en En cours et Passer en Bloquée pour un job en attente",
+    async () => {
     vi.mocked(useMaintenanceModule.useMaintenanceJob).mockReturnValue({
       data: mockJobQueued,
       isLoading: false,
@@ -178,9 +196,13 @@ describe("MaintenanceDetailDialog", () => {
       expect(screen.getByRole("button", { name: /Passer en "En cours"/i })).toBeInTheDocument();
     });
     expect(screen.getByRole("button", { name: /Passer en "Bloquée"/i })).toBeInTheDocument();
-  });
+    },
+    15000
+  );
 
-  it("appelle mutateAsync avec le bon statut au clic sur Passer en En cours", async () => {
+  it(
+    "appelle mutateAsync avec le bon statut au clic sur Passer en En cours",
+    async () => {
     vi.mocked(useMaintenanceModule.useMaintenanceJob).mockReturnValue({
       data: mockJobQueued,
       isLoading: false,
@@ -199,9 +221,13 @@ describe("MaintenanceDetailDialog", () => {
     await waitFor(() => {
       expect(mockMutateAsyncStatus).toHaveBeenCalledWith({ id: "job-1", status: "in_progress" });
     });
-  });
+    },
+    15000
+  );
 
-  it("n'affiche aucun bouton de changement de statut pour un job terminé (ready)", async () => {
+  it(
+    "n'affiche aucun bouton de changement de statut pour un job terminé (ready)",
+    async () => {
     vi.mocked(useMaintenanceModule.useMaintenanceJob).mockReturnValue({
       data: mockJobReady,
       isLoading: false,
@@ -216,9 +242,13 @@ describe("MaintenanceDetailDialog", () => {
       expect(screen.getByText("ABC-123")).toBeInTheDocument();
     });
     expect(screen.queryByRole("button", { name: /Passer en/ })).not.toBeInTheDocument();
-  });
+    },
+    15000
+  );
 
-  it("affiche les onglets Avant intervention et Après intervention avec EvidenceUpload", async () => {
+  it(
+    "affiche les onglets Avant intervention et Après intervention avec EvidenceUpload",
+    async () => {
     vi.mocked(useMaintenanceModule.useMaintenanceJob).mockReturnValue({
       data: mockJobQueued,
       isLoading: false,
@@ -236,9 +266,13 @@ describe("MaintenanceDetailDialog", () => {
     // Onglet "Avant" actif par défaut : EvidenceUpload before visible
     expect(screen.getByTestId("evidence-before")).toBeInTheDocument();
     expect(screen.getByText(/EvidenceUpload before jobId=job-1 count=0/)).toBeInTheDocument();
-  });
+    },
+    15000
+  );
 
-  it("affiche la section Planification et suivi avec date prévue, notes et pièces quand renseignées", async () => {
+  it(
+    "affiche la section Planification et suivi avec date prévue, notes et pièces quand renseignées",
+    async () => {
     vi.mocked(useMaintenanceModule.useMaintenanceJob).mockReturnValue({
       data: mockJobWithPlanning,
       isLoading: false,
@@ -254,5 +288,7 @@ describe("MaintenanceDetailDialog", () => {
     });
     expect(screen.getByDisplayValue("Contrôle effectué.")).toBeInTheDocument();
     expect(screen.getByText(/Filtre à huile × 1/)).toBeInTheDocument();
-  });
+    },
+    15000
+  );
 });

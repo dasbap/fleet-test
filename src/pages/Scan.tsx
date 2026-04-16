@@ -9,7 +9,17 @@ import { useScan } from "@/hooks/useScan";
 
 export default function Scan() {
   const navigate = useNavigate();
-  const { resolveScan, scanFromCamera, isLoading, error } = useScan();
+  const {
+    resolveScan,
+    scanFromCamera,
+    retryLastScan,
+    resetScanState,
+    scanState,
+    statusText,
+    isOnline,
+    isLoading,
+    error,
+  } = useScan();
   const [rawValue, setRawValue] = useState("");
 
   const handleResolve = async (event: FormEvent<HTMLFormElement>) => {
@@ -21,6 +31,7 @@ export default function Scan() {
         description: `${result.label} ouvert.`,
       });
       navigate(result.route);
+      setTimeout(() => resetScanState(), 700);
     } catch (e) {
       toast({
         title: "Scan impossible",
@@ -38,6 +49,7 @@ export default function Scan() {
         description: `${result.label} ouvert.`,
       });
       navigate(result.route);
+      setTimeout(() => resetScanState(), 700);
     } catch (e) {
       toast({
         title: "Lecture caméra indisponible",
@@ -57,6 +69,11 @@ export default function Scan() {
         <p className="mt-1 text-muted-foreground">
           Scannez un QR/code-barres ou saisissez un identifiant manuellement.
         </p>
+        {!isOnline ? (
+          <p className="mt-2 text-sm text-amber-500">
+            Mode hors ligne: résolution sur cache local uniquement.
+          </p>
+        ) : null}
       </div>
 
       <Card>
@@ -68,7 +85,7 @@ export default function Scan() {
             <Input
               value={rawValue}
               onChange={(event) => setRawValue(event.target.value)}
-              placeholder="Ex: https://www.e-samba.com/vehicule/{id}, esamba://vehicle/{id}, VEH:AB-123-CD"
+              placeholder="Ex: esamba://vehicule/{uuid-v4}, https://www.e-samba.com/vehicule/{uuid-v4}, VEH:AB-123-CD"
             />
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={isLoading || !rawValue.trim()}>
@@ -79,8 +96,14 @@ export default function Scan() {
                 <Camera className="mr-2 h-4 w-4" />
                 Scanner avec caméra
               </Button>
+              {scanState === "error" ? (
+                <Button type="button" variant="secondary" onClick={() => void retryLastScan()} disabled={isLoading}>
+                  Réessayer
+                </Button>
+              ) : null}
             </div>
           </form>
+          <p className="text-sm text-muted-foreground">{statusText}</p>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </CardContent>
       </Card>

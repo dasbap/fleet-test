@@ -14,6 +14,9 @@ export const ROUTE_PATHS = {
     `/dashboard/vehicles/${vehicleId}` as const,
   dashboardMyVehicle: "/dashboard/my-vehicle",
   dashboardAlerts: "/dashboard/alerts",
+  dashboardTutorials: "/dashboard/tutorials",
+  dashboardTutorialDetail: (tutorialId: string) =>
+    `/dashboard/tutorials/${tutorialId}` as const,
   dashboardAlertDetail: (alertId: string) =>
     `/dashboard/alerts/${alertId}` as const,
   dashboardOperations: "/dashboard/operations",

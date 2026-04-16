@@ -49,6 +49,27 @@
   "languageSwitcher": {
     "ariaLabel": "Lokuta ya interface"
   },
+  "dialog": {
+    "close": "Kokanga"
+  },
+  "searchPalette": {
+    "openAria": "Kofungola boluki",
+    "dialogTitle": "Boluki ya mokili mobimba",
+    "dialogDescription": "Luka na kati ya mituka, entretien mpe ba alertes.",
+    "placeholder": "Luka motuka, mokumbi to alerte…",
+    "clear": "Kolongola boluki",
+    "resultsAria": "Ba résultats ya boluki",
+    "emptyTitle": "Résultat ezali te mpo na \"{query}\"",
+    "emptyHint": "Meka plaque, kombo ya mokumbi to lolenge ya entretien.",
+    "idlePrompt": "Koma ata ba caractères mibale",
+    "hintNavigate": "Kotambola",
+    "hintOpen": "Kofungola",
+    "hintClose": "Kokanga",
+    "hintShortcut": "Kofungola boluki",
+    "loadingState": "Boluki ezali kosalema",
+    "resultsCount": "{{count}} ba résultats",
+    "noResults": "Résultat ezali te"
+  },
   "loading": "Kozela…",
   "error": "Likambo na kati"
 }

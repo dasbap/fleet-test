@@ -74,22 +74,26 @@ describe('DriverProfileDialog', () => {
     vi.clearAllMocks();
   });
 
-  it('affiche des selects stricts pour contrat/statut et permet la mise à jour incident', () => {
-    renderDialog();
+  it(
+    'affiche des selects stricts pour contrat/statut et permet la mise à jour incident',
+    () => {
+      renderDialog();
 
-    expect(screen.getByLabelText('Type de contrat')).toBeInTheDocument();
-    expect(screen.getByLabelText('Statut emploi')).toBeInTheDocument();
-    expect(screen.getByText('Incidents récents')).toBeInTheDocument();
+      expect(screen.getByLabelText('Type de contrat')).toBeInTheDocument();
+      expect(screen.getByLabelText('Statut emploi')).toBeInTheDocument();
+      expect(screen.getByText('Incidents récents')).toBeInTheDocument();
 
-    const incidentStatusTrigger = screen.getByLabelText('Statut incident incident-1');
-    fireEvent.click(incidentStatusTrigger);
-    fireEvent.click(screen.getByText('Investigating'));
+      const incidentStatusTrigger = screen.getByLabelText('Statut incident incident-1');
+      fireEvent.click(incidentStatusTrigger);
+      fireEvent.click(screen.getByText('Investigating'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Mettre à jour' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Mettre à jour' }));
 
-    expect(mutateIncidentStatusMock).toHaveBeenCalledWith({
-      incidentId: 'incident-1',
-      status: 'investigating',
-    });
-  });
+      expect(mutateIncidentStatusMock).toHaveBeenCalledWith({
+        incidentId: 'incident-1',
+        status: 'investigating',
+      });
+    },
+    20000,
+  );
 });

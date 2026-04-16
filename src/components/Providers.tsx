@@ -4,14 +4,15 @@ import {
   MutationCache,
   QueryCache,
   QueryClient,
-  QueryClientProvider,
 } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import ThemeProvider from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { logError } from "@/lib/logging";
 import { initAnalytics } from "@/lib/analytics";
+import { getQueryPersister } from "@/lib/query/persistQueryClient";
 
 /** Instance unique pour éviter réinitialisation du cache à chaque rendu. */
 const queryClient = new QueryClient({
@@ -37,6 +38,7 @@ const queryClient = new QueryClient({
     },
   },
 });
+const queryPersister = getQueryPersister();
 
 interface ProvidersProps {
   children: ReactNode;
@@ -55,14 +57,20 @@ function AnalyticsInit() {
 
 const Providers = ({ children }: ProvidersProps) => (
   <ThemeProvider>
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: queryPersister ?? undefined,
+        maxAge: 1000 * 60 * 60 * 12,
+      }}
+    >
       <AnalyticsInit />
       <TooltipProvider>
         <Toaster />
         <Sonner />
         {children}
       </TooltipProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   </ThemeProvider>
 );
 

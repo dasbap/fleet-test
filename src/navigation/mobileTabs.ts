@@ -2,8 +2,8 @@ import type { LucideIcon } from "lucide-react";
 import {
   Bell,
   Car,
+  GraduationCap,
   Home,
-  LayoutGrid,
   User,
 } from "lucide-react";
 import type { AppRole } from "@/hooks/useAuth";
@@ -13,7 +13,7 @@ export type MobileTabId =
   | "home"
   | "fleet"
   | "alerts"
-  | "operations"
+  | "tutorials"
   | "account";
 
 export interface MobileTabDefinition {
@@ -35,10 +35,6 @@ export function getMobileTabsForRole(
   role: AppRole | null
 ): MobileTabDefinition[] {
   const fleetPath = getFleetPathForRole(role);
-  const operationsTab =
-    role === "driver"
-      ? { id: "operations" as const, label: "Scan", to: ROUTE_PATHS.dashboardScan, icon: LayoutGrid }
-      : { id: "operations" as const, label: "Opérations", to: ROUTE_PATHS.dashboardOperations, icon: LayoutGrid };
   return [
     {
       id: "home",
@@ -53,7 +49,12 @@ export function getMobileTabsForRole(
       to: ROUTE_PATHS.dashboardAlerts,
       icon: Bell,
     },
-    operationsTab,
+    {
+      id: "tutorials",
+      label: "Guides",
+      to: ROUTE_PATHS.dashboardTutorials,
+      icon: GraduationCap,
+    },
     {
       id: "account",
       label: "Compte",
@@ -83,8 +84,8 @@ export function isTabActive(
   if (tab.id === "alerts") {
     return pathname.startsWith("/dashboard/alerts");
   }
-  if (tab.id === "operations") {
-    return pathname.startsWith("/dashboard/operations") || pathname.startsWith("/dashboard/scan");
+  if (tab.id === "tutorials") {
+    return pathname.startsWith("/dashboard/tutorials");
   }
   if (tab.id === "account") {
     return (

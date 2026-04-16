@@ -102,7 +102,12 @@ type EventName =
   | "search_performed"
   | "biometric_auth_success"
   | "biometric_auth_failed"
-  | "language_changed";
+  | "language_changed"
+  | "tutorial_offline_downloaded"
+  | "tutorial_offline_removed"
+  | "tutorial_offline_played"
+  | "tutorial_offline_checksum_failed"
+  | "tutorial_offline_purged";
 
 type EventProps = Record<string, string | number | boolean | null>;
 
@@ -110,6 +115,7 @@ export function track(event: EventName, props?: EventProps): void {
   if (!analyticsEnabled) return;
   posthog.capture(event, {
     ...props,
+    lang: i18n.language,
     $time: new Date().toISOString(),
   });
 }
@@ -167,4 +173,23 @@ export const analytics = {
 
   languageChanged: (from: string, to: string) =>
     track("language_changed", { from_lang: from, to_lang: to }),
+
+  tutorialOfflineDownloaded: (tutorialId: string, sizeBytes: number, durationMs: number) =>
+    track("tutorial_offline_downloaded", {
+      tutorial_id: tutorialId,
+      size_bytes: sizeBytes,
+      duration_ms: durationMs,
+    }),
+
+  tutorialOfflineRemoved: (tutorialId: string) =>
+    track("tutorial_offline_removed", { tutorial_id: tutorialId }),
+
+  tutorialOfflinePlayed: (tutorialId: string, source: "offline" | "online") =>
+    track("tutorial_offline_played", { tutorial_id: tutorialId, source }),
+
+  tutorialOfflineChecksumFailed: (tutorialId: string) =>
+    track("tutorial_offline_checksum_failed", { tutorial_id: tutorialId }),
+
+  tutorialOfflinePurged: (tutorialId: string, reason: "quota") =>
+    track("tutorial_offline_purged", { tutorial_id: tutorialId, reason }),
 };

@@ -8,6 +8,7 @@ import Backend from "i18next-http-backend";
 
 const LEGACY_LANG_KEY = "smartfleet:language";
 const LANG_STORAGE_KEY = "esamba_lang";
+export const SUPPORTED_LANGS = ["fr", "en", "ln", "ar", "wo", "sw", "es"] as const;
 
 /** Migre l’ancienne clé localStorage vers esamba_lang sans écraser une valeur déjà définie. */
 function migrateLegacyLanguageKey(): void {
@@ -15,7 +16,7 @@ function migrateLegacyLanguageKey(): void {
   try {
     const current = window.localStorage.getItem(LANG_STORAGE_KEY);
     const legacy = window.localStorage.getItem(LEGACY_LANG_KEY);
-    if (!current && legacy && ["fr", "en", "ln"].includes(legacy)) {
+    if (!current && SUPPORTED_LANGS.includes(legacy as (typeof SUPPORTED_LANGS)[number])) {
       window.localStorage.setItem(LANG_STORAGE_KEY, legacy);
     }
   } catch {
@@ -30,7 +31,7 @@ void i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    supportedLngs: ["fr", "en", "ln"],
+    supportedLngs: [...SUPPORTED_LANGS],
     fallbackLng: "fr",
     defaultNS: "common",
     ns: ["common", "fleet", "maintenance", "alerts"],

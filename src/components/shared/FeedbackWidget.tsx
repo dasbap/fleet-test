@@ -7,7 +7,7 @@
  * `auth.uid() = user_id` et une adhésion active à `fleet_id`.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { FeedbackNpsTrigger } from "@/repositories/feedback.repository";
 import { useSubmitFeedback } from "@/hooks/useFeedback";
@@ -158,17 +158,26 @@ export function FeedbackWidget({
   const [tags, setTags] = useState<string[]>([]);
   const [comment, setComment] = useState("");
   const [visible, setVisible] = useState(false);
+  const stepTimerRef = useRef<number | undefined>(undefined);
+  const dismissTimerRef = useRef<number | undefined>(undefined);
+  const dismissCallbackTimerRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 300);
-    return () => clearTimeout(t);
+    const showTimer = window.setTimeout(() => setVisible(true), 300);
+    return () => {
+      window.clearTimeout(showTimer);
+      if (stepTimerRef.current) window.clearTimeout(stepTimerRef.current);
+      if (dismissTimerRef.current) window.clearTimeout(dismissTimerRef.current);
+      if (dismissCallbackTimerRef.current) window.clearTimeout(dismissCallbackTimerRef.current);
+    };
   }, []);
 
   const copy = TRIGGER_COPY[trigger];
 
   const handleScoreChange = (v: number) => {
     setScore(v);
-    window.setTimeout(() => setStep("comment"), 600);
+    if (stepTimerRef.current) window.clearTimeout(stepTimerRef.current);
+    stepTimerRef.current = window.setTimeout(() => setStep("comment"), 600);
   };
 
   const toggleTag = (tag: string) => {
@@ -198,9 +207,11 @@ export function FeedbackWidget({
         message: fullComment,
       });
       setStep("thanks");
-      window.setTimeout(() => {
+      if (dismissTimerRef.current) window.clearTimeout(dismissTimerRef.current);
+      if (dismissCallbackTimerRef.current) window.clearTimeout(dismissCallbackTimerRef.current);
+      dismissTimerRef.current = window.setTimeout(() => {
         setVisible(false);
-        window.setTimeout(() => onDismiss?.(), 400);
+        dismissCallbackTimerRef.current = window.setTimeout(() => onDismiss?.(), 400);
       }, 2400);
     } catch {
       /* toast géré par useSubmitFeedback */
@@ -219,7 +230,8 @@ export function FeedbackWidget({
 
   const handleDismiss = () => {
     setVisible(false);
-    window.setTimeout(() => onDismiss?.(), 300);
+    if (dismissCallbackTimerRef.current) window.clearTimeout(dismissCallbackTimerRef.current);
+    dismissCallbackTimerRef.current = window.setTimeout(() => onDismiss?.(), 300);
   };
 
   const positionClass = {

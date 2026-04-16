@@ -2,7 +2,7 @@
 
 CREATE TABLE IF NOT EXISTS public.journal_carburant (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  fleet_id uuid NOT NULL REFERENCES public.fleets(id) ON DELETE CASCADE,
+  fleet_id uuid NOT NULL REFERENCES public.flottes(id) ON DELETE CASCADE,
   vehicle_id uuid NOT NULL REFERENCES public.vehicules(id) ON DELETE CASCADE,
   driver_user_id uuid NOT NULL REFERENCES public.profils(user_id) ON DELETE RESTRICT,
   liters numeric(10, 3) NOT NULL CHECK (liters > 0),

@@ -23,6 +23,8 @@ const dashboardLeafTasks: RoutePreloadTask[] = [
   { test: (p) => p.startsWith("/dashboard/operations"), preload: () => import("@/features/operations/screens/MobileOperationsPage") },
   { test: (p) => p.startsWith("/dashboard/alerts/"), preload: () => import("@/features/alerts/screens/IncidentAlertDetailPage") },
   { test: (p) => p.startsWith("/dashboard/alerts"), preload: () => import("@/features/alerts/screens/MobileAlertsPage") },
+  { test: (p) => p.startsWith("/dashboard/tutorials/"), preload: () => import("@/features/tutorials/screens/TutorialPlayerPage") },
+  { test: (p) => p.startsWith("/dashboard/tutorials"), preload: () => import("@/features/tutorials/screens/TutorialsListPage") },
   { test: (p) => p.startsWith("/dashboard/profile"), preload: () => import("@/features/account/screens/MobileAccountPage") },
   { test: (p) => p.startsWith("/dashboard/my-vehicle"), preload: () => import("@/features/fleet/screens/MobileDriverFleetPage") },
   { test: (p) => p.startsWith("/dashboard/history"), preload: () => import("@/pages/History") },

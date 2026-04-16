@@ -21,6 +21,7 @@ export default tseslint.config(
       "store-assets/**",
       "node_modules/**",
       "public/icons/**",
+      "apps/mobile/.expo/**",
     ],
   },
   {

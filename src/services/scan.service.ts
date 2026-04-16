@@ -1,9 +1,14 @@
 import { ScanRepository } from "@/repositories/scan.repository";
 
 const ESAMBA_PUBLIC_HOST = "e-samba.com";
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function normalizeHostname(host: string): string {
   return host.replace(/^www\./i, "").toLowerCase();
+}
+
+function isUuidV4(value: string): boolean {
+  return UUID_V4_REGEX.test(value.trim());
 }
 
 /**
@@ -37,7 +42,32 @@ export function tryExtractVehicleIdFromPublicEsambaUrl(raw: string): string | nu
   const match = url.pathname.match(/\/vehicule\/([^/?#]+)/i);
   if (!match?.[1]) return null;
   const id = decodeURIComponent(match[1].trim());
-  return id || null;
+  return isUuidV4(id) ? id : null;
+}
+
+function tryExtractVehicleIdFromEsambaDeepLink(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("esamba://")) return null;
+
+  const payload = trimmed.replace("esamba://", "");
+  const parts = payload.split("/");
+  if (parts.length < 2) return null;
+
+  const entity = parts[0]?.toLowerCase();
+  const id = decodeURIComponent((parts[1] ?? "").trim());
+  if (!id) return null;
+
+  // Nouveau format terrain: esamba://vehicule/{uuid}
+  if (entity === "vehicule") {
+    return isUuidV4(id) ? id : null;
+  }
+
+  // Compatibilité historique: esamba://vehicle/{id}
+  if (entity === "vehicle") {
+    return id;
+  }
+
+  return null;
 }
 
 export type ScanTarget =
@@ -64,10 +94,17 @@ export class ScanService {
       return { kind: "vehicle", vehicleId: fromPublicUrl };
     }
 
+    const fromDeepLink = tryExtractVehicleIdFromEsambaDeepLink(raw);
+    if (fromDeepLink) {
+      return { kind: "vehicle", vehicleId: fromDeepLink };
+    }
+
+    if (raw.startsWith("esamba://vehicule/")) {
+      throw new Error("Le QR véhicule est invalide. Format attendu: esamba://vehicule/{uuid-v4}.");
+    }
+
     if (raw.startsWith("esamba://vehicle/")) {
-      const vehicleId = raw.replace("esamba://vehicle/", "").trim();
-      if (!vehicleId) throw new Error("Le QR véhicule ne contient pas d'identifiant valide.");
-      return { kind: "vehicle", vehicleId };
+      throw new Error("Le QR véhicule ne contient pas d'identifiant valide.");
     }
 
     if (raw.startsWith("VEH:")) {
@@ -97,8 +134,8 @@ export class ScanService {
     }
 
     if (target.vehicleId) {
-      const vehicle = await this.repository.findVehicleById(target.vehicleId);
-      if (!vehicle || vehicle.fleet_id !== fleetId) {
+      const vehicle = await this.repository.findVehicleById(target.vehicleId, fleetId);
+      if (!vehicle) {
         throw new Error("Véhicule introuvable dans votre flotte.");
       }
       return {

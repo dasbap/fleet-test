@@ -75,6 +75,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { PageLoader } from "@/components/dashboard/PageLoader";
+import { useActivation } from "@/hooks/useActivation";
 
 const addMemberSchema = z.object({
   email: z.string().email("Email invalide"),
@@ -101,6 +102,7 @@ const Teams = () => {
   const addMemberMutation = useAddFleetMember();
   const updateRoleMutation = useUpdateMemberRole();
   const removeMemberMutation = useRemoveFleetMember();
+  const { completeStep } = useActivation();
 
   // Recherche d'utilisateurs
   const { data: searchedUsers = [], isLoading: isSearching } = useSearchUsers({
@@ -151,6 +153,7 @@ const Teams = () => {
         fleetId: userFleetId,
         data: payload,
       });
+      await completeStep("invite_member");
       form.reset();
       setSearchTerm("");
       setIsSearchOpen(false);

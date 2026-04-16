@@ -1,8 +1,12 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import DashboardHeader from "./DashboardHeader";
+
+const { universalSearchSpy } = vi.hoisted(() => ({
+  universalSearchSpy: vi.fn(),
+}));
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: vi.fn(() => ({
@@ -16,8 +20,11 @@ vi.mock("@/lib/auth-actions", () => ({
   signOut: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock("@/components/dashboard/UniversalSearch", () => ({
-  UniversalSearch: () => <div data-testid="universal-search-mock" />,
+vi.mock("@/components/shared/UniversalSearch", () => ({
+  UniversalSearch: (props: { fleetId: string | null; className?: string }) => {
+    universalSearchSpy(props);
+    return <div data-testid="universal-search-mock" />;
+  },
 }));
 
 vi.mock("@/features/account/hooks/useNetworkOnline", () => ({
@@ -39,6 +46,10 @@ function renderHeader(props: {
 }
 
 describe("DashboardHeader", () => {
+  beforeEach(() => {
+    universalSearchSpy.mockClear();
+  });
+
   it("affiche le header avec classes cohérentes au thème sombre (structure stable)", () => {
     const { container } = renderHeader({
       userRole: "manager",
@@ -61,5 +72,22 @@ describe("DashboardHeader", () => {
       initials: "AD",
     });
     expect(container.firstChild).toMatchSnapshot();
+  });
+
+  it("intègre UniversalSearch avec la flotte active et une largeur contrainte", () => {
+    renderHeader({
+      userRole: "driver",
+      displayName: "Chauffeur Test",
+      initials: "CT",
+    });
+
+    const search = screen.getByTestId("universal-search-mock");
+    expect(search).toBeInTheDocument();
+    expect(universalSearchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fleetId: "fleet-test-1",
+        className: "max-w-md",
+      }),
+    );
   });
 });

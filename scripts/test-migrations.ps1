@@ -13,7 +13,7 @@ Write-Host ""
 # Vérifier que les fichiers de migration existent
 $migration1 = "supabase/migrations/20250205000000_fix_schema_metier.sql"
 $migration2 = "supabase/migrations/20250205000001_add_scores_and_alerts.sql"
-$verifyScript = "supabase/verify-migrations-complete.sql"
+$verifyScript = "supabase/scripts/verify/verify-migrations-complete.sql"
 
 if (-not (Test-Path $migration1)) {
     Write-Host "❌ Fichier de migration 1 introuvable: $migration1" -ForegroundColor Red
@@ -60,33 +60,7 @@ Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-$response = Read-Host "Voulez-vous ouvrir les fichiers de migration maintenant? (O/N)"
-
-if ($response -eq "O" -or $response -eq "o") {
-    Write-Host ""
-    Write-Host "Ouverture des fichiers..." -ForegroundColor Green
-    
-    if (Test-Path $migration1) {
-        Start-Process notepad.exe $migration1
-    }
-    
-    Start-Sleep -Seconds 1
-    
-    if (Test-Path $migration2) {
-        Start-Process notepad.exe $migration2
-    }
-    
-    Start-Sleep -Seconds 1
-    
-    if (Test-Path $verifyScript) {
-        Start-Process notepad.exe $verifyScript
-    }
-    
-    Write-Host ""
-    Write-Host "✅ Fichiers ouverts" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "N'oubliez pas d'appliquer les migrations dans Supabase Dashboard!" -ForegroundColor Yellow
-}
+Write-Host "Mode non interactif: ouverture automatique des fichiers dǸsactivǸe." -ForegroundColor DarkGray
 
 Write-Host ""
 Write-Host "Pour plus d'informations, consultez:" -ForegroundColor Cyan

@@ -17,8 +17,8 @@ begin
       and c.contype = 'f'
       and exists (
         select 1
-        from unnest(c.conkey) as attnum
-        join pg_attribute a on a.attrelid = c.conrelid and a.attnum = attnum
+        from unnest(c.conkey) as key_att(attnum)
+        join pg_attribute a on a.attrelid = c.conrelid and a.attnum = key_att.attnum
         where a.attname = 'org_id'
       )
   ) loop

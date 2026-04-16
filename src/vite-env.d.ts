@@ -16,6 +16,8 @@ interface ImportMetaEnv {
   readonly VITE_OPERATIONS_MOCK?: string;
   /** Token public Mapbox pour la carte de suivi live. */
   readonly VITE_MAPBOX_TOKEN?: string;
+  /** Quota offline tutoriels en MB (ex: 250). */
+  readonly VITE_TUTORIAL_OFFLINE_QUOTA_MB?: string;
 }
 
 interface ImportMeta {

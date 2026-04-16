@@ -1,71 +1,93 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "@/pages/Dashboard";
 
+const useActivationMock = vi.fn();
+
 vi.mock("@/hooks/useAuth", () => ({
-  useAuth: vi.fn(() => ({
-    orgId: "org-1",
-    userFleetId: "fleet-1",
-    user: {
-      id: "user-1",
-      created_at: "2020-01-01T00:00:00.000Z",
-      user_metadata: {},
-      email: "test@example.com",
-    },
-    isLoading: false,
-  })),
-}));
-
-vi.mock("@/hooks/useActionableDashboard", () => ({
-  useActionableDashboard: vi.fn(() => ({
-    kpis: {
-      activeVehicles: 0,
-      inMaintenance: 0,
-      criticalAlerts: 0,
-      overdueServices: 0,
-      deltaCritical: 0,
-      deltaActive: 0,
-    },
-    alerts: [],
-    resolveAlert: vi.fn(),
-    scheduledJobs: [],
-    avgKm: 0,
-    todayRevenueXaf: 0,
-    totalVehicles: 0,
-    loading: false,
-  })),
-}));
-
-vi.mock("@/hooks/useFeedbackPrompt", () => ({
-  useFeedbackPrompt: () => ({
-    show: false,
-    trigger: "manual" as const,
-    entityId: undefined,
-    entityType: undefined,
-    dismiss: vi.fn(),
-    fire: vi.fn(),
+  useAuth: () => ({
+    user: { created_at: "2026-04-10T00:00:00.000Z" },
   }),
 }));
 
-vi.mock("@/components/dashboard/FailureRiskPanel", () => ({
-  FailureRiskPanel: () => <div>failure-risk-panel-mock</div>,
+vi.mock("@/hooks/useActivation", () => ({
+  useActivation: () => useActivationMock(),
 }));
 
-vi.mock("@/components/dashboard/WhatsappMonitoringPanel", () => ({
-  WhatsappMonitoringPanel: () => <div>whatsapp-monitoring-panel-mock</div>,
+vi.mock("@/components/dashboard/EmptyStateDashboard", () => ({
+  EmptyStateDashboard: () => <div>empty-state-dashboard</div>,
+}));
+
+vi.mock("@/components/shared/ActivationChecklist", () => ({
+  ActivationChecklist: () => <div>activation-checklist</div>,
 }));
 
 describe("DashboardPage", () => {
-  it("affiche l'empty state engageant quand aucun véhicule actif", async () => {
+  beforeEach(() => {
+    useActivationMock.mockReset();
+  });
+
+  it("affiche le skeleton pendant le chargement", () => {
+    useActivationMock.mockReturnValue({ loading: true, completedCount: 0, steps: [] });
+
+    const { container } = render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    expect(container.querySelector(".animate-pulse")).not.toBeNull();
+  });
+
+  it("affiche l'empty state quand completedCount=0", () => {
+    useActivationMock.mockReturnValue({ loading: false, completedCount: 0, steps: [] });
+
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/Bienvenue/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ajouter maintenant" })).toBeInTheDocument();
+    expect(screen.getByText("empty-state-dashboard")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Tableau de bord" })).toBeInTheDocument();
+  });
+
+  it("affiche la checklist quand activation partielle", () => {
+    useActivationMock.mockReturnValue({
+      loading: false,
+      completedCount: 1,
+      steps: [
+        {
+          id: "first_vehicle",
+          label: "Ajouter votre premier v?hicule",
+          description: "desc",
+          cta: "Ajouter un v?hicule",
+          href: "/dashboard/vehicles",
+          icon: "??",
+          impact: "impact",
+          completed: false,
+        },
+        {
+          id: "first_alert",
+          label: "Configurer une alerte",
+          description: "desc",
+          cta: "Configurer une alerte",
+          href: "/dashboard/alerts",
+          icon: "??",
+          impact: "impact",
+          completed: false,
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Tableau de bord" })).toBeInTheDocument();
+    expect(screen.getByText("activation-checklist")).toBeInTheDocument();
   });
 });

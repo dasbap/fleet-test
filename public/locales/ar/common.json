@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "fleet": "الأسطول",
+    "maintenance": "الصيانة",
+    "alerts": "التنبيهات",
+    "reports": "التقارير",
+    "settings": "الإعدادات"
+  },
+  "actions": {
+    "add": "إضافة",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "next": "التالي",
+    "close": "إغلاق",
+    "plan": "تخطيط",
+    "resolve": "حل",
+    "export": "تصدير",
+    "search": "بحث"
+  },
+  "status": {
+    "active": "نشط",
+    "maintenance": "قيد الصيانة",
+    "inactive": "غير نشط",
+    "resolved": "تم الحل",
+    "pending": "قيد الانتظار",
+    "overdue": "متأخر"
+  },
+  "severity": {
+    "critical": "حرج",
+    "warning": "تحذير",
+    "info": "معلومة"
+  },
+  "empty": {
+    "noVehicles": "لا توجد مركبات في الأسطول",
+    "noAlerts": "لا توجد تنبيهات نشطة",
+    "noMaintenance": "لا توجد صيانة مجدولة"
+  },
+  "settingsPage": {
+    "title": "الإعدادات",
+    "description": "أدوات الإدارة وضبط مساحة E-Samba الخاصة بك.",
+    "languageSectionTitle": "اللغة",
+    "languageSectionDescription": "اختر لغة الواجهة. تُستخدم اللينغالا غالبًا في العمل الميداني (السائقون)."
+  },
+  "languageSwitcher": {
+    "ariaLabel": "لغة الواجهة"
+  },
+  "dialog": {
+    "close": "إغلاق"
+  },
+  "searchPalette": {
+    "openAria": "فتح البحث",
+    "dialogTitle": "بحث شامل",
+    "dialogDescription": "ابحث في المركبات والصيانة والتنبيهات.",
+    "placeholder": "ابحث عن مركبة أو سائق أو تنبيه…",
+    "clear": "مسح البحث",
+    "resultsAria": "نتائج البحث",
+    "emptyTitle": "لا نتائج لـ \"{query}\"",
+    "emptyHint": "جرّب رقم اللوحة أو اسم السائق أو نوع الصيانة.",
+    "idlePrompt": "اكتب حرفين على الأقل",
+    "hintNavigate": "التنقل",
+    "hintOpen": "فتح",
+    "hintClose": "إغلاق",
+    "hintShortcut": "فتح البحث",
+    "loadingState": "جارٍ البحث",
+    "resultsCount": "{{count}} نتيجة",
+    "noResults": "لا نتائج"
+  },
+  "loading": "جارٍ التحميل…",
+  "error": "حدث خطأ"
+}
