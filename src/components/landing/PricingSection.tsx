@@ -1,20 +1,42 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Check, Zap } from "lucide-react";
+import {
+  PUBLIC_BILLING_PERIOD_LABEL,
+  PUBLIC_CURRENCY_LABEL,
+  PUBLIC_PRICE_ENTERPRISE_LABEL,
+  PUBLIC_PRICE_FREE_PER_VEHICLE_XAF,
+  PUBLIC_PRICE_PRO_PER_VEHICLE_XAF,
+  PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF,
+  formatPublicPriceXaf,
+} from "@/lib/public-pricing";
 import { cn } from "@/lib/utils";
 
-const plans = [
+type PricingPlan = {
+  name: string;
+  description: string;
+  price: string;
+  currency: string;
+  period: string;
+  features: string[];
+  cta: string;
+  popular: boolean;
+  /** Si défini, le bouton pointe vers cette route (ex. contact) au lieu de l’inscription. */
+  ctaTo?: string;
+};
+
+const plans: PricingPlan[] = [
   {
     name: "Gratuit",
     description: "Pour tester le pilotage sans engagement",
-    price: "0",
-    currency: "FCFA",
-    period: "/ véhicule / mois",
+    price: formatPublicPriceXaf(PUBLIC_PRICE_FREE_PER_VEHICLE_XAF),
+    currency: PUBLIC_CURRENCY_LABEL,
+    period: PUBLIC_BILLING_PERIOD_LABEL,
     features: [
       "Jusqu'à 3 véhicules",
-      "Cœur métier Samba-Fleet",
-      "Sans module finance ni IA applicative",
-      "Rapports détaillés, scoring et alertes auto : offres payantes",
+      "Samba-Fleet (cœur métier)",
+      "Sans Samba-Cash ni assistance IA",
+      "Rapports, scoring conducteur et analyses d'anomalies : offres payantes",
     ],
     cta: "Commencer gratuitement",
     popular: false,
@@ -22,15 +44,15 @@ const plans = [
   {
     name: "Starter",
     description: "Pour les petites flottes qui démarrent",
-    price: "15 000",
-    currency: "FCFA",
-    period: "/ véhicule / mois",
+    price: formatPublicPriceXaf(PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF),
+    currency: PUBLIC_CURRENCY_LABEL,
+    period: PUBLIC_BILLING_PERIOD_LABEL,
     features: [
       "Jusqu'à 5 véhicules",
-      "1 gestionnaire",
+      "1 rôle Gestionnaire",
       "Samba-Fleet",
-      "Samba-Cash basique",
-      "Support email",
+      "Samba-Cash (fonctions essentielles)",
+      "Support par e-mail",
     ],
     cta: "Commencer",
     popular: false,
@@ -38,15 +60,15 @@ const plans = [
   {
     name: "Pro",
     description: "Pour les flottes en croissance",
-    price: "21 000",
-    currency: "FCFA",
-    period: "/ véhicule / mois",
+    price: formatPublicPriceXaf(PUBLIC_PRICE_PRO_PER_VEHICLE_XAF),
+    currency: PUBLIC_CURRENCY_LABEL,
+    period: PUBLIC_BILLING_PERIOD_LABEL,
     features: [
       "Jusqu'à 25 véhicules",
-      "3 gestionnaires",
-      "Tous les modules Samba",
-      "Scoring chauffeurs",
-      "Alertes push & SMS",
+      "Jusqu'à 3 rôles Gestionnaire",
+      "Samba-Fleet à Samba-Check (suite complète)",
+      "Scoring & KPIs",
+      "Alertes intelligentes (push, e-mail, SMS)",
       "Support prioritaire",
     ],
     cta: "Démarrer l'essai",
@@ -55,18 +77,19 @@ const plans = [
   {
     name: "Enterprise",
     description: "Pour les grandes organisations",
-    price: "Sur devis",
+    price: PUBLIC_PRICE_ENTERPRISE_LABEL,
     currency: "",
     period: "",
     features: [
       "Véhicules illimités",
-      "Multi-organisations",
+      "Multi-organisations et supervision multi-flottes",
       "API & intégrations",
       "SLA personnalisé",
       "Formation sur site",
-      "Account manager dédié",
+      "Chargé de compte dédié",
     ],
     cta: "Nous contacter",
+    ctaTo: "/#contact",
     popular: false,
   },
 ];
@@ -78,15 +101,15 @@ const PricingSection = () => {
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-primary font-medium text-sm uppercase tracking-wider">
-            Tarification
+            Tarifs E-Samba
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold mt-4 mb-6">
             Des prix <span className="text-gradient">adaptés</span> à votre
             activité
           </h2>
           <p className="text-muted-foreground text-lg">
-            Payez uniquement pour ce que vous utilisez. Mobile Money accepté.
-            Aucun engagement.
+            Paiement au véhicule, sans engagement. Mobile Money et cartes
+            bancaires — comme sur le reste de la plateforme.
           </p>
         </div>
 
@@ -155,7 +178,7 @@ const PricingSection = () => {
                 variant={plan.popular ? "default" : "outline"}
                 asChild
               >
-                <Link to="/auth?mode=signup">{plan.cta}</Link>
+                <Link to={plan.ctaTo ?? "/auth?mode=signup"}>{plan.cta}</Link>
               </Button>
             </div>
           ))}

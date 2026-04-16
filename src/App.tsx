@@ -8,6 +8,7 @@ import { PostHogPageViewSync } from "@/components/analytics/PostHogPageViewSync"
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { appRoutes } from "@/app/routes/app.routes";
 import { AppErrorFallback } from "@/components/errors/AppErrorFallback";
+import { HelpProvider } from "@/context/HelpContext";
 import { logError } from "@/lib/logging";
 
 const DeepLinkListener = lazy(() =>
@@ -27,24 +28,27 @@ const App = () => (
       });
     }}
   >
-    <Providers>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
-        <WebVitalsRouteSync />
-        <PostHogPageViewSync />
-        <Suspense fallback={null}>
-          <DeepLinkListener />
-        </Suspense>
-        <PageSEO />
-        <Suspense fallback={<RoutePageFallback />}>
-          <Routes>{appRoutes}</Routes>
-        </Suspense>
-      </BrowserRouter>
-    </Providers>
+    {/* Router en premier : HelpProvider, PageSEO et les toasts utilisent useLocation / la navigation. */}
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
+      <Providers>
+        <HelpProvider>
+          <WebVitalsRouteSync />
+          <PostHogPageViewSync />
+          <Suspense fallback={null}>
+            <DeepLinkListener />
+          </Suspense>
+          <PageSEO />
+          <Suspense fallback={<RoutePageFallback />}>
+            <Routes>{appRoutes}</Routes>
+          </Suspense>
+        </HelpProvider>
+      </Providers>
+    </BrowserRouter>
   </Sentry.ErrorBoundary>
 );
 

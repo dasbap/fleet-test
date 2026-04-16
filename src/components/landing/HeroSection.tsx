@@ -8,7 +8,6 @@ import heroBg1920Avif from "@/assets/hero-bg-1920.avif";
 import heroBg768Webp from "@/assets/hero-bg-768.webp";
 import heroBg1280Webp from "@/assets/hero-bg-1280.webp";
 import heroBg1920Webp from "@/assets/hero-bg-1920.webp";
-import { usePageSeo } from "@/hooks/usePageSeo";
 
 const HeroSection = () => {
   const demoVideoUrl =
@@ -19,10 +18,6 @@ const HeroSection = () => {
     "Suivi temps réel",
     "Paiements Mobile Money",
   ];
-
-  usePageSeo("landing", {
-    metas: [{ property: "og:video", content: demoVideoUrl }],
-  });
 
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
@@ -45,7 +40,7 @@ const HeroSection = () => {
             width={1920}
             height={1080}
             className="w-full h-full object-cover opacity-30"
-            fetchPriority="high"
+            fetchpriority="high"
             loading="eager"
             decoding="async"
             sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 1280px"

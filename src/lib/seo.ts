@@ -48,6 +48,11 @@ const demoSeoTitle =
 const demoSeoDescription =
   "Decouvrez le parcours demo E-Samba en moins de 7 minutes: organisateur multi-flottes, affectation conforme, incident terrain, maintenance tracable, cloture chauffeur et validation financiere sans conflit.";
 
+/** URL vidéo démo (Hero + meta og:video), alignée sur `HeroSection`. */
+const demoVideoUrl =
+  (import.meta?.env?.VITE_DEMO_VIDEO_URL as string | undefined)?.trim() ||
+  "https://youtu.be/7vl79App-Fs";
+
 export const SEO_BY_ROUTE_KEY: Record<SeoRouteKey, SeoRouteConfig> = {
   landing: {
     title: "E-Samba | Gestion intelligente de flotte en Afrique Centrale",
@@ -57,6 +62,7 @@ export const SEO_BY_ROUTE_KEY: Record<SeoRouteKey, SeoRouteConfig> = {
     metas: [
       { property: "og:title", content: demoSeoTitle },
       { property: "og:description", content: demoSeoDescription },
+      { property: "og:video", content: demoVideoUrl },
       { name: "twitter:title", content: demoSeoTitle },
       { name: "twitter:description", content: demoSeoDescription },
     ],
@@ -75,6 +81,11 @@ export const SEO_BY_ROUTE_KEY: Record<SeoRouteKey, SeoRouteConfig> = {
   drivers: { title: "Chauffeurs - E-Samba", description: "Gestion des chauffeurs et affectations.", canonicalPath: "/dashboard/drivers" },
   closure: { title: "Cloture de service - E-Samba", description: "Cloture des services et rapports de fin de journee.", canonicalPath: "/dashboard/closure" },
   incidents: { title: "Incidents - E-Samba", description: "Suivi et gestion des incidents de la flotte.", canonicalPath: "/dashboard/incidents" },
+  incidentDeclare: {
+    title: "Déclarer un incident - E-Samba",
+    description: "Signalement terrain et déclaration d'incident pour la flotte.",
+    canonicalPath: "/dashboard/incidents/declare",
+  },
   maintenance: { title: "Maintenance - E-Samba", description: "Planning et suivi des maintenances des vehicules.", canonicalPath: "/dashboard/maintenance" },
   reports: { title: "Rapports - E-Samba", description: "Rapports et statistiques de la flotte.", canonicalPath: "/dashboard/reports" },
   invitations: { title: "Invitations - E-Samba", description: "Inviter des membres a rejoindre la flotte.", canonicalPath: "/dashboard/invitations" },
