@@ -26,18 +26,18 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
-      {/* Background Image : picture avec AVIF/WebP responsives, fallback JPG, priorité LCP */}
+      {/* Background image: priorité LCP et tailles responsives adaptées mobile. */}
       <div className="absolute inset-0 z-0">
         <picture>
           <source
             type="image/avif"
             srcSet={`${heroBg768Avif} 768w, ${heroBg1280Avif} 1280w, ${heroBg1920Avif} 1920w`}
-            sizes="100vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 1280px"
           />
           <source
             type="image/webp"
             srcSet={`${heroBg768Webp} 768w, ${heroBg1280Webp} 1280w, ${heroBg1920Webp} 1920w`}
-            sizes="100vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 1280px"
           />
           <img
             src={heroBg}
@@ -48,6 +48,7 @@ const HeroSection = () => {
             fetchPriority="high"
             loading="eager"
             decoding="async"
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 1280px"
           />
         </picture>
         <div className="absolute inset-0 bg-gradient-to-b from-background via-background/90 to-background" />
