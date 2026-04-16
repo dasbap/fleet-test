@@ -4,7 +4,8 @@ import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { SyncStatusCompact } from "@/components/dashboard/SyncStatusCompact";
+import { ActivationBanner } from "@/components/shared/ActivationBanner";
+import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { isNativePlatform } from "@/lib/platform";
@@ -52,7 +53,8 @@ export default function DashboardLayout() {
             displayName={fullName}
             initials={initials}
           />
-          <SyncStatusCompact />
+          <OfflineBanner />
+          <ActivationBanner />
           <main className="flex-1 p-6 overflow-auto">
             <Suspense fallback={null}>
               <NotificationsPermissionGate />

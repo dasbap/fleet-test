@@ -15,8 +15,8 @@ import { Link } from "react-router-dom";
 import { signOut } from "@/lib/auth-actions";
 import type { AppRole } from "@/hooks/useAuth";
 import { useAuth } from "@/hooks/useAuth";
-import { UniversalSearch } from "@/components/dashboard/UniversalSearch";
-import { OfflineBadge } from "@/components/dashboard/OfflineBadge";
+import { UniversalSearch } from "@/components/shared/UniversalSearch";
+import { AdaptiveNetworkQualityBadge, OfflineSyncIndicator } from "@/components/shared/OfflineBanner";
 import {
   Select,
   SelectContent,
@@ -61,12 +61,13 @@ const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderPro
               </SelectContent>
             </Select>
           ) : null}
-          <UniversalSearch fleetId={userFleetId} />
+          <UniversalSearch fleetId={userFleetId} className="max-w-md" />
         </div>
 
         {/* Right */}
         <div className="flex items-center gap-3">
-          <OfflineBadge />
+          <AdaptiveNetworkQualityBadge />
+          <OfflineSyncIndicator />
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5" />
