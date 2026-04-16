@@ -6,6 +6,7 @@ import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { ActivationBanner } from "@/components/shared/ActivationBanner";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
+import { HelpBubble } from "@/components/shared/HelpCenter";
 import { useAuth } from "@/hooks/useAuth";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { isNativePlatform } from "@/lib/platform";
@@ -63,6 +64,7 @@ export default function DashboardLayout() {
               <Outlet />
             </Suspense>
           </main>
+          <HelpBubble />
         </SidebarInset>
       </div>
     </SidebarProvider>

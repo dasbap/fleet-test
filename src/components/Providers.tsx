@@ -11,6 +11,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { logError } from "@/lib/logging";
 import { getQueryPersister } from "@/lib/query/persistQueryClient";
+import { HelpProvider } from "@/context/HelpContext";
 
 /** Instance unique pour éviter réinitialisation du cache à chaque rendu. */
 const queryClient = new QueryClient({
@@ -54,7 +55,7 @@ const Providers = ({ children }: ProvidersProps) => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        {children}
+        <HelpProvider>{children}</HelpProvider>
       </TooltipProvider>
     </PersistQueryClientProvider>
   </ThemeProvider>

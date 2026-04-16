@@ -83,6 +83,7 @@ declare module "i18next" {
         title: string;
         none: string;
       };
+      help: Record<string, unknown>;
     };
   }
 }

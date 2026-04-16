@@ -34,7 +34,7 @@ void i18n
     supportedLngs: [...SUPPORTED_LANGS],
     fallbackLng: "fr",
     defaultNS: "common",
-    ns: ["common", "fleet", "maintenance", "alerts"],
+    ns: ["common", "fleet", "maintenance", "alerts", "help"],
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],
       caches: ["localStorage"],

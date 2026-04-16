@@ -5,6 +5,7 @@ import { authPublicRoutes } from "@/features/auth/routes";
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const AidePage = lazy(() => import("@/pages/Aide"));
 const AuthProviderLayout = lazy(() => import("@/components/auth/AuthProviderLayout"));
 const OnboardingRoute = lazy(() =>
   import("@/components/auth/OnboardingRoute").then((module) => ({
@@ -24,6 +25,15 @@ const TenantBootstrapRoute = lazy(() =>
 export const appRoutes = (
   <>
     <Route path="/" element={<Index />} />
+    <Route path="/aide" element={<AidePage />} />
+    <Route
+      path="/aide/videos"
+      element={<Navigate to="/dashboard/tutorials" replace />}
+    />
+    <Route
+      path="/aide/videos/:tutorialId"
+      element={<Navigate to="/dashboard/tutorials/:tutorialId" replace />}
+    />
     <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
     <Route element={<AuthProviderLayout />}>
       {authPublicRoutes}
