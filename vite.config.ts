@@ -1,7 +1,9 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { imagetools } from "vite-imagetools";
 import { visualizer } from "rollup-plugin-visualizer";
+import viteCompression from "vite-plugin-compression";
 import { VitePWA } from "vite-plugin-pwa";
 import { prerenderSeoPlugin } from "./scripts/vite-plugin-prerender-seo";
 
@@ -10,21 +12,25 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const supabaseUrl = env.VITE_SUPABASE_URL ?? "";
   const supabaseAnon = env.VITE_SUPABASE_ANON_KEY ?? "";
+  const isProd = mode === "production" || mode === "capacitor";
+  const isAnalyze = mode === "analyze" || process.env.ANALYZE === "true";
 
   return {
   // Build Capacitor : chemins relatifs pour le chargement depuis le WebView.
   base: mode === "capacitor" ? "./" : "/",
   build: {
-    sourcemap: false,
+    target: "es2020",
+    chunkSizeWarningLimit: 400,
+    sourcemap: isProd ? "hidden" : true,
     rollupOptions: {
       plugins:
-        mode === "analyze"
+        isAnalyze
           ? [
               visualizer({
                 filename: path.resolve(__dirname, "dist/stats.html"),
                 template: "treemap",
                 gzipSize: true,
-                brotliSize: false,
+                brotliSize: true,
               }),
             ]
           : [],
@@ -44,14 +50,30 @@ export default defineConfig(({ mode }) => {
           if (n.includes("@sentry")) return "vendor-observability";
           if (n.includes("posthog-js")) return "vendor-analytics";
           if (n.includes("firebase")) return "vendor-firebase";
+          if (n.includes("/i18next/") || n.includes("/react-i18next/")) return "vendor-i18n";
+          if (n.includes("/zustand/")) return "vendor-state";
           if (n.includes("mapbox-gl")) return "vendor-maps";
+          if (
+            n.includes("/leaflet/") ||
+            n.includes("/react-leaflet/") ||
+            n.includes("/maplibre-gl/")
+          ) {
+            return "chunk-map";
+          }
           /* jspdf / xlsx : pas de manualChunk dédié — sinon Rollup regroupe souvent __vitePreload avec ces libs
            * et Vite émet un modulepreload énorme sur la première page. Chargement uniquement via import() dynamique. */
-          if (n.includes("recharts")) return "vendor-charts";
+          // Important: ne pas forcer les chunks "reports/pdf" ici.
+          // Sinon Vite peut y placer des helpers runtime partagés (__vitePreload),
+          // ce qui les fait remonter en modulepreload dans index.html.
+          // On laisse Rollup décider pour garder ces dépendances strictement lazy.
           if (n.includes("date-fns")) return "vendor-date-fns";
           if (n.includes("qrcode")) return "vendor-qrcode";
           if (n.includes("@radix-ui")) return "vendor-radix";
+          if (n.includes("realtime.worker") || n.includes("realtime-bridge")) return "chunk-realtime";
         },
+        chunkFileNames: "assets/[name]-[hash].js",
+        entryFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash].[ext]",
       },
     },
   },
@@ -67,6 +89,12 @@ export default defineConfig(({ mode }) => {
   plugins: [
     react(),
     prerenderSeoPlugin(),
+    imagetools({
+      defaultDirectives: new URLSearchParams([
+        ["format", "webp;avif"],
+        ["quality", "80"],
+      ]),
+    }),
     VitePWA({
       disable: mode === "capacitor",
       registerType: "autoUpdate",
@@ -272,12 +300,26 @@ export default defineConfig(({ mode }) => {
         ],
       },
       devOptions: {
-        enabled: true,
+        enabled: false,
         type: "module",
         navigateFallback: "/index.html",
         suppressWarnings: true,
       },
     }),
+    ...(isProd
+      ? [
+          viteCompression({
+            algorithm: "brotliCompress",
+            ext: ".br",
+            threshold: 1024,
+          }),
+          viteCompression({
+            algorithm: "gzip",
+            ext: ".gz",
+            threshold: 1024,
+          }),
+        ]
+      : []),
   ],
   resolve: {
     alias: {

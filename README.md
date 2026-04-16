@@ -165,7 +165,7 @@ Le projet applique des mesures pour limiter le layout shift post-hydratation (po
 
 ### Bonnes pratiques en place
 
-- **Polices** : preconnect + chargement des feuilles Google Fonts dans `index.html` avec `display=swap` ; pas d’`@import` dans le CSS pour éviter un chargement tardif. `font-heading` (Tailwind) aligné sur les polices réellement chargées (Poppins).
+- **Polices** : Poppins auto-hebergee en local via `public/fonts` + `src/styles/globals.css` (`font-display: swap`) ; pas d’`@import` ni de Google Fonts dans `index.html` pour limiter les dependances externes et le chargement tardif.
 - **Thème** : classe `dark` et styles critiques (couleur de fond, texte) injectés dès le premier paint dans `index.html` pour éviter un flash puis un shift.
 - **Images** : `width`/`height` ou conteneur avec `aspect-ratio` sur les `<img>` et zones d’aperçu pour réserver l’espace avant chargement (HeroSection, EvidencePreviewCard, EvidenceGrid, ProofUpload).
 - **Styles post-hydratation** : éviter d’appliquer des classes ou couleurs dans un `useEffect` sans réserver l’espace au premier rendu ; privilégier des classes appliquées dès le premier rendu.

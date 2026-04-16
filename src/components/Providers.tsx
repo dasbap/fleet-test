@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { useEffect } from "react";
 import {
   MutationCache,
   QueryCache,
@@ -11,7 +10,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { logError } from "@/lib/logging";
-import { initAnalytics } from "@/lib/analytics";
 import { getQueryPersister } from "@/lib/query/persistQueryClient";
 
 /** Instance unique pour éviter réinitialisation du cache à chaque rendu. */
@@ -44,17 +42,6 @@ interface ProvidersProps {
   children: ReactNode;
 }
 
-/**
- * Regroupe tous les providers dépendant du client (thème, React Query, tooltips, toasts).
- * En cas de migration Next.js App Router, ce composant serait marqué "use client".
- */
-function AnalyticsInit() {
-  useEffect(() => {
-    initAnalytics();
-  }, []);
-  return null;
-}
-
 const Providers = ({ children }: ProvidersProps) => (
   <ThemeProvider>
     <PersistQueryClientProvider
@@ -64,7 +51,6 @@ const Providers = ({ children }: ProvidersProps) => (
         maxAge: 1000 * 60 * 60 * 12,
       }}
     >
-      <AnalyticsInit />
       <TooltipProvider>
         <Toaster />
         <Sonner />

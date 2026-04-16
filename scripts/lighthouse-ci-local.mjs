@@ -26,6 +26,10 @@ for (const [key, value] of Object.entries(PLACEHOLDER)) {
 }
 
 const PREVIEW_URL = "http://127.0.0.1:4173/";
+const CONFIG_ARG = process.argv.find((arg) => arg.startsWith("--config="));
+const LHCI_CONFIG = CONFIG_ARG
+  ? CONFIG_ARG.slice("--config=".length)
+  : process.env.LHCI_CONFIG || ".github/lighthouse/lighthouserc.json";
 const WAIT_MS = 60_000;
 const INTERVAL_MS = 250;
 
@@ -94,7 +98,7 @@ previewChild.on("error", (err) => {
 
 try {
   await waitForServer();
-  await run("npx", ["lhci", "autorun", "--config=.github/lighthouse/lighthouserc.json"]);
+  await run("npx", ["lhci", "autorun", `--config=${LHCI_CONFIG}`]);
 } finally {
   killPreview();
 }

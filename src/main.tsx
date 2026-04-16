@@ -1,8 +1,7 @@
 import { Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import "@/pwa";
-import "@/i18n";
+import "./styles/globals.css";
 import { reportWebVitals } from "./reportWebVitals";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { preloadRouteChunksForPath } from "@/app/routes/preloadRouteChunks";
@@ -66,6 +65,35 @@ const bootstrap = async () => {
       </Suspense>
     );
     reportWebVitals();
+
+    // i18n se charge en parallèle pour ne pas bloquer le rendu critique.
+    void import("@/i18n").catch((error) => {
+      console.error("Échec du chargement i18n:", error);
+    });
+
+    // Analytics est différé en production pour préserver le LCP/INP.
+    if (import.meta.env.PROD) {
+      window.setTimeout(() => {
+        void import("@/lib/analytics")
+          .then(({ initAnalytics }) => {
+            initAnalytics();
+          })
+          .catch((error) => {
+            console.error("Échec du chargement analytics:", error);
+          });
+      }, 3_000);
+    }
+
+    // PWA est chargée après load avec un délai pour éviter la compétition réseau initiale.
+    if (import.meta.env.PROD) {
+      window.addEventListener("load", () => {
+        window.setTimeout(() => {
+          void import("@/pwa").catch((error) => {
+            console.error("Échec du chargement PWA:", error);
+          });
+        }, 2_000);
+      });
+    }
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Erreur inconnue";

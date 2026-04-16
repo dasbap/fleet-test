@@ -69,6 +69,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Vérifier budget JS initial (routes critiques)
+        run: npm run check:bundle-budget:critical
+
       - name: Démarrer le serveur preview
         run: npm run preview &
 
@@ -77,6 +80,12 @@ jobs:
 
       - name: Run Lighthouse CI (perf, a11y)
         run: npx lhci autorun --config=.github/lighthouse/lighthouserc.json
+
+      - name: Run Lighthouse CI (critical routes only)
+        run: npx lhci autorun --config=.github/lighthouse/lighthouserc.critical.json
+
+      - name: Vérifier INP interaction (script utilisateur)
+        run: npm run perf:inp:interaction
 
       - name: Run Lighthouse CI (SEO — page d’accueil)
         run: npx lhci autorun --config=.github/lighthouse/lighthouserc-seo.json

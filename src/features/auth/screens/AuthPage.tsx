@@ -521,37 +521,7 @@ const Auth = () => {
         </div>
       </div>
 
-      {/* Right Panel - Visual */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary/20 via-background to-accent/10 items-center justify-center p-12">
-        <div className="max-w-lg text-center">
-          <div className="w-24 h-24 mx-auto mb-8 rounded-2xl bg-primary/20 flex items-center justify-center">
-            <Zap className="w-12 h-12 text-primary" />
-          </div>
-          <h2 className="text-3xl font-heading font-bold mb-4">
-            Smart Mobility Africa
-          </h2>
-          <p className="text-muted-foreground text-lg leading-relaxed">
-            Rejoignez des centaines de gestionnaires de flottes qui optimisent
-            leurs opérations quotidiennes avec E-Samba.
-          </p>
-          <div className="mt-8 flex items-center justify-center gap-8">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">500+</div>
-              <div className="text-sm text-muted-foreground">Véhicules</div>
-            </div>
-            <div className="w-px h-12 bg-border" />
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">50+</div>
-              <div className="text-sm text-muted-foreground">Flottes</div>
-            </div>
-            <div className="w-px h-12 bg-border" />
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">98%</div>
-              <div className="text-sm text-muted-foreground">Uptime</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Panneau visuel désactivé pour réduire le LCP sur /auth en mobile 3G. */}
 
       {/* Dialog identifiants démo */}
       <Dialog open={showDemoCredentials} onOpenChange={setShowDemoCredentials}>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import * as ReactNative from 'react-native';
 import TutorialsScreen from '../../app/tutoriels/index';
 import TutorialPlayerScreen from '../../app/tutoriels/player';
 
@@ -15,13 +16,10 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('expo-image', () => {
-  const ReactNative = require('react-native');
   return { Image: ReactNative.View };
 });
 
 jest.mock('@shopify/flash-list', () => {
-  const React = require('react');
-  const ReactNative = require('react-native');
   return {
     FlashList: ({ data, renderItem }: { data: unknown[]; renderItem: ({ item }: { item: unknown }) => React.ReactNode }) =>
       React.createElement(

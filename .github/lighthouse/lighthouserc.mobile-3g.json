@@ -1,0 +1,62 @@
+{
+  "ci": {
+    "collect": {
+      "url": [
+        "http://localhost:4173/",
+        "http://localhost:4173/flotte",
+        "http://localhost:4173/alertes"
+      ],
+      "numberOfRuns": 3,
+      "settings": {
+        "throttlingMethod": "devtools",
+        "throttling": {
+          "rttMs": 300,
+          "throughputKbps": 1600,
+          "uploadThroughputKbps": 768,
+          "cpuSlowdownMultiplier": 4
+        },
+        "formFactor": "mobile",
+        "screenEmulation": {
+          "mobile": true,
+          "width": 390,
+          "height": 844,
+          "deviceScaleFactor": 3,
+          "disabled": false
+        },
+        "onlyCategories": ["performance", "accessibility", "best-practices"]
+      }
+    },
+    "assert": {
+      "assertions": {
+        "first-contentful-paint": ["warn", { "maxNumericValue": 1800, "aggregationMethod": "median" }],
+        "largest-contentful-paint": ["warn", { "maxNumericValue": 2500, "aggregationMethod": "median" }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.05, "aggregationMethod": "median" }],
+        "interaction-to-next-paint": ["warn", { "maxNumericValue": 200, "aggregationMethod": "median" }],
+        "total-blocking-time": ["warn", { "maxNumericValue": 200, "aggregationMethod": "median" }],
+        "server-response-time": ["warn", { "maxNumericValue": 800, "aggregationMethod": "median" }],
+        "interactive": ["warn", { "maxNumericValue": 3500, "aggregationMethod": "median" }],
+        "speed-index": ["warn", { "maxNumericValue": 2000, "aggregationMethod": "median" }],
+        "categories:performance": ["warn", { "minScore": 0.85, "aggregationMethod": "median" }],
+        "categories:accessibility": ["warn", { "minScore": 0.9, "aggregationMethod": "median" }],
+        "unused-javascript": ["warn", { "maxNumericValue": 20000, "aggregationMethod": "median" }],
+        "unused-css-rules": ["warn", { "maxNumericValue": 10000, "aggregationMethod": "median" }],
+        "render-blocking-resources": ["warn", { "maxNumericValue": 500, "aggregationMethod": "median" }],
+        "modern-image-formats": "warn",
+        "uses-optimized-images": "warn",
+        "uses-responsive-images": "warn",
+        "offscreen-images": "warn",
+        "uses-http2": "warn",
+        "uses-text-compression": "error",
+        "efficient-animated-content": "warn",
+        "prioritize-lcp-image": "warn",
+        "uses-long-cache-ttl": "off",
+        "third-party-summary": "off"
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": ".lighthouseci",
+      "reportFilenamePattern": "%%PATHNAME%%-%%DATETIME%%-report.%%EXTENSION%%"
+    }
+  }
+}
