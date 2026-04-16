@@ -18,6 +18,31 @@ vi.mock("@/components/shared/ActivationChecklist", () => ({
   ActivationChecklist: () => <div>activation-checklist</div>,
 }));
 
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => ({
+    user: null,
+    role: "organizer",
+    userFleetId: "test-fleet-id",
+    orgId: null,
+  }),
+}));
+
+vi.mock("@/hooks/useFleetBillingContext", () => ({
+  useFleetBillingContext: () => ({
+    data: {
+      planCode: "starter",
+      isPaid: true,
+      vehicleCount: 1,
+      maxVehicles: 999,
+      financeEnabled: true,
+      aiEnabled: true,
+    },
+    isSuccess: true,
+    isError: false,
+    isLoading: false,
+  }),
+}));
+
 function renderSidebar(
   userRole: "organizer" | "manager" | "driver" | "mechanic" = "organizer",
   initialRoute = "/dashboard"

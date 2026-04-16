@@ -60,6 +60,14 @@ BEGIN
     RAISE EXCEPTION 'Objet manquant: RPC public.calculer_score_conducteur_v2(uuid,uuid,text)';
   END IF;
 
+  IF to_regprocedure('public.fleet_activation_metrics(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: RPC public.fleet_activation_metrics(uuid)';
+  END IF;
+
+  IF to_regprocedure('public.get_fleet_billing_context(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: RPC public.get_fleet_billing_context(uuid)';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
     FROM pg_proc p

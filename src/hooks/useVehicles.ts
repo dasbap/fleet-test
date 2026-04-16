@@ -1,9 +1,12 @@
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
 import { useAuth } from '@/hooks/useAuth';
 import { VehicleService } from '@/services/vehicle.service';
+import { FleetBillingService } from '@/services/fleet-billing.service';
 import { VehicleRepository } from '@/repositories/vehicle.repository';
+import { FleetBillingRepository } from '@/repositories/fleet-billing.repository';
 import { prefetchVehicleDetails } from "@/features/vehicles/prefetchVehicleDetails";
 import {
   getVehicleListPlaceholder,
@@ -15,7 +18,9 @@ import type { VehicleFilters, VehicleListItemDto } from '@/repositories/vehicle.
 
 // Instances singleton des services et repositories
 const vehicleRepository = new VehicleRepository();
-const vehicleService = new VehicleService(vehicleRepository);
+const fleetBillingRepository = new FleetBillingRepository();
+const fleetBillingService = new FleetBillingService(fleetBillingRepository);
+const vehicleService = new VehicleService(vehicleRepository, fleetBillingService);
 
 /** @deprecated Utiliser `VehicleStatusApi` depuis `@/types/api/vehicles`. */
 export type VehicleStatus = VehicleStatusApi;
@@ -116,6 +121,7 @@ export function useCreateVehicle() {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles-simple'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles-list'] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-billing-context'] });
       toast({
         title: 'Véhicule ajouté',
         description: 'Le véhicule a été créé avec succès.',
@@ -124,7 +130,7 @@ export function useCreateVehicle() {
     onError: (error: Error) => {
       toast({
         title: 'Erreur',
-        description: error.message,
+        description: mapSupabaseErrorToFrench(error.message),
         variant: 'destructive',
       });
     },

@@ -468,9 +468,18 @@ function HelpPanelInternal() {
   );
 }
 
-export function HelpBubble() {
+interface HelpBubbleProps {
+  /** Si false (ex. plan gratuit), masque l’assistant contextuel. */
+  disabled?: boolean;
+}
+
+export function HelpBubble({ disabled = false }: HelpBubbleProps) {
   const { t } = useTranslation("help");
   const { isOpen, toggleHelp } = useHelp();
+
+  if (disabled) {
+    return null;
+  }
 
   return (
     <>

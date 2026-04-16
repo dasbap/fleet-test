@@ -1,10 +1,13 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/hooks/useAuth";
+import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { useFleetReport } from "@/hooks/useFleetReport";
+import { planValueMessages } from "@/lib/plan-value-messages";
 import { toast } from "@/hooks/use-toast";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -47,19 +50,30 @@ const MaintenanceTrendsChart = lazy(() =>
 );
 
 export default function Reports() {
-  const { role } = useAuth();
+  const { role, userFleetId } = useAuth();
   const userRole = role || "organizer";
-  
+  const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
+
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   });
-  
+
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   const { completeStep, steps } = useActivation();
 
-  const { data: report, isLoading, error } = useFleetReport(dateRange.from, dateRange.to);
+  const reportQueryEnabled =
+    !!userFleetId &&
+    (!billingQuery.isPending
+      ? billingQuery.isError || (billingQuery.data?.reportsEnabled ?? true)
+      : false);
+
+  const { data: report, isLoading, error } = useFleetReport(
+    dateRange.from,
+    dateRange.to,
+    reportQueryEnabled
+  );
 
   useEffect(() => {
     if (!report) return;
@@ -144,6 +158,32 @@ export default function Reports() {
   const formatMoney = (amount: number) => {
     return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
   };
+
+  if (userFleetId && billingQuery.isPending) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center" aria-busy="true">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (userFleetId && billingQuery.isSuccess && billingQuery.data.reportsEnabled === false) {
+    return (
+      <div className="mx-auto max-w-lg py-12">
+        <Card>
+          <CardHeader>
+            <CardTitle>{planValueMessages.reports.title}</CardTitle>
+            <CardDescription>{planValueMessages.reports.description}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link to="/dashboard/settings">{planValueMessages.upgradeCta}</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

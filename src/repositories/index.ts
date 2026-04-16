@@ -15,6 +15,8 @@ export * from './fleet.repository';
 export * from './assignment.repository';
 export * from './alert.repository';
 export * from './driver-score.repository';
+export * from './fleet-activation.repository';
+export * from './fleet-billing.repository';
 export * from './user-search.repository';
 export * from './system-health.repository';
 export * from './esamba-verification.repository';

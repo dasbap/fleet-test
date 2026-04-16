@@ -36,6 +36,8 @@ import { hasModuleAccess } from "@/auth/permissions";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import type { AppRole } from "@/types/auth";
 import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
+import { useAuth } from "@/hooks/useAuth";
+import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 
 interface DashboardSidebarProps {
   userRole: AppRole;
@@ -67,16 +69,36 @@ const organizerRolesLink = {
   href: "/dashboard/roles",
 } as const;
 
+const FINANCE_NAV_HREFS = new Set(["/dashboard/finances", "/dashboard/collections"]);
+const REPORTS_NAV_HREFS = new Set(["/dashboard/reports"]);
+
 const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
   const location = useLocation();
+  const { userFleetId } = useAuth();
+  const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
+  const financeNavAllowed =
+    billingQuery.isError || billingQuery.data?.financeEnabled !== false;
+  const reportsNavAllowed =
+    billingQuery.isError || billingQuery.data?.reportsEnabled !== false;
+
+  const filterByPlan = <T extends { href: string }>(items: readonly T[]): T[] =>
+    items.filter((item) => {
+      if (FINANCE_NAV_HREFS.has(item.href)) {
+        return financeNavAllowed;
+      }
+      if (REPORTS_NAV_HREFS.has(item.href)) {
+        return reportsNavAllowed;
+      }
+      return true;
+    });
 
   const menuItems = {
     organizer: [
-      ...organizerNavCore,
+      ...filterByPlan(organizerNavCore),
       ...(hasModuleAccess(userRole, "retention_analytics") ? [organizerRetentionLink] : []),
       ...(hasModuleAccess(userRole, "roles_sidebar_link") ? [organizerRolesLink] : []),
     ],
-    manager: [
+    manager: filterByPlan([
       { icon: LayoutDashboard, label: "Tableau de bord", href: "/dashboard" },
       { icon: Car, label: "Véhicules", href: "/dashboard/vehicles" },
       { icon: Wrench, label: "Incidents", href: "/dashboard/incidents" },
@@ -89,7 +111,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
       { icon: Map, label: "Suivi GPS", href: "/dashboard/tracking" },
       { icon: DollarSign, label: "Encaissements", href: "/dashboard/collections" },
       { icon: Bell, label: "Alertes", href: "/dashboard/alerts" },
-    ],
+    ]),
     driver: [
       { icon: LayoutDashboard, label: "Mon tableau", href: "/dashboard" },
       { icon: Car, label: "Mon véhicule", href: "/dashboard/my-vehicle" },

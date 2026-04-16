@@ -1,5 +1,9 @@
 /**
  * Types alignés sur les vues SQL `v_retention_*`, `v_daily_active_users`, `v_activation_funnel`.
+ *
+ * Voir aussi le type `ActivationMetrics` (`activation-metrics.ts`) pour les agrégations
+ * **par flotte** (score moyen, taux de preuves, inscriptions récentes) via la RPC
+ * `fleet_activation_metrics`.
  */
 
 export interface RetentionKpis {

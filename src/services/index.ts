@@ -12,6 +12,8 @@ export * from './fleet.service';
 export * from './assignment.service';
 export * from './alert.service';
 export * from './driver-score.service';
+export * from './fleet-activation.service';
+export * from './fleet-billing.service';
 export * from './user-search.service';
 export * from './system-health.service';
 export * from './esamba-verification.service';

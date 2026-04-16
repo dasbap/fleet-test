@@ -25,6 +25,8 @@ DECLARE
     'fermer_creneau',
     'calculer_recette_attendue',
     'calculer_score_conducteur',
+    'fleet_activation_metrics',
+    'get_fleet_billing_context',
     'generer_alertes_automatiques',
     'rechercher_utilisateurs',
     'verifier_statut_vehicule_actif'
@@ -101,6 +103,8 @@ WHERE n.nspname = 'public'
     'fermer_creneau',
     'calculer_recette_attendue',
     'calculer_score_conducteur',
+    'fleet_activation_metrics',
+    'get_fleet_billing_context',
     'generer_alertes_automatiques',
     'rechercher_utilisateurs',
     'verifier_statut_vehicule_actif'
@@ -159,6 +163,8 @@ WHERE n.nspname = 'public'
     'fermer_creneau',
     'calculer_recette_attendue',
     'calculer_score_conducteur',
+    'fleet_activation_metrics',
+    'get_fleet_billing_context',
     'generer_alertes_automatiques',
     'rechercher_utilisateurs',
     'verifier_statut_vehicule_actif'

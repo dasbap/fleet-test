@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export type DriverScoreLevel = 'green' | 'orange' | 'red';
+
 export interface DriverScoreRow {
   id: string;
   driver_user_id: string;
@@ -60,14 +62,17 @@ export class DriverScoreRepository {
     driverUserId: string,
     fleetId: string,
     modelVersion: string = 'v1-hybrid',
-  ): Promise<unknown> {
+  ): Promise<DriverScoreLevel> {
     const { data, error } = await supabase.rpc('calculer_score_conducteur_v2', {
       p_driver_user_id: driverUserId,
       p_fleet_id: fleetId,
       p_model_version: modelVersion,
     });
     if (error) throw new Error(error.message);
-    return data;
+    if (data === 'green' || data === 'orange' || data === 'red') {
+      return data;
+    }
+    throw new Error('Réponse de scoring invalide');
   }
 
   async findSnapshotsByDriver(driverUserId: string, fleetId: string): Promise<DriverScoreSnapshotRow[]> {

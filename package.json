@@ -54,6 +54,7 @@
     "check:supabase": "powershell -ExecutionPolicy Bypass -File scripts/check-supabase.ps1",
     "verify:connection": "node scripts/verify-connection.js",
     "verify:supabase": "node scripts/verify-supabase-health.js",
+    "verify:plan-gates-migration": "node --env-file=.env.local scripts/verify-plan-gates-migration.mjs",
     "check:backend": "powershell -ExecutionPolicy Bypass -File scripts/check-backend.ps1",
     "verify:migration": "powershell -ExecutionPolicy Bypass -File scripts/verify-migration-status.ps1",
     "install:supabase-cli": "powershell -ExecutionPolicy Bypass -File scripts/install-supabase-cli.ps1",

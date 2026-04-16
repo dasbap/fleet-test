@@ -43,7 +43,10 @@ export interface DriverScoreSnapshot {
   created_at: string;
 }
 
-export function useDriverScores(fleetId?: string) {
+/**
+ * @param queryEnabled si false, aucune requête (ex. plan sans scoring conducteur).
+ */
+export function useDriverScores(fleetId?: string, queryEnabled: boolean = true) {
   const { userFleetId } = useAuth();
   const targetFleetId = fleetId || userFleetId;
 
@@ -58,7 +61,7 @@ export function useDriverScores(fleetId?: string) {
         return [];
       }
     },
-    enabled: !!targetFleetId,
+    enabled: !!targetFleetId && queryEnabled,
   });
 }
 

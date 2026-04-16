@@ -5,9 +5,24 @@ import { cn } from "@/lib/utils";
 
 const plans = [
   {
+    name: "Gratuit",
+    description: "Pour tester le pilotage sans engagement",
+    price: "0",
+    currency: "FCFA",
+    period: "/ véhicule / mois",
+    features: [
+      "Jusqu'à 3 véhicules",
+      "Cœur métier Samba-Fleet",
+      "Sans module finance ni IA applicative",
+      "Rapports détaillés, scoring et alertes auto : offres payantes",
+    ],
+    cta: "Commencer gratuitement",
+    popular: false,
+  },
+  {
     name: "Starter",
     description: "Pour les petites flottes qui démarrent",
-    price: "25 000",
+    price: "15 000",
     currency: "FCFA",
     period: "/ véhicule / mois",
     features: [
@@ -76,7 +91,7 @@ const PricingSection = () => {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-8 max-w-7xl mx-auto">
           {plans.map((plan) => (
             <div
               key={plan.name}

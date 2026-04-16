@@ -35,22 +35,12 @@ export class AssignmentService {
       throw new Error('fleet_id, vehicle_id et driver_user_id sont requis');
     }
     const starts_at = params.starts_at ?? new Date().toISOString();
-    try {
-      return await this.repository.assignVehicle({
-        fleet_id: params.fleet_id,
-        vehicle_id: params.vehicle_id,
-        driver_user_id: params.driver_user_id,
-        starts_at,
-      });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('vehicle_not_found')) throw new Error('Véhicule non trouvé dans cette flotte');
-      if (message.includes('vehicle_blocked')) throw new Error('Ce véhicule est actuellement bloqué');
-      if (message.includes('missing_closure_blocks_assignment'))
-        throw new Error('Une clôture manquante empêche cette affectation');
-      if (message.includes('driver_already_assigned')) throw new Error('Ce chauffeur a déjà un véhicule affecté');
-      throw err;
-    }
+    return this.repository.assignVehicle({
+      fleet_id: params.fleet_id,
+      vehicle_id: params.vehicle_id,
+      driver_user_id: params.driver_user_id,
+      starts_at,
+    });
   }
 
   async endAssignment(assignmentId: string): Promise<AssignmentRow> {

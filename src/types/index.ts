@@ -28,6 +28,8 @@ export type {
   VehicleSearchStatus,
 } from "./search";
 export type { Mission, MissionStatus, MissionStep } from "./mission";
+export type { ActivationMetrics } from "./activation-metrics";
+export type { FleetBillingContext } from "./fleet-billing";
 export type {
   FleetVehicleAssignedDriver,
   FleetVehicleAvailability,

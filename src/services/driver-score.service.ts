@@ -1,6 +1,8 @@
 import { DriverScoreRepository } from '@/repositories/driver-score.repository';
-import type { DriverScoreRow } from '@/repositories/driver-score.repository';
+import type { DriverScoreLevel, DriverScoreRow } from '@/repositories/driver-score.repository';
 import type { DriverScoreSnapshotRow } from '@/repositories/driver-score.repository';
+
+export type { DriverScoreLevel };
 
 export class DriverScoreService {
   constructor(private repository: DriverScoreRepository) {}
@@ -14,7 +16,7 @@ export class DriverScoreService {
     driverUserId: string,
     fleetId: string,
     modelVersion: string = 'v1-hybrid',
-  ): Promise<unknown> {
+  ): Promise<DriverScoreLevel> {
     if (!driverUserId || !fleetId) throw new Error('driverUserId et fleetId requis');
     return this.repository.calculateScoreV2(driverUserId, fleetId, modelVersion);
   }
