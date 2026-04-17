@@ -48,6 +48,8 @@ apps/mobile/.expo/
 
 # Rapports de test temporaires
 TEST-REPORT-*.json
+# Playwright (artefacts locaux)
+test-results/
 !.cursor/rules/
 !.cursor/rules/*.mdc
 
