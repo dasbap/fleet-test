@@ -292,6 +292,7 @@ function HelpPanelInternal() {
     <Sheet open={isOpen} onOpenChange={(value) => !value && closeHelp()}>
       <SheetContent
         side="right"
+        data-testid="help-center-panel"
         className="w-[380px] sm:w-[420px] p-0 flex flex-col bg-white dark:bg-surface border-l border-slate-200 dark:border-slate-800"
       >
         <SheetHeader className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
@@ -493,6 +494,7 @@ export function HelpBubble({ disabled = false }: HelpBubbleProps) {
         <button
           type="button"
           onClick={toggleHelp}
+          data-testid="help-bubble-button"
           aria-label={isOpen ? t("bubble_close") : t("bubble_tooltip")}
           aria-expanded={isOpen}
           className={cn(

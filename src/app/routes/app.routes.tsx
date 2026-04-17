@@ -1,12 +1,12 @@
 import { lazy } from "react";
 import { Route, Navigate } from "react-router-dom";
+import AuthProviderLayout from "@/components/auth/AuthProviderLayout";
 import { dashboardRoutes } from "@/app/routes/dashboard.routes";
 import { authPublicRoutes } from "@/features/auth/routes";
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const AidePage = lazy(() => import("@/pages/Aide"));
-const AuthProviderLayout = lazy(() => import("@/components/auth/AuthProviderLayout"));
 const OnboardingRoute = lazy(() =>
   import("@/components/auth/OnboardingRoute").then((module) => ({
     default: module.OnboardingRoute,

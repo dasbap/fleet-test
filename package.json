@@ -76,6 +76,7 @@
     "test:sql:conversion-ci": "powershell -ExecutionPolicy Bypass -File scripts/test-conversion-tunnel-ci.ps1",
     "test:sql:conversion-ci:local": "powershell -ExecutionPolicy Bypass -File scripts/test-conversion-tunnel-ci.ps1 -Target local",
     "test:e2e": "playwright test",
+    "test:e2e:help": "playwright test tests/e2e/help-center-i18n.spec.ts",
     "diagnostic:e-samba": "node scripts/diagnostic-e-samba-console.mjs",
     "verify:dist": "node scripts/verify-dist.mjs",
     "smoke:spa": "node scripts/smoke-spa-preview.mjs",
