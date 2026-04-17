@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - master
+      - release/**
     paths:
       - "supabase/**"
       - "scripts/test-baseline-delta.ps1"

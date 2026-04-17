@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - master
+      - release/**
     paths:
       - "src/**"
       - "vite.config.ts"
@@ -20,6 +21,7 @@ on:
     branches:
       - main
       - master
+      - release/**
     paths:
       - "src/**"
       - "vite.config.ts"

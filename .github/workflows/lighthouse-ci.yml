@@ -23,6 +23,7 @@ on:
       - main
       - master
       - develop
+      - release/**
     paths:
       - "src/**"
       - "index.html"
@@ -36,6 +37,7 @@ on:
       - main
       - master
       - develop
+      - release/**
     paths:
       - "src/**"
       - "index.html"

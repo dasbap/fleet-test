@@ -2,13 +2,13 @@ name: Supabase Migrations Replay
 
 on:
   pull_request:
-    branches: [main, master]
+    branches: [main, master, release/**]
     paths:
       - "supabase/migrations/**"
       - "supabase/config.toml"
       - ".github/workflows/supabase-migrations-replay.yml"
   push:
-    branches: [main, master]
+    branches: [main, master, release/**]
     paths:
       - "supabase/migrations/**"
       - "supabase/config.toml"
