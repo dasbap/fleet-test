@@ -126,7 +126,7 @@ SELECT
   CASE 
     WHEN proname IN (
       'fermer_creneau', 'calculer_recette_attendue', 'generer_alertes_automatiques',
-      'calculer_score_conducteur', 'creer_flotte_esamba', 'creer_ou_mettre_a_jour_adhesion_flotte',
+      'calculer_score_conducteur', 'creer_onboarding_organisation_flotte_et_adhesion', 'creer_flotte_esamba', 'creer_ou_mettre_a_jour_adhesion_flotte',
       'creer_vehicule_esamba', 'creer_invitation_esamba', 'affecter_vehicule',
       'accepter_invitation', 'verifier_sante_systeme', 'reparer_adhesion_orpheline',
       'assurer_profil_utilisateur', 'verifier_esamba_2024', 'ajouter_membre_par_email',
@@ -139,7 +139,7 @@ FROM pg_proc
 WHERE pronamespace = 'public'::regnamespace
   AND proname IN (
     'fermer_creneau', 'calculer_recette_attendue', 'generer_alertes_automatiques',
-    'calculer_score_conducteur', 'creer_flotte_esamba', 'creer_ou_mettre_a_jour_adhesion_flotte',
+    'calculer_score_conducteur', 'creer_onboarding_organisation_flotte_et_adhesion', 'creer_flotte_esamba', 'creer_ou_mettre_a_jour_adhesion_flotte',
     'creer_vehicule_esamba', 'creer_invitation_esamba', 'affecter_vehicule',
     'accepter_invitation', 'verifier_sante_systeme', 'reparer_adhesion_orpheline',
     'assurer_profil_utilisateur', 'verifier_esamba_2024', 'ajouter_membre_par_email',
@@ -158,6 +158,7 @@ FROM (
     ('calculer_recette_attendue'),
     ('generer_alertes_automatiques'),
     ('calculer_score_conducteur'),
+    ('creer_onboarding_organisation_flotte_et_adhesion'),
     ('creer_flotte_esamba'),
     ('creer_ou_mettre_a_jour_adhesion_flotte'),
     ('creer_vehicule_esamba'),
@@ -309,6 +310,7 @@ BEGIN
       ('calculer_recette_attendue'),
       ('generer_alertes_automatiques'),
       ('calculer_score_conducteur'),
+      ('creer_onboarding_organisation_flotte_et_adhesion'),
       ('creer_flotte_esamba'),
       ('creer_ou_mettre_a_jour_adhesion_flotte'),
       ('creer_vehicule_esamba'),
@@ -328,7 +330,7 @@ BEGIN
       AND pronamespace = 'public'::regnamespace
   );
   
-  v_rpc_total_count := 16;
+  v_rpc_total_count := 17;
   
   RAISE NOTICE '========================================';
   RAISE NOTICE 'RÉSUMÉ DE LA VÉRIFICATION';

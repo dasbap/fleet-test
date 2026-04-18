@@ -51,6 +51,7 @@ $rpcUsed = @(
     "accepter_invitation",
     "verifier_sante_systeme",
     "reparer_adhesion_orpheline",
+    "creer_onboarding_organisation_flotte_et_adhesion",
     "creer_flotte_esamba",
     "creer_ou_mettre_a_jour_adhesion_flotte",
     "creer_vehicule_esamba",
