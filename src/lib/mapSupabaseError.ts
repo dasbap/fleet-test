@@ -1,4 +1,28 @@
 /**
+ * Agrège message, details et hint (PostgREST) pour ne pas afficher un toast vide
+ * lorsque seul `details` est renseigné.
+ */
+export function formatPostgrestError(error: unknown): string {
+  if (error == null) return "";
+  if (typeof error === "string") return error.trim();
+  if (error instanceof Error) {
+    const any = error as Error & { details?: string; hint?: string };
+    const parts = [any.message, any.details, any.hint].filter(
+      (p): p is string => typeof p === "string" && p.trim().length > 0,
+    );
+    return parts.join(" — ");
+  }
+  if (typeof error === "object") {
+    const o = error as { message?: string; details?: string; hint?: string };
+    const parts = [o.message, o.details, o.hint].filter(
+      (p): p is string => typeof p === "string" && p.trim().length > 0,
+    );
+    return parts.join(" — ");
+  }
+  return String(error);
+}
+
+/**
  * Traduit les messages d'erreur Supabase/Postgres en français pour l'affichage utilisateur.
  * Évite d'exposer des messages techniques en anglais.
  */
@@ -55,7 +79,7 @@ export function mapSupabaseErrorToFrench(message: string): string {
   if (m.includes("23503") || m.includes("foreign key") || m.includes("violates foreign key")) {
     return "Référence invalide. L'élément lié n'existe peut-être plus.";
   }
-  if (m.includes("23502") || m.includes("not null")) {
+  if (m.includes("23502") || m.includes("not null") || m.includes("not-null")) {
     return "Un champ obligatoire est manquant.";
   }
   if (m.includes("23514") || m.includes("check constraint")) {
@@ -71,6 +95,15 @@ export function mapSupabaseErrorToFrench(message: string): string {
   }
   if (m.includes("user already registered") || m.includes("already been registered")) {
     return "Un compte existe déjà avec cet email.";
+  }
+
+  // RPC absente ou signature incompatible (migrations non déployées sur le projet pointé)
+  if (
+    m.includes("could not find the function") ||
+    (m.includes("function") && m.includes("does not exist")) ||
+    m.includes("42883")
+  ) {
+    return "Fonction serveur introuvable ou migrations non appliquées (ex. creer_flotte_esamba). Déployez les migrations Supabase du dépôt ou vérifiez VITE_SUPABASE_URL dans .env.local.";
   }
 
   // Erreur schéma / base (ex. projet en pause, migrations non appliquées)
