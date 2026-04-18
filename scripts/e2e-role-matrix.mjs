@@ -17,7 +17,7 @@ import process from "node:process";
 
 const DEFAULT_BASE = "http://127.0.0.1:5173";
 /** Aligné sur src/mocks/demo/constants.ts (fleet démo mock). */
-const DEMO_FLEET_ID = "fleet-esamba-sn";
+const DEMO_FLEET_ID = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
 const MOCK_AUTH_EVENT = "esamba-mock-auth-changed";
 
 /** Rôles AppRole (email pour cohérence avec la démo ; la session est injectée en localStorage). */
@@ -146,7 +146,7 @@ async function main() {
       if (msg.type() !== "error") return;
       const t = msg.text();
       // Requêtes Supabase avec fleet_id démo non-UUID : bruit attendu en session mock + API réelle.
-      if (t.includes("fleet-esamba-sn") || t.includes("22P02")) return;
+      if (t.includes("f47ac10b-58cc-4372-a567-0e02b2c3d479") || t.includes("22P02")) return;
       runtimeErrors.push(`console: ${t}`);
     });
 

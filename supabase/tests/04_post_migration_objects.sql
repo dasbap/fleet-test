@@ -64,6 +64,10 @@ BEGIN
     RAISE EXCEPTION 'Objet manquant: RPC public.fleet_activation_metrics(uuid)';
   END IF;
 
+  IF to_regprocedure('public.fleet_driver_activation_health(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: RPC public.fleet_driver_activation_health(uuid)';
+  END IF;
+
   IF to_regprocedure('public.get_fleet_billing_context(uuid)') IS NULL THEN
     RAISE EXCEPTION 'Objet manquant: RPC public.get_fleet_billing_context(uuid)';
   END IF;

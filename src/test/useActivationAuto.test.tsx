@@ -42,9 +42,9 @@ describe("useActivation (auto)", () => {
     expect(result.current.steps.find((step) => !step.completed)?.id).toBe("first_alert");
   });
 
-  it("masque le bandeau hors fenetre 7 jours", () => {
+  it("masque le bandeau hors fenêtre d’activation", () => {
     useAuthMock.mockReturnValue({
-      user: { id: "user-1", created_at: "2026-04-01T10:00:00.000Z" },
+      user: { id: "user-1", created_at: "2026-03-01T10:00:00.000Z" },
       orgId: "org-1",
     });
     const { result } = renderHook(() => useActivation());
