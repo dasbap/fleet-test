@@ -28,14 +28,13 @@ const App = () => (
       });
     }}
   >
-    {/* Router en premier : HelpProvider, PageSEO et les toasts utilisent useLocation / la navigation. */}
-    <BrowserRouter
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
-      <Providers>
+    <Providers>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <HelpProvider>
           <WebVitalsRouteSync />
           <PostHogPageViewSync />
@@ -47,8 +46,8 @@ const App = () => (
             <Routes>{appRoutes}</Routes>
           </Suspense>
         </HelpProvider>
-      </Providers>
-    </BrowserRouter>
+      </BrowserRouter>
+    </Providers>
   </Sentry.ErrorBoundary>
 );
 

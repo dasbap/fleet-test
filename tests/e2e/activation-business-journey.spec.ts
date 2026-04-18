@@ -29,7 +29,7 @@ async function enableMockAuthSession(page: Page): Promise<void> {
         memberships: [
           {
             id: "mock-membership-e2e",
-            fleet_id: "fleet-esamba-sn",
+            fleet_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
             role: "organizer",
             is_active: true,
           },
@@ -51,7 +51,7 @@ function mockSupabaseForActivationJourney(page: Page, state: JourneyState): Prom
         contentType: "application/json",
         body: JSON.stringify([
           {
-            id: "fleet-esamba-sn",
+            id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
             name: "E-Samba Transport & Logistique",
             organisations: {
               id: "mock-org",
