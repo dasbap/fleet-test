@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { EmptyStateDashboard } from "@/components/dashboard/EmptyStateDashboard";
 import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
+import { DriverActivationHealthCard } from "@/components/dashboard/DriverActivationHealthCard";
 import { useActivation } from "@/hooks/useActivation";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,7 @@ export default function DashboardPage() {
           </div>
 
           <PlaceholderStats />
+          <DriverActivationHealthCard />
           <PlaceholderActions />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
