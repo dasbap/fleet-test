@@ -4,7 +4,7 @@ import { toast } from '@/hooks/use-toast';
 import { EsambaSetupService } from '@/services/esamba-setup.service';
 import { EsambaSetupRepository } from '@/repositories/esamba-setup.repository';
 import type { CreateFleetParams } from '@/services/esamba-setup.service';
-import { mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
+import { formatPostgrestError, mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
 
 const esambaSetupRepository = new EsambaSetupRepository();
 const esambaSetupService = new EsambaSetupService(esambaSetupRepository);
@@ -41,7 +41,7 @@ export function useCreateFleet(options?: UseCreateFleetOptions) {
     onError: (error: Error) => {
       toast({
         title: 'Erreur',
-        description: mapSupabaseErrorToFrench(error.message),
+        description: mapSupabaseErrorToFrench(formatPostgrestError(error)),
         variant: 'destructive',
       });
     },
