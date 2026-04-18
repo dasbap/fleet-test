@@ -35,6 +35,8 @@ export function useUpdateDriverProfile() {
     onSuccess: (profile) => {
       queryClient.invalidateQueries({ queryKey: ['driver-profile'] });
       queryClient.invalidateQueries({ queryKey: ['fleet-drivers'] });
+      queryClient.invalidateQueries({ queryKey: ['driver-terrain-self'] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-driver-activation-health'] });
       toast({
         title: 'Profil conducteur mis à jour',
         description: `${profile.full_name ?? 'Le conducteur'} a été mis à jour.`,

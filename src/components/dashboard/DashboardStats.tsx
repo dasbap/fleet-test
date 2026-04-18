@@ -1,18 +1,28 @@
 import { useMemo } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Award, Car, Users, AlertTriangle, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  Award,
+  Car,
+  Users,
+  AlertTriangle,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Phone,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useDriverScores } from "@/hooks/useDriverScores";
 import { useFleetActivationMetrics } from "@/hooks/useFleetActivationMetrics";
+import { useFleetDriverActivationHealth } from "@/hooks/useFleetDriverActivationHealth";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const DashboardStats = () => {
   const { data: stats, isLoading } = useDashboardStats();
-  const { userFleetId } = useAuth();
+  const { userFleetId, role } = useAuth();
   const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
   const allowDriverScores =
     !!userFleetId &&
@@ -21,6 +31,13 @@ const DashboardStats = () => {
       : false);
   const { data: scores = [] } = useDriverScores(userFleetId, allowDriverScores);
   const { data: activationMetrics, isSuccess: activationLoaded } = useFleetActivationMetrics(userFleetId);
+  const { data: driverTerrainHealth, isSuccess: terrainHealthLoaded } =
+    useFleetDriverActivationHealth(userFleetId ?? undefined);
+  const showTerrainHealth =
+    terrainHealthLoaded &&
+    driverTerrainHealth != null &&
+    role !== "driver" &&
+    (role === "organizer" || role === "manager" || role === "mechanic");
 
   const riskyDriversCount = scores.filter(s => s.score_level === 'red').length;
   const scoringUiEnabled =
@@ -74,6 +91,18 @@ const DashboardStats = () => {
       },
     ];
 
+    if (showTerrainHealth && driverTerrainHealth) {
+      items.push({
+        label: "Chauffeurs avec téléphone",
+        value: driverTerrainHealth.with_phone_count,
+        total: driverTerrainHealth.total_drivers,
+        change: `${driverTerrainHealth.pct_with_phone} % de la flotte`,
+        trend: driverTerrainHealth.pct_with_phone >= 70 ? "up" : "down",
+        icon: Phone,
+        color: driverTerrainHealth.pct_with_phone >= 70 ? "success" : "warning",
+      });
+    }
+
     if (activationLoaded && activationMetrics && scoringUiEnabled) {
       const proofLine =
         activationMetrics.proofSubmissionRate > 0
@@ -94,7 +123,14 @@ const DashboardStats = () => {
     }
 
     return items;
-  }, [stats, activationMetrics, activationLoaded, scoringUiEnabled]);
+  }, [
+    stats,
+    activationMetrics,
+    activationLoaded,
+    scoringUiEnabled,
+    showTerrainHealth,
+    driverTerrainHealth,
+  ]);
 
   const gridCols =
     statItems.length >= 5 || riskyDriversCount > 0

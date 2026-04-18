@@ -138,6 +138,10 @@ export function useStartShift() {
       queryClient.invalidateQueries({ queryKey: activeShiftKey });
       queryClient.invalidateQueries({ queryKey: ['driver-shifts'] });
       queryClient.invalidateQueries({ queryKey: operationsQueryKeys.all });
+      if ((result as { kind?: string })?.kind !== 'queued') {
+        queryClient.invalidateQueries({ queryKey: ['driver-terrain-self'] });
+        queryClient.invalidateQueries({ queryKey: ['fleet-driver-activation-health'] });
+      }
     },
     onError: (error: Error) => {
       queryClient.invalidateQueries({ queryKey: activeShiftKey });
@@ -177,6 +181,8 @@ export function useCloseShift() {
       queryClient.invalidateQueries({ queryKey: ['driver-shifts'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: operationsQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['driver-terrain-self'] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-driver-activation-health'] });
       toast({
         title: result.kind === 'queued' ? 'Clôture enregistrée hors ligne' : 'Journée clôturée',
         description:
