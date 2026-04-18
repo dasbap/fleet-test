@@ -24,6 +24,7 @@ import {
 } from "@/lib/storage/flotteEsambaLocalCache";
 import type { AppRole, AuthUser, FleetMembership } from "@/types/auth";
 import { AuthContext, type AuthContextValue } from "@/contexts/auth-context";
+import { isValidUuid } from "@/lib/isUuid";
 
 const fleetMemberRepository = new FleetMemberRepository();
 const fleetMemberService = new FleetMemberService(fleetMemberRepository);
@@ -90,7 +91,21 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         );
 
         if (list.length > 0) {
-          const membershipsList = list as FleetMembership[];
+          const membershipsList = (list as FleetMembership[]).filter((m) =>
+            isValidUuid(m.fleet_id),
+          );
+          if (membershipsList.length === 0) {
+            devWarn(
+              "[Auth] Adhésions ignorées : fleet_id non UUID (session ou données incohérentes).",
+            );
+            setRole(null);
+            setMemberships([]);
+            setActiveFleetIdState(null);
+            setOrgId(null);
+            setTenantOptions([]);
+            localStorage.removeItem(ACTIVE_FLEET_STORAGE_KEY);
+            return [];
+          }
           setMemberships(membershipsList);
           const roleHierarchy: AppRole[] = [
             "organizer",
@@ -103,11 +118,15 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             roleHierarchy.find((r) => userRoles.includes(r)) || "driver";
           setRole(highestRole);
 
-          const storedFleetId = localStorage.getItem(ACTIVE_FLEET_STORAGE_KEY);
+          const rawStored = localStorage.getItem(ACTIVE_FLEET_STORAGE_KEY);
+          if (rawStored && !isValidUuid(rawStored)) {
+            localStorage.removeItem(ACTIVE_FLEET_STORAGE_KEY);
+          }
+          const storedFleetId =
+            rawStored && isValidUuid(rawStored) ? rawStored : null;
           const defaultFleetId = membershipsList[0].fleet_id;
-          const nextFleetId = membershipsList.some(
-            (membership) => membership.fleet_id === storedFleetId
-          )
+          const nextFleetId = storedFleetId &&
+            membershipsList.some((m) => m.fleet_id === storedFleetId)
             ? storedFleetId
             : defaultFleetId;
           setActiveFleetIdState(nextFleetId);
@@ -309,6 +328,12 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
   const setActiveFleetId = useCallback(
     (fleetId: string) => {
+      if (!isValidUuid(fleetId)) {
+        devWarn("[Auth] Identifiant de flotte invalide (UUID attendu)", {
+          fleetId,
+        });
+        return;
+      }
       const hasMembership = memberships.some(
         (membership) => membership.fleet_id === fleetId
       );

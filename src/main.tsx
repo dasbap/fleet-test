@@ -5,6 +5,22 @@ import "./styles/globals.css";
 import { reportWebVitals } from "./reportWebVitals";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { preloadRouteChunksForPath } from "@/app/routes/preloadRouteChunks";
+import { isValidUuid } from "@/lib/isUuid";
+import App from "./App.tsx";
+
+const ACTIVE_FLEET_STORAGE_KEY = "esamba.active_fleet_id";
+
+/** Supprime une ancienne valeur non UUID (ex. slug fleet-esamba-sn) restée dans le stockage. */
+function clearInvalidActiveFleetStorage(): void {
+  try {
+    const v = localStorage.getItem(ACTIVE_FLEET_STORAGE_KEY);
+    if (v && !isValidUuid(v)) {
+      localStorage.removeItem(ACTIVE_FLEET_STORAGE_KEY);
+    }
+  } catch {
+    /* stockage indisponible */
+  }
+}
 
 // En dev : log des requêtes Supabase en échec (URL = table ou RPC) pour diagnostic
 if (import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL) {
@@ -55,10 +71,11 @@ const bootstrap = async () => {
     return;
   }
 
+  clearInvalidActiveFleetStorage();
+
   try {
     await import("./instrument");
     preloadRouteChunksForPath(window.location.pathname);
-    const { default: App } = await import("./App.tsx");
     createRoot(rootEl).render(
       <Suspense fallback={<RoutePageFallback />}>
         <App />
