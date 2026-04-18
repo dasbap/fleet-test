@@ -3,7 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOnboarding } from "@/hooks/useOnboarding";
 
 const BANNER_DISMISS_PREFIX = "esamba.activation_banner_dismissed_";
-const ACTIVATION_WINDOW_DAYS = 7;
+/** Durée pendant laquelle le bandeau checklist peut s’afficher après création du compte. */
+const ACTIVATION_WINDOW_DAYS = 30;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 export type ActivationStepId =
@@ -61,7 +62,8 @@ function isWithinActivationWindow(createdAt?: string): boolean {
 }
 
 export function useActivation() {
-  const { user, orgId } = useAuth();
+  const { user, orgId, role } = useAuth();
+  const isDriver = role === "driver";
   const onboardingQuery = useOnboarding(orgId ?? undefined);
   const [isDismissed, setIsDismissed] = useState(false);
   const [manualCompleted, setManualCompleted] = useState<Partial<Record<CanonicalStepId, boolean>>>({});
@@ -78,20 +80,26 @@ export function useActivation() {
     setIsDismissed(window.localStorage.getItem(dismissKey) === "1");
   }, [dismissKey]);
 
-  const steps = useMemo(
-    () =>
-      STEPS_CONFIG.map((step, index) => ({
-        ...step,
-        completed: onboardingCompleted || onboardingStep >= index + 1 || Boolean(manualCompleted[step.id]),
-      })),
-    [manualCompleted, onboardingCompleted, onboardingStep],
-  );
+  const steps = useMemo(() => {
+    if (isDriver) {
+      return STEPS_CONFIG.map((step) => ({ ...step, completed: true }));
+    }
+    return STEPS_CONFIG.map((step, index) => ({
+      ...step,
+      completed:
+        onboardingCompleted || onboardingStep >= index + 1 || Boolean(manualCompleted[step.id]),
+    }));
+  }, [isDriver, manualCompleted, onboardingCompleted, onboardingStep]);
 
   const totalCount = steps.length;
   const completedCount = steps.filter((step) => step.completed).length;
   const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isAllDone = completedCount >= totalCount;
-  const isBannerVisible = isWithinActivationWindow(user?.created_at) && !isAllDone && !isDismissed;
+  const isBannerVisible =
+    !isDriver &&
+    isWithinActivationWindow(user?.created_at) &&
+    !isAllDone &&
+    !isDismissed;
 
   const dismissBanner = useCallback(() => {
     if (!dismissKey || typeof window === "undefined") return;
@@ -110,7 +118,7 @@ export function useActivation() {
     totalCount,
     percentage,
     isAllDone,
-    loading: onboardingQuery.isLoading,
+    loading: isDriver ? false : onboardingQuery.isLoading,
     churnRisk: getChurnRisk(percentage),
     isBannerVisible,
     dismissBanner,
