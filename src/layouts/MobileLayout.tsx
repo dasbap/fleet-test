@@ -7,6 +7,7 @@ import { useMobileTabTracking } from "@/hooks/mobile/useMobileTabTracking";
 import { getMobileOutletShellClass } from "@/lib/mobileOutletShellClass";
 import { cn } from "@/lib/utils";
 import { ActivationBanner } from "@/components/shared/ActivationBanner";
+import { DriverTerrainActivationModal } from "@/components/activation/DriverTerrainActivationModal";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 const NotificationsPermissionGate = lazy(() =>
   import("@/components/notifications/NotificationsPermissionGate").then((module) => ({
@@ -30,6 +31,7 @@ export default function MobileLayout({ userRole }: MobileLayoutProps) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <ActivationBanner />
+      <DriverTerrainActivationModal />
       <OfflineBanner />
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-safe">
         <div

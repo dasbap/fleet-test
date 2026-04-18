@@ -26,12 +26,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 const createFleetSchema = z.object({
-  orgName: z.string().min(1, "Le nom de l'organisation est requis"),
-  fleetName: z.string().min(1, "Le nom de la flotte est requis"),
+  orgName: z
+    .string()
+    .trim()
+    .min(1, "Le nom de l'organisation est requis"),
+  fleetName: z
+    .string()
+    .trim()
+    .min(1, "Le nom de la flotte est requis"),
   collectionPolicy: z.enum(["cash", "momo", "mix"], {
     required_error: "La politique de collecte est requise",
   }),
-  countryCode: z.string().length(2, "Le code pays doit contenir 2 caractères").default("CM"),
+  countryCode: z
+    .string()
+    .trim()
+    .length(2, "Le code pays doit contenir 2 caractères")
+    .default("CM"),
 });
 
 type CreateFleetFormValues = z.infer<typeof createFleetSchema>;

@@ -3,7 +3,7 @@
  * v_daily_active_users, v_activation_funnel). Accès organisateur (RLS + RoleGuard).
  */
 
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   formatRetentionDate,
@@ -249,10 +249,23 @@ export function RetentionDashboard() {
   const isNoActivation = kpis?.active_rolling_7d === 0 && (kpis?.total_members ?? 0) > 0;
 
   if (isError) {
+    const msg = error?.message ?? "";
+    const schemaDrift =
+      /org_id\s+does\s+not\s+exist|v_retention_kpis/i.test(msg) &&
+      /column|does not exist/i.test(msg);
     return (
-      <div className="rounded-card border border-red-500/30 bg-red-500/10 p-6 text-center">
+      <div className="rounded-card border border-red-500/30 bg-red-500/10 p-6 text-center space-y-2">
         <p className="text-sm font-medium text-red-400">Erreur de chargement</p>
-        <p className="text-xs text-slate-500 mt-1">{error?.message ?? "Erreur inconnue"}</p>
+        <p className="text-xs text-slate-500">{msg || "Erreur inconnue"}</p>
+        {schemaDrift && (
+          <p className="text-xs text-slate-400 text-left max-w-lg mx-auto leading-relaxed">
+            La vue SQL <code className="text-slate-300">v_retention_kpis</code> du projet distant est
+            probablement obsolète. Appliquer les migrations Supabase (ex.{" "}
+            <code className="text-slate-300">supabase db push</code> ou migration{" "}
+            <code className="text-slate-300">20260418140000_repair_v_retention_kpis</code>
+            ), puis recharger.
+          </p>
+        )}
       </div>
     );
   }
@@ -292,6 +305,22 @@ export function RetentionDashboard() {
         </div>
       </div>
 
+      <div className="rounded-card border border-sky-500/25 bg-sky-500/8 p-4 flex items-start gap-3">
+        <Info className="h-5 w-5 text-sky-400 shrink-0 mt-0.5" aria-hidden />
+        <div className="flex-1 text-xs text-slate-500 leading-relaxed space-y-2">
+          <p>
+            <strong className="text-slate-300">Activation terrain</strong> est définie ici comme la
+            première ouverture de créneau ou la première clôture enregistrée pour un membre. Tant que ce
+            seuil n&apos;est pas atteint, les courbes de rétention (J7, J30) reflètent surtout
+            l&apos;inscription et la présence dans la base, pas la fidélité d&apos;usage réel.
+          </p>
+          <p>
+            Les relances SMS Orange (+237) nécessitent un numéro mobile renseigné sur le profil
+            conducteur ; sans téléphone, seuls les canaux push ou l&apos;alerte manager restent possibles.
+          </p>
+        </div>
+      </div>
+
       {isNoActivation && (
         <div className="rounded-card border border-red-500/30 bg-red-500/8 p-4 flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-red-400 shrink-0" aria-hidden />
@@ -299,8 +328,8 @@ export function RetentionDashboard() {
             <p className="text-sm font-medium text-red-400">Aucune activation terrain détectée</p>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
               {kpis.total_members} membres inscrits, {kpis.active_rolling_7d} actif(s) cette semaine.{" "}
-              {neverActivatedPct}% des membres n&apos;ont jamais ouvert de créneau. Lancer une campagne
-              SMS ciblée et vérifier l&apos;onboarding mobile.
+              {neverActivatedPct}% des membres n&apos;ont jamais ouvert de créneau. Priorité : formation
+              terrain, numéros mobile complets (+237) pour SMS, puis relances automatiques.
             </p>
           </div>
         </div>

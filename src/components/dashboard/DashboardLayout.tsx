@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { ActivationBanner } from "@/components/shared/ActivationBanner";
+import { DriverTerrainActivationModal } from "@/components/activation/DriverTerrainActivationModal";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { HelpBubble } from "@/components/shared/HelpCenter";
 import { useAuth } from "@/hooks/useAuth";
@@ -64,6 +65,7 @@ export default function DashboardLayout() {
           />
           <OfflineBanner />
           <ActivationBanner />
+          <DriverTerrainActivationModal />
           <main className="flex-1 p-6 overflow-auto">
             <Suspense fallback={null}>
               <NotificationsPermissionGate />

@@ -30,9 +30,9 @@ const Invitations = lazy(() => import("@/pages/Invitations"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Teams = lazy(() => import("@/pages/Teams"));
 const CreateFleet = lazy(() => import("@/pages/CreateFleet"));
+const DashboardNotFound = lazy(() => import("@/pages/DashboardNotFound"));
 const Finances = lazy(() => import("@/pages/Finances"));
 const Collections = lazy(() => import("@/pages/Collections"));
-const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const IncidentAlertDetailPage = lazy(
   () => import("@/features/alerts/screens/IncidentAlertDetailPage")
 );
@@ -180,7 +180,7 @@ export const dashboardRoutes = (
           </RoleGuard>
         }
       />
-      <Route path="*" element={<Dashboard />} />
+      <Route path="*" element={<DashboardNotFound />} />
     </Route>
   </Route>
 );

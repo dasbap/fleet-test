@@ -12,6 +12,8 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION?: string;
   /** Session mockée locale (sans Supabase). Valeur attendue : "true". */
   readonly VITE_USE_MOCK_AUTH?: string;
+  /** UUID de la flotte démo (Table Editor → flottes) pour auth mock + appels API. */
+  readonly VITE_DEMO_FLEET_ID?: string;
   /** Données démo pour le module Opérations (snapshots). Valeur attendue : "true". */
   readonly VITE_OPERATIONS_MOCK?: string;
   /** Token public Mapbox pour la carte de suivi live. */
