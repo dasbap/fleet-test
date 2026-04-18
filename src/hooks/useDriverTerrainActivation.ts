@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { DriverProfileRepository } from '@/repositories/driver-profile.repository';
-import { DriverShiftRepository } from '@/repositories/driver-shift.repository';
+import { supabase } from '@/integrations/supabase/client';
 import { isValidCameroonMobileInput } from '@/lib/cameroonPhone';
 import {
   buildDriverTerrainSnoozePayload,
@@ -13,13 +12,35 @@ import {
   parseDriverTerrainSnoozeStored,
 } from '@/lib/driverTerrainSnooze';
 
-const profileRepo = new DriverProfileRepository();
-const shiftRepo = new DriverShiftRepository();
+/** Durée de cache : 30 s — évite de re-interroger à chaque navigation */
+const STALE_TIME_MS = 30_000;
 
 function readSnoozeState(userId: string): DriverTerrainSnoozeState {
   if (typeof window === 'undefined') return { until: null, count: 0 };
   const raw = window.localStorage.getItem(`${DRIVER_TERRAIN_SNOOZE_KEY_PREFIX}${userId}`);
   return parseDriverTerrainSnoozeStored(raw);
+}
+
+/**
+ * Interroge le RPC `driver_terrain_self_check` en un seul round-trip Supabase.
+ * Remplace les deux appels parallèles (profileRepo + shiftRepo) pour réduire la latence 2G/3G.
+ */
+async function fetchDriverTerrainSelf(
+  userId: string,
+  fleetId: string,
+): Promise<{ phone: string | null; hasEverShift: boolean }> {
+  const { data, error } = await supabase.rpc('driver_terrain_self_check', {
+    p_user_id: userId,
+    p_fleet_id: fleetId,
+  });
+
+  if (error) throw new Error(error.message);
+
+  const result = data as { phone: string | null; has_ever_shift: boolean } | null;
+  return {
+    phone: result?.phone ?? null,
+    hasEverShift: result?.has_ever_shift ?? false,
+  };
 }
 
 export function useDriverTerrainActivation() {
@@ -38,22 +59,15 @@ export function useDriverTerrainActivation() {
 
   const query = useQuery({
     queryKey: ['driver-terrain-self', userId, userFleetId],
-    queryFn: async () => {
-      if (!userId || !userFleetId) return null;
-      const [profile, hasEverShift] = await Promise.all([
-        profileRepo.findByDriverAndFleet(userId, userFleetId),
-        shiftRepo.hasDriverEverOpenedShift(userId),
-      ]);
-      return {
-        phone: profile?.phone ?? null,
-        hasEverShift,
-      };
-    },
+    queryFn: () => fetchDriverTerrainSelf(userId!, userFleetId!),
     enabled: Boolean(isDriver && userId && userFleetId),
-    staleTime: 30_000,
+    staleTime: STALE_TIME_MS,
   });
 
-  const phoneOk = useMemo(() => isValidCameroonMobileInput(query.data?.phone ?? ''), [query.data?.phone]);
+  const phoneOk = useMemo(
+    () => isValidCameroonMobileInput(query.data?.phone ?? ''),
+    [query.data?.phone],
+  );
 
   const isSnoozed = useMemo(() => {
     const until = snoozeState.until;
