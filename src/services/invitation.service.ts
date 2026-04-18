@@ -16,6 +16,16 @@ export interface AcceptInvitationResult {
   message?: string;
 }
 
+export type InvitationInvalidReason = 'not_found' | 'expired' | 'max_uses' | 'error';
+
+export interface InvitationCodeValidationResult {
+  status: 'valid' | 'invalid';
+  reason?: InvitationInvalidReason;
+  fleetId?: string;
+  fleetName?: string;
+  code?: string;
+}
+
 function normalizeRpcResult(data: unknown): AcceptInvitationResult | null {
   if (data == null) return null;
   if (Array.isArray(data)) {
@@ -74,6 +84,41 @@ export class InvitationService {
       throw new Error('Le code d\'invitation est requis');
     }
     return this.repository.findByCode(code.trim().toUpperCase());
+  }
+
+  async validateInvitationCode(rawCode: string): Promise<InvitationCodeValidationResult> {
+    const normalizedCode = rawCode.trim().toUpperCase();
+    if (!normalizedCode) {
+      return { status: 'invalid', reason: 'not_found' };
+    }
+
+    try {
+      const invitation = await this.repository.findValidationByCode(normalizedCode);
+      if (!invitation) {
+        return { status: 'invalid', reason: 'not_found' };
+      }
+
+      if (invitation.expires_at && new Date(invitation.expires_at) < new Date()) {
+        return { status: 'invalid', reason: 'expired' };
+      }
+
+      if (
+        invitation.max_uses != null &&
+        invitation.current_uses >= invitation.max_uses
+      ) {
+        return { status: 'invalid', reason: 'max_uses' };
+      }
+
+      return {
+        status: 'valid',
+        fleetId: invitation.fleet_id,
+        fleetName: invitation.fleet?.name || 'Flotte',
+        code: normalizedCode,
+      };
+    } catch (error) {
+      console.error('Error while validating invitation code:', error);
+      return { status: 'invalid', reason: 'error' };
+    }
   }
 
   /**

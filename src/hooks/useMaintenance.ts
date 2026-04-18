@@ -69,6 +69,25 @@ export function useMaintenanceJobs(fleetId?: string, status?: JobStatus) {
   });
 }
 
+/** Travaux de maintenance pour un véhicule de la flotte (filtrage serveur). */
+export function useVehicleMaintenanceJobs(fleetId: string | undefined, vehicleId: string | undefined) {
+  const enabled =
+    fleetId != null &&
+    fleetId !== '' &&
+    vehicleId != null &&
+    vehicleId !== '';
+
+  return useQuery({
+    queryKey: ['maintenance-jobs', fleetId, vehicleId],
+    queryFn: () =>
+      maintenanceService.getAllMaintenanceJobs({
+        fleet_id: fleetId!,
+        vehicle_id: vehicleId!,
+      }),
+    enabled,
+  });
+}
+
 // Fetch a single job with evidence
 export function useMaintenanceJob(jobId?: string) {
   return useQuery({
@@ -88,22 +107,32 @@ export function useCreateMaintenanceJob() {
       fleet_id,
       priority = 'medium',
       created_from_incident_id,
+      notes,
+      planned_at,
+      parts,
     }: {
       vehicle_id: string;
       fleet_id: string;
       priority?: Priority;
-      created_from_incident_id?: string;
+      created_from_incident_id?: string | null;
+      notes?: string | null;
+      planned_at?: string | null;
+      parts?: MaintenanceJobPart[] | null;
     }) => {
       return maintenanceService.createMaintenanceJob({
         vehicle_id,
         fleet_id,
         priority,
-        created_from_incident_id: created_from_incident_id || null,
+        created_from_incident_id: created_from_incident_id ?? null,
         status: 'queued',
+        notes: notes ?? null,
+        planned_at: planned_at ?? null,
+        parts: parts ?? null,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['actionable-dashboard-maintenance'] });
       toast({
         title: 'Intervention créée',
         description: 'L\'intervention a été ajoutée à la file d\'attente.',
@@ -141,6 +170,7 @@ export function useUpdateJobStatus() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['actionable-dashboard-maintenance'] });
       queryClient.invalidateQueries({ queryKey: ['maintenance-job', data.id] });
       
       const statusLabels: Record<JobStatus, string> = {
@@ -185,6 +215,7 @@ export function useUpdateMaintenanceJob() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['actionable-dashboard-maintenance'] });
       queryClient.invalidateQueries({ queryKey: ['maintenance-job', data.id] });
       toast({
         title: 'Intervention mise à jour',

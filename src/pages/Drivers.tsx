@@ -17,11 +17,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Car, MoreVertical, Phone, Calendar, History } from "lucide-react";
+import { User, Car, MoreVertical, Phone, Calendar, History, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFleetDrivers, useActiveAssignments } from "@/hooks/useAssignments";
+import { useFleetDriverActivationHealth } from "@/hooks/useFleetDriverActivationHealth";
 import { cn } from "@/lib/utils";
 import DriverHistoryDialog from "@/components/drivers/DriverHistoryDialog";
+import DriverProfileDialog from "@/components/drivers/DriverProfileDialog";
 
 // Réparation : Ajout des fonctions utilitaires manquantes pour le score
 function getScoreBadgeVariant(scoreLevel: string): BadgeProps["variant"] {
@@ -66,7 +68,14 @@ const Drivers = () => {
   );
 
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [selectedDriverName, setSelectedDriverName] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [activationFilter, setActivationFilter] = useState<
+    "all" | "no_phone" | "never_shift"
+  >("all");
+
+  const { data: activationHealth } = useFleetDriverActivationHealth(userFleetId ?? undefined);
 
   useEffect(() => {
     if (!userFleetId && role === null) {
@@ -76,18 +85,45 @@ const Drivers = () => {
 
   const isLoading = driversLoading || assignmentsLoading;
 
-  // Associer les assignments aux drivers
-  const driversWithAssignments = drivers.map((driver) => {
-    const assignment = assignments.find((a) => a.driver_user_id === driver.user_id);
-    return {
-      ...driver,
-      currentAssignment: assignment || null,
-    };
+  const flagsByUser = new Map<
+    string,
+    { has_phone: boolean; has_ever_shift: boolean }
+  >();
+  activationHealth?.drivers.forEach((d) => {
+    flagsByUser.set(d.user_id, {
+      has_phone: d.has_phone,
+      has_ever_shift: d.has_ever_shift,
+    });
   });
+
+  // Associer les assignments aux drivers
+  const driversWithAssignments = drivers
+    .map((driver) => {
+      const assignment = assignments.find((a) => a.driver_user_id === driver.user_id);
+      const flags = flagsByUser.get(driver.user_id);
+      return {
+        ...driver,
+        currentAssignment: assignment || null,
+        terrainFlags: flags ?? null,
+      };
+    })
+    .filter((driver) => {
+      if (activationFilter === "all") return true;
+      const f = driver.terrainFlags;
+      if (!f) return true;
+      if (activationFilter === "no_phone") return !f.has_phone;
+      return !f.has_ever_shift;
+    });
 
   const handleViewHistory = (driverId: string) => {
     setSelectedDriverId(driverId);
     setHistoryOpen(true);
+  };
+
+  const handleViewProfile = (driverId: string, name?: string | null) => {
+    setSelectedDriverId(driverId);
+    setSelectedDriverName(name ?? null);
+    setProfileOpen(true);
   };
 
   if (!userFleetId) {
@@ -132,7 +168,7 @@ const Drivers = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -185,6 +221,68 @@ const Drivers = () => {
               </div>
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <Phone className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">
+                    {activationHealth?.with_phone_count ?? "—"}
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {" "}
+                      / {activationHealth?.total_drivers ?? "—"}
+                    </span>
+                  </p>
+                  <p className="text-sm text-muted-foreground">Tél. renseignés</p>
+                  <p className="text-xs text-muted-foreground">
+                    {activationHealth != null
+                      ? `${activationHealth.pct_with_phone} %`
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">
+                    {activationHealth?.never_shifted_count ?? "—"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Jamais de créneau
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-sm text-muted-foreground mr-2">Filtrer :</span>
+          {(
+            [
+              ["all", "Tous"],
+              ["no_phone", "Sans téléphone"],
+              ["never_shift", "Sans créneau"],
+            ] as const
+          ).map(([key, label]) => (
+            <Button
+              key={key}
+              type="button"
+              size="sm"
+              variant={activationFilter === key ? "default" : "outline"}
+              onClick={() => setActivationFilter(key)}
+            >
+              {label}
+            </Button>
+          ))}
         </div>
 
         {/* Drivers Table */}
@@ -215,6 +313,7 @@ const Drivers = () => {
                   <TableRow>
                     <TableHead>Chauffeur</TableHead>
                     <TableHead>Contact</TableHead>
+                    <TableHead>Activation terrain</TableHead>
                     <TableHead>Véhicule actuel</TableHead>
                     <TableHead>Score</TableHead>
                     <TableHead>Statut</TableHead>
@@ -247,6 +346,28 @@ const Drivers = () => {
                             Non renseigné
                           </span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {driver.terrainFlags && !driver.terrainFlags.has_phone && (
+                            <Badge variant="destructive" className="text-[10px]">
+                              Sans tel.
+                            </Badge>
+                          )}
+                          {driver.terrainFlags && !driver.terrainFlags.has_ever_shift && (
+                            <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-800 dark:text-amber-200">
+                              Jamais créneau
+                            </Badge>
+                          )}
+                          {driver.terrainFlags &&
+                            driver.terrainFlags.has_phone &&
+                            driver.terrainFlags.has_ever_shift && (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          {!driver.terrainFlags && (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {driver.currentAssignment?.vehicle ? (
@@ -307,6 +428,14 @@ const Drivers = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
+                              onClick={() =>
+                                handleViewProfile(driver.user_id, driver.full_name)
+                              }
+                            >
+                              <User className="w-4 h-4 mr-2" />
+                              Voir fiche
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={() => handleViewHistory(driver.user_id)}
                             >
                               <History className="w-4 h-4 mr-2" />
@@ -332,6 +461,13 @@ const Drivers = () => {
         open={historyOpen}
         onOpenChange={setHistoryOpen}
         driverId={selectedDriverId}
+      />
+      <DriverProfileDialog
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        fleetId={userFleetId ?? undefined}
+        driverId={selectedDriverId}
+        driverName={selectedDriverName}
       />
     </>
   );

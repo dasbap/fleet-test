@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/mobile/ui";
 
 interface OperationsEmptyStateProps {
   message: string;
@@ -17,8 +18,19 @@ export function OperationsEmptyState({ message, className, icon }: OperationsEmp
         className
       )}
     >
-      <div className="text-muted-foreground">{icon ?? <Inbox className="mx-auto h-10 w-10 opacity-70" aria-hidden />}</div>
-      <p className="max-w-md text-sm text-muted-foreground">{message}</p>
+      {icon ? (
+        <>
+          <div className="text-muted-foreground">{icon}</div>
+          <p className="max-w-md text-sm text-muted-foreground">{message}</p>
+        </>
+      ) : (
+        <EmptyState
+          icon={Inbox}
+          title="Aucune donnée disponible"
+          description={message}
+          className="py-2"
+        />
+      )}
     </div>
   );
 }

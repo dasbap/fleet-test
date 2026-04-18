@@ -34,6 +34,7 @@ Les règles sont organisées dans `.cursor/rules/` pour une meilleure spécialis
 - **`react-patterns.mdc`** : Patterns React, TypeScript, hooks personnalisés et gestion d'état
 - **`api-guidelines.mdc`** : Guidelines pour React Query, query keys, invalidation
 - **`frontend-components.mdc`** : Règles spécifiques aux composants UI et shadcn/ui
+- **`esamba.mdc`** : Intégration ESAMBA (setup, vérification, RPC, cache ; fichiers correspondants)
 - **`general.mdc`** : Règles générales (ce fichier)
 
 ## Sécurité

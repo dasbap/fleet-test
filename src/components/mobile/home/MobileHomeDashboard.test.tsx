@@ -39,7 +39,7 @@ describe("MobileHomeDashboard", () => {
 
   it(
     "affiche uniquement les 4 KPI demandés et les 3 actions rapides",
-    () => {
+    async () => {
       render(
         <MemoryRouter>
           <MobileHomeDashboard />
@@ -52,10 +52,10 @@ describe("MobileHomeDashboard", () => {
       expect(screen.getByText("Missions en cours")).toBeInTheDocument();
       expect(screen.queryByText("Entretiens cette semaine")).not.toBeInTheDocument();
 
-      expect(screen.getByRole("link", { name: /déclarer incident/i })).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: /voir flotte/i })).toBeInTheDocument();
+      expect(await screen.findByRole("link", { name: /déclarer incident/i })).toBeInTheDocument();
+      expect(await screen.findByRole("link", { name: /voir flotte/i })).toBeInTheDocument();
       expect(
-        screen.getByRole("link", { name: /créer une intervention/i })
+        await screen.findByRole("link", { name: /créer une intervention/i })
       ).toBeInTheDocument();
     },
     15_000

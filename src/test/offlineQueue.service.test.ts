@@ -7,17 +7,17 @@ describe("OfflineQueueService", () => {
   const service = new OfflineQueueService();
 
   beforeEach(() => {
-    vi.spyOn(offlineStorage, "readOfflineJobs").mockReturnValue([]);
-    vi.spyOn(offlineStorage, "writeOfflineJobs").mockImplementation(() => {});
+    vi.spyOn(offlineStorage, "readOfflineJobs").mockResolvedValue([]);
+    vi.spyOn(offlineStorage, "writeOfflineJobs").mockResolvedValue();
     vi.spyOn(global, "crypto", "get").mockReturnValue({
       randomUUID: () => "job-1",
     } as unknown as Crypto);
   });
 
-  it("enqueueIncidentCreate ajoute un job pending", () => {
+  it("enqueueIncidentCreate ajoute un job pending", async () => {
     const spyWrite = vi.spyOn(offlineStorage, "writeOfflineJobs");
 
-    const job = service.enqueueIncidentCreate({
+    const job = await service.enqueueIncidentCreate({
       fleetId: "fleet-1",
       vehicleId: "veh-1",
       driverUserId: "user-1",

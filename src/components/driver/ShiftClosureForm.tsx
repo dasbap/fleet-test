@@ -19,8 +19,9 @@ import { toast } from "@/hooks/use-toast";
 import { Banknote, Smartphone, CreditCard, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProofUpload, { ProofType } from "./ProofUpload";
-import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useCloseShift } from "@/hooks/useDriverShifts";
+import { useActivation } from "@/hooks/useActivation";
 
 const closureFormSchema = z.object({
   kmEnd: z.coerce.number().min(0, "Kilométrage invalide"),
@@ -34,7 +35,6 @@ type ClosureFormValues = z.infer<typeof closureFormSchema>;
 interface ShiftClosureFormProps {
   shiftId: string;
   kmStart: number;
-  vehicleId?: string;
 }
 
 const collectionModes = [
@@ -43,12 +43,14 @@ const collectionModes = [
   { value: "mix", label: "Mixte", icon: CreditCard },
 ];
 
-const ShiftClosureForm = ({ shiftId, kmStart, vehicleId }: ShiftClosureFormProps) => {
+const ShiftClosureForm = ({ shiftId, kmStart }: ShiftClosureFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [proofType, setProofType] = useState<ProofType>('photo');
   const [proofValue, setProofValue] = useState('');
   const [proofFile, setProofFile] = useState<File | null>(null);
   const navigate = useNavigate();
+  const closeShiftMutation = useCloseShift();
+  const { completeStep } = useActivation();
 
   const form = useForm<ClosureFormValues>({
     resolver: zodResolver(closureFormSchema),
@@ -64,23 +66,19 @@ const ShiftClosureForm = ({ shiftId, kmStart, vehicleId }: ShiftClosureFormProps
   const kmDriven = watchKmEnd - kmStart;
   const watchRevenue = form.watch("revenueDeclared");
 
-  const uploadProofFile = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `closures/${shiftId}_${Date.now()}.${fileExt}`;
-    
-    const { error: uploadError } = await supabase.storage
-      .from('maintenance-evidence')
-      .upload(fileName, file);
-
-    if (uploadError) {
-      throw new Error('Erreur upload: ' + uploadError.message);
-    }
-
-    const { data: urlData } = supabase.storage
-      .from('maintenance-evidence')
-      .getPublicUrl(fileName);
-
-    return urlData.publicUrl;
+  const readFileAsDataUrl = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+          return;
+        }
+        reject(new Error("Impossible de lire la pièce jointe."));
+      };
+      reader.onerror = () => reject(new Error("Erreur de lecture de la pièce jointe."));
+      reader.readAsDataURL(file);
+    });
   };
 
   const onSubmit = async (data: ClosureFormValues) => {
@@ -122,41 +120,20 @@ const ShiftClosureForm = ({ shiftId, kmStart, vehicleId }: ShiftClosureFormProps
 
     setIsSubmitting(true);
     try {
-      // Upload proof file if exists
       let finalProofValue = proofValue;
       if (proofFile) {
-        finalProofValue = await uploadProofFile(proofFile);
+        finalProofValue = await readFileAsDataUrl(proofFile);
       }
 
-      // Call the close_shift RPC
-      const { error } = await supabase.rpc('fermer_creneau', {
-        p_shift_id: shiftId,
-        p_km_end: data.kmEnd,
-        p_revenue_declared: data.revenueDeclared,
-        p_collection_mode: data.collectionMode,
-        p_proof_type: proofType,
-        p_proof_value: finalProofValue,
+      await closeShiftMutation.mutateAsync({
+        shift_id: shiftId,
+        km_end: data.kmEnd,
+        revenue_declared: data.revenueDeclared,
+        collection_mode: data.collectionMode,
+        proof_type: proofType,
+        proof_value: finalProofValue,
       });
-
-      if (error) throw error;
-
-      // Calculer la recette attendue
-      const { error: expectedError } = await supabase.rpc('calculer_recette_attendue', {
-        p_shift_id: shiftId,
-      });
-
-      if (expectedError) {
-        console.warn('Erreur lors du calcul de la recette attendue:', expectedError);
-        // Ne pas bloquer la clôture si cette étape échoue
-      }
-
-      // Update vehicle km if provided
-      if (vehicleId) {
-        await supabase
-          .from('vehicules')
-          .update({ current_km: data.kmEnd })
-          .eq('id', vehicleId);
-      }
+      await completeStep("first_creneau");
       
       toast({
         title: "Clôture envoyée",
@@ -361,9 +338,9 @@ const ShiftClosureForm = ({ shiftId, kmStart, vehicleId }: ShiftClosureFormProps
               type="submit" 
               className="w-full" 
               size="lg"
-              disabled={isSubmitting || kmDriven < 0}
+              disabled={isSubmitting || closeShiftMutation.isPending || kmDriven < 0}
             >
-              {isSubmitting ? "Envoi en cours..." : "Soumettre la clôture"}
+              {isSubmitting || closeShiftMutation.isPending ? "Envoi en cours..." : "Soumettre la clôture"}
             </Button>
           </form>
         </Form>

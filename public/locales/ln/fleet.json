@@ -1,0 +1,14 @@
+{
+  "title": "Kokamba milinga",
+  "vehicle": "Milinga",
+  "plate": "Plaque",
+  "brand": "Marque",
+  "model": "Modèle",
+  "year": "Mobu",
+  "mileage": "Kilomètre",
+  "driver": "Mokambi",
+  "addVehicle": "Kobakisa milinga",
+  "vehicleDetail": "Makambo ya milinga",
+  "totalFleet": "Milinga {{count}}",
+  "totalFleet_other": "Milinga {{count}}"
+}

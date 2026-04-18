@@ -6,10 +6,14 @@
 import * as Sentry from "@sentry/react";
 
 const dsn = import.meta.env.VITE_SENTRY_DSN;
+/** Version semver pour regrouper les issues par release (CI : package.json). */
+const appVersion =
+  (import.meta.env.VITE_APP_VERSION as string | undefined)?.trim() || "unknown";
 
 if (dsn && typeof dsn === "string" && dsn.length > 0) {
   Sentry.init({
     dsn,
+    release: `smart-fleet-africa@${appVersion}`,
     environment: import.meta.env.MODE,
     initialScope: (scope) => {
       scope.setTag("theme", "dark");

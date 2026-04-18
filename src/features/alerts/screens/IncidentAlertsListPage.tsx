@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, Bell, Car, Info } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import { useAuth } from "@/hooks/useAuth";
+import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
+import { planValueMessages } from "@/lib/plan-value-messages";
 import { useIncidentAlertsMock } from "@/features/alerts/store/incidentAlertsMockStore";
 import {
   filterIncidentAlerts,
@@ -37,6 +39,7 @@ const STATUS_FILTERS: { id: IncidentStatusFilter; label: string }[] = [
  */
 export default function IncidentAlertsListPage() {
   const { userFleetId, isLoading: authLoading } = useAuth();
+  const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
   const navigate = useNavigate();
   const raw = useIncidentAlertsMock();
   const [severity, setSeverity] = useState<IncidentSeverityFilter>("all");
@@ -49,6 +52,11 @@ export default function IncidentAlertsListPage() {
       ),
     [raw, severity, status]
   );
+
+  const showAnomalyPlanUpsell =
+    !!userFleetId &&
+    billingQuery.isSuccess &&
+    billingQuery.data.anomalyInsightsEnabled === false;
 
   if (authLoading) {
     return <PageLoader />;
@@ -91,6 +99,19 @@ export default function IncidentAlertsListPage() {
           </p>
         </div>
       </div>
+
+      {showAnomalyPlanUpsell && (
+        <Alert className="border-info/40 bg-info/5">
+          <Info className="h-4 w-4" />
+          <AlertTitle>{planValueMessages.anomalyInsights.title}</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>{planValueMessages.anomalyInsights.description}</span>
+            <Button asChild size="sm" variant="secondary" className="shrink-0">
+              <Link to="/dashboard/settings">{planValueMessages.upgradeCta}</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Alert>
         <Info className="h-4 w-4" />

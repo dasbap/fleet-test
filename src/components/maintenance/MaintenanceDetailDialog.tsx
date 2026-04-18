@@ -52,6 +52,8 @@ interface MaintenanceDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   jobId: string;
+  /** Appelé après passage au statut « terminée » (ready), ex. sondage NPS. */
+  onJobMarkedReady?: (jobId: string) => void;
 }
 
 const statusConfig: Record<JobStatus, { label: string; icon: typeof Clock; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -72,6 +74,7 @@ export function MaintenanceDetailDialog({
   open,
   onOpenChange,
   jobId,
+  onJobMarkedReady,
 }: MaintenanceDetailDialogProps) {
   const { data: job, isLoading, isError, error, refetch } = useMaintenanceJob(jobId);
   const updateStatus = useUpdateJobStatus();
@@ -193,6 +196,9 @@ export function MaintenanceDetailDialog({
 
   const handleStatusChange = async (newStatus: JobStatus) => {
     await updateStatus.mutateAsync({ id: jobId, status: newStatus });
+    if (newStatus === "ready") {
+      onJobMarkedReady?.(jobId);
+    }
   };
 
   return (

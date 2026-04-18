@@ -30,6 +30,19 @@ export interface AssignmentRow {
   } | null;
 }
 
+export interface AssignmentHistoryRow {
+  id: string;
+  starts_at: string;
+  ends_at: string | null;
+  is_active: boolean;
+  vehicle: {
+    id: string;
+    registration: string;
+    brand: string | null;
+    model: string | null;
+  } | null;
+}
+
 /**
  * Repository pour les affectations véhicule–chauffeur et la liste des conducteurs.
  */
@@ -88,6 +101,28 @@ export class AssignmentRepository {
     }
 
     return (data || []) as AssignmentRow[];
+  }
+
+  async getDriverAssignmentHistory(driverUserId: string): Promise<AssignmentHistoryRow[]> {
+    const { data, error } = await supabase
+      .from('affectations_vehicules')
+      .select(
+        `
+        id,
+        starts_at,
+        ends_at,
+        is_active,
+        vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(id, registration, brand, model)
+      `,
+      )
+      .eq('driver_user_id', driverUserId)
+      .order('starts_at', { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data || []) as AssignmentHistoryRow[];
   }
 
   async assignVehicle(params: {

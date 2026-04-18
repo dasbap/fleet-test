@@ -57,4 +57,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Optionnel : vibration sur notification (souvent déjà géré par le canal) -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Authentification biométrique (@capgo/capacitor-native-biometric) -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 </manifest>

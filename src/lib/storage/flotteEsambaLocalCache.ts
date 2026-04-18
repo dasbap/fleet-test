@@ -1,22 +1,36 @@
 import type {
+  CachedVehicleHistory,
   CachedRecentMission,
   CachedRecentVehicle,
   IncidentDeclarationDraft,
   LocalSessionSnapshot,
+  LocalSyncMetrics,
   LocalSyncState,
 } from "@/types/local-cache";
 import type { AccountSyncDisplayStatus } from "@/types/account-preferences";
 import type { Mission } from "@/types/mission";
 import { storageGet, storageRemove, storageSet } from "@/lib/storage/localStorageService";
 import { storageKeys } from "@/lib/storage/storageKeys";
+import type { VehicleFilters, VehicleListItemDto } from "@/repositories/vehicle.repository";
 
 const MAX_RECENT_MISSIONS = 25;
 const MAX_RECENT_VEHICLES = 15;
+const MAX_VEHICLE_HISTORY_ENTRIES = 15;
+const MAX_VEHICLE_LIST_SNAPSHOT_ITEMS = 200;
 
 const defaultSyncState = (): LocalSyncState => ({
   lastSuccessfulSyncAt: null,
   displayStatus: "synced",
   lastSyncError: null,
+});
+
+const defaultSyncMetrics = (): LocalSyncMetrics => ({
+  runs: 0,
+  processedJobs: 0,
+  succeededJobs: 0,
+  failedJobs: 0,
+  lastRunAt: null,
+  lastDurationMs: null,
 });
 
 /* --- Abonnements légers (même onglet) pour useSyncExternalStore --- */
@@ -92,6 +106,71 @@ export function recordRecentVehicleView(entry: Omit<CachedRecentVehicle, "viewed
   notifyLocalCache();
 }
 
+/** Clé stable des filtres liste (alignée sur `VehicleListFilters`). */
+export function vehicleListFiltersKey(
+  filters: Pick<VehicleFilters, "fleet_id" | "status" | "search">,
+): string {
+  return JSON.stringify({
+    fleet_id: filters.fleet_id,
+    status: filters.status ?? null,
+    search: filters.search ?? null,
+  });
+}
+
+export interface CachedVehicleListSnapshot {
+  fleetId: string;
+  filtersKey: string;
+  items: VehicleListItemDto[];
+  cachedAt: string;
+}
+
+/** Persiste la dernière liste pour consultation hors ligne (même flotte / filtres). */
+export function saveVehicleListSnapshot(
+  filters: Pick<VehicleFilters, "fleet_id" | "status" | "search">,
+  items: VehicleListItemDto[],
+): void {
+  if (!filters.fleet_id) return;
+  const payload: CachedVehicleListSnapshot = {
+    fleetId: filters.fleet_id,
+    filtersKey: vehicleListFiltersKey(filters),
+    items: items.slice(0, MAX_VEHICLE_LIST_SNAPSHOT_ITEMS),
+    cachedAt: new Date().toISOString(),
+  };
+  storageSet(storageKeys.vehicleListSnapshot, payload);
+}
+
+/** Données de secours si le réseau est indisponible et que la clé correspond. */
+export function getVehicleListPlaceholder(
+  filters: Pick<VehicleFilters, "fleet_id" | "status" | "search">,
+): VehicleListItemDto[] | undefined {
+  const raw = storageGet<CachedVehicleListSnapshot>(storageKeys.vehicleListSnapshot);
+  if (!raw) return undefined;
+  if (raw.fleetId !== filters.fleet_id) return undefined;
+  if (raw.filtersKey !== vehicleListFiltersKey(filters)) return undefined;
+  return raw.items;
+}
+
+/* --- Historique véhicule offline --- */
+
+function readVehicleHistories(): CachedVehicleHistory[] {
+  return storageGet<CachedVehicleHistory[]>(storageKeys.vehicleHistory) ?? [];
+}
+
+export function getCachedVehicleHistory(vehicleId: string): CachedVehicleHistory | null {
+  const row = readVehicleHistories().find((item) => item.vehicleId === vehicleId);
+  return row ?? null;
+}
+
+export function saveVehicleHistoryCache(entry: Omit<CachedVehicleHistory, "cachedAt">): void {
+  const list = readVehicleHistories().filter((item) => item.vehicleId !== entry.vehicleId);
+  list.unshift({
+    ...entry,
+    cachedAt: new Date().toISOString(),
+  });
+  storageSet(storageKeys.vehicleHistory, list.slice(0, MAX_VEHICLE_HISTORY_ENTRIES));
+  notifyLocalCache();
+}
+
 /* --- Brouillons incidents --- */
 
 function readDrafts(): IncidentDeclarationDraft[] {
@@ -162,6 +241,16 @@ export function patchLocalSyncState(patch: Partial<LocalSyncState>): void {
   notifyLocalCache();
 }
 
+export function getLocalSyncMetrics(): LocalSyncMetrics {
+  return storageGet<LocalSyncMetrics>(storageKeys.syncMetrics) ?? defaultSyncMetrics();
+}
+
+export function patchLocalSyncMetrics(patch: Partial<LocalSyncMetrics>): void {
+  const next = { ...getLocalSyncMetrics(), ...patch };
+  storageSet(storageKeys.syncMetrics, next);
+  notifyLocalCache();
+}
+
 /** Alias métier pour l’affichage Compte (compat ancien reportSyncStatus). */
 export function setLocalSyncDisplayStatus(status: AccountSyncDisplayStatus): void {
   patchLocalSyncState({ displayStatus: status });
@@ -172,23 +261,29 @@ export function getOfflineCacheSnapshot(): {
   session: LocalSessionSnapshot | null;
   recentMissions: CachedRecentMission[];
   recentVehicles: CachedRecentVehicle[];
+  vehicleHistories: CachedVehicleHistory[];
   pendingDrafts: number;
   sync: LocalSyncState;
+  syncMetrics: LocalSyncMetrics;
 } {
   const nextSnapshot = {
     session: getLocalSessionSnapshot(),
     recentMissions: getRecentMissions(),
     recentVehicles: getRecentVehicles(),
+    vehicleHistories: readVehicleHistories(),
     pendingDrafts: countPendingIncidentDrafts(),
     sync: getLocalSyncState(),
+    syncMetrics: getLocalSyncMetrics(),
   };
 
   const nextKey = JSON.stringify({
     sessionId: nextSnapshot.session?.userId ?? null,
     recentMissionIds: nextSnapshot.recentMissions.map((m) => m.id),
     recentVehicleIds: nextSnapshot.recentVehicles.map((v) => v.vehicleId),
+    vehicleHistoryIds: nextSnapshot.vehicleHistories.map((v) => v.vehicleId),
     pendingDrafts: nextSnapshot.pendingDrafts,
     sync: nextSnapshot.sync,
+    syncMetrics: nextSnapshot.syncMetrics,
   });
 
   if (nextKey === offlineCacheSnapshotCacheKey && offlineCacheSnapshotCache != null) {
@@ -205,8 +300,10 @@ let offlineCacheSnapshotCache:
       session: LocalSessionSnapshot | null;
       recentMissions: CachedRecentMission[];
       recentVehicles: CachedRecentVehicle[];
+      vehicleHistories: CachedVehicleHistory[];
       pendingDrafts: number;
       sync: LocalSyncState;
+      syncMetrics: LocalSyncMetrics;
     }
   | null = null;
 let offlineCacheSnapshotCacheKey = "";

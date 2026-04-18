@@ -75,6 +75,11 @@ export const SEO_BY_ROUTE_KEY: Record<SeoRouteKey, SeoRouteConfig> = {
   drivers: { title: "Chauffeurs - E-Samba", description: "Gestion des chauffeurs et affectations.", canonicalPath: "/dashboard/drivers" },
   closure: { title: "Cloture de service - E-Samba", description: "Cloture des services et rapports de fin de journee.", canonicalPath: "/dashboard/closure" },
   incidents: { title: "Incidents - E-Samba", description: "Suivi et gestion des incidents de la flotte.", canonicalPath: "/dashboard/incidents" },
+  incidentDeclare: {
+    title: "Déclarer un incident - E-Samba",
+    description: "Signalement terrain et déclaration d'incident pour la flotte.",
+    canonicalPath: "/dashboard/incidents/declare",
+  },
   maintenance: { title: "Maintenance - E-Samba", description: "Planning et suivi des maintenances des vehicules.", canonicalPath: "/dashboard/maintenance" },
   reports: { title: "Rapports - E-Samba", description: "Rapports et statistiques de la flotte.", canonicalPath: "/dashboard/reports" },
   invitations: { title: "Invitations - E-Samba", description: "Inviter des membres a rejoindre la flotte.", canonicalPath: "/dashboard/invitations" },

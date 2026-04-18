@@ -25,6 +25,8 @@ export type FleetMember = {
 export interface AddMemberData {
   email: string;
   role: "organizer" | "manager" | "driver" | "mechanic";
+  /** Numéro normalisé E.164 (+237XXXXXXXXX) — optionnel, pré-active le chauffeur côté SMS. */
+  phone?: string;
 }
 
 /**
@@ -54,7 +56,7 @@ export function useAddFleetMember() {
 
   return useMutation<void, Error, { fleetId: string; data: AddMemberData }>({
     mutationFn: async ({ fleetId, data }) => {
-      await fleetMemberService.addMemberByEmail(fleetId, data.email, data.role);
+      await fleetMemberService.addMemberByEmail(fleetId, data.email, data.role, data.phone);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['fleet-members', variables.fleetId] });

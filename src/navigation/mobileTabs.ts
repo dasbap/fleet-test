@@ -2,8 +2,8 @@ import type { LucideIcon } from "lucide-react";
 import {
   Bell,
   Car,
+  GraduationCap,
   Home,
-  LayoutGrid,
   User,
 } from "lucide-react";
 import type { AppRole } from "@/hooks/useAuth";
@@ -13,7 +13,7 @@ export type MobileTabId =
   | "home"
   | "fleet"
   | "alerts"
-  | "operations"
+  | "tutorials"
   | "account";
 
 export interface MobileTabDefinition {
@@ -50,10 +50,10 @@ export function getMobileTabsForRole(
       icon: Bell,
     },
     {
-      id: "operations",
-      label: "Opérations",
-      to: ROUTE_PATHS.dashboardOperations,
-      icon: LayoutGrid,
+      id: "tutorials",
+      label: "Guides",
+      to: ROUTE_PATHS.dashboardTutorials,
+      icon: GraduationCap,
     },
     {
       id: "account",
@@ -84,8 +84,8 @@ export function isTabActive(
   if (tab.id === "alerts") {
     return pathname.startsWith("/dashboard/alerts");
   }
-  if (tab.id === "operations") {
-    return pathname.startsWith("/dashboard/operations");
+  if (tab.id === "tutorials") {
+    return pathname.startsWith("/dashboard/tutorials");
   }
   if (tab.id === "account") {
     return (

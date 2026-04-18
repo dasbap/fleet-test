@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/hooks/use-toast";
 import { useNotificationUserContext, useRegisterNotificationToken } from "@/hooks/useNotifications";
 import { getCapacitorPlatform, isNativePlatform } from "@/lib/platform";
-import { notificationsClientService } from "@/services/notifications.service";
+import { notificationsClientService } from "@/services/push-notifications-client.service";
 
 const STORAGE_PREFIX = "esamba.notifications.prompted.v1";
 

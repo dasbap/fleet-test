@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useCreateVehicle } from "@/hooks/useVehicles";
+import { useActivation } from "@/hooks/useActivation";
 
 const vehicleFormSchema = z.object({
   registration: z.string().min(1, "L'immatriculation est requise"),
@@ -40,6 +41,7 @@ interface VehicleFormDialogProps {
 
 const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFormDialogProps) => {
   const createVehicle = useCreateVehicle();
+  const { completeStep } = useActivation();
 
   const form = useForm<VehicleFormValues>({
     resolver: zodResolver(vehicleFormSchema),
@@ -61,6 +63,7 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
       year: data.year,
       current_km: data.current_km,
     });
+    await completeStep("first_vehicle");
     
     onOpenChange(false);
     form.reset();

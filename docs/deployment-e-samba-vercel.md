@@ -99,3 +99,9 @@ Attendre la propagation DNS et le certificat SSL (géré par Vercel).
 3. Connexion test depuis la page Auth.
 4. Prévisualisation : plus de 401 une fois la protection ajustée (section 1).
 5. Diagnostic console (manuel ou script `npm run diagnostic:e-samba`) : voir [`diagnostic-console-e-samba.md`](diagnostic-console-e-samba.md).
+
+---
+
+## 6. Rollout production combiné (web + stores)
+
+Pour une procédure incluant déploiement progressif sur les stores, surveillance 24 h et montée en charge : [`rollout-production-web-mobile.md`](./rollout-production-web-mobile.md).

@@ -1,0 +1,34 @@
+{
+  "ci": {
+    "collect": {
+      "url": ["http://localhost:4173/"],
+      "numberOfRuns": 2,
+      "settings": {
+        "preset": "desktop",
+        "throttling": {
+          "rttMs": 40,
+          "throughputKbps": 10240,
+          "cpuSlowdownMultiplier": 1
+        },
+        "screenEmulation": {
+          "mobile": false,
+          "width": 1440,
+          "height": 900,
+          "deviceScaleFactor": 1
+        },
+        "onlyCategories": ["seo"]
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:seo": [
+          "warn",
+          {
+            "minScore": 0.85,
+            "aggregationMethod": "median"
+          }
+        ]
+      }
+    }
+  }
+}

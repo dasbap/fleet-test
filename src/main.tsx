@@ -1,6 +1,26 @@
+import { Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import "./styles/globals.css";
 import { reportWebVitals } from "./reportWebVitals";
+import { RoutePageFallback } from "@/components/RoutePageFallback";
+import { preloadRouteChunksForPath } from "@/app/routes/preloadRouteChunks";
+import { isValidUuid } from "@/lib/isUuid";
+import App from "./App.tsx";
+
+const ACTIVE_FLEET_STORAGE_KEY = "esamba.active_fleet_id";
+
+/** Supprime une ancienne valeur non UUID (ex. slug fleet-esamba-sn) restée dans le stockage. */
+function clearInvalidActiveFleetStorage(): void {
+  try {
+    const v = localStorage.getItem(ACTIVE_FLEET_STORAGE_KEY);
+    if (v && !isValidUuid(v)) {
+      localStorage.removeItem(ACTIVE_FLEET_STORAGE_KEY);
+    }
+  } catch {
+    /* stockage indisponible */
+  }
+}
 
 // En dev : log des requêtes Supabase en échec (URL = table ou RPC) pour diagnostic
 if (import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL) {
@@ -24,6 +44,12 @@ if (import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL) {
   };
 }
 
+if (import.meta.env.DEV) {
+  void import("@/lib/performance/measureINP").then(({ measureINP }) => {
+    measureINP();
+  });
+}
+
 const renderBootstrapError = (message: string) => {
   const rootEl = document.getElementById("root");
   if (!rootEl) return;
@@ -45,11 +71,46 @@ const bootstrap = async () => {
     return;
   }
 
+  clearInvalidActiveFleetStorage();
+
   try {
     await import("./instrument");
-    const { default: App } = await import("./App.tsx");
-    createRoot(rootEl).render(<App />);
+    preloadRouteChunksForPath(window.location.pathname);
+    createRoot(rootEl).render(
+      <Suspense fallback={<RoutePageFallback />}>
+        <App />
+      </Suspense>
+    );
     reportWebVitals();
+
+    // i18n se charge en parallèle pour ne pas bloquer le rendu critique.
+    void import("@/i18n").catch((error) => {
+      console.error("Échec du chargement i18n:", error);
+    });
+
+    // Analytics est différé en production pour préserver le LCP/INP.
+    if (import.meta.env.PROD) {
+      window.setTimeout(() => {
+        void import("@/lib/analytics")
+          .then(({ initAnalytics }) => {
+            initAnalytics();
+          })
+          .catch((error) => {
+            console.error("Échec du chargement analytics:", error);
+          });
+      }, 3_000);
+    }
+
+    // PWA est chargée après load avec un délai pour éviter la compétition réseau initiale.
+    if (import.meta.env.PROD) {
+      window.addEventListener("load", () => {
+        window.setTimeout(() => {
+          void import("@/pwa").catch((error) => {
+            console.error("Échec du chargement PWA:", error);
+          });
+        }, 2_000);
+      });
+    }
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Erreur inconnue";

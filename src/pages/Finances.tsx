@@ -1,9 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useBilling } from "@/hooks/useBilling";
 
 const Finances = () => {
-  const { role } = useAuth();
+  const { activeTenantContext } = useAuth();
+  const billingQuery = useBilling(
+    activeTenantContext?.orgId,
+    activeTenantContext?.fleetId
+  );
+
+  const subscription = billingQuery.data?.subscription;
+  const payments = billingQuery.data?.recentPayments ?? [];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -19,18 +27,63 @@ const Finances = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Finances</CardTitle>
+          <CardTitle>Abonnement actif</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <DollarSign className="w-8 h-8 text-muted-foreground" />
+          {billingQuery.isLoading ? (
+            <p className="text-sm text-muted-foreground">Chargement des informations de facturation...</p>
+          ) : subscription ? (
+            <div className="space-y-2 text-sm">
+              <p>
+                <strong>Plan :</strong> {subscription.plan?.name ?? "Plan non défini"}
+              </p>
+              <p>
+                <strong>Statut :</strong> {subscription.status}
+              </p>
+              <p>
+                <strong>Période :</strong> {new Date(subscription.startsAt).toLocaleDateString()} -{" "}
+                {new Date(subscription.endsAt).toLocaleDateString()}
+              </p>
             </div>
-            <h3 className="text-lg font-semibold mb-2">Page en développement</h3>
-            <p className="text-muted-foreground">
-              La gestion financière sera bientôt disponible.
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Aucun abonnement actif pour cette flotte. Contactez le support pour activer un plan.
             </p>
-          </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Paiements récents</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {payments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <DollarSign className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Aucun paiement récent pour l'organisation active.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {payments.map((payment) => (
+                <div key={payment.id} className="rounded-md border p-3 text-sm">
+                  <p>
+                    <strong>Montant :</strong> {payment.amount} {payment.currency}
+                  </p>
+                  <p>
+                    <strong>Fournisseur :</strong> {payment.provider}
+                  </p>
+                  <p>
+                    <strong>Statut :</strong> {payment.status}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

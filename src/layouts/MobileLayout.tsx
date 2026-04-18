@@ -1,12 +1,19 @@
-import { Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { BottomTabBar } from "@/components/mobile/BottomTabBar";
-import { NotificationsPermissionGate } from "@/components/notifications/NotificationsPermissionGate";
 import type { AppRole } from "@/hooks/useAuth";
 import { useMobileTabTracking } from "@/hooks/mobile/useMobileTabTracking";
 import { getMobileOutletShellClass } from "@/lib/mobileOutletShellClass";
 import { cn } from "@/lib/utils";
+import { ActivationBanner } from "@/components/shared/ActivationBanner";
+import { DriverTerrainActivationModal } from "@/components/activation/DriverTerrainActivationModal";
+import { OfflineBanner } from "@/components/shared/OfflineBanner";
+const NotificationsPermissionGate = lazy(() =>
+  import("@/components/notifications/NotificationsPermissionGate").then((module) => ({
+    default: module.NotificationsPermissionGate,
+  }))
+);
 
 interface MobileLayoutProps {
   userRole: AppRole | null;
@@ -23,6 +30,9 @@ export default function MobileLayout({ userRole }: MobileLayoutProps) {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
+      <ActivationBanner />
+      <DriverTerrainActivationModal />
+      <OfflineBanner />
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-safe">
         <div
           className={cn(
@@ -30,7 +40,9 @@ export default function MobileLayout({ userRole }: MobileLayoutProps) {
             outletShellClass
           )}
         >
-          <NotificationsPermissionGate />
+          <Suspense fallback={null}>
+            <NotificationsPermissionGate />
+          </Suspense>
           <Suspense fallback={<RoutePageFallback />}>
             <Outlet />
           </Suspense>
