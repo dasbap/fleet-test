@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { formatPostgrestError } from '@/lib/mapSupabaseError';
 
 /**
  * Repository pour les opérations de setup ESAMBA (organisation, flotte, RPC).
@@ -18,7 +19,7 @@ export class EsambaSetupRepository {
 
     if (error) {
       console.error('Erreur findOrganisationIdByName:', error);
-      throw new Error(error.message);
+      throw new Error(formatPostgrestError(error) || 'Erreur lors de la recherche d’organisation.');
     }
     return data?.id ?? null;
   }
@@ -34,7 +35,9 @@ export class EsambaSetupRepository {
       .single();
 
     if (error || !data) {
-      throw new Error(error?.message ?? 'Impossible de créer l\'organisation.');
+      throw new Error(
+        formatPostgrestError(error) || 'Impossible de créer l\'organisation.',
+      );
     }
     return data.id as string;
   }
@@ -54,7 +57,7 @@ export class EsambaSetupRepository {
     });
 
     if (error || data == null) {
-      throw new Error(error?.message ?? 'Impossible de créer la flotte.');
+      throw new Error(formatPostgrestError(error) || 'Impossible de créer la flotte.');
     }
     const fleetId =
       typeof data === 'string' ? data : (data as { id?: string; fleet_id?: string })?.id ?? (data as { id?: string; fleet_id?: string })?.fleet_id ?? null;
@@ -81,7 +84,9 @@ export class EsambaSetupRepository {
     });
 
     if (error) {
-      throw new Error(error.message ?? 'Impossible de créer ou mettre à jour le membership.');
+      throw new Error(
+        formatPostgrestError(error) || 'Impossible de créer ou mettre à jour le membership.',
+      );
     }
     return (data as string) ?? '';
   }
@@ -107,7 +112,7 @@ export class EsambaSetupRepository {
     });
 
     if (error || !data) {
-      throw new Error(error?.message ?? 'Impossible de créer le véhicule.');
+      throw new Error(formatPostgrestError(error) || 'Impossible de créer le véhicule.');
     }
     return data as string;
   }
@@ -122,7 +127,7 @@ export class EsambaSetupRepository {
     });
 
     if (error || !data) {
-      throw new Error(error?.message ?? 'Impossible de créer l\'invitation.');
+      throw new Error(formatPostgrestError(error) || 'Impossible de créer l\'invitation.');
     }
     return data as string;
   }
