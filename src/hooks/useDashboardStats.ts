@@ -2,9 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
 import { DashboardService } from '@/services/dashboard.service';
 import { DashboardRepository } from '@/repositories/dashboard.repository';
+import { DashboardAlertRepository } from '@/repositories/dashboard-alert.repository';
+import { DashboardAlertService } from '@/services/dashboard-alert.service';
+import type { KpiSummary } from '@/types/dashboard';
 
 const dashboardRepository = new DashboardRepository();
 const dashboardService = new DashboardService(dashboardRepository);
+const dashboardAlertRepository = new DashboardAlertRepository();
+const dashboardAlertService = new DashboardAlertService(dashboardAlertRepository);
 
 export interface DashboardStats {
   activeVehicles: number;
@@ -30,8 +35,37 @@ const emptyStats: DashboardStats = {
   maintenanceInProgress: 0,
 };
 
+const RECENT_INTERACTION_WINDOW_MS = 12_000;
+let hasBoundInteractionListeners = false;
+let lastInteractionAt = 0;
+
+function bindInteractionListenersOnce() {
+  if (hasBoundInteractionListeners || typeof window === "undefined") return;
+  hasBoundInteractionListeners = true;
+  const markInteraction = () => {
+    lastInteractionAt = Date.now();
+  };
+  window.addEventListener("pointerdown", markInteraction, { passive: true });
+  window.addEventListener("keydown", markInteraction, { passive: true });
+  window.addEventListener("touchstart", markInteraction, { passive: true });
+}
+
+/** Ralentit le polling onglet caché au lieu de l’arrêter brutalement. */
+const refetchIntervalWhenVisible = (visibleMs: number, hiddenMs = visibleMs * 3) => {
+  if (typeof document === "undefined") return visibleMs;
+  return document.visibilityState === "hidden" ? hiddenMs : visibleMs;
+};
+
+/** Ralentit le polling juste après interaction pour protéger l'INP perçu. */
+const refetchIntervalForInteraction = (activeMs: number, relaxedMs: number) => {
+  if (typeof window === "undefined") return activeMs;
+  const elapsed = Date.now() - lastInteractionAt;
+  return elapsed <= RECENT_INTERACTION_WINDOW_MS ? relaxedMs : activeMs;
+};
+
 export function useDashboardStats() {
   const { userFleetId } = useAuth();
+  bindInteractionListenersOnce();
 
   return useQuery({
     queryKey: ['dashboard-stats', userFleetId],
@@ -40,7 +74,27 @@ export function useDashboardStats() {
       return dashboardService.getDashboardStats(userFleetId);
     },
     enabled: !!userFleetId,
-    refetchInterval: 30000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: () =>
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(30_000, 45_000)),
+  });
+}
+
+export function useDashboardKpis() {
+  const { orgId } = useAuth();
+
+  return useQuery({
+    queryKey: ['dashboard-kpis', orgId],
+    queryFn: async (): Promise<KpiSummary | null> => {
+      if (!orgId) return null;
+      return dashboardAlertService.getKpiSummary(orgId);
+    },
+    enabled: !!orgId,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: () =>
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(30_000, 45_000)),
   });
 }
 
@@ -51,7 +105,10 @@ export function useRecentActivity() {
     queryKey: ['recent-activity', userFleetId],
     queryFn: () => (userFleetId ? dashboardService.getRecentActivity(userFleetId) : []),
     enabled: !!userFleetId,
-    refetchInterval: 30000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: () =>
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(30_000, 45_000)),
   });
 }
 
@@ -62,5 +119,9 @@ export function useFleetVehicles() {
     queryKey: ['fleet-vehicles-overview', userFleetId],
     queryFn: () => (userFleetId ? dashboardService.getFleetVehiclesOverview(userFleetId) : []),
     enabled: !!userFleetId,
+    staleTime: 45_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: () =>
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(45_000, 60_000)),
   });
 }

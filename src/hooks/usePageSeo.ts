@@ -15,7 +15,7 @@ interface UsePageSeoOverrides {
 }
 
 export function usePageSeo(routeKey: SeoRouteKey, overrides: UsePageSeoOverrides = {}) {
-  const config = SEO_BY_ROUTE_KEY[routeKey];
+  const config = SEO_BY_ROUTE_KEY[routeKey] ?? SEO_BY_ROUTE_KEY.notFound;
 
   const title = overrides.title ?? config.title;
   const description = overrides.description ?? config.description;

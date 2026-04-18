@@ -8,6 +8,35 @@ export function mapSupabaseErrorToFrench(message: string): string {
   }
   const m = message.toLowerCase();
 
+  // RPC métier (Postgres / fonctions SECURITY DEFINER)
+  if (m.includes("vehicule_non_trouve")) {
+    return "Véhicule non trouvé dans cette flotte.";
+  }
+  if (m.includes("vehicule_bloque")) {
+    return "Ce véhicule est actuellement bloqué.";
+  }
+  if (m.includes("cloture_manquante_bloque_affectation")) {
+    return "Une clôture manquante empêche cette affectation. Clôturez le créneau concerné.";
+  }
+  if (m.includes("conducteur_deja_affecte")) {
+    return "Ce chauffeur a déjà un véhicule affecté.";
+  }
+  if (m.includes("conducteur_score_suspendu_affectation")) {
+    return "Affectation impossible : score conducteur trop bas (seuil critique).";
+  }
+  if (m.includes("conducteur_score_restreint_affectation")) {
+    return "Affectation impossible : score conducteur insuffisant (minimum 60).";
+  }
+  if (m.includes("limite_vehicules_plan_atteinte")) {
+    return "Limite de véhicules atteinte pour votre plan. Passez à une offre supérieure.";
+  }
+  if (m.includes("scoring_non_disponible_plan")) {
+    return "Le pilotage par niveau de risque n’est pas inclus dans votre offre actuelle. Changez d’offre pour activer cette brique.";
+  }
+  if (m.includes("non_authentifie")) {
+    return "Session expirée. Veuillez vous reconnecter.";
+  }
+
   // Erreurs RLS / permissions
   if (m.includes("infinite recursion") && m.includes("policy")) {
     return "Erreur de configuration des droits. Contactez l'administrateur.";

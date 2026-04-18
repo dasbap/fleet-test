@@ -34,6 +34,7 @@ import { useAlertDetail, useUpdateAlertStatus, useAssignAlert, useAlertComments,
 import type { IncidentWorkflowStatus } from "@/types/incident-alert";
 import { cn } from "@/lib/utils";
 import { shareContent, buildAlertDtoDocumentSharePayload } from "@/services/share.service";
+import { useActivation } from "@/hooks/useActivation";
 
 function displayNameFromUser(user: AuthUser | null): string {
   if (!user) return "Utilisateur";
@@ -61,6 +62,7 @@ export default function IncidentAlertDetailPage() {
   const { mutate: updateStatus, isLoading: isUpdatingStatus } = useUpdateAlertStatus();
   const { mutate: assignAlert, isLoading: isAssigning } = useAssignAlert();
   const { mutate: addComment, isLoading: isAddingComment } = useAddAlertComment(alertId);
+  const { completeStep } = useActivation();
   const [commentDraft, setCommentDraft] = useState("");
   const authorName = useMemo(() => displayNameFromUser(user), [user]);
 
@@ -70,12 +72,15 @@ export default function IncidentAlertDetailPage() {
     (status: IncidentWorkflowStatus) => {
       if (!alertId) return;
       updateStatus({ alertId, status });
+      if (status === "RESOLU") {
+        void completeStep("first_alert");
+      }
       toast({
         title: "Statut mis à jour",
         description: `L’alerte est passée en « ${STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status} ».`,
       });
     },
-    [alertId, updateStatus]
+    [alertId, completeStep, updateStatus]
   );
 
   const handleAssignee = useCallback(

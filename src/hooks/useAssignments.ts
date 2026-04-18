@@ -53,6 +53,15 @@ export function useActiveAssignments(fleetId?: string) {
   });
 }
 
+export function useDriverAssignmentHistory(driverUserId?: string, enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['driver-history', driverUserId],
+    queryFn: () =>
+      driverUserId ? assignmentService.getDriverAssignmentHistory(driverUserId) : [],
+    enabled: !!driverUserId && enabled,
+  });
+}
+
 export function useAssignVehicle() {
   const queryClient = useQueryClient();
 

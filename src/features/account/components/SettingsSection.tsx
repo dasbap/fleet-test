@@ -3,8 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface SettingsSectionProps {
-  title: string;
-  description?: string;
+  title: ReactNode;
+  description?: ReactNode;
   children: ReactNode;
   className?: string;
 }
@@ -21,11 +21,9 @@ export function SettingsSection({
   return (
     <section className={cn("space-y-2", className)}>
       <div className="px-0.5">
-        <h2 className="font-heading text-sm font-semibold tracking-tight">
-          {title}
-        </h2>
-        {description && (
-          <p className="text-muted-foreground mt-0.5 text-xs">{description}</p>
+        <h2 className="font-heading text-sm font-semibold tracking-tight">{title}</h2>
+        {description != null && description !== "" && (
+          <div className="text-muted-foreground mt-0.5 text-xs">{description}</div>
         )}
       </div>
       <Card>

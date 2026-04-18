@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { getUnauthenticatedLoginPath } from "@/navigation/loginRedirectPath";
+import { getLoginPathPreservingReturn } from "@/navigation/loginRedirectPath";
 
 interface RequireAuthProps {
   children: ReactNode;
@@ -13,6 +13,8 @@ interface RequireAuthProps {
  */
 export function RequireAuth({ children }: RequireAuthProps) {
   const { user, isLoading } = useAuth();
+  const location = useLocation();
+  const loginWithReturn = getLoginPathPreservingReturn(location);
 
   if (isLoading) {
     return (
@@ -26,7 +28,7 @@ export function RequireAuth({ children }: RequireAuthProps) {
   }
 
   if (!user) {
-    return <Navigate to={getUnauthenticatedLoginPath()} replace />;
+    return <Navigate to={loginWithReturn} replace />;
   }
 
   return <>{children}</>;

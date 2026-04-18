@@ -39,6 +39,15 @@ export interface InvitationFilters {
   fleet_id?: string;
 }
 
+export interface InvitationValidationRow {
+  id: string;
+  fleet_id: string;
+  expires_at: string | null;
+  max_uses: number | null;
+  current_uses: number;
+  fleet: { name: string } | null;
+}
+
 /**
  * Repository pour l'accès aux données des invitations
  */
@@ -188,6 +197,28 @@ export class InvitationRepository implements IRepository<FleetInvitation, Invita
   async acceptInvitationRpc(code: string): Promise<{ data: unknown; error: { message: string } | null }> {
     const { data, error } = await supabase.rpc('accepter_invitation', { p_code: code });
     return { data, error: error ? { message: error.message } : null };
+  }
+
+  async findValidationByCode(code: string): Promise<InvitationValidationRow | null> {
+    const { data, error } = await supabase
+      .from('flotte_invitations')
+      .select(`
+        id,
+        fleet_id,
+        expires_at,
+        max_uses,
+        current_uses,
+        fleet:flottes(name)
+      `)
+      .eq('code', code)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error validating invitation by code:', error);
+      throw new Error(error.message);
+    }
+
+    return (data as InvitationValidationRow | null) ?? null;
   }
 
   /**

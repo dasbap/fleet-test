@@ -3,17 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Ticket, Check, X, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-
-/** Réponse de la requête flotte_invitations + jointure flottes(name) */
-interface InvitationRow {
-  id: string;
-  fleet_id: string;
-  expires_at: string | null;
-  max_uses: number | null;
-  current_uses: number;
-  fleet: { name: string } | null;
-}
+import { useInvitationCodeValidation } from "@/hooks/useInvitationCodeValidation";
 
 interface InvitationCodeInputProps {
   onValidCode: (fleetId: string, fleetName: string, code: string) => void;
@@ -35,6 +25,7 @@ export function InvitationCodeInput({ onValidCode, onClear, onStatusChange }: In
   const [status, setStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
   const [fleetName, setFleetName] = useState("");
   const [invalidReason, setInvalidReason] = useState<InvalidReason | null>(null);
+  const validateInvitationCode = useInvitationCodeValidation();
 
   // Notify parent when there's an unverified code
   const updateStatus = (newStatus: typeof status, newCode?: string) => {
@@ -47,50 +38,19 @@ export function InvitationCodeInput({ onValidCode, onClear, onStatusChange }: In
     if (!code.trim()) return;
 
     updateStatus("checking");
+    setInvalidReason(null);
 
-    try {
-      const { data: rawData, error } = await supabase
-        .from("flotte_invitations")
-        .select(`
-          id,
-          fleet_id,
-          expires_at,
-          max_uses,
-          current_uses,
-          fleet:flottes(name)
-        `)
-        .eq("code", code.trim().toUpperCase())
-        .maybeSingle();
+    const result = await validateInvitationCode.mutateAsync(code);
 
-      const data = rawData as InvitationRow | null;
-
-      if (error || !data) {
-        setInvalidReason("not_found");
-        updateStatus("invalid");
-        return;
-      }
-
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
-        setInvalidReason("expired");
-        updateStatus("invalid");
-        return;
-      }
-
-      if (data.max_uses != null && data.current_uses >= data.max_uses) {
-        setInvalidReason("max_uses");
-        updateStatus("invalid");
-        return;
-      }
-
-      const name = data.fleet?.name || "Flotte";
+    if (result.status === "valid" && result.fleetId && result.code) {
       updateStatus("valid");
-      setFleetName(name);
-      onValidCode(data.fleet_id, name, code.trim().toUpperCase());
-    } catch (err) {
-      console.error("Error validating code:", err);
-      setInvalidReason("error");
-      updateStatus("invalid");
+      setFleetName(result.fleetName ?? "Flotte");
+      onValidCode(result.fleetId, result.fleetName ?? "Flotte", result.code);
+      return;
     }
+
+    setInvalidReason(result.reason ?? "error");
+    updateStatus("invalid");
   };
 
   const handleClear = () => {

@@ -235,6 +235,25 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
     return data as VehicleDto;
   }
 
+  async findByRegistration(
+    registration: string,
+    fleetId: string
+  ): Promise<VehicleDto | null> {
+    const { data, error } = await supabase
+      .from("vehicules")
+      .select("*")
+      .eq("fleet_id", fleetId)
+      .eq("registration", registration)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching vehicle by registration:", error);
+      throw new Error(error.message);
+    }
+
+    return (data ?? null) as VehicleDto | null;
+  }
+
   /**
    * Détail d’un véhicule avec affectation active (conducteur) si présente.
    */

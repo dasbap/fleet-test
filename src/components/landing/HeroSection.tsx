@@ -8,7 +8,6 @@ import heroBg1920Avif from "@/assets/hero-bg-1920.avif";
 import heroBg768Webp from "@/assets/hero-bg-768.webp";
 import heroBg1280Webp from "@/assets/hero-bg-1280.webp";
 import heroBg1920Webp from "@/assets/hero-bg-1920.webp";
-import { usePageSeo } from "@/hooks/usePageSeo";
 
 const HeroSection = () => {
   const demoVideoUrl =
@@ -20,24 +19,20 @@ const HeroSection = () => {
     "Paiements Mobile Money",
   ];
 
-  usePageSeo("landing", {
-    metas: [{ property: "og:video", content: demoVideoUrl }],
-  });
-
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
-      {/* Background Image : picture avec AVIF/WebP responsives, fallback JPG, priorité LCP */}
+      {/* Background image: priorité LCP et tailles responsives adaptées mobile. */}
       <div className="absolute inset-0 z-0">
         <picture>
           <source
             type="image/avif"
             srcSet={`${heroBg768Avif} 768w, ${heroBg1280Avif} 1280w, ${heroBg1920Avif} 1920w`}
-            sizes="100vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 1280px"
           />
           <source
             type="image/webp"
             srcSet={`${heroBg768Webp} 768w, ${heroBg1280Webp} 1280w, ${heroBg1920Webp} 1920w`}
-            sizes="100vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 1280px"
           />
           <img
             src={heroBg}
@@ -45,23 +40,16 @@ const HeroSection = () => {
             width={1920}
             height={1080}
             className="w-full h-full object-cover opacity-30"
-            fetchPriority="high"
+            fetchpriority="high"
+            loading="eager"
+            decoding="async"
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 1280px"
           />
         </picture>
         <div className="absolute inset-0 bg-gradient-to-b from-background via-background/90 to-background" />
       </div>
 
-      {/* Animated Grid */}
-      <div className="absolute inset-0 z-0 opacity-20">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `linear-gradient(hsl(var(--primary) / 0.1) 1px, transparent 1px),
-                             linear-gradient(90deg, hsl(var(--primary) / 0.1) 1px, transparent 1px)`,
-            backgroundSize: "50px 50px",
-          }}
-        />
-      </div>
+      {/* Décor réduit pour limiter le travail de peinture initial (LCP mobile). */}
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
@@ -123,23 +111,7 @@ const HeroSection = () => {
             </Button>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-8 mt-16 pt-16 border-t border-border animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
-            {[
-              { value: "500+", label: "Véhicules gérés" },
-              { value: "98%", label: "Disponibilité" },
-              { value: "24/7", label: "Support" },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="text-2xl md:text-3xl font-heading font-bold text-primary">
-                  {stat.value}
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Stats repoussées hors du above-the-fold critique pour le LCP. */}
         </div>
       </div>
     </section>

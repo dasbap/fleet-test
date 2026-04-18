@@ -2,9 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, CheckCircle2, Clock, Wrench, FileWarning } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRecentActivity } from "@/hooks/useDashboardStats";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ActivityFeedSkeleton } from "@/components/dashboard/ActivityFeedSkeleton";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { EmptyState } from "@/components/mobile/ui";
 
 const getActivityConfig = (activity: { type: string; status?: string }) => {
   switch (activity.type) {
@@ -31,38 +32,22 @@ const RecentActivity = () => {
   const { data: activities, isLoading } = useRecentActivity();
 
   if (isLoading) {
-    return (
-      <Card className="h-full">
-        <CardHeader>
-          <CardTitle className="font-heading">Activité récente</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-start gap-3 p-3">
-                <Skeleton className="w-8 h-8 rounded-full" />
-                <div className="flex-1">
-                  <Skeleton className="h-4 w-32 mb-2" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ActivityFeedSkeleton />;
   }
 
   return (
-    <Card className="h-full">
+    <Card className="h-full min-h-[26rem]">
       <CardHeader>
         <CardTitle className="font-heading">Activité récente</CardTitle>
       </CardHeader>
       <CardContent>
         {!activities || activities.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Clock className="w-12 h-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Aucune activité récente</p>
+          <div className="rounded-md border border-dashed border-border bg-muted/20">
+            <EmptyState
+              icon={Clock}
+              title="Aucune activité récente"
+              description="Les nouvelles actions de la flotte apparaîtront ici en temps reel."
+            />
           </div>
         ) : (
           <div className="space-y-4">

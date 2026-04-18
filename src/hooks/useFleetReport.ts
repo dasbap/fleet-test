@@ -76,7 +76,10 @@ export interface FleetReportData {
   }>;
 }
 
-export function useFleetReport(startDate: Date, endDate: Date) {
+/**
+ * @param queryEnabled passer false si le plan n’inclut pas les rapports (évite les requêtes inutiles).
+ */
+export function useFleetReport(startDate: Date, endDate: Date, queryEnabled: boolean = true) {
   const { userFleetId } = useAuth();
 
   return useQuery({
@@ -85,6 +88,6 @@ export function useFleetReport(startDate: Date, endDate: Date) {
       if (!userFleetId) throw new Error('No fleet ID available');
       return fleetReportService.getReport(userFleetId, startDate, endDate);
     },
-    enabled: !!userFleetId,
+    enabled: !!userFleetId && queryEnabled,
   });
 }

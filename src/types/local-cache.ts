@@ -33,6 +33,19 @@ export interface CachedRecentVehicle {
   viewedAt: string;
 }
 
+/** Snapshot local de l’historique véhicule pour consultation hors ligne. */
+export interface CachedVehicleHistory {
+  vehicleId: string;
+  fleetId: string;
+  events: Array<{
+    id: string;
+    at: string;
+    title: string;
+    description?: string;
+  }>;
+  cachedAt: string;
+}
+
 /** Brouillon de déclaration d’incident en attente de synchronisation. */
 export interface IncidentDeclarationDraft {
   id: string;
@@ -56,4 +69,14 @@ export interface LocalSyncState {
   lastSuccessfulSyncAt: string | null;
   displayStatus: AccountSyncDisplayStatus;
   lastSyncError: string | null;
+}
+
+/** Métriques minimales de synchronisation pour observabilité terrain. */
+export interface LocalSyncMetrics {
+  runs: number;
+  processedJobs: number;
+  succeededJobs: number;
+  failedJobs: number;
+  lastRunAt: string | null;
+  lastDurationMs: number | null;
 }

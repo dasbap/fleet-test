@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - release/**
     paths:
       - 'supabase/migrations/**'
       - 'supabase/verify-migration-status.sql'
@@ -12,10 +13,16 @@ on:
     branches:
       - main
       - master
+      - release/**
     paths:
       - 'supabase/migrations/**'
       - 'supabase/verify-migration-status.sql'
   workflow_dispatch: # Permet d'exécuter manuellement depuis GitHub
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
 
 jobs:
   verify-migration:
@@ -26,7 +33,7 @@ jobs:
       SUPABASE_CLI_VERSION: latest  # Version de Supabase CLI à installer
     
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -35,54 +42,16 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Get npm global prefix
-        id: npm-global-prefix
-        run: |
-          NPM_PREFIX=$(npm config get prefix)
-          if [ -z "$NPM_PREFIX" ]; then
-            echo "⚠️ Préfixe npm non trouvé, utilisation du préfixe par défaut"
-            NPM_PREFIX="/usr/local"
-          fi
-          echo "prefix=$NPM_PREFIX" >> $GITHUB_OUTPUT
-          echo "npm global prefix: $NPM_PREFIX"
-
-      - name: Cache Supabase CLI
-        uses: actions/cache@v4
-        id: cache-supabase-cli
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
         with:
-          path: |
-            ${{ steps.npm-global-prefix.outputs.prefix }}/lib/node_modules/supabase
-            ${{ steps.npm-global-prefix.outputs.prefix }}/bin/supabase
-          key: supabase-cli-global-${{ runner.os }}-node-22-${{ env.SUPABASE_CLI_VERSION }}
-          restore-keys: |
-            supabase-cli-global-${{ runner.os }}-node-22-
-            supabase-cli-global-${{ runner.os }}-
+          version: ${{ env.SUPABASE_CLI_VERSION }}
 
-      - name: Check cache status
-        run: |
-          if [ "${{ steps.cache-supabase-cli.outputs.cache-hit }}" == "true" ]; then
-            echo "✅ Cache trouvé - Supabase CLI sera restauré depuis le cache"
-          else
-            echo "ℹ️ Cache non trouvé - Supabase CLI sera installé"
-          fi
-
-      - name: Install Supabase CLI
-        if: steps.cache-supabase-cli.outputs.cache-hit != 'true'
-        run: |
-          echo "Installation de Supabase CLI (version: ${{ env.SUPABASE_CLI_VERSION }})..."
-          if [ "${{ env.SUPABASE_CLI_VERSION }}" == "latest" ]; then
-            npm install -g supabase@latest
-          else
-            npm install -g supabase@${{ env.SUPABASE_CLI_VERSION }}
-          fi
-          echo "✅ Supabase CLI installé avec succès"
-          supabase --version
-
-      - name: Verify Supabase CLI installation
+      - name: Verify Supabase CLI Installation
         run: |
           supabase --version
 
-      - name: Link Supabase project
+      - name: Link Supabase Project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
@@ -91,13 +60,13 @@ jobs:
           supabase link --project-ref $SUPABASE_PROJECT_REF --password ${{ secrets.SUPABASE_DB_PASSWORD }}
         continue-on-error: true
 
-      - name: Execute migration verification script
+      - name: Execute Migration Verification Script
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
           echo "Executing migration verification script..."
-          supabase db execute --file supabase/verify-migration-status.sql > migration-report.txt 2>&1 || true
+          supabase db query < supabase/verify-migration-status.sql > migration-report.txt 2>&1 || true
           
           # Afficher le rapport
           echo "=== MIGRATION VERIFICATION REPORT ==="
@@ -113,7 +82,7 @@ jobs:
             echo "::warning::Warnings detected in migration verification"
           fi
 
-      - name: Upload migration report
+      - name: Upload Migration Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -121,8 +90,13 @@ jobs:
           path: migration-report.txt
           retention-days: 30
 
-      - name: Comment PR with results
-        if: github.event_name == 'pull_request'
+      - name: Log PR Comment Skip Reason
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "ℹ️ Commentaire PR ignoré : la PR provient d'un fork, le token GitHub Actions n'a pas les permissions d'écriture nécessaires."
+
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         with:
           script: |

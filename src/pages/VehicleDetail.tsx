@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { AlertCircle, ArrowLeft, Car, CheckCircle, User } from "lucide-react";
+import { AlertCircle, ArrowLeft, Car, CheckCircle, User, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useVehicleDetail, type VehicleStatus } from "@/hooks/useVehicles";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import { cn } from "@/lib/utils";
+import { MaintenancePlannerModal } from "@/components/maintenance/MaintenancePlannerModal";
 
 const statusLabel = (status: VehicleStatus, hasAssignment: boolean) => {
   if (status === "blocked") return "Bloqué";
@@ -17,6 +19,7 @@ export default function VehicleDetail() {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const navigate = useNavigate();
   const { data: vehicle, isLoading, isError } = useVehicleDetail(vehicleId);
+  const [plannerOpen, setPlannerOpen] = useState(false);
 
   if (isLoading) {
     return <PageLoader />;
@@ -45,11 +48,17 @@ export default function VehicleDetail() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" type="button" onClick={() => navigate(-1)} aria-label="Retour">
-          <ArrowLeft className="h-5 w-5" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" type="button" onClick={() => navigate(-1)} aria-label="Retour">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="font-heading text-xl font-bold">Fiche véhicule</h1>
+        </div>
+        <Button type="button" onClick={() => setPlannerOpen(true)}>
+          <Wrench className="mr-2 h-4 w-4" />
+          Planifier un entretien
         </Button>
-        <h1 className="font-heading text-xl font-bold">Fiche véhicule</h1>
       </div>
 
       <Card>
@@ -113,6 +122,12 @@ export default function VehicleDetail() {
           </div>
         </CardContent>
       </Card>
+
+      <MaintenancePlannerModal
+        open={plannerOpen}
+        onOpenChange={setPlannerOpen}
+        vehicle={vehicle}
+      />
     </div>
   );
 }

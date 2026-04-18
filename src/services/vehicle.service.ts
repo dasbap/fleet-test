@@ -1,4 +1,6 @@
 import { VehicleRepository } from '@/repositories/vehicle.repository';
+import { planValueMessages } from '@/lib/plan-value-messages';
+import type { FleetBillingService } from '@/services/fleet-billing.service';
 import type { VehicleDto, VehicleInsertDto, VehicleStatusDto } from '@/types/dto/vehicle.dto';
 import type {
   VehicleFilters,
@@ -10,7 +12,10 @@ import type {
  * Service pour la logique métier des véhicules
  */
 export class VehicleService {
-  constructor(private repository: VehicleRepository) {}
+  constructor(
+    private repository: VehicleRepository,
+    private fleetBilling?: FleetBillingService,
+  ) {}
 
   /**
    * Récupère tous les véhicules avec leurs affectations actives
@@ -94,7 +99,20 @@ export class VehicleService {
       current_km: data.current_km || 0,
     };
 
-    return this.repository.create(normalizedData);
+    if (this.fleetBilling) {
+      const ctx = await this.fleetBilling.getFleetBillingContext(data.fleet_id);
+      this.fleetBilling.assertCanAddVehicle(ctx);
+    }
+
+    try {
+      return await this.repository.create(normalizedData);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('limite_vehicules_plan_atteinte')) {
+        throw new Error(planValueMessages.vehicleLimit.short);
+      }
+      throw err instanceof Error ? err : new Error(msg);
+    }
   }
 
   /**

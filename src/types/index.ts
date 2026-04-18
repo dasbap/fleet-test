@@ -19,7 +19,17 @@ export type {
   VehicleSummary,
 } from "./vehicle";
 export type { Alert, AlertFilters, AlertSeverity, AlertStatus } from "./alert";
+export type { DashboardAlert, KpiSummary, ActionKind } from "./dashboard";
+export type {
+  VehicleSearchAlertSeverity,
+  VehicleSearchFilters,
+  VehicleSearchMaintenanceType,
+  VehicleSearchResult,
+  VehicleSearchStatus,
+} from "./search";
 export type { Mission, MissionStatus, MissionStep } from "./mission";
+export type { ActivationMetrics } from "./activation-metrics";
+export type { FleetBillingContext } from "./fleet-billing";
 export type {
   FleetVehicleAssignedDriver,
   FleetVehicleAvailability,
@@ -53,3 +63,9 @@ export type {
   VehicleInsertDto,
   VehicleStatusDto,
 } from "./dto";
+export type {
+  VehicleApi,
+  VehicleDomain,
+  VehicleInsertApi,
+  VehicleStatusApi,
+} from "./api/vehicles";

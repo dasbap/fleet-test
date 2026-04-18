@@ -1,0 +1,53 @@
+{
+  "defaultEnvironment": "dev",
+  "environments": {
+    "dev": {
+      "heroMaxBytes": 92160,
+      "store": {
+        "defaultMaxBytes": 1843200,
+        "rules": [
+          { "contains": "play-feature-graphic", "maxBytes": 409600 },
+          { "contains": "play-store-icon", "maxBytes": 262144 },
+          { "contains": "play-phone", "maxBytes": 1048576 },
+          { "contains": "iphone-67", "maxBytes": 1843200 }
+        ]
+      },
+      "monitoring": {
+        "maxGrowthPercent": 5,
+        "maxGrowthKb": 64
+      }
+    },
+    "staging": {
+      "heroMaxBytes": 87040,
+      "store": {
+        "defaultMaxBytes": 1638400,
+        "rules": [
+          { "contains": "play-feature-graphic", "maxBytes": 378880 },
+          { "contains": "play-store-icon", "maxBytes": 245760 },
+          { "contains": "play-phone", "maxBytes": 972800 },
+          { "contains": "iphone-67", "maxBytes": 1638400 }
+        ]
+      },
+      "monitoring": {
+        "maxGrowthPercent": 3,
+        "maxGrowthKb": 48
+      }
+    },
+    "prod": {
+      "heroMaxBytes": 81920,
+      "store": {
+        "defaultMaxBytes": 1536000,
+        "rules": [
+          { "contains": "play-feature-graphic", "maxBytes": 358400 },
+          { "contains": "play-store-icon", "maxBytes": 225280 },
+          { "contains": "play-phone", "maxBytes": 921600 },
+          { "contains": "iphone-67", "maxBytes": 1536000 }
+        ]
+      },
+      "monitoring": {
+        "maxGrowthPercent": 2,
+        "maxGrowthKb": 32
+      }
+    }
+  }
+}

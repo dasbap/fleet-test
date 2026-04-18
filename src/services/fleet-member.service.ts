@@ -59,9 +59,10 @@ export class FleetMemberService {
   }
 
   /**
-   * Ajoute un membre à une flotte via son email
+   * Ajoute un membre à une flotte via son email.
+   * @param phone Numéro E.164 optionnel (+237XXXXXXXXX) — mis à jour dans `profils` après création.
    */
-  async addMemberByEmail(fleetId: string, email: string, role: RoleType): Promise<void> {
+  async addMemberByEmail(fleetId: string, email: string, role: RoleType, phone?: string): Promise<void> {
     // Validation métier
     if (!fleetId) {
       throw new Error('L\'ID de la flotte est requis');
@@ -84,7 +85,13 @@ export class FleetMemberService {
     }
 
     try {
-      await this.repository.addMemberByEmail(fleetId, email.trim().toLowerCase(), role);
+      const membershipId = await this.repository.addMemberByEmail(fleetId, email.trim().toLowerCase(), role);
+      // Si un téléphone est fourni, mettre à jour le profil (non bloquant)
+      if (phone && membershipId) {
+        await this.repository.updateMemberPhone(membershipId, phone).catch(() => {
+          // Intentionnellement silencieux : l'adhésion est créée, le téléphone peut être saisi plus tard
+        });
+      }
     } catch (error: unknown) {
       // Gestion explicite des erreurs avec des messages adaptés
       let errorMessage = "Impossible d'ajouter le membre à la flotte.";

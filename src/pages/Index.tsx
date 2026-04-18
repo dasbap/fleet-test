@@ -4,6 +4,7 @@ import FeaturesSection from "@/components/landing/FeaturesSection";
 import ModulesSection from "@/components/landing/ModulesSection";
 import PricingSection from "@/components/landing/PricingSection";
 import Footer from "@/components/landing/Footer";
+
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">

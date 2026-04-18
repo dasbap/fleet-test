@@ -39,8 +39,17 @@ dist-ssr
 .cursor/*
 !.cursor/mcp.json
 
+# Lighthouse CI (sorties locales de lhci autorun)
+.lighthouseci
+
+# Expo local state
+.expo/
+apps/mobile/.expo/
+
 # Rapports de test temporaires
 TEST-REPORT-*.json
+# Playwright (artefacts locaux)
+test-results/
 !.cursor/rules/
 !.cursor/rules/*.mdc
 

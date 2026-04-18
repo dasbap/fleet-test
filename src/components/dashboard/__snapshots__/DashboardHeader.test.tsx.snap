@@ -48,12 +48,18 @@ exports[`DashboardHeader > correspond au snapshot (régression structure / thèm
           </span>
         </button>
         <div
-          data-testid="dashboard-vehicle-search-mock"
+          data-testid="universal-search-mock"
         />
       </div>
       <div
         class="flex items-center gap-3"
       >
+        <div
+          aria-label="Qualité réseau: Mobile"
+          class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-success/30 text-success"
+        >
+          Mobile
+        </div>
         <button
           class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-11 w-11 min-h-[2.75rem] min-w-[2.75rem] md:h-10 md:w-10 md:min-h-0 md:min-w-0 relative"
         >

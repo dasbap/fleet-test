@@ -9,6 +9,7 @@ import { StepValidation } from '@/components/onboarding/StepValidation';
 import { cn } from '@/lib/utils';
 import type { OnboardingData } from '@/types/onboarding';
 import { toast } from '@/hooks/use-toast';
+import { useTrackFunnelEvent } from '@/hooks/useFunnelTelemetry';
 
 type StepNumber = 1 | 2 | 3 | 4;
 type StepKey = keyof OnboardingData;
@@ -64,7 +65,8 @@ const STEPS: StepConfig[] = [
 export function OnboardingWizard() {
   const navigate = useNavigate();
   const { orgId } = useAuth();
-  const { data: progress, complete, isCompleting } = useOnboarding(orgId ?? undefined);
+  const { data: progress, saveStep, complete, isSaving, isCompleting } = useOnboarding(orgId ?? undefined);
+  const { trackEvent } = useTrackFunnelEvent(orgId ?? undefined);
   const [step, setStep] = useState<StepNumber>(1);
 
   const maxStep = STEPS[STEPS.length - 1].num;
@@ -76,6 +78,14 @@ export function OnboardingWizard() {
     const safeStep = Math.min(Math.max(progress.step, 1), maxStep) as StepNumber;
     setStep(safeStep);
   }, [maxStep, progress?.step]);
+
+  useEffect(() => {
+    trackEvent({
+      eventType: 'onboarding_step_view',
+      step,
+      context: { source: 'wizard' },
+    });
+  }, [step, trackEvent]);
 
   const pct = useMemo(() => Math.round((step / maxStep) * 100), [maxStep, step]);
 
@@ -90,6 +100,12 @@ export function OnboardingWizard() {
   };
 
   const handleNext = async <K extends StepKey>(stepNum: StepNumber, _key: K, _data: OnboardingData[K]) => {
+    trackEvent({
+      eventType: 'onboarding_step_completed',
+      step: stepNum,
+      context: { source: 'wizard' },
+    });
+
     if (stepNum < maxStep) {
       goNext();
       return;
@@ -97,6 +113,11 @@ export function OnboardingWizard() {
 
     try {
       await complete();
+      trackEvent({
+        eventType: 'onboarding_completed',
+        step: 4,
+        context: { source: 'wizard' },
+      });
       navigate('/dashboard', { replace: true });
     } catch {
       toast({
@@ -108,12 +129,19 @@ export function OnboardingWizard() {
   };
 
   const handleSkip = async (stepNum: StepNumber) => {
-    if (stepNum < maxStep) {
-      goNext();
-      return;
-    }
+    trackEvent({
+      eventType: 'onboarding_step_skipped',
+      step: stepNum,
+      context: { source: 'wizard' },
+    });
 
     try {
+      if (stepNum < maxStep) {
+        await saveStep(stepNum, {});
+        goNext();
+        return;
+      }
+
       await complete();
       navigate('/dashboard', { replace: true });
     } catch {
@@ -160,6 +188,13 @@ export function OnboardingWizard() {
           <div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${pct}%` }} />
         </div>
 
+        <div className="mb-6 rounded-md border border-brand/20 bg-brand/5 p-3">
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Gain immédiat</p>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+            Activez votre flotte maintenant pour recevoir des alertes en temps reel et corriger une anomalie en 1 clic.
+          </p>
+        </div>
+
         {currentStep.render({
           orgId,
           initial: progress?.data?.[currentStep.key],
@@ -167,7 +202,8 @@ export function OnboardingWizard() {
           onBack: currentIndex > 0 ? goBack : undefined,
           onSkip: () => handleSkip(currentStep.num),
         })}
-        {isCompleting ? <p className="mt-4 text-xs text-slate-500">Finalisation en cours...</p> : null}
+        {isSaving ? <p className="mt-4 text-xs text-slate-500">Sauvegarde en cours...</p> : null}
+        {isCompleting ? <p className="mt-2 text-xs text-slate-500">Finalisation en cours...</p> : null}
       </div>
     </div>
   );

@@ -2,9 +2,19 @@ import { AlertRepository, type AlertListQueryFilters } from "@/repositories/aler
 import type { AlertDto, IncidentWorkflowStatusDto } from "@/types/dto/alert.dto";
 import type { Alert, AlertFilters } from "@/types/alert";
 import { mapOperationalAlertDtoToDomain } from "@/services/mappers/alert.dto.mapper";
+import type { WhatsappTemplateName } from "@/constants/whatsapp-templates";
+import { getAlertWhatsappTemplate } from "@/constants/whatsapp-template-mapping";
+import {
+  sendWhatsappEdgeService,
+  type SendWhatsappInput,
+  type SendWhatsappEdgeService,
+} from "@/services/send-whatsapp-edge.service";
 
 export class AlertService {
-  constructor(private repository: AlertRepository) {}
+  constructor(
+    private repository: AlertRepository,
+    private whatsappService: SendWhatsappEdgeService = sendWhatsappEdgeService,
+  ) {}
 
   async getUnresolvedAlerts(fleetId: string): Promise<AlertDto[]> {
     if (!fleetId) return [];
@@ -90,7 +100,9 @@ export class AlertService {
 
   async resolveAlert(alertId: string, resolvedBy: string): Promise<void> {
     if (!alertId || !resolvedBy) throw new Error('alertId et resolvedBy requis');
-    return this.repository.resolve(alertId, resolvedBy);
+    const alert = await this.repository.findById(alertId);
+    await this.repository.resolve(alertId, resolvedBy);
+    await this.notifyWhatsappIfEligible(alert, "resolved");
   }
 
   async updateAlertStatus(alertId: string, status: IncidentWorkflowStatusDto): Promise<void> {
@@ -102,14 +114,20 @@ export class AlertService {
       throw new Error("Statut d’alerte invalide");
     }
 
-    return this.repository.updateStatus(alertId, status);
+    const alert = await this.repository.findById(alertId);
+    await this.repository.updateStatus(alertId, status);
+    await this.notifyWhatsappIfEligible(alert, `status_${status.toLowerCase()}`);
   }
 
   async assignAlert(alertId: string, assigneeUserId: string | null): Promise<void> {
     if (!alertId) {
       throw new Error("alertId requis");
     }
-    return this.repository.assign(alertId, assigneeUserId);
+    const alert = await this.repository.findById(alertId);
+    await this.repository.assign(alertId, assigneeUserId);
+    if (assigneeUserId) {
+      await this.notifyWhatsappIfEligible(alert, "assigned", assigneeUserId);
+    }
   }
 
   async getAlertComments(alertId: string) {
@@ -132,5 +150,47 @@ export class AlertService {
     }
 
     return this.repository.addComment(alertId, authorUserId, trimmed);
+  }
+
+  private async notifyWhatsappIfEligible(
+    alert: AlertDto | null,
+    eventKey: string,
+    recipientUserIdOverride?: string,
+  ): Promise<void> {
+    if (!alert) {
+      return;
+    }
+
+    const template = this.resolveTemplateName(alert.alert_type, eventKey);
+    if (!template) {
+      return;
+    }
+
+    const recipientUserId = recipientUserIdOverride ?? alert.driver_user_id ?? undefined;
+    if (!recipientUserId) {
+      return;
+    }
+
+    const payload: SendWhatsappInput = {
+      fleetId: alert.fleet_id,
+      alertId: alert.id,
+      recipientUserId,
+      templateName: template,
+      languageCode: "fr",
+      variables: [alert.message],
+    };
+
+    try {
+      await this.whatsappService.send(payload);
+    } catch (error) {
+      console.warn("[AlertService] Envoi WhatsApp ignoré:", error);
+    }
+  }
+
+  private resolveTemplateName(
+    alertType: AlertDto["alert_type"],
+    eventKey: string,
+  ): WhatsappTemplateName | null {
+    return getAlertWhatsappTemplate(alertType, eventKey);
   }
 }

@@ -1,6 +1,5 @@
-import { Bell, Search, User, Settings } from "lucide-react";
+import { Bell, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -13,8 +12,18 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { signOut } from "@/hooks/useAuth";
+import { signOut } from "@/lib/auth-actions";
 import type { AppRole } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
+import { UniversalSearch } from "@/components/shared/UniversalSearch";
+import { AdaptiveNetworkQualityBadge, OfflineSyncIndicator } from "@/components/shared/OfflineBanner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DashboardHeaderProps {
   userRole: AppRole;
@@ -30,25 +39,35 @@ const roleLabels = {
 };
 
 const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderProps) => {
+  const { userFleetId, tenantOptions, setActiveFleetId } = useAuth();
+
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
       <div className="h-full px-4 flex items-center justify-between gap-4">
         {/* Left */}
         <div className="flex items-center gap-4">
           <SidebarTrigger className="-ml-1" />
-          
-          {/* Search */}
-          <div className="hidden md:flex relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher..."
-              className="pl-9 w-64 bg-background"
-            />
-          </div>
+          {tenantOptions.length > 1 ? (
+            <Select value={userFleetId ?? undefined} onValueChange={setActiveFleetId}>
+              <SelectTrigger className="w-[220px] h-9">
+                <SelectValue placeholder="Sélectionner une flotte" />
+              </SelectTrigger>
+              <SelectContent>
+                {tenantOptions.map((tenant) => (
+                  <SelectItem key={tenant.fleetId} value={tenant.fleetId}>
+                    {tenant.fleetName ?? tenant.fleetId}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+          <UniversalSearch fleetId={userFleetId} className="max-w-md" />
         </div>
 
         {/* Right */}
         <div className="flex items-center gap-3">
+          <AdaptiveNetworkQualityBadge />
+          <OfflineSyncIndicator />
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5" />

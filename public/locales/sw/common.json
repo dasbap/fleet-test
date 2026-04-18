@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "dashboard": "Dashibodi",
+    "fleet": "Meli",
+    "maintenance": "Matengenezo",
+    "alerts": "Tahadhari",
+    "reports": "Ripoti",
+    "settings": "Mipangilio"
+  },
+  "actions": {
+    "add": "Ongeza",
+    "edit": "Hariri",
+    "delete": "Futa",
+    "save": "Hifadhi",
+    "cancel": "Ghairi",
+    "confirm": "Thibitisha",
+    "back": "Rudi",
+    "next": "Ifuatayo",
+    "close": "Funga",
+    "plan": "Panga",
+    "resolve": "Tatua",
+    "export": "Hamisha",
+    "search": "Tafuta"
+  },
+  "status": {
+    "active": "Inatumika",
+    "maintenance": "Kwenye matengenezo",
+    "inactive": "Haifanyi kazi",
+    "resolved": "Imetatuliwa",
+    "pending": "Inasubiri",
+    "overdue": "Imechelewa"
+  },
+  "severity": {
+    "critical": "Hatari kubwa",
+    "warning": "Onyo",
+    "info": "Taarifa"
+  },
+  "empty": {
+    "noVehicles": "Hakuna gari kwenye meli",
+    "noAlerts": "Hakuna tahadhari hai",
+    "noMaintenance": "Hakuna matengenezo yaliyopangwa"
+  },
+  "settingsPage": {
+    "title": "Mipangilio",
+    "description": "Zana za usimamizi na usanidi wa nafasi yako ya E-Samba.",
+    "languageSectionTitle": "Lugha",
+    "languageSectionDescription": "Chagua lugha ya kiolesura. Lingala inafaa zaidi kwa matumizi ya uwanjani (madereva)."
+  },
+  "languageSwitcher": {
+    "ariaLabel": "Lugha ya kiolesura"
+  },
+  "dialog": {
+    "close": "Funga"
+  },
+  "searchPalette": {
+    "openAria": "Fungua utafutaji",
+    "dialogTitle": "Utafutaji wa jumla",
+    "dialogDescription": "Tafuta kwenye magari, matengenezo na tahadhari.",
+    "placeholder": "Tafuta gari, dereva, tahadhari…",
+    "clear": "Futa utafutaji",
+    "resultsAria": "Matokeo ya utafutaji",
+    "emptyTitle": "Hakuna matokeo kwa \"{query}\"",
+    "emptyHint": "Jaribu namba ya gari, jina la dereva au aina ya matengenezo.",
+    "idlePrompt": "Andika angalau herufi 2",
+    "hintNavigate": "Nenda",
+    "hintOpen": "Fungua",
+    "hintClose": "Funga",
+    "hintShortcut": "Fungua utafutaji",
+    "loadingState": "Inatafuta",
+    "resultsCount": "Matokeo {{count}}",
+    "noResults": "Hakuna matokeo"
+  },
+  "loading": "Inapakia…",
+  "error": "Hitilafu imetokea"
+}

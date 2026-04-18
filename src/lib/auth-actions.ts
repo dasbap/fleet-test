@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { enableDemoAuthFallback, isMockAuthEnabled } from "@/lib/authMode";
+import { clearBiometricLockStorage } from "@/services/biometric-lock.service";
 import { normalizeLoginRole } from "@/lib/mobile/mobileRoleBridge";
 import { mockAuthService } from "@/services/mock-auth.service";
 import type { AppRole } from "@/types/auth";
@@ -62,7 +63,8 @@ export async function signIn(
     return { data, error };
   } catch (error) {
     // Fallback robuste pour les comptes démo quand Supabase n'est pas accessible localement.
-    if (isDemoAccount(normalizedIdentifier) && isSupabaseNetworkError(error)) {
+    // Limité au mode développement pour éviter toute activation accidentelle en production.
+    if (import.meta.env.DEV && isDemoAccount(normalizedIdentifier) && isSupabaseNetworkError(error)) {
       enableDemoAuthFallback();
       const { error: mockError } = mockAuthService.signInWithPassword(
         normalizedIdentifier,
@@ -116,6 +118,26 @@ export async function signOut() {
     notifyMockAuthChanged();
     return { error: null };
   }
+  try {
+    await clearBiometricLockStorage();
+  } catch {
+    /* non bloquant */
+  }
   const { error } = await supabase.auth.signOut();
   return { error };
+}
+
+/**
+ * Envoi d’un email de réinitialisation du mot de passe.
+ */
+export async function requestPasswordReset(email: string, redirectTo: string) {
+  const normalizedEmail = email.trim();
+  return supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+}
+
+/**
+ * Mise à jour du mot de passe de la session courante (flux recovery).
+ */
+export async function updateCurrentUserPassword(password: string) {
+  return supabase.auth.updateUser({ password });
 }
