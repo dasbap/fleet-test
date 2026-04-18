@@ -82,10 +82,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useActivation } from "@/hooks/useActivation";
+import { isValidCameroonMobileInput, normalizeCameroonPhoneE164 } from "@/lib/cameroonPhone";
 
 const addMemberSchema = z.object({
   email: z.string().email("Email invalide"),
   role: z.enum(["organizer", "manager", "driver", "mechanic"]),
+  phone: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || val.trim() === "" || isValidCameroonMobileInput(val.trim()),
+      { message: "Numéro mobile Cameroun invalide (ex. 6XX XXX XXX ou +237…)" },
+    ),
 });
 
 type AddMemberFormValues = z.infer<typeof addMemberSchema>;
@@ -141,6 +149,7 @@ export function FleetTeamManagementPanel({
     defaultValues: {
       email: "",
       role: "driver",
+      phone: "",
     },
   });
 
@@ -164,7 +173,12 @@ export function FleetTeamManagementPanel({
     }
 
     try {
-      const payload: AddMemberData = { email: data.email, role: data.role };
+      const trimmedPhone = data.phone?.trim();
+      const normalizedPhone =
+        trimmedPhone && isValidCameroonMobileInput(trimmedPhone)
+          ? normalizeCameroonPhoneE164(trimmedPhone)
+          : undefined;
+      const payload: AddMemberData = { email: data.email, role: data.role, phone: normalizedPhone };
       await addMemberMutation.mutateAsync({
         fleetId: userFleetId,
         data: payload,
@@ -181,6 +195,10 @@ export function FleetTeamManagementPanel({
 
   const handleSelectUser = (searched: SearchedUser) => {
     form.setValue("email", searched.email, { shouldValidate: true });
+    // Pré-remplit le téléphone si disponible dans le profil de l'utilisateur trouvé
+    if (searched.phone) {
+      form.setValue("phone", searched.phone, { shouldValidate: false });
+    }
     setSearchTerm(searched.full_name || searched.email);
     setIsSearchOpen(false);
   };
@@ -866,6 +884,36 @@ export function FleetTeamManagementPanel({
                         </SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Mobile Cameroun{" "}
+                      <span className="text-muted-foreground font-normal">(optionnel)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Phone className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                        <Input
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          placeholder="6XX XXX XXX ou +237…"
+                          className="pl-10"
+                          {...field}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      Pour les chauffeurs, renseigner le numéro évite le blocage à la première
+                      connexion.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
