@@ -1,11 +1,40 @@
 import { supabase } from '@/integrations/supabase/client';
 import { formatPostgrestError } from '@/lib/mapSupabaseError';
+import type { CreateFleetParams } from '@/types/create-fleet';
 
 /**
  * Repository pour les opérations de setup ESAMBA (organisation, flotte, RPC).
  * Encapsule tous les appels Supabase liés au seed et à la création de flotte.
  */
 export class EsambaSetupRepository {
+  /**
+   * Onboarding atomique : organisation + flotte + adhésion (RPC SECURITY DEFINER).
+   */
+  async creerOnboardingOrganisationFlotteEtAdhesion(
+    params: CreateFleetParams
+  ): Promise<{ orgId: string; fleetId: string }> {
+    const { data, error } = await supabase.rpc('creer_onboarding_organisation_flotte_et_adhesion', {
+      p_org_name: params.orgName,
+      p_country_code: params.countryCode,
+      p_fleet_name: params.fleetName,
+      p_collection_policy: params.collectionPolicy,
+    });
+
+    if (error) {
+      throw new Error(
+        formatPostgrestError(error) || 'Impossible de finaliser la création de la flotte.',
+      );
+    }
+
+    const row = data as { org_id?: string; fleet_id?: string } | null;
+    const orgId = row?.org_id;
+    const fleetId = row?.fleet_id;
+    if (!orgId || !fleetId) {
+      throw new Error('Réponse serveur incomplète après création de flotte.');
+    }
+    return { orgId, fleetId };
+  }
+
   /**
    * Récupère l'ID d'une organisation par son nom.
    */

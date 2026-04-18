@@ -18,6 +18,7 @@ const TenantBootstrapRoute = lazy(() =>
     default: module.TenantBootstrapRoute,
   }))
 );
+const PostLoginGate = lazy(() => import("@/pages/PostLoginGate"));
 
 /** Ancien lien /aide/videos/:id → tuto dashboard (le paramètre doit être interpolé, pas littéral). */
 function RedirectLegacyAideVideoToTutorial() {
@@ -58,6 +59,7 @@ export const appRoutes = (
       {authPublicRoutes}
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/start" element={<TenantBootstrapRoute />} />
+      <Route path="/post-login" element={<PostLoginGate />} />
       {dashboardRoutes}
     </Route>
     <Route path="*" element={<NotFound />} />

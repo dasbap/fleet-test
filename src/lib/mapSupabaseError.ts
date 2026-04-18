@@ -6,11 +6,16 @@ export function formatPostgrestError(error: unknown): string {
   if (error == null) return "";
   if (typeof error === "string") return error.trim();
   if (error instanceof Error) {
-    const any = error as Error & { details?: string; hint?: string };
+    const any = error as Error & { details?: string; hint?: string; cause?: unknown };
+    const causeText = any.cause != null ? formatPostgrestError(any.cause) : "";
     const parts = [any.message, any.details, any.hint].filter(
       (p): p is string => typeof p === "string" && p.trim().length > 0,
     );
-    return parts.join(" — ");
+    const main = parts.join(" — ");
+    if (causeText && !main.includes(causeText)) {
+      return main ? `${main} — ${causeText}` : causeText;
+    }
+    return main;
   }
   if (typeof error === "object") {
     const o = error as { message?: string; details?: string; hint?: string };
@@ -59,6 +64,15 @@ export function mapSupabaseErrorToFrench(message: string): string {
   }
   if (m.includes("non_authentifie")) {
     return "Session expirée. Veuillez vous reconnecter.";
+  }
+  if (m.includes("nom_organisation_requis")) {
+    return "Le nom de l'organisation est requis.";
+  }
+  if (m.includes("nom_flotte_requis")) {
+    return "Le nom de la flotte est requis.";
+  }
+  if (m.includes("utilisateur non connecté")) {
+    return "Vous devez être connecté pour créer une flotte.";
   }
 
   // Erreurs RLS / permissions

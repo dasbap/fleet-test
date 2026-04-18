@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { EsambaSetupService } from '@/services/esamba-setup.service';
 import { EsambaSetupRepository } from '@/repositories/esamba-setup.repository';
-import type { CreateFleetParams } from '@/services/esamba-setup.service';
+import type { CreateFleetParams } from '@/types/create-fleet';
 import { formatPostgrestError, mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
 
 const esambaSetupRepository = new EsambaSetupRepository();
@@ -25,7 +25,7 @@ export function useCreateFleet(options?: UseCreateFleetOptions) {
   return useMutation<CreateFleetResult, Error, CreateFleetParams>({
     mutationFn: async (values) => {
       if (!user) throw new Error('Utilisateur non connecté.');
-      return esambaSetupService.createFleetAndJoin(user.id, values);
+      return esambaSetupService.createFleetAndJoin(values);
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['fleet-members'] });

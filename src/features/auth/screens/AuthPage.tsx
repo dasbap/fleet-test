@@ -228,7 +228,7 @@ const Auth = () => {
           title: "Connexion réussie!",
           description: "Redirection vers le tableau de bord...",
         });
-        navigate(postLoginTarget);
+        navigate(`/post-login?next=${encodeURIComponent(postLoginTarget)}`);
       }
     } catch (err) {
       toast({

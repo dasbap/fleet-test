@@ -12,19 +12,15 @@ import {
   ESAMBA_DEMO_VEHICLE_YEAR,
 } from '@/constants/esamba-demo.constants';
 import { EsambaSetupRepository } from '@/repositories/esamba-setup.repository';
+import type { CreateFleetParams } from '@/types/create-fleet';
+
+export type { CreateFleetParams };
 
 export interface SeedResult {
   orgId: string;
   fleetId: string;
   vehicleId: string;
   invitationCode: string;
-}
-
-export interface CreateFleetParams {
-  orgName: string;
-  fleetName: string;
-  collectionPolicy: string;
-  countryCode: string;
 }
 
 /**
@@ -75,30 +71,9 @@ export class EsambaSetupService {
   }
 
   /**
-   * Crée une organisation (ou réutilise), une flotte et ajoute l'utilisateur comme organizer.
+   * Onboarding : organisation + flotte + adhésion organizer (RPC atomique côté base).
    */
-  async createFleetAndJoin(
-    userId: string,
-    params: CreateFleetParams
-  ): Promise<{ orgId: string; fleetId: string }> {
-    let orgId = await this.repository.findOrganisationIdByName(params.orgName);
-    if (!orgId) {
-      orgId = await this.repository.createOrganisation(params.orgName, params.countryCode);
-    }
-
-    const fleetId = await this.repository.creerFlotteEsamba(
-      orgId,
-      params.fleetName,
-      params.collectionPolicy
-    );
-
-    await this.repository.creerOuMettreAJourAdhesionFlotte(
-      fleetId,
-      userId,
-      ESAMBA_DEMO_FLEET_MEMBER_ROLE,
-      true
-    );
-
-    return { orgId, fleetId };
+  async createFleetAndJoin(params: CreateFleetParams): Promise<{ orgId: string; fleetId: string }> {
+    return this.repository.creerOnboardingOrganisationFlotteEtAdhesion(params);
   }
 }
