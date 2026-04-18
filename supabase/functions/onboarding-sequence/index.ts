@@ -205,6 +205,26 @@ const SEQUENCE: SequenceStep[] = [
   },
 ];
 
+async function logSequenceObservation(
+  supabase: ReturnType<typeof createServiceClient>,
+  row: {
+    fleet_id: string;
+    event_type: string;
+    payload: Record<string, unknown>;
+  },
+): Promise<void> {
+  const { error } = await supabase.from("system_events").insert({
+    event_type: row.event_type,
+    severity: "info",
+    fleet_id: row.fleet_id,
+    actor_user_id: null,
+    payload: row.payload,
+  });
+  if (error) {
+    console.error("[onboarding-sequence] system_events:", error);
+  }
+}
+
 async function insertSequenceLog(
   supabase: ReturnType<typeof createServiceClient>,
   row: {
@@ -262,6 +282,8 @@ Deno.serve(async (req) => {
       sms_sent: 0,
       alerts: 0,
       skipped: 0,
+      sms_skipped_no_phone: 0,
+      sms_skipped_api_error: 0,
     };
 
     for (const raw of drivers as InactiveDriver[]) {
@@ -313,11 +335,33 @@ Deno.serve(async (req) => {
       if (step.channel === "sms") {
         if (!raw.phone || raw.phone.trim().length === 0) {
           results.skipped++;
+          results.sms_skipped_no_phone++;
+          await logSequenceObservation(supabase, {
+            fleet_id: raw.fleet_id,
+            event_type: "onboarding_sequence_sms_skipped",
+            payload: {
+              reason: "no_phone",
+              user_id: raw.user_id,
+              step_day: step.day,
+              channel: "sms",
+            },
+          });
           continue;
         }
         const ok = await sendOrangeSMS(raw.phone, message);
         if (!ok) {
           results.skipped++;
+          results.sms_skipped_api_error++;
+          await logSequenceObservation(supabase, {
+            fleet_id: raw.fleet_id,
+            event_type: "onboarding_sequence_sms_failed",
+            payload: {
+              reason: "orange_api_error",
+              user_id: raw.user_id,
+              step_day: step.day,
+              channel: "sms",
+            },
+          });
           continue;
         }
         const okSmsLog = await insertSequenceLog(supabase, {

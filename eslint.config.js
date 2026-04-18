@@ -17,6 +17,8 @@ export default tseslint.config(
     ignores: [
       "dist",
       "dev-dist/**",
+      "test-results/**",
+      "playwright-report/**",
       "android/**",
       "ios/**",
       "store-assets/**",

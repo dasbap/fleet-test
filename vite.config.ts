@@ -89,11 +89,11 @@ export default defineConfig(({ mode }) => {
   plugins: [
     react(),
     prerenderSeoPlugin(),
+    // Pas de directives globales : sinon chaque .jpg/.webp est transformé et servi via
+    // /@imagetools/… (souvent instable en dev avec le middleware). Les imports sans « ? »
+    // restent des assets Vite classiques ; utiliser ?w=… ou ?format=… si besoin d’imagetools.
     imagetools({
-      defaultDirectives: new URLSearchParams([
-        ["format", "webp;avif"],
-        ["quality", "80"],
-      ]),
+      defaultDirectives: new URLSearchParams(),
     }),
     VitePWA({
       disable: mode === "capacitor",
@@ -325,6 +325,11 @@ export default defineConfig(({ mode }) => {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    // Une seule instance de React pour le bundler (évite « useState » sur dispatcher null).
+    dedupe: ["react", "react-dom", "react/jsx-runtime"],
+  },
+  optimizeDeps: {
+    include: ["react", "react-dom"],
   },
   worker: {
     format: "es",

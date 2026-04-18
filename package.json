@@ -16,6 +16,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:clean": "node scripts/clear-vite-cache.mjs && vite",
     "build": "vite build",
     "build:analyze": "vite build --mode analyze",
     "build:capacitor": "vite build --mode capacitor",
