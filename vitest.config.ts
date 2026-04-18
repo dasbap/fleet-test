@@ -9,6 +9,15 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    /**
+     * Valeurs factices pour `import.meta.env` : le client Supabase valide la présence
+     * des clés au chargement des modules qui importent `@/integrations/supabase/client`.
+     * Les tests unitaires ne doivent pas dépendre d’un `.env.local` local ou CI.
+     */
+    env: {
+      VITE_SUPABASE_URL: "http://127.0.0.1:54321",
+      VITE_SUPABASE_ANON_KEY: "vitest-placeholder-anon-key",
+    },
   },
   resolve: {
     alias: {
