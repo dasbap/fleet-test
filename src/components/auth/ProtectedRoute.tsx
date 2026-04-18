@@ -1,7 +1,8 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { RequireAuth } from '@/navigation/guards/RequireAuth';
 import { PageLoader } from '@/components/dashboard/PageLoader';
 import { useRouteAccess } from '@/hooks/useRouteAccess';
+import { getLoginPathPreservingReturn } from '@/navigation/loginRedirectPath';
 
 /**
  * Garde principale dashboard :
@@ -10,11 +11,13 @@ import { useRouteAccess } from '@/hooks/useRouteAccess';
  */
 export function ProtectedRoute() {
   const access = useRouteAccess();
+  const location = useLocation();
+  const loginWithReturn = getLoginPathPreservingReturn(location);
 
   return (
     <RequireAuth>
       {access.state === 'loading' && <PageLoader />}
-      {access.state === 'unauth' && <Navigate to="/auth" replace />}
+      {access.state === 'unauth' && <Navigate to={loginWithReturn} replace />}
       {access.state === 'onboarding' && <Navigate to="/start" replace />}
       {access.state === 'ready' && <Outlet />}
     </RequireAuth>

@@ -25,6 +25,11 @@ import { useToast } from "@/hooks/use-toast";
 import { signIn } from "@/lib/auth-actions";
 import type { AppRole } from "@/types/auth";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import {
+  getSafePostLoginPath,
+  LEGACY_POST_LOGIN_REDIRECT_PARAM,
+  POST_LOGIN_NEXT_PARAM,
+} from "@/navigation/postLoginRedirect";
 import { cn } from "@/lib/utils";
 import {
   DEMO_CREDENTIAL_ACCOUNTS,
@@ -64,11 +69,13 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const redirectTo = useMemo(() => {
-    const raw = searchParams.get("redirect");
-    if (!raw || !raw.startsWith("/")) return ROUTE_PATHS.dashboard;
-    return raw;
-  }, [searchParams]);
+  const postLoginTarget = useMemo(
+    () =>
+      getSafePostLoginPath(searchParams.get(POST_LOGIN_NEXT_PARAM)) ??
+      getSafePostLoginPath(searchParams.get(LEGACY_POST_LOGIN_REDIRECT_PARAM)) ??
+      ROUTE_PATHS.dashboard,
+    [searchParams],
+  );
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -97,7 +104,7 @@ export default function LoginPage() {
       title: "Connexion réussie",
       description: "Redirection…",
     });
-    navigate(redirectTo, { replace: true });
+    navigate(postLoginTarget, { replace: true });
   }
 
   function fillDemoCredentials(email: string): void {

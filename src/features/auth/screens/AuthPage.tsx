@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,10 +37,23 @@ import {
   DEMO_CREDENTIAL_ACCOUNTS,
   DEMO_SHARED_PASSWORD,
 } from "@/features/auth/data/demoCredentials";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
+import {
+  getSafePostLoginPath,
+  LEGACY_POST_LOGIN_REDIRECT_PARAM,
+  POST_LOGIN_NEXT_PARAM,
+} from "@/navigation/postLoginRedirect";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const postLoginTarget = useMemo(
+    () =>
+      getSafePostLoginPath(searchParams.get(POST_LOGIN_NEXT_PARAM)) ??
+      getSafePostLoginPath(searchParams.get(LEGACY_POST_LOGIN_REDIRECT_PARAM)) ??
+      ROUTE_PATHS.dashboard,
+    [searchParams],
+  );
   const { toast } = useToast();
   const [isSignup, setIsSignup] = useState(searchParams.get("mode") === "signup");
   const [isLoading, setIsLoading] = useState(false);
@@ -135,7 +148,7 @@ const Auth = () => {
       setRecoveryPasswordConfirm("");
       setIsRecovery(false);
       window.history.replaceState(null, "", window.location.pathname);
-      navigate("/dashboard");
+      navigate(postLoginTarget);
     } catch {
       toast({ title: "Erreur", description: "Impossible de mettre à jour le mot de passe.", variant: "destructive" });
     }
@@ -215,7 +228,7 @@ const Auth = () => {
           title: "Connexion réussie!",
           description: "Redirection vers le tableau de bord...",
         });
-        navigate("/dashboard");
+        navigate(postLoginTarget);
       }
     } catch (err) {
       toast({
