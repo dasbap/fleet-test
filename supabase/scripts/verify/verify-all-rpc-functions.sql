@@ -11,6 +11,7 @@ DECLARE
   v_function_exists boolean;
   v_missing_functions text[] := ARRAY[]::text[];
   v_functions_to_check text[] := ARRAY[
+    'creer_onboarding_organisation_flotte_et_adhesion',
     'creer_flotte_esamba',
     'creer_ou_mettre_a_jour_adhesion_flotte',
     'creer_vehicule_esamba',
@@ -89,6 +90,7 @@ FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
   AND p.proname IN (
+    'creer_onboarding_organisation_flotte_et_adhesion',
     'creer_flotte_esamba',
     'creer_ou_mettre_a_jour_adhesion_flotte',
     'creer_vehicule_esamba',
@@ -149,6 +151,7 @@ FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
   AND p.proname IN (
+    'creer_onboarding_organisation_flotte_et_adhesion',
     'creer_flotte_esamba',
     'creer_ou_mettre_a_jour_adhesion_flotte',
     'creer_vehicule_esamba',
