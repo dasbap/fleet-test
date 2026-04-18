@@ -262,4 +262,27 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
   async deactivateMember(membershipId: string): Promise<void> {
     await this.update(membershipId, { is_active: false });
   }
+
+  /**
+   * Met à jour le téléphone dans `profils` pour le user_id lié à l'adhésion.
+   * Non bloquant : une erreur ici ne doit pas empêcher l'ajout du membre.
+   */
+  async updateMemberPhone(membershipId: string, phone: string): Promise<void> {
+    const { data: membership, error: membershipError } = await supabase
+      .from('flotte_adhesions')
+      .select('user_id')
+      .eq('id', membershipId)
+      .single();
+
+    if (membershipError || !membership?.user_id) return;
+
+    const { error } = await supabase
+      .from('profils')
+      .update({ phone })
+      .eq('user_id', membership.user_id);
+
+    if (error) {
+      console.warn('updateMemberPhone: could not update profil phone', error.message);
+    }
+  }
 }

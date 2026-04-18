@@ -8,22 +8,40 @@
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { execSync, spawnSync } from 'child_process';
+import { spawnSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 
-function loadEnvLocal() {
-  const envPath = join(root, '.env.local');
-  if (!existsSync(envPath)) return;
-  const content = readFileSync(envPath, 'utf8');
-  content.split('\n').forEach((line) => {
-    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
-    if (m) {
-      const v = m[2].trim().replace(/^["']|["']$/g, '');
-      if (!process.env[m[1]]) process.env[m[1]] = v;
-    }
+function parseEnvContent(content) {
+  const normalized = content.replace(/^\uFEFF/, '');
+  normalized.split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+
+    const separatorIndex = trimmed.indexOf('=');
+    if (separatorIndex <= 0) return;
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) return;
+
+    const rawValue = trimmed.slice(separatorIndex + 1).trim();
+    const value = rawValue.replace(/^["']|["']$/g, '');
+    if (!process.env[key]) process.env[key] = value;
   });
+}
+
+function loadEnvLocal() {
+  const candidatePaths = [
+    join(root, '.env.local'),
+    join(process.cwd(), '.env.local'),
+  ];
+
+  for (const envPath of candidatePaths) {
+    if (!existsSync(envPath)) continue;
+    const content = readFileSync(envPath, 'utf8');
+    parseEnvContent(content);
+  }
 }
 
 loadEnvLocal();
@@ -52,16 +70,23 @@ function normalizeVersion(v) {
   return v.trim().toLowerCase().replace(/\.sql$/i, '') || v.trim().toLowerCase();
 }
 
+/** Extrait l'identifiant migration (timestamp 14 chiffres) quand disponible. */
+function extractMigrationId(v) {
+  const normalized = normalizeVersion(v);
+  const match = normalized.match(/^(\d{14})/);
+  return match ? match[1] : normalized;
+}
+
 /** Compare appliquées vs attendues ; retourne { ok, missing, extra }. */
 function compareMigrations(applied, expected) {
-  const aSet = new Set(applied.map(normalizeVersion));
-  const eList = expected.map((f) => normalizeVersion(f));
+  const aSet = new Set(applied.map(extractMigrationId));
+  const eList = expected.map((f) => extractMigrationId(f));
   const missing = eList.filter((e) => !aSet.has(e));
   const eSet = new Set(eList);
-  const extra = applied.filter((v) => !eSet.has(normalizeVersion(v)));
+  const extra = applied.filter((v) => !eSet.has(extractMigrationId(v)));
   return {
     ok: missing.length === 0,
-    missing: expected.filter((f) => missing.includes(normalizeVersion(f))),
+    missing: expected.filter((f) => missing.includes(extractMigrationId(f))),
     extra,
   };
 }

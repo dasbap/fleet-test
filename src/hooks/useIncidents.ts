@@ -31,6 +31,9 @@ export interface Incident {
   evidence_path: string | null;
   latitude: number | null;
   longitude: number | null;
+  status: 'open' | 'investigating' | 'resolved' | 'closed';
+  resolved_at: string | null;
+  resolved_by: string | null;
   created_at: string;
   // Joined data
   vehicle?: {
@@ -55,6 +58,8 @@ export interface IncidentInsert {
   latitude?: number | null;
   longitude?: number | null;
 }
+
+export type IncidentStatus = 'open' | 'investigating' | 'resolved' | 'closed';
 
 /** Entrée du formulaire « Déclarer un incident » (sans driver_user_id, géré par le hook). */
 export interface DeclareIncidentInput {
@@ -122,7 +127,7 @@ export function useCreateIncident() {
           severity: incident.severity ?? 'medium',
         });
 
-        offlineQueueService.enqueueIncidentCreate({
+        await offlineQueueService.enqueueIncidentCreate({
           draftId: draft.id,
           fleetId: userFleetId,
           vehicleId: incident.vehicle_id,
@@ -213,7 +218,7 @@ export function useDeclareIncident() {
           evidenceDataUrl: evidence,
         });
 
-        offlineQueueService.enqueueIncidentCreate({
+        await offlineQueueService.enqueueIncidentCreate({
           draftId: draft.id,
           fleetId: userFleetId,
           vehicleId: input.vehicle_id,
@@ -284,6 +289,52 @@ export function useCreateMaintenanceFromIncident() {
       toast({
         title: 'Intervention créée',
         description: 'L\'incident a été converti en intervention de maintenance.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erreur',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useUpdateIncidentStatus() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      incidentId,
+      status,
+    }: {
+      incidentId: string;
+      status: IncidentStatus;
+    }) => {
+      if (!incidentId) {
+        throw new Error("L'identifiant de l'incident est requis.");
+      }
+      if (!user?.id) {
+        throw new Error('Utilisateur non connecté.');
+      }
+
+      const resolvedAt =
+        status === 'resolved' || status === 'closed' ? new Date().toISOString() : null;
+      const resolvedBy = status === 'resolved' || status === 'closed' ? user.id : null;
+
+      return incidentService.updateIncident(incidentId, {
+        status,
+        resolved_at: resolvedAt,
+        resolved_by: resolvedBy,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      toast({
+        title: 'Incident mis à jour',
+        description: "Le statut de l'incident a été modifié.",
       });
     },
     onError: (error: Error) => {

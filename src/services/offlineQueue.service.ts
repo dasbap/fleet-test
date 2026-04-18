@@ -1,112 +1,94 @@
-import { readOfflineJobs, writeOfflineJobs } from "@/lib/storage/offline-queue.storage";
+import * as offlineStorage from "@/lib/storage/offline-queue.storage";
+import { createQueueManager } from "../../packages/offline-core/src/queue-manager";
 import type {
+  OfflineFuelCreateJob,
+  OfflineFuelCreatePayload,
   OfflineIncidentCreateJob,
   OfflineIncidentCreatePayload,
   OfflineJob,
   OfflineJobStatus,
+  OfflineJobType,
+  OfflineShiftCloseJob,
+  OfflineShiftClosePayload,
+  OfflineShiftStartJob,
+  OfflineShiftStartPayload,
 } from "@/types/offline-queue";
 
 const MAX_ATTEMPTS = 5;
+const MAX_QUEUE_SIZE = 200;
+const OFFLINE_QUEUE_SCHEMA_VERSION = 1;
 
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-function computeNextRetry(attemptCount: number): string | null {
-  if (attemptCount <= 0) return nowIso();
-  const cappedAttempt = Math.min(attemptCount, 5);
-  const baseDelaySec = 5 * 2 ** (cappedAttempt - 1);
-  const jitterSec = Math.floor(Math.random() * 5);
-  const totalSec = Math.min(baseDelaySec + jitterSec, 5 * 60);
-  const next = new Date(Date.now() + totalSec * 1000);
-  return next.toISOString();
-}
-
-function updateJobStatus(
-  job: OfflineJob,
-  status: OfflineJobStatus,
-  lastError: string | null,
-): OfflineJob {
-  const attemptCount =
-    status === "pending" || status === "syncing" ? job.attemptCount : job.attemptCount;
-
-  return {
-    ...job,
-    status,
-    attemptCount,
-    lastError,
-    updatedAt: nowIso(),
-  };
+function buildQueueManager() {
+  return createQueueManager<OfflineJob>(
+    {
+      read: () => offlineStorage.readOfflineJobs(),
+      write: (jobs) => offlineStorage.writeOfflineJobs(jobs),
+    },
+    {
+      maxAttempts: MAX_ATTEMPTS,
+      maxQueueSize: MAX_QUEUE_SIZE,
+      schemaVersion: OFFLINE_QUEUE_SCHEMA_VERSION,
+    },
+  );
 }
 
 export class OfflineQueueService {
-  enqueueIncidentCreate(payload: OfflineIncidentCreatePayload): OfflineIncidentCreateJob {
-    const jobs = readOfflineJobs();
-    const job: OfflineIncidentCreateJob = {
-      id: crypto.randomUUID(),
-      type: "incident:create",
+  private async enqueueJob<TType extends OfflineJobType, TPayload>(
+    type: TType,
+    payload: TPayload,
+    entityRef: string | null,
+  ): Promise<OfflineJob> {
+    const job = await buildQueueManager().enqueue({
+      type,
       payload,
-      status: "pending",
-      attemptCount: 0,
-      nextRetryAt: computeNextRetry(0),
-      lastError: null,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    };
-    jobs.push(job);
-    writeOfflineJobs(jobs);
+      entityRef,
+    });
     return job;
   }
 
-  getPendingJobs(now: Date = new Date()): OfflineJob[] {
-    const jobs = readOfflineJobs();
-    return jobs.filter((job) => {
-      if (job.status === "succeeded") return false;
-      if (job.nextRetryAt == null) return true;
-      return new Date(job.nextRetryAt) <= now;
-    });
+  async enqueueIncidentCreate(payload: OfflineIncidentCreatePayload): Promise<OfflineIncidentCreateJob> {
+    const job = await this.enqueueJob("incident:create", payload, payload.draftId ?? null);
+    return job as OfflineIncidentCreateJob;
   }
 
-  markSyncing(jobId: string): OfflineJob | null {
-    const jobs = readOfflineJobs();
-    let updated: OfflineJob | null = null;
-    const next = jobs.map((job) => {
-      if (job.id !== jobId) return job;
-      updated = {
-        ...job,
-        status: "syncing",
-        updatedAt: nowIso(),
-      };
-      return updated;
-    });
-    if (updated) {
-      writeOfflineJobs(next);
-    }
-    return updated;
+  async enqueueShiftStart(payload: OfflineShiftStartPayload): Promise<OfflineShiftStartJob> {
+    const job = await this.enqueueJob("shift:start", payload, payload.assignmentId);
+    return job as OfflineShiftStartJob;
   }
 
-  markSucceeded(jobId: string): void {
-    const jobs = readOfflineJobs().filter((job) => job.id !== jobId);
-    writeOfflineJobs(jobs);
+  async enqueueShiftClose(payload: OfflineShiftClosePayload): Promise<OfflineShiftCloseJob> {
+    const job = await this.enqueueJob("shift:close", payload, payload.shiftId);
+    return job as OfflineShiftCloseJob;
   }
 
-  markFailed(jobId: string, errorMessage: string): void {
-    const jobs = readOfflineJobs();
-    const now = new Date();
-    const next = jobs.map((job) => {
-      if (job.id !== jobId) return job;
-      const newAttempt = job.attemptCount + 1;
-      const reachedMax = newAttempt >= MAX_ATTEMPTS;
-      return {
-        ...job,
-        status: reachedMax ? "failed" : "pending",
-        attemptCount: newAttempt,
-        nextRetryAt: reachedMax ? null : computeNextRetry(newAttempt),
-        lastError: errorMessage,
-        updatedAt: now.toISOString(),
-      };
-    });
-    writeOfflineJobs(next);
+  async enqueueFuelCreate(payload: OfflineFuelCreatePayload): Promise<OfflineFuelCreateJob> {
+    const job = await this.enqueueJob("fuel:create", payload, payload.vehicleId);
+    return job as OfflineFuelCreateJob;
+  }
+
+  async getPendingJobs(now: Date = new Date()): Promise<OfflineJob[]> {
+    return buildQueueManager().getPendingJobs(now);
+  }
+
+  async markSyncing(jobId: string): Promise<OfflineJob | null> {
+    return buildQueueManager().markSyncing(jobId);
+  }
+
+  async markSucceeded(jobId: string): Promise<void> {
+    await buildQueueManager().markSucceeded(jobId);
+  }
+
+  async markFailed(jobId: string, errorMessage: string): Promise<void> {
+    await buildQueueManager().markFailed(jobId, errorMessage);
+  }
+
+  async getQueueStats(): Promise<{
+    pending: number;
+    syncing: number;
+    failed: number;
+    oldestPendingAgeMs: number | null;
+  }> {
+    return buildQueueManager().getQueueStats();
   }
 }
 

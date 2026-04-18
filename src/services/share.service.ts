@@ -219,6 +219,9 @@ const ALERT_TYPE_FR: Record<AlertType, string> = {
   recurring_gap: "Écart récurrent",
   risky_driver: "Chauffeur à risque",
   vehicle_blocked: "Véhicule bloqué",
+  maintenance_due: "Maintenance requise",
+  document_expired: "Document expiré",
+  failure_risk: "Risque de panne",
 };
 
 const WORKFLOW_STATUS_FR: Record<IncidentWorkflowStatusDto, string> = {
@@ -232,6 +235,9 @@ const DTO_ALERT_TYPE_FR: Record<OperationalAlertTypeDto, string> = {
   recurring_gap: "Écart récurrent",
   risky_driver: "Chauffeur à risque",
   vehicle_blocked: "Véhicule bloqué",
+  maintenance_due: "Maintenance requise",
+  document_expired: "Document expiré",
+  failure_risk: "Risque de panne",
 };
 
 const DTO_SEVERITY_FR: Record<OperationalAlertSeverityDto, string> = {

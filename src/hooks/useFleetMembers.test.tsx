@@ -13,13 +13,9 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import {
-  useFleetMembers,
-  useAddFleetMember,
-  useUpdateMemberRole,
-  useRemoveFleetMember,
-} from "./useFleetMembers";
+import { useFleetMembers, useAddFleetMember, useUpdateMemberRole, useRemoveFleetMember } from "./useFleetMembers";
 import { createQueryClientWrapper } from "@/test/utils";
+import { withConsoleSilenced } from "@/test/withConsoleSilenced";
 
 const fromChain = {
   select: vi.fn().mockReturnThis(),
@@ -105,19 +101,24 @@ describe("useFleetMembers", () => {
   });
 
   it("throw en cas d'erreur Supabase", async () => {
-    fromChain.eq.mockResolvedValueOnce({
-      data: null,
-      error: { message: "Permission denied" },
-    });
+    await withConsoleSilenced(
+      (_method, args) => typeof args[0] === "string" && (args[0] as string).startsWith("Error fetching fleet members:"),
+      async () => {
+        fromChain.eq.mockResolvedValueOnce({
+          data: null,
+          error: { message: "Permission denied" },
+        });
 
-    const { result } = renderHook(() => useFleetMembers("fleet-1"), {
-      wrapper: createQueryClientWrapper(),
-    });
+        const { result } = renderHook(() => useFleetMembers("fleet-1"), {
+          wrapper: createQueryClientWrapper(),
+        });
 
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-    expect(result.current.error).toBeDefined();
+        await waitFor(() => {
+          expect(result.current.isError).toBe(true);
+        });
+        expect(result.current.error).toBeDefined();
+      },
+    );
   });
 });
 
@@ -148,24 +149,29 @@ describe("useAddFleetMember", () => {
   });
 
   it("throw avec message adapté quand l'utilisateur n'existe pas", async () => {
-    rpcMock.mockResolvedValueOnce({
-      data: null,
-      error: { message: "User not found" },
-    });
+    await withConsoleSilenced(
+      (_method, args) => typeof args[0] === "string" && (args[0] as string).startsWith("Error adding member by email:"),
+      async () => {
+        rpcMock.mockResolvedValueOnce({
+          data: null,
+          error: { message: "User not found" },
+        });
 
-    const { result } = renderHook(() => useAddFleetMember(), {
-      wrapper: createQueryClientWrapper(),
-    });
+        const { result } = renderHook(() => useAddFleetMember(), {
+          wrapper: createQueryClientWrapper(),
+        });
 
-    result.current.mutate({
-      fleetId: "fleet-1",
-      data: { email: "unknown@example.com", role: "driver" },
-    });
+        result.current.mutate({
+          fleetId: "fleet-1",
+          data: { email: "unknown@example.com", role: "driver" },
+        });
 
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-    expect(result.current.error?.message).toMatch(/aucun utilisateur|créer un compte/i);
+        await waitFor(() => {
+          expect(result.current.isError).toBe(true);
+        });
+        expect(result.current.error?.message).toMatch(/aucun utilisateur|créer un compte/i);
+      },
+    );
   });
 });
 
@@ -199,26 +205,31 @@ describe("useUpdateMemberRole", () => {
   });
 
   it("throw quand la RPC renvoie une erreur", async () => {
-    rpcMock.mockResolvedValueOnce({
-      data: null,
-      error: { message: "Permission denied" },
-    });
+    await withConsoleSilenced(
+      (_method, args) => typeof args[0] === "string" && (args[0] as string).startsWith("Error upserting membership:"),
+      async () => {
+        rpcMock.mockResolvedValueOnce({
+          data: null,
+          error: { message: "Permission denied" },
+        });
 
-    const { result } = renderHook(() => useUpdateMemberRole(), {
-      wrapper: createQueryClientWrapper(),
-    });
+        const { result } = renderHook(() => useUpdateMemberRole(), {
+          wrapper: createQueryClientWrapper(),
+        });
 
-    result.current.mutate({
-      membershipId: "m1",
-      fleetId: "fleet-1",
-      userId: "u1",
-      role: "manager",
-    });
+        result.current.mutate({
+          membershipId: "m1",
+          fleetId: "fleet-1",
+          userId: "u1",
+          role: "manager",
+        });
 
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-    expect(result.current.error?.message).toBeDefined();
+        await waitFor(() => {
+          expect(result.current.isError).toBe(true);
+        });
+        expect(result.current.error?.message).toBeDefined();
+      },
+    );
   });
 });
 
@@ -260,24 +271,28 @@ describe("useRemoveFleetMember", () => {
   });
 
   it("throw quand l'UPDATE échoue", async () => {
-    // removeMember appelle findById puis update : 1) findById doit réussir
-    const memberForFindById = { ...updatedMember, is_active: true };
-    fromChain.single.mockResolvedValueOnce({ data: memberForFindById, error: null });
-    // 2) update doit échouer
-    fromChain.single.mockResolvedValueOnce({
-      data: null,
-      error: { message: "RLS policy violation" },
-    });
+    await withConsoleSilenced(
+      (_method, args) => typeof args[0] === "string" && (args[0] as string).startsWith("Error updating fleet member:"),
+      async () => {
+        const memberForFindById = { ...updatedMember, is_active: true };
+        fromChain.single
+          .mockResolvedValueOnce({ data: memberForFindById, error: null })
+          .mockResolvedValueOnce({
+            data: null,
+            error: { message: "RLS policy violation" },
+          });
 
-    const { result } = renderHook(() => useRemoveFleetMember(), {
-      wrapper: createQueryClientWrapper(),
-    });
+        const { result } = renderHook(() => useRemoveFleetMember(), {
+          wrapper: createQueryClientWrapper(),
+        });
 
-    result.current.mutate({ membershipId: "m1", fleetId: "fleet-1" });
+        result.current.mutate({ membershipId: "m1", fleetId: "fleet-1" });
 
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-    expect(result.current.error?.message).toBeDefined();
+        await waitFor(() => {
+          expect(result.current.isError).toBe(true);
+        });
+        expect(result.current.error?.message).toBeDefined();
+      },
+    );
   });
 });

@@ -8,6 +8,7 @@ export {
   DASHBOARD_COLLECTIONS_ROLES,
   DASHBOARD_HISTORY_ROLES,
   DASHBOARD_ROLES_HUB_ROLES,
+  DASHBOARD_RETENTION_ANALYTICS_ROLES,
 } from "@/auth/permissions";
 
 export { MODULE_ACCESS } from "@/auth/permissions";

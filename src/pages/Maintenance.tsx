@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,8 @@ import { useMaintenanceJobs, useUpdateJobStatus, type JobStatus, type Maintenanc
 import { MaintenanceFormDialog } from "@/components/maintenance/MaintenanceFormDialog";
 import { MaintenanceDetailDialog } from "@/components/maintenance/MaintenanceDetailDialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeedbackPrompt } from "@/hooks/useFeedbackPrompt";
+import { FeedbackWidget } from "@/components/shared/FeedbackWidget";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -52,8 +55,21 @@ const priorityConfig: Record<string, { label: string; variant: "default" | "seco
 };
 
 export default function Maintenance() {
-  const { role, userFleetId } = useAuth();
+  const { role, userFleetId, user } = useAuth();
+  const maintenanceFeedback = useFeedbackPrompt({
+    userId: user?.id ?? "",
+    fleetId: userFleetId,
+  });
+  const maintenanceFeedbackRef = useRef(maintenanceFeedback);
+  maintenanceFeedbackRef.current = maintenanceFeedback;
+
+  const onMaintenanceJobMarkedReady = useCallback((jobId: string) => {
+    if (user?.id && userFleetId) {
+      maintenanceFeedbackRef.current.fire("maintenance_closed", jobId, "maintenance");
+    }
+  }, [user?.id, userFleetId]);
   const userRole = role || "mechanic";
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<JobStatus | "all">("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -64,8 +80,28 @@ export default function Maintenance() {
   );
   const updateStatus = useUpdateJobStatus();
 
+  /** Ouvre le détail si l’URL contient `?job=` (ex. lien depuis la recherche universelle). */
+  useEffect(() => {
+    const id = searchParams.get("job");
+    if (!id || jobs.length === 0) return;
+    const found = jobs.some((j) => j.id === id);
+    if (!found) return;
+    setSelectedJobId(id);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("job");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [jobs, searchParams, setSearchParams]);
+
   const handleStatusChange = async (jobId: string, newStatus: JobStatus) => {
     await updateStatus.mutateAsync({ id: jobId, status: newStatus });
+    if (newStatus === "ready") {
+      onMaintenanceJobMarkedReady(jobId);
+    }
   };
 
   const getNextStatuses = (currentStatus: JobStatus): JobStatus[] => {
@@ -292,8 +328,19 @@ export default function Maintenance() {
           open={!!selectedJobId}
           onOpenChange={(open) => !open && setSelectedJobId(null)}
           jobId={selectedJobId}
+          onJobMarkedReady={onMaintenanceJobMarkedReady}
         />
       )}
+
+      {maintenanceFeedback.show && user?.id && userFleetId ? (
+        <FeedbackWidget
+          trigger={maintenanceFeedback.trigger}
+          entityId={maintenanceFeedback.entityId}
+          entityType={maintenanceFeedback.entityType}
+          onDismiss={() => maintenanceFeedback.dismiss()}
+          position="bottom-right"
+        />
+      ) : null}
     </>
   );
 }

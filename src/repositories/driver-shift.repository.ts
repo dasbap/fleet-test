@@ -70,6 +70,30 @@ export interface ShiftClosureUpdate {
  */
 export class DriverShiftRepository {
   /**
+   * Indique si le conducteur a au moins un créneau (toute flotte confondue).
+   */
+  async hasDriverEverOpenedShift(driverUserId: string): Promise<boolean> {
+    const { data: assignments, error: aErr } = await supabase
+      .from("affectations_vehicules")
+      .select("id")
+      .eq("driver_user_id", driverUserId);
+
+    if (aErr || !assignments?.length) return false;
+
+    const assignmentIds = assignments.map((a) => a.id);
+    const { count, error } = await supabase
+      .from("creneaux_conducteurs")
+      .select("id", { count: "exact", head: true })
+      .in("assignment_id", assignmentIds);
+
+    if (error) {
+      console.error("hasDriverEverOpenedShift:", error);
+      return false;
+    }
+    return (count ?? 0) > 0;
+  }
+
+  /**
    * Récupère le créneau actif d'un conducteur
    */
   async findActiveShiftByDriverId(driverId: string): Promise<DriverShift | null> {

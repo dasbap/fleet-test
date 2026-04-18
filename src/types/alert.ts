@@ -11,7 +11,11 @@ export type AlertType =
   | "missing_closure"
   | "recurring_gap"
   | "risky_driver"
-  | "vehicle_blocked";
+  | "vehicle_blocked"
+  | "maintenance_due"
+  | "document_expired"
+  | "failure_risk"
+  | "geofence_exit";
 
 export type AlertStatus = "open" | "acknowledged" | "resolved";
 

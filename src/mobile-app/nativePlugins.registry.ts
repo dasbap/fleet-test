@@ -7,10 +7,12 @@ export type NativePluginId =
   | "camera"
   | "geolocation"
   | "filesystem"
+  | "haptics"
   | "preferences"
   | "share"
   | "app"
-  | "push_notifications";
+  | "push_notifications"
+  | "native_biometric";
 
 export interface NativePluginEntry {
   id: NativePluginId;
@@ -36,6 +38,11 @@ export const NATIVE_PLUGINS_REGISTRY: readonly NativePluginEntry[] = [
     purpose: "Cache pièces lourdes (évolution)",
   },
   {
+    id: "haptics",
+    npmPackage: "@capacitor/haptics",
+    purpose: "Retour tactile lors des actions critiques (scan, alertes)",
+  },
+  {
     id: "preferences",
     npmPackage: "@capacitor/preferences",
     purpose: "Stockage clé-valeur local (préférences, jetons cache)",
@@ -54,5 +61,10 @@ export const NATIVE_PLUGINS_REGISTRY: readonly NativePluginEntry[] = [
     id: "push_notifications",
     npmPackage: "@capacitor/push-notifications",
     purpose: "Alertes opérationnelles (bridge existant côté app)",
+  },
+  {
+    id: "native_biometric",
+    npmPackage: "@capgo/capacitor-native-biometric",
+    purpose: "Déverrouillage biométrique + stockage sécurisé du jeton de session (terrain)",
   },
 ] as const;

@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageLoader } from "@/components/dashboard/PageLoader";
-import { signOut, useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
+import { signOut } from "@/lib/auth-actions";
 import { useUserFleets } from "@/hooks/useUserFleets";
 import { toast } from "@/hooks/use-toast";
 import { ROUTE_PATHS } from "@/navigation/routePaths";

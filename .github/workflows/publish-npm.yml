@@ -34,6 +34,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Budget JS initial (gzip, index.html)
+        run: npm run check:bundle-budget
+        env:
+          BUNDLE_BUDGET_INITIAL_GZIP_KB: "220"
+
       - name: Publish to npm
         run: npm publish --provenance --access public
         env:

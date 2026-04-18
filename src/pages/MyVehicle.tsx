@@ -1,16 +1,25 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Car, Loader2 } from "lucide-react";
+import { Car, Loader2, QrCode } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveAssignments } from "@/hooks/useAssignments";
+import { useVehicleHistory } from "@/hooks/useVehicleHistory";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { useNetworkOnline } from "@/features/account/hooks/useNetworkOnline";
 
 // Affiche le véhicule assigné au conducteur connecté (affectation active).
 
 const MyVehicle = () => {
   const { user, userFleetId } = useAuth();
+  const online = useNetworkOnline();
   const { data: assignments = [], isLoading, error: queryError } = useActiveAssignments(userFleetId ?? undefined);
   const myAssignment = user ? assignments.find((a) => a.driver_user_id === user.id) : null;
   const vehicle = myAssignment?.vehicle ?? null;
+  const { data: history } = useVehicleHistory(vehicle?.id);
   const error = queryError ? "Erreur lors de la récupération de l'affectation véhicule." : null;
+  const isOfflineConsultable = !online && !isLoading && !error && !!vehicle;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -19,6 +28,11 @@ const MyVehicle = () => {
           <Car className="h-7 w-7" />
           Mon véhicule
         </h1>
+        {isOfflineConsultable ? (
+          <Badge variant="outline" className="mt-2 border-warning/30 text-warning">
+            Consultable hors ligne
+          </Badge>
+        ) : null}
         <p className="text-muted-foreground mt-1">
           Consultez les informations de votre véhicule assigné
         </p>
@@ -75,6 +89,47 @@ const MyVehicle = () => {
           </div>
         </CardContent>
       </Card>
+
+      {vehicle && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle>Historique récent</CardTitle>
+            <Button asChild size="sm" variant="outline">
+              <Link to={ROUTE_PATHS.dashboardScan}>
+                <QrCode className="mr-2 h-4 w-4" />
+                Scanner
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {!history && (
+              <p className="text-sm text-muted-foreground">
+                Aucun historique local disponible pour ce véhicule.
+              </p>
+            )}
+            {history?.events?.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Aucun événement trouvé pour ce véhicule.
+              </p>
+            )}
+            {history?.events && history.events.length > 0 && (
+              <div className="space-y-3">
+                {history.events.slice(0, 8).map((event) => (
+                  <div key={event.id} className="rounded-lg border border-border/70 p-3">
+                    <p className="text-sm font-semibold">{event.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(event.at).toLocaleString("fr-FR")}
+                    </p>
+                    {event.description ? (
+                      <p className="mt-1 text-sm text-muted-foreground">{event.description}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

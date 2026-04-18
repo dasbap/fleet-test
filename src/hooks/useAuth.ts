@@ -10,4 +10,5 @@ export function useAuth() {
   return useAuthContext();
 }
 
-export { signIn, signUp, signOut } from "@/lib/auth-actions";
+/* Les actions auth (signIn, signOut, etc.) sont importées depuis @/lib/auth-actions
+ * pour ne pas lier vendor-supabase au module useAuth (routes publiques / landing). */

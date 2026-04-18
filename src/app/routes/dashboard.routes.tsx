@@ -1,13 +1,12 @@
 import { lazy } from "react";
 import { Route } from "react-router-dom";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { RoleGuard } from "@/navigation/guards/RequireRole";
 import {
   DASHBOARD_BACKOFFICE_ROLES,
   DASHBOARD_COLLECTIONS_ROLES,
   DASHBOARD_FINANCES_ROLES,
   DASHBOARD_HISTORY_ROLES,
+  DASHBOARD_RETENTION_ANALYTICS_ROLES,
   DASHBOARD_ROLES_HUB_ROLES,
 } from "@/navigation/dashboardRouteRoles";
 import { MODULE_ACCESS } from "@/navigation/dashboardRouteRoles";
@@ -21,13 +20,19 @@ const ShiftClosure = lazy(() => import("@/pages/ShiftClosure"));
 const Incidents = lazy(() => import("@/pages/Incidents"));
 const Maintenance = lazy(() => import("@/pages/Maintenance"));
 const Reports = lazy(() => import("@/pages/Reports"));
+const FleetLiveMapPage = lazy(() => import("@/pages/FleetLiveMapPage"));
+const RetentionDashboard = lazy(() =>
+  import("@/features/analytics/screens/RetentionDashboard").then((m) => ({
+    default: m.RetentionDashboard,
+  })),
+);
 const Invitations = lazy(() => import("@/pages/Invitations"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Teams = lazy(() => import("@/pages/Teams"));
 const CreateFleet = lazy(() => import("@/pages/CreateFleet"));
+const DashboardNotFound = lazy(() => import("@/pages/DashboardNotFound"));
 const Finances = lazy(() => import("@/pages/Finances"));
 const Collections = lazy(() => import("@/pages/Collections"));
-const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const IncidentAlertDetailPage = lazy(
   () => import("@/features/alerts/screens/IncidentAlertDetailPage")
 );
@@ -47,11 +52,22 @@ const OperationsInterventionDetailPage = lazy(
   () => import("@/features/operations/screens/OperationsInterventionDetailPage")
 );
 const MobileAccountPage = lazy(() => import("@/features/account/screens/MobileAccountPage"));
+const TutorialsListPage = lazy(
+  () => import("@/features/tutorials/screens/TutorialsListPage")
+);
+const TutorialPlayerPage = lazy(
+  () => import("@/features/tutorials/screens/TutorialPlayerPage")
+);
 const RolesHubScreen = lazy(() =>
   import("@/features/roles").then((m) => ({ default: m.RolesHubScreen }))
 );
 const DeclareIncidentPage = lazy(
   () => import("@/features/incidents/screens/DeclareIncidentPage")
+);
+const Scan = lazy(() => import("@/pages/Scan"));
+const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
+const ProtectedRoute = lazy(() =>
+  import("@/components/auth/ProtectedRoute").then((m) => ({ default: m.ProtectedRoute })),
 );
 
 /**
@@ -81,6 +97,15 @@ export const dashboardRoutes = (
       <Route path="incidents" element={<Incidents />} />
       <Route path="maintenance" element={<Maintenance />} />
       <Route path="reports" element={<Reports />} />
+      <Route path="tracking" element={<FleetLiveMapPage />} />
+      <Route
+        path="analytics/retention"
+        element={
+          <RoleGuard allow={DASHBOARD_RETENTION_ANALYTICS_ROLES}>
+            <RetentionDashboard />
+          </RoleGuard>
+        }
+      />
       <Route path="invitations" element={<Invitations />} />
       <Route path="settings" element={<Settings />} />
       <Route path="profile" element={<MobileAccountPage />} />
@@ -111,6 +136,8 @@ export const dashboardRoutes = (
       />
       <Route path="alerts/:alertId" element={<IncidentAlertDetailPage />} />
       <Route path="alerts" element={<MobileAlertsPage />} />
+      <Route path="tutorials" element={<TutorialsListPage />} />
+      <Route path="tutorials/:tutorialId" element={<TutorialPlayerPage />} />
       <Route
         path="operations/mission/:missionId"
         element={
@@ -135,6 +162,7 @@ export const dashboardRoutes = (
           </RoleGuard>
         }
       />
+      <Route path="scan" element={<Scan />} />
       <Route
         path="roles"
         element={
@@ -152,7 +180,7 @@ export const dashboardRoutes = (
           </RoleGuard>
         }
       />
-      <Route path="*" element={<Dashboard />} />
+      <Route path="*" element={<DashboardNotFound />} />
     </Route>
   </Route>
 );

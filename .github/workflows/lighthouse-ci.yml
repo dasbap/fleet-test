@@ -1,0 +1,93 @@
+# Garde-fou Lighthouse sans secrets GitHub (VITE_* factices, forks OK).
+# Audite les mêmes URLs que lighthouserc après preview sur le port 4173.
+#
+# Pour un audit complet (secrets réels, budget JS, commentaire PR, treosh) :
+# voir .github/workflows/lighthouse.yml
+#
+# Politique assertions (JSON strict dans lighthouserc — pas de // dans le fichier ; détails ici).
+# Voir aussi scripts/lighthouse-ci-local.mjs.
+# Blocage CI (failOnSeverity par défaut = error) : CLS médiane ≤ 0,1 uniquement.
+# Avertissements (warn, n’échouent pas le job) : scores perf/a11y, LCP, INP, FCP, SI, TBT,
+# audits opportunités (maxLength > 0 pour éviter zéro tolérance), unused JS/CSS (seuils bytes généreux).
+# SEO : seconde passe lighthouserc-seo.json sur / uniquement (voir .github/lighthouse/README.md).
+# Profil strict (perf+LCP en error) : lighthouserc.strict.json — npm run lighthouse:ci:strict ; CI sur demande.
+#
+# Doublon possible : un push sur main (etc.) qui modifie p.ex. src/** peut lancer ce workflow
+# et lighthouse.yml en parallèle (intention : garde-fou sans secrets vs audit complet). Pour
+# n’en garder qu’un, désactiver l’un des deux sur certaines branches ou via conditions — non imposé ici.
+name: Lighthouse CI — garde-fou
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - release/**
+    paths:
+      - "src/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/lighthouse/**"
+      - ".github/workflows/lighthouse-ci.yml"
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+      - release/**
+    paths:
+      - "src/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/lighthouse/**"
+      - ".github/workflows/lighthouse-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  lighthouse:
+    name: Lighthouse CI (placeholders)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_SUPABASE_URL: https://placeholder-build.supabase.co
+      VITE_SUPABASE_ANON_KEY: placeholder-anon-key-ci-build-only
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Vérifier budget JS initial (routes critiques)
+        run: npm run check:bundle-budget:critical
+
+      - name: Démarrer le serveur preview
+        run: npm run preview &
+
+      - name: Attendre le serveur
+        run: npx wait-on http://localhost:4173 --timeout 60000
+
+      - name: Run Lighthouse CI (perf, a11y)
+        run: npx lhci autorun --config=.github/lighthouse/lighthouserc.json
+
+      - name: Run Lighthouse CI (critical routes only)
+        run: npx lhci autorun --config=.github/lighthouse/lighthouserc.critical.json
+
+      - name: Vérifier INP interaction (script utilisateur)
+        run: npm run perf:inp:interaction
+
+      - name: Run Lighthouse CI (SEO — page d’accueil)
+        run: npx lhci autorun --config=.github/lighthouse/lighthouserc-seo.json

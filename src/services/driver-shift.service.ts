@@ -7,6 +7,7 @@ import type {
   ShiftClosureInsert,
   ShiftClosureUpdate,
 } from '@/repositories/driver-shift.repository';
+import type { OfflineShiftClosePayload, OfflineShiftStartPayload } from '@/types/offline-queue';
 
 /**
  * Service pour la logique métier des créneaux conducteurs
@@ -63,10 +64,6 @@ export class DriverShiftService {
       throw new Error('Le kilométrage de départ ne peut pas être négatif');
     }
 
-    // Vérifier qu'il n'y a pas déjà un créneau actif pour cette affectation
-    const existingShift = await this.repository.findById(data.assignment_id);
-    // Note: Cette vérification pourrait être améliorée en vérifiant les créneaux actifs
-
     return this.repository.create(data);
   }
 
@@ -121,6 +118,42 @@ export class DriverShiftService {
     if (vehicleId) {
       await this.vehicleRepository.updateKilometerage(vehicleId, closure.km_end);
     }
+  }
+
+  buildOfflineShiftStartPayload(data: ShiftInsert): OfflineShiftStartPayload {
+    if (!data.assignment_id) {
+      throw new Error("L'ID de l'affectation est requis");
+    }
+    if (data.km_start < 0) {
+      throw new Error('Le kilométrage de départ ne peut pas être négatif');
+    }
+    return {
+      assignmentId: data.assignment_id,
+      kmStart: data.km_start,
+    };
+  }
+
+  buildOfflineShiftClosePayload(closure: ShiftClosureInsert): OfflineShiftClosePayload {
+    if (!closure.shift_id) {
+      throw new Error("L'ID du créneau est requis");
+    }
+    if (closure.km_end < 0) {
+      throw new Error('Le kilométrage de fin doit être positif');
+    }
+    if (closure.revenue_declared < 0) {
+      throw new Error('La recette déclarée ne peut pas être négative');
+    }
+    if (!closure.proof_type || !closure.proof_value) {
+      throw new Error('Le type et la valeur de preuve sont requis');
+    }
+    return {
+      shiftId: closure.shift_id,
+      kmEnd: closure.km_end,
+      revenueDeclared: closure.revenue_declared,
+      collectionMode: closure.collection_mode,
+      proofType: closure.proof_type,
+      proofValue: closure.proof_value,
+    };
   }
 
   /**

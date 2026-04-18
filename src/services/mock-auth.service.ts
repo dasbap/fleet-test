@@ -3,6 +3,7 @@
  * Évolution prévue : OTP SMS via une méthode dédiée côté service, puis adaptateur Supabase.
  */
 import { DEMO_FLEET_ID } from "@/mocks/demo/constants";
+import { isValidUuid } from "@/lib/isUuid";
 import type { AppRole, AuthUser, FleetMembership } from "@/types/auth";
 
 const STORAGE_KEY = "esamba-mock-auth-v1";
@@ -16,7 +17,7 @@ export interface MockPersistedSession {
 }
 
 /**
- * Service d’authentification factice pour prototypage et tests sans backend.
+ * Service d'authentification factice pour prototypage et tests sans backend.
  * Remplacer par un adaptateur Supabase / API en conservant la même surface si possible.
  */
 export class MockAuthService {
@@ -70,14 +71,22 @@ export class MockAuthService {
       if (!raw) return null;
       const parsed = JSON.parse(raw) as MockPersistedSession;
       if (!parsed?.user?.id || !parsed.role) return null;
-      // Migration : anciennes sessions sans flotte → rattachement démo E-Samba
-      if (!parsed.memberships?.length) {
+
+      // FIX P0 : migration des sessions avec fleet_id non-UUID (ex. "fleet-esamba-sn")
+      // Avant ce fix, loadPersisted() retournait les anciennes sessions stales telles quelles,
+      // causant "invalid input syntax for type uuid" côté Supabase.
+      const hasInvalidFleetId =
+        !parsed.memberships?.length ||
+        parsed.memberships.some((m) => !isValidUuid(m.fleet_id));
+
+      if (hasInvalidFleetId) {
         parsed.memberships = this.buildDemoFleetMemberships(
           parsed.user.id,
           parsed.role,
         );
         this.persist(parsed);
       }
+
       return parsed;
     } catch {
       return null;

@@ -1,11 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Zap, ArrowLeft, Mail, Lock, User, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { signIn, signUp } from "@/hooks/useAuth";
+import {
+  requestPasswordReset,
+  signIn,
+  signUp,
+  updateCurrentUserPassword,
+} from "@/lib/auth-actions";
 import { isMockAuthEnabled } from "@/lib/authMode";
 import { mapSupabaseErrorToFrench } from "@/lib/mapSupabaseError";
 import {
@@ -21,7 +26,6 @@ import {
   type MobileAppRole,
 } from "@/types/mobile-app-role";
 import { InvitationCodeInput } from "@/components/auth/InvitationCodeInput";
-import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -33,10 +37,23 @@ import {
   DEMO_CREDENTIAL_ACCOUNTS,
   DEMO_SHARED_PASSWORD,
 } from "@/features/auth/data/demoCredentials";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
+import {
+  getSafePostLoginPath,
+  LEGACY_POST_LOGIN_REDIRECT_PARAM,
+  POST_LOGIN_NEXT_PARAM,
+} from "@/navigation/postLoginRedirect";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const postLoginTarget = useMemo(
+    () =>
+      getSafePostLoginPath(searchParams.get(POST_LOGIN_NEXT_PARAM)) ??
+      getSafePostLoginPath(searchParams.get(LEGACY_POST_LOGIN_REDIRECT_PARAM)) ??
+      ROUTE_PATHS.dashboard,
+    [searchParams],
+  );
   const { toast } = useToast();
   const [isSignup, setIsSignup] = useState(searchParams.get("mode") === "signup");
   const [isLoading, setIsLoading] = useState(false);
@@ -84,9 +101,10 @@ const Auth = () => {
     }
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth`,
-      });
+      const { error } = await requestPasswordReset(
+        email,
+        `${window.location.origin}/auth`
+      );
       if (error) {
         toast({
           title: "Erreur",
@@ -119,7 +137,7 @@ const Auth = () => {
     }
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: recoveryPassword });
+      const { error } = await updateCurrentUserPassword(recoveryPassword);
       if (error) {
         toast({ title: "Erreur", description: error.message, variant: "destructive" });
         setIsLoading(false);
@@ -130,7 +148,7 @@ const Auth = () => {
       setRecoveryPasswordConfirm("");
       setIsRecovery(false);
       window.history.replaceState(null, "", window.location.pathname);
-      navigate("/dashboard");
+      navigate(postLoginTarget);
     } catch {
       toast({ title: "Erreur", description: "Impossible de mettre à jour le mot de passe.", variant: "destructive" });
     }
@@ -210,7 +228,7 @@ const Auth = () => {
           title: "Connexion réussie!",
           description: "Redirection vers le tableau de bord...",
         });
-        navigate("/dashboard");
+        navigate(postLoginTarget);
       }
     } catch (err) {
       toast({
@@ -516,37 +534,7 @@ const Auth = () => {
         </div>
       </div>
 
-      {/* Right Panel - Visual */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary/20 via-background to-accent/10 items-center justify-center p-12">
-        <div className="max-w-lg text-center">
-          <div className="w-24 h-24 mx-auto mb-8 rounded-2xl bg-primary/20 flex items-center justify-center">
-            <Zap className="w-12 h-12 text-primary" />
-          </div>
-          <h2 className="text-3xl font-heading font-bold mb-4">
-            Smart Mobility Africa
-          </h2>
-          <p className="text-muted-foreground text-lg leading-relaxed">
-            Rejoignez des centaines de gestionnaires de flottes qui optimisent
-            leurs opérations quotidiennes avec E-Samba.
-          </p>
-          <div className="mt-8 flex items-center justify-center gap-8">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">500+</div>
-              <div className="text-sm text-muted-foreground">Véhicules</div>
-            </div>
-            <div className="w-px h-12 bg-border" />
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">50+</div>
-              <div className="text-sm text-muted-foreground">Flottes</div>
-            </div>
-            <div className="w-px h-12 bg-border" />
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">98%</div>
-              <div className="text-sm text-muted-foreground">Uptime</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Panneau visuel désactivé pour réduire le LCP sur /auth en mobile 3G. */}
 
       {/* Dialog identifiants démo */}
       <Dialog open={showDemoCredentials} onOpenChange={setShowDemoCredentials}>

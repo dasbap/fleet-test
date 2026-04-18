@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { FleetVehicleListItem } from "@/types/fleet-vehicle";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { cn } from "@/lib/utils";
+import { OptimizedImage } from "@/components/shared/OptimizedImage";
 import { VehicleStatusBadge } from "./VehicleStatusBadge";
 
 interface VehicleCardProps {
@@ -17,6 +18,12 @@ interface VehicleCardProps {
  * Carte résumé véhicule (liste grille / mobile).
  */
 export function VehicleCard({ vehicle, className }: VehicleCardProps) {
+  const vehicleImageUrl =
+    (vehicle as FleetVehicleListItem & { photoUrl?: string; imageUrl?: string })
+      .photoUrl ??
+    (vehicle as FleetVehicleListItem & { photoUrl?: string; imageUrl?: string })
+      .imageUrl;
+
   const to = ROUTE_PATHS.dashboardVehicleDetail(vehicle.id);
   const nextMaint = (() => {
     try {
@@ -36,7 +43,23 @@ export function VehicleCard({ vehicle, className }: VehicleCardProps) {
         className
       )}
     >
-      <Card className="h-full border-border/80 shadow-sm transition-colors hover:bg-muted/35">
+      <Card className="h-full overflow-hidden border-border/80 shadow-sm transition-colors hover:bg-muted/35">
+        {vehicleImageUrl ? (
+          <OptimizedImage
+            src={vehicleImageUrl}
+            alt={`Véhicule ${vehicle.registration}`}
+            width={640}
+            height={360}
+            aspectRatio="16/9"
+            fit="cover"
+            className="rounded-t-xl"
+            sizes="(max-width: 640px) 100vw, 640px"
+          />
+        ) : (
+          <div className="flex aspect-[16/9] w-full items-center justify-center bg-surface-raised text-3xl text-muted-foreground">
+            🚗
+          </div>
+        )}
         <CardContent className="space-y-3 p-4 sm:p-5">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">

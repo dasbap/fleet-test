@@ -65,6 +65,21 @@ export interface MaintenanceJobFilters {
 }
 
 /**
+ * Fenêtre d’agrégation pour tableaux de bord (et vues ops) : retards puis à venir.
+ * Permet d’ajuster les plafonds sans changer les appelants ; une vue SQL peut remplacer
+ * l’implémentation si les volumes le justifient (mesurer p95 / taille des tables).
+ */
+export interface DashboardMaintenanceWindowOptions {
+  /** Nombre max de lignes après fusion retards + à venir (défaut 15). */
+  totalLimit?: number;
+  /**
+   * Plafond par requête (branche retards, branche à venir). Défaut = totalLimit.
+   * Utile si une branche monopolise la fenêtre.
+   */
+  branchLimit?: number;
+}
+
+/**
  * Repository pour l'accès aux données des travaux de maintenance
  */
 export class MaintenanceRepository {
@@ -112,32 +127,85 @@ export class MaintenanceRepository {
   }
 
   /**
-   * Travaux avec date planifiée (planning gestionnaire / synthèse).
+   * Interventions planifiées pour widgets dashboard / ops : retards puis à venir, même logique
+   * que {@link findDashboardMaintenanceWindow}. Alias historique pour compatibilité.
    */
   async findScheduledForFleet(fleetId: string, limit: number = 15): Promise<MaintenanceJob[]> {
+    return this.findDashboardMaintenanceWindow(fleetId, { totalLimit: limit });
+  }
+
+  /**
+   * Fenêtre « retards + à venir » pour une flotte : `planned_at` renseigné, statuts ouverts uniquement.
+   * Implémentation actuelle : deux requêtes puis fusion (remplaçable plus tard par une vue SQL matérialisée).
+   */
+  async findDashboardMaintenanceWindow(
+    fleetId: string,
+    options: DashboardMaintenanceWindowOptions = {},
+  ): Promise<MaintenanceJob[]> {
+    const totalLimit = options.totalLimit ?? 15;
+    const branchLimit = options.branchLimit ?? totalLimit;
+
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
-    const { data, error } = await supabase
-      .from('travaux_maintenance')
-      .select(
-        `
+    const startIso = startOfToday.toISOString();
+
+    const selectClause = `
         *,
         vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
         incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
-      `
-      )
-      .eq('fleet_id', fleetId)
-      .not('planned_at', 'is', null)
-      .gte('planned_at', startOfToday.toISOString())
-      .order('planned_at', { ascending: true })
-      .limit(limit);
+      `;
 
-    if (error) {
-      console.error('Error fetching scheduled maintenance:', error);
-      throw new Error(error.message);
+    const openStatuses = ['queued', 'in_progress', 'blocked'] as const;
+
+    const [overdueRes, upcomingRes] = await Promise.all([
+      supabase
+        .from('travaux_maintenance')
+        .select(selectClause)
+        .eq('fleet_id', fleetId)
+        .not('planned_at', 'is', null)
+        .lt('planned_at', startIso)
+        .in('status', [...openStatuses])
+        .order('planned_at', { ascending: true })
+        .limit(branchLimit),
+      supabase
+        .from('travaux_maintenance')
+        .select(selectClause)
+        .eq('fleet_id', fleetId)
+        .not('planned_at', 'is', null)
+        .gte('planned_at', startIso)
+        .in('status', [...openStatuses])
+        .order('planned_at', { ascending: true })
+        .limit(branchLimit),
+    ]);
+
+    if (overdueRes.error) {
+      console.error('Error fetching overdue scheduled maintenance:', overdueRes.error);
+      throw new Error(overdueRes.error.message);
+    }
+    if (upcomingRes.error) {
+      console.error('Error fetching upcoming scheduled maintenance:', upcomingRes.error);
+      throw new Error(upcomingRes.error.message);
     }
 
-    return (data || []) as MaintenanceJob[];
+    const overdue = (overdueRes.data || []) as MaintenanceJob[];
+    const upcoming = (upcomingRes.data || []) as MaintenanceJob[];
+
+    const seen = new Set<string>();
+    const merged: MaintenanceJob[] = [];
+    for (const job of overdue) {
+      if (!seen.has(job.id)) {
+        seen.add(job.id);
+        merged.push(job);
+      }
+    }
+    for (const job of upcoming) {
+      if (!seen.has(job.id)) {
+        seen.add(job.id);
+        merged.push(job);
+      }
+    }
+
+    return merged.slice(0, totalLimit);
   }
 
   /**

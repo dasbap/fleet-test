@@ -13,6 +13,9 @@ export interface Incident {
   evidence_path: string | null;
   latitude: number | null;
   longitude: number | null;
+  status: 'open' | 'investigating' | 'resolved' | 'closed';
+  resolved_at: string | null;
+  resolved_by: string | null;
   created_at: string;
   // Joined data
   vehicle?: {
@@ -44,6 +47,9 @@ export interface IncidentUpdate {
   severity?: IncidentSeverity;
   incident_category?: string | null;
   evidence_path?: string | null;
+  status?: 'open' | 'investigating' | 'resolved' | 'closed';
+  resolved_at?: string | null;
+  resolved_by?: string | null;
 }
 
 export interface IncidentFilters {
@@ -155,6 +161,9 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
           incident.longitude !== undefined && incident.longitude !== null
             ? incident.longitude
             : null,
+        status: 'open',
+        resolved_at: null,
+        resolved_by: null,
       })
       .select(`
         *,

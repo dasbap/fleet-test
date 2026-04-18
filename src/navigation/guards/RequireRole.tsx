@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import type { MobileAppRole } from "@/types/mobile-app-role";
 import { toAppRole } from "@/lib/mobile/mobileRoleBridge";
-import { getUnauthenticatedLoginPath } from "@/navigation/loginRedirectPath";
+import { getLoginPathPreservingReturn } from "@/navigation/loginRedirectPath";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 interface RequireRoleProps {
@@ -20,6 +20,8 @@ function RoleGate({
   fallbackTo = ROUTE_PATHS.dashboard,
 }: RequireRoleProps) {
   const { role, isLoading, user } = useAuth();
+  const location = useLocation();
+  const loginWithReturn = getLoginPathPreservingReturn(location);
   const allowedAppRoles = allow.map((r) => toAppRole(r));
 
   if (isLoading) {
@@ -34,7 +36,7 @@ function RoleGate({
   }
 
   if (!user) {
-    return <Navigate to={getUnauthenticatedLoginPath()} replace />;
+    return <Navigate to={loginWithReturn} replace />;
   }
 
   if (!role || !allowedAppRoles.includes(role)) {

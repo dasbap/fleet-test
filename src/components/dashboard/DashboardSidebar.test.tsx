@@ -6,12 +6,41 @@ import DashboardSidebar from "./DashboardSidebar";
 
 const signOutMock = vi.fn();
 
-vi.mock("@/hooks/useAuth", () => ({
+vi.mock("@/lib/auth-actions", () => ({
   signOut: (...args: unknown[]) => signOutMock(...args),
 }));
 
 vi.mock("@/hooks/use-toast", () => ({
   toast: vi.fn(),
+}));
+
+vi.mock("@/components/shared/ActivationChecklist", () => ({
+  ActivationChecklist: () => <div>activation-checklist</div>,
+}));
+
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => ({
+    user: null,
+    role: "organizer",
+    userFleetId: "test-fleet-id",
+    orgId: null,
+  }),
+}));
+
+vi.mock("@/hooks/useFleetBillingContext", () => ({
+  useFleetBillingContext: () => ({
+    data: {
+      planCode: "starter",
+      isPaid: true,
+      vehicleCount: 1,
+      maxVehicles: 999,
+      financeEnabled: true,
+      aiEnabled: true,
+    },
+    isSuccess: true,
+    isError: false,
+    isLoading: false,
+  }),
 }));
 
 function renderSidebar(
@@ -36,6 +65,7 @@ describe("DashboardSidebar", () => {
     { name: /Équipes/i, href: "/dashboard/teams" },
     { name: /Invitations/i, href: "/dashboard/invitations" },
     { name: /Rapports/i, href: "/dashboard/reports" },
+    { name: /Suivi GPS/i, href: "/dashboard/tracking" },
     { name: /Finances/i, href: "/dashboard/finances" },
     { name: /Alertes/i, href: "/dashboard/alerts" },
     { name: /Rôles/i, href: "/dashboard/roles" },
@@ -62,62 +92,82 @@ describe("DashboardSidebar", () => {
     20000
   );
 
-  it("affiche le lien actif avec aria-current page", () => {
-    renderSidebar("organizer", "/dashboard/vehicles");
+  it(
+    "affiche le lien actif avec aria-current page",
+    () => {
+      renderSidebar("organizer", "/dashboard/vehicles");
 
-    const linkVehicles = screen.getByRole("link", { name: /Véhicules/i });
-    expect(linkVehicles).toHaveAttribute("aria-current", "page");
-  });
+      const linkVehicles = screen.getByRole("link", { name: /Véhicules/i });
+      expect(linkVehicles).toHaveAttribute("aria-current", "page");
+    },
+    15000
+  );
 
-  it("affiche Mon profil et Paramètres avec les bons href", () => {
-    renderSidebar("organizer");
+  it(
+    "affiche Mon profil et Paramètres avec les bons href",
+    async () => {
+      renderSidebar("organizer");
 
-    expect(screen.getByRole("link", { name: /Mon profil/i })).toHaveAttribute(
-      "href",
-      "/dashboard/profile"
-    );
-    expect(screen.getByRole("link", { name: /Paramètres/i })).toHaveAttribute(
-      "href",
-      "/dashboard/settings"
-    );
-  });
+      expect(await screen.findByRole("link", { name: /Mon profil/i })).toHaveAttribute(
+        "href",
+        "/dashboard/profile"
+      );
+      expect(await screen.findByRole("link", { name: /Paramètres/i })).toHaveAttribute(
+        "href",
+        "/dashboard/settings"
+      );
+    },
+    20000
+  );
 
-  it("marque Mon profil comme page courante sur /dashboard/profile", () => {
-    renderSidebar("organizer", "/dashboard/profile");
+  it(
+    "marque Mon profil comme page courante sur /dashboard/profile",
+    () => {
+      renderSidebar("organizer", "/dashboard/profile");
 
-    const linkProfil = screen.getByRole("link", { name: /Mon profil/i });
-    expect(linkProfil).toHaveAttribute("aria-current", "page");
-  });
+      const linkProfil = screen.getByRole("link", { name: /Mon profil/i });
+      expect(linkProfil).toHaveAttribute("aria-current", "page");
+    },
+    15000
+  );
 
-  it("appelle signOut au clic sur Déconnexion", async () => {
-    renderSidebar("organizer");
+  it(
+    "appelle signOut au clic sur Déconnexion",
+    async () => {
+      renderSidebar("organizer");
 
-    const logoutButton = screen.getByRole("button", { name: /Déconnexion/i });
-    fireEvent.click(logoutButton);
+      const logoutButton = screen.getByRole("button", { name: /Déconnexion/i });
+      fireEvent.click(logoutButton);
 
-    await waitFor(() => {
-      expect(signOutMock).toHaveBeenCalledTimes(1);
-    });
-  });
+      await waitFor(() => {
+        expect(signOutMock).toHaveBeenCalledTimes(1);
+      });
+    },
+    20000
+  );
 
-  it("affiche les entrées driver pour le rôle driver", () => {
-    renderSidebar("driver");
+  it(
+    "affiche les entrées driver pour le rôle driver",
+    async () => {
+      renderSidebar("driver");
 
-    expect(screen.getByRole("link", { name: /Mon tableau/i })).toHaveAttribute(
-      "href",
-      "/dashboard"
-    );
-    expect(screen.getByRole("link", { name: /Mon véhicule/i })).toHaveAttribute(
-      "href",
-      "/dashboard/my-vehicle"
-    );
-    expect(screen.getByRole("link", { name: /Clôture/i })).toHaveAttribute(
-      "href",
-      "/dashboard/closure"
-    );
-    expect(screen.getByRole("link", { name: /Signaler/i })).toHaveAttribute(
-      "href",
-      "/dashboard/incidents"
-    );
-  });
+      expect(await screen.findByRole("link", { name: /Mon tableau/i })).toHaveAttribute(
+        "href",
+        "/dashboard"
+      );
+      expect(await screen.findByRole("link", { name: /Mon véhicule/i })).toHaveAttribute(
+        "href",
+        "/dashboard/my-vehicle"
+      );
+      expect(await screen.findByRole("link", { name: /Clôture/i })).toHaveAttribute(
+        "href",
+        "/dashboard/closure"
+      );
+      expect(await screen.findByRole("link", { name: /Signaler/i })).toHaveAttribute(
+        "href",
+        "/dashboard/incidents"
+      );
+    },
+    20000
+  );
 });

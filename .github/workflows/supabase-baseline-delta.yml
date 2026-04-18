@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - master
+      - release/**
     paths:
       - "supabase/**"
       - "scripts/test-baseline-delta.ps1"
@@ -22,6 +23,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  SUPABASE_CLI_VERSION: latest
 
 jobs:
   validate-baseline-delta:
@@ -29,40 +31,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v5
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: npm ci
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: ${{ env.SUPABASE_CLI_VERSION }}
 
-      - name: Prepare CI log directory
+      - name: Verify Supabase CLI Installation
+        run: |
+          supabase --version
+
+      - name: Prepare CI Log Directory
         shell: pwsh
         run: New-Item -ItemType Directory -Path "supabase-ci-logs" -Force | Out-Null
 
-      - name: Run baseline + delta validation
+      - name: Run Baseline + Delta Validation
         shell: pwsh
         env:
           CI_SUPABASE_DEBUG: "true"
         run: ./scripts/test-baseline-delta.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/baseline-delta.log"
 
-      - name: Run SQL security tests
+      - name: Run SQL Security Tests
         shell: pwsh
         env:
           CI_SUPABASE_DEBUG: "true"
         run: ./scripts/test-sql-security.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/sql-security.log"
 
-      - name: Upload Supabase debug logs
+      - name: Upload Supabase Debug Logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -75,10 +81,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v5
 
-      - name: Validate delta migration list
+      - name: Validate Delta Migration List
         run: |
           while IFS= read -r file; do
             if [ -z "$file" ]; then

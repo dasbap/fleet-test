@@ -1,0 +1,70 @@
+---
+description: Intégration ESAMBA — setup, vérification des données, RPC Supabase et cache local flotte
+alwaysApply: false
+globs:
+  - "src/**/*esamba*"
+  - "src/constants/esamba-demo.constants.ts"
+  - "src/lib/storage/flotteEsambaLocalCache.ts"
+  - "src/lib/deepLinks/**"
+  - "src/services/deep-link.service.ts"
+  - "src/pages/Settings.tsx"
+  - "supabase/**/*esamba*"
+  - "scripts/**/*esamba*"
+  - "docs/**/*esamba*"
+  - "android/**/esamba/**"
+---
+
+# Intégration ESAMBA - Smart Fleet Africa
+
+## Rôle et architecture
+
+- Le périmètre ESAMBA suit la même pile que le reste du projet : **Composant → Hook → Service → Repository → Supabase** (voir `architecture.mdc`).
+- **Ne pas** appeler Supabase depuis les hooks ou les composants ; **toujours** passer par les services et les repositories dédiés.
+
+## Cartographie des fichiers (points d’entrée)
+
+| Zone | Fichiers |
+|------|----------|
+| Constantes seed démo | `src/constants/esamba-demo.constants.ts` (source unique pour seed + UI Paramètres) |
+| Services | `src/services/esamba-setup.service.ts`, `src/services/esamba-verification.service.ts` |
+| Repositories | `src/repositories/esamba-setup.repository.ts`, `src/repositories/esamba-verification.repository.ts` |
+| Hooks | `src/hooks/useSeedEsambaData.ts`, `src/hooks/useEsambaDataVerification.ts`, `src/hooks/useCreateFleet.ts` (setup flotte) |
+| Cache local | `src/lib/storage/flotteEsambaLocalCache.ts` |
+| Tests | `src/test/flotteEsambaLocalCache.snapshot.test.ts` |
+| Android (Capacitor) | `android/app/src/main/java/com/esamba/flotte/MainActivity.java` |
+| SQL / RPC | scripts sous `supabase/` dont le nom contient `esamba` (voir section Base de données) |
+
+## Fichiers connexes (sans `esamba` dans le nom)
+
+- **Deep links `esamba://`** : `src/lib/deepLinks/` (config, parsing, navigation, logs).
+- **Service deep link** : `src/services/deep-link.service.ts`.
+- **UI seed / vérification** : `src/pages/Settings.tsx` (importe les constantes depuis `esamba-demo.constants.ts`).
+- **Push / partage** (URLs natives) : `src/services/push-notification.service.ts`, `src/services/share.service.ts` lorsque pertinent.
+
+## Conventions métier (seed démo)
+
+Les valeurs sont définies dans **`src/constants/esamba-demo.constants.ts`** (export `ESAMBA_DEMO_*`) et utilisées par `EsambaSetupService.seedEsambaData` et la page Paramètres.
+
+- Organisation : `ESAMBA_DEMO_ORG_NAME` ; pays `ESAMBA_DEMO_ORG_COUNTRY_CODE`.
+- Flotte : `ESAMBA_DEMO_FLEET_NAME`, politique `ESAMBA_DEMO_COLLECTION_POLICY`.
+- Véhicule de démo : `ESAMBA_DEMO_VEHICLE_REGISTRATION` (marque / modèle / année / km dans le même module).
+- Invitation : `ESAMBA_DEMO_INVITATION_CODE`.
+- Rôle flotte seed : `ESAMBA_DEMO_FLEET_MEMBER_ROLE`.
+
+Pour toute évolution, modifier ce module et garder la cohérence avec les scripts SQL d’intégration et la documentation.
+
+## Base de données (Supabase)
+
+- RPC et scripts SQL : répertoire `supabase/`, fichiers du type `rpc-*-esamba*.sql`, `setup-esamba-*.sql`, `verify-esamba-*.sql`, etc.
+- Nouvelle RPC : suivre le nommage et les paramètres des RPC existantes (`creer_flotte_esamba`, `creer_ou_mettre_a_jour_adhesion_flotte`, etc.) ; prévoir les grants si le projet les utilise déjà (`grant-check-esamba-rpc.sql`, etc.).
+
+## Documentation hors code
+
+- Procédures manuelles (SQL Editor, checks) : guides à la racine ou dans `docs/`, par ex. `GUIDE-INTEGRATION-ESAMBA.md`, `GUIDE-TEST-ESAMBA-SETUP.md`, `docs/deep-links-esamba.md`.
+- Ne pas dupliquer de longues procédures dans cette règle : renvoyer vers ces fichiers.
+
+## Sécurité et qualité
+
+- Ne jamais committer de secrets, clés ou jetons ; configuration via variables d’environnement.
+- Messages d’erreur côté UI : formuler pour l’utilisateur, sans exposer de stack trace.
+- Logique métier nouvelle : tests Vitest dans `src/test/` (voir `quality-gates.mdc`).
