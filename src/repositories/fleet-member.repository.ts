@@ -88,6 +88,35 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
   }
 
   /**
+   * Adhésions actives pour un utilisateur, sans jointure profils.
+   * Utilisé pour la session (useAuth) : évite les échecs PostgREST si l'embed profils
+   * ou les politiques sur `profils` bloquent la réponse complète.
+   */
+  async findActiveRowsForUser(userId: string): Promise<
+    Pick<FleetMember, "id" | "user_id" | "fleet_id" | "role" | "is_active" | "created_at">[]
+  > {
+    if (!userId) {
+      return [];
+    }
+    const { data, error } = await supabase
+      .from("flotte_adhesions")
+      .select("id, user_id, fleet_id, role, is_active, created_at")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching fleet adhesions (minimal):", error);
+      throw new Error(error.message);
+    }
+
+    return (data || []) as Pick<
+      FleetMember,
+      "id" | "user_id" | "fleet_id" | "role" | "is_active" | "created_at"
+    >[];
+  }
+
+  /**
    * Récupère un membre par son ID
    */
   async findById(id: string): Promise<FleetMember | null> {

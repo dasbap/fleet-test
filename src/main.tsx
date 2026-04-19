@@ -6,6 +6,7 @@ import { reportWebVitals } from "./reportWebVitals";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { preloadRouteChunksForPath } from "@/app/routes/preloadRouteChunks";
 import { isValidUuid } from "@/lib/isUuid";
+import { i18nReady } from "@/i18n";
 import App from "./App.tsx";
 
 const ACTIVE_FLEET_STORAGE_KEY = "esamba.active_fleet_id";
@@ -75,6 +76,7 @@ const bootstrap = async () => {
 
   try {
     await import("./instrument");
+    await i18nReady;
     preloadRouteChunksForPath(window.location.pathname);
     createRoot(rootEl).render(
       <Suspense fallback={<RoutePageFallback />}>
@@ -82,11 +84,6 @@ const bootstrap = async () => {
       </Suspense>
     );
     reportWebVitals();
-
-    // i18n se charge en parallèle pour ne pas bloquer le rendu critique.
-    void import("@/i18n").catch((error) => {
-      console.error("Échec du chargement i18n:", error);
-    });
 
     // Analytics est différé en production pour préserver le LCP/INP.
     if (import.meta.env.PROD) {

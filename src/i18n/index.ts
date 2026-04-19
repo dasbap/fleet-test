@@ -26,7 +26,8 @@ function migrateLegacyLanguageKey(): void {
 
 migrateLegacyLanguageKey();
 
-void i18n
+/** Promise résolue quand i18next a fini de charger (évite écran vide si Suspense i18n ne se résout pas). */
+export const i18nReady: Promise<typeof i18n> = i18n
   .use(Backend)
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -47,8 +48,10 @@ void i18n
       escapeValue: false,
     },
     react: {
-      useSuspense: true,
+      // false : évite un blocage Suspense (écran noir) si les JSON locales échouent ou dans certains WebView.
+      useSuspense: false,
     },
-  });
+  })
+  .then(() => i18n);
 
 export default i18n;

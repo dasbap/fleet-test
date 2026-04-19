@@ -64,6 +64,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     { orgId: string; fleetId: string; fleetName: string | null; role: AppRole }[]
   >([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isTenantOrgLoading, setIsTenantOrgLoading] = useState<boolean>(false);
 
   const processPendingInvitation = async (sessionUser: User): Promise<void> => {
     const pendingCode = await checkPendingInvitation(sessionUser);
@@ -218,6 +219,11 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       if (event === "INITIAL_SESSION") {
         return;
       }
+      // Après connexion (SIGNED_IN), éviter un rendu avec user défini mais memberships encore vides :
+      // PostLoginGate interpréterait à tort l'absence d'adhésion et redirigerait vers /start.
+      if (event === "SIGNED_IN" && nextSession?.user) {
+        setIsLoading(true);
+      }
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       try {
@@ -283,6 +289,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       });
       setOrgId(null);
       setTenantOptions([]);
+      setIsTenantOrgLoading(false);
       return;
     }
     const effectiveFleetId = userFleetId;
@@ -292,6 +299,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       fleetIds: memberships.map((m) => m.fleet_id),
     });
     const fleetIds = memberships.map((membership) => membership.fleet_id);
+    setIsTenantOrgLoading(true);
     void fleetService
       .getFleetsByIds(fleetIds)
       .then((fleets) => {
@@ -323,6 +331,9 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         );
         setOrgId(null);
         setTenantOptions([]);
+      })
+      .finally(() => {
+        setIsTenantOrgLoading(false);
       });
   }, [memberships, userFleetId]);
 
@@ -428,6 +439,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       orgId,
       tenantOptions,
       isLoading,
+      isTenantOrgLoading,
       refreshMemberships,
       refreshUser,
       setActiveFleetId,
@@ -442,6 +454,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       orgId,
       tenantOptions,
       isLoading,
+      isTenantOrgLoading,
       refreshMemberships,
       refreshUser,
       setActiveFleetId,
@@ -520,6 +533,7 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
       activeTenantContext,
       tenantOptions: [],
       isLoading: false,
+      isTenantOrgLoading: false,
       setActiveFleetId: () => {
         // En mode mock, le changement de flotte est géré par la configuration mock.
       },

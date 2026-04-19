@@ -1,6 +1,13 @@
 import { RouteAccessRepository } from '@/repositories/route-access.repository';
 
-export type RouteAccessState = 'loading' | 'unauth' | 'onboarding' | 'ready';
+/** `tenant_bootstrap` : aucune adhésion flotte → création / `/start`. `onboarding` : wizard produit incomplet → `/onboarding`. `upgrade` : abonnement payant à renouveler (`lapsedPaid`). */
+export type RouteAccessState =
+  | 'loading'
+  | 'unauth'
+  | 'tenant_bootstrap'
+  | 'onboarding'
+  | 'upgrade'
+  | 'ready';
 
 export interface RouteAccessResult {
   state: RouteAccessState;

@@ -78,10 +78,12 @@ export default defineConfig(({ mode }) => {
     },
   },
   server: {
-    host: "localhost",
+    // true = 0.0.0.0 : évite les échecs quand le navigateur résout localhost en 127.0.0.1
+    // alors que Node n’écoutait que sur [::1] (IPv6 uniquement).
+    host: true,
     port: 8080,
     strictPort: false,
-    open: false,
+    open: true,
     hmr: {
       overlay: false,
     },

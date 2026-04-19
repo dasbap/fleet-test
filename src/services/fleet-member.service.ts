@@ -20,8 +20,15 @@ export class FleetMemberService {
     if (!userId) {
       return [];
     }
-    const members = await this.repository.findAll({ user_id: userId, is_active: true });
-    return members.map((m) => ({
+    const rows = await this.repository.findActiveRowsForUser(userId);
+    // Dédupliquer par flotte (jeux de données démo pouvant avoir plusieurs lignes pour la même flotte).
+    const byFleet = new Map<string, (typeof rows)[number]>();
+    for (const row of rows) {
+      if (!byFleet.has(row.fleet_id)) {
+        byFleet.set(row.fleet_id, row);
+      }
+    }
+    return Array.from(byFleet.values()).map((m) => ({
       id: m.id,
       fleet_id: m.fleet_id,
       role: m.role,

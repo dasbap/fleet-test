@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import type { OnboardingData } from '@/types/onboarding';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { toast } from '@/hooks/use-toast';
+import { formatPostgrestError, mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
 
 type Data = NonNullable<OnboardingData['step1']>;
 
@@ -57,10 +58,11 @@ export function StepFlotte({ orgId, initial, onNext, onSkip }: Props) {
       };
       await saveStep1(payload);
       onNext(payload);
-    } catch {
+    } catch (error) {
+      const detail = mapSupabaseErrorToFrench(formatPostgrestError(error));
       toast({
         title: 'Erreur',
-        description: "Impossible de sauvegarder l'étape flotte pour le moment.",
+        description: detail || "Impossible de sauvegarder l'étape flotte pour le moment.",
         variant: 'destructive',
       });
     }

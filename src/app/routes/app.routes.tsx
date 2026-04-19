@@ -1,8 +1,10 @@
 import { lazy } from "react";
 import { Route, Navigate, useParams } from "react-router-dom";
+import { RootLayout } from "@/app/RootLayout";
 import AuthProviderLayout from "@/components/auth/AuthProviderLayout";
 import { dashboardRoutes } from "@/app/routes/dashboard.routes";
 import { authPublicRoutes } from "@/features/auth/routes";
+import { RoleGuard } from "@/navigation/guards/RequireRole";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const Index = lazy(() => import("@/pages/Index"));
@@ -19,6 +21,13 @@ const TenantBootstrapRoute = lazy(() =>
   }))
 );
 const PostLoginGate = lazy(() => import("@/pages/PostLoginGate"));
+const Upgrade = lazy(() => import("@/pages/Upgrade"));
+const ProtectedRoute = lazy(() =>
+  import("@/components/layout/ProtectedRoute").then((m) => ({ default: m.ProtectedRoute })),
+);
+const TerrainLayout = lazy(() => import("@/layouts/TerrainLayout"));
+const TerrainPage = lazy(() => import("@/features/terrain/screens/TerrainPage"));
+const Scan = lazy(() => import("@/pages/Scan"));
 
 /** Ancien lien /aide/videos/:id → tuto dashboard (le paramètre doit être interpolé, pas littéral). */
 function RedirectLegacyAideVideoToTutorial() {
@@ -34,7 +43,7 @@ function RedirectLegacyAideVideoToTutorial() {
  * Monté dans `App.tsx` sous `<Routes>` (avec Suspense au niveau parent).
  */
 export const appRoutes = (
-  <>
+  <Route element={<RootLayout />}>
     <Route path="/" element={<Index />} />
     <Route path="/aide" element={<AidePage />} />
     <Route
@@ -59,9 +68,34 @@ export const appRoutes = (
       {authPublicRoutes}
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/start" element={<TenantBootstrapRoute />} />
+      <Route path="/terrain" element={<ProtectedRoute />}>
+        <Route element={<TerrainLayout />}>
+          <Route
+            index
+            element={
+              <RoleGuard allow={["driver"]}>
+                <TerrainPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="scan"
+            element={
+              <RoleGuard allow={["driver"]}>
+                <Scan />
+              </RoleGuard>
+            }
+          />
+        </Route>
+      </Route>
+      <Route
+        path="/maintenance"
+        element={<Navigate to={ROUTE_PATHS.dashboardMaintenance} replace />}
+      />
+      <Route path="/upgrade" element={<Upgrade />} />
       <Route path="/post-login" element={<PostLoginGate />} />
       {dashboardRoutes}
     </Route>
     <Route path="*" element={<NotFound />} />
-  </>
+  </Route>
 );
