@@ -1,9 +1,7 @@
-import { lazy } from "react";
 import { Route } from "react-router-dom";
 import { RequireGuest } from "@/navigation/guards/RequireGuest";
-
-const AuthPage = lazy(() => import("@/features/auth/screens/AuthPage"));
-const MobileLoginScreen = lazy(() => import("@/features/auth/screens/MobileLoginScreen"));
+import AuthPage from "@/features/auth/screens/AuthPage";
+import MobileLoginScreen from "@/features/auth/screens/MobileLoginScreen";
 
 /**
  * Routes publiques auth.

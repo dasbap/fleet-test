@@ -24,11 +24,38 @@ interface PaymentRow {
 }
 
 export class BillingRepository {
-  async findActiveSubscriptionByFleetId(fleetId: string): Promise<SubscriptionRow | null> {
+  /**
+   * Dernière ligne d’abonnement (tri par fin), pour détecter un plan payant expiré.
+   */
+  async findLatestSubscriptionByFleetId(fleetId: string): Promise<SubscriptionRow | null> {
     const { data, error } = await supabase
       .from("abonnements")
       .select("id, status, starts_at, ends_at, plan_id, plans(id, code, name, price_per_vehicle)")
       .eq("fleet_id", fleetId)
+      .order("ends_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<SubscriptionRow>();
+
+    if (error) {
+      console.error("Erreur lors de la lecture de l'abonnement :", error);
+      throw new Error(error.message);
+    }
+
+    return data ?? null;
+  }
+
+  /**
+   * Abonnement courant actif (aligné sur la fenêtre temporelle du RPC `get_fleet_billing_context`).
+   */
+  async findActiveSubscriptionByFleetId(fleetId: string): Promise<SubscriptionRow | null> {
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("abonnements")
+      .select("id, status, starts_at, ends_at, plan_id, plans(id, code, name, price_per_vehicle)")
+      .eq("fleet_id", fleetId)
+      .eq("status", "active")
+      .lte("starts_at", nowIso)
+      .gte("ends_at", nowIso)
       .order("ends_at", { ascending: false })
       .limit(1)
       .maybeSingle<SubscriptionRow>();

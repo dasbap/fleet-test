@@ -5,6 +5,7 @@ import { RequireAuth } from '@/navigation/guards/RequireAuth';
 import { useRouteAccess } from '@/hooks/useRouteAccess';
 import { useAuth } from "@/hooks/useAuth";
 import { getLoginPathPreservingReturn } from "@/navigation/loginRedirectPath";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 /**
  * Route dédiée à l'onboarding.
@@ -21,9 +22,19 @@ export function OnboardingRoute() {
     <RequireAuth>
       {access.state === 'loading' && <PageLoader />}
       {access.state === 'unauth' && <Navigate to={loginWithReturn} replace />}
-      {access.state === "onboarding" && !orgId && <Navigate to="/start" replace />}
-      {access.state === 'ready' && <Navigate to="/dashboard" replace />}
-      {access.state === 'onboarding' && <OnboardingWizard />}
+      {access.state === "tenant_bootstrap" && (
+        <Navigate to={ROUTE_PATHS.tenantBootstrap} replace />
+      )}
+      {access.state === "onboarding" && !orgId && (
+        <Navigate to={ROUTE_PATHS.tenantBootstrap} replace />
+      )}
+      {access.state === "upgrade" && (
+        <Navigate to={ROUTE_PATHS.upgrade} replace />
+      )}
+      {access.state === "ready" && (
+        <Navigate to={ROUTE_PATHS.dashboard} replace />
+      )}
+      {access.state === "onboarding" && orgId && <OnboardingWizard />}
     </RequireAuth>
   );
 }

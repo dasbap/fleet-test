@@ -98,6 +98,38 @@ describe("RequireRole / RoleGuard", () => {
     expect(screen.getByText("Contenu rôle")).toBeInTheDocument();
   });
 
+  it("redirige vers fallbackWhenDriver lorsque conducteur non autorisé", () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "u1", email: "a@b.c" },
+      role: "driver",
+      isLoading: false,
+    });
+    mockIsMockAuthEnabled.mockReturnValue(false);
+
+    render(
+      <MemoryRouter initialEntries={["/prot"]}>
+        <Routes>
+          <Route
+            path="/prot"
+            element={
+              <RoleGuard
+                allow={["organizer"]}
+                fallbackTo="/accueil"
+                fallbackWhenDriver="/terrain-hub"
+              >
+                <div>Contenu rôle</div>
+              </RoleGuard>
+            }
+          />
+          <Route path="/terrain-hub" element={<div data-testid="terrain">Terrain</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("terrain")).toBeInTheDocument();
+    expect(screen.queryByText("Contenu rôle")).not.toBeInTheDocument();
+  });
+
   it("redirige vers fallbackTo lorsque le rôle n’est pas autorisé", () => {
     mockUseAuth.mockReturnValue({
       user: { id: "u1", email: "a@b.c" },

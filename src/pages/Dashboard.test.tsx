@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "@/pages/Dashboard";
+import { createQueryClientWrapper } from "@/test/utils";
 
 const useActivationMock = vi.fn();
 
@@ -24,6 +25,8 @@ vi.mock("@/components/shared/ActivationChecklist", () => ({
 }));
 
 describe("DashboardPage", () => {
+  const queryWrapper = createQueryClientWrapper();
+
   beforeEach(() => {
     useActivationMock.mockReset();
   });
@@ -35,6 +38,7 @@ describe("DashboardPage", () => {
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
+      { wrapper: queryWrapper },
     );
 
     expect(container.querySelector(".animate-pulse")).not.toBeNull();
@@ -47,6 +51,7 @@ describe("DashboardPage", () => {
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
+      { wrapper: queryWrapper },
     );
 
     expect(screen.getByText("empty-state-dashboard")).toBeInTheDocument();
@@ -85,6 +90,7 @@ describe("DashboardPage", () => {
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>,
+      { wrapper: queryWrapper },
     );
 
     expect(screen.getByRole("heading", { name: "Tableau de bord" })).toBeInTheDocument();

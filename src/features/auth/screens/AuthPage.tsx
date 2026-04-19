@@ -44,6 +44,15 @@ import {
   POST_LOGIN_NEXT_PARAM,
 } from "@/navigation/postLoginRedirect";
 
+/**
+ * Page d’authentification E-Samba (connexion, inscription, réinitialisation).
+ *
+ * Choix d’architecture (inchangé) : la connexion passe par `signIn` dans `@/lib/auth-actions`.
+ * `useAuthFlow` sert uniquement à `PostLoginGate` après session établie, pas à la connexion.
+ *
+ * Redirection « retour » : `?next=` sur `/auth` (voir `getLoginPathPreservingReturn` / garde dashboard),
+ * pas `location.state.from`. Après succès : navigation vers `/post-login?next=…` puis décision centralisée.
+ */
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -226,7 +235,7 @@ const Auth = () => {
         }
         toast({
           title: "Connexion réussie!",
-          description: "Redirection vers le tableau de bord...",
+          description: "Ouverture de session, préparation de votre espace…",
         });
         navigate(`/post-login?next=${encodeURIComponent(postLoginTarget)}`);
       }

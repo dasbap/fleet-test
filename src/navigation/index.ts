@@ -9,3 +9,4 @@ export {
 export { RequireAuth } from "./guards/RequireAuth";
 export { RequireGuest } from "./guards/RequireGuest";
 export { RequireRole, RoleGuard } from "./guards/RequireRole";
+export { PlanGuard } from "./guards/PlanGuard";

@@ -6,6 +6,20 @@
 export const ROUTE_PATHS = {
   home: "/",
   auth: "/auth",
+  /** Création de flotte / première adhésion. */
+  tenantBootstrap: "/start",
+  /** Wizard d’accueil produit. */
+  onboarding: "/onboarding",
+  /** Point d’entrée après Supabase signIn. */
+  postLogin: "/post-login",
+  /** Raccourci mobile / conducteur → hub opérations. */
+  terrain: "/terrain",
+  /** Scan QR sous le hub terrain (sans shell dashboard). */
+  terrainScan: "/terrain/scan",
+  /** Raccourci atelier → maintenance. */
+  maintenanceRoot: "/maintenance",
+  /** Renouvellement / passage à un plan payant. */
+  upgrade: "/upgrade",
   /** Connexion mobile-first (session mockée si VITE_USE_MOCK_AUTH). */
   login: "/login",
   dashboard: "/dashboard",
