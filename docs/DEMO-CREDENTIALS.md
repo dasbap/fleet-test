@@ -1,6 +1,6 @@
 # Identifiants démo E-Samba
 
-Comptes créés par le script `supabase/create-demo-organization-complete.sql` pour la démonstration.
+Comptes créés par le script `supabase/scripts/setup/create-demo-organization-complete.sql` pour la démonstration.
 
 ## Mot de passe commun
 
@@ -29,3 +29,4 @@ Comptes créés par le script `supabase/create-demo-organization-complete.sql` p
 - À utiliser **uniquement** en environnement de démo/test.
 - Ne pas utiliser ce mot de passe en production.
 - Les comptes `@esamba.test` sont destinés aux jeux de données de démonstration (voir aussi `NETTOYAGE-BASE-DONNEES.md`).
+- **Gouvernance des secrets** : ne jamais committer de clés API ni la `SUPABASE_SERVICE_ROLE_KEY`. Cette clé sert uniquement en local ou en CI avec des secrets chiffrés ; jamais dans le navigateur, jamais dans le bundle client, jamais dans un dépôt public. Pour réinitialiser les mots de passe démo via l’API Admin, voir `npm run reset:demo-passwords` et `scripts/reset-demo-passwords.mjs`.
