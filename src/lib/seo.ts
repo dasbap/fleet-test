@@ -27,6 +27,8 @@ export const SEO_ROUTE_KEYS = {
   myVehicle: "myVehicle",
   history: "history",
   operations: "operations",
+  /** Renouvellement / choix d’offre (abonnement). */
+  upgrade: "upgrade",
   notFound: "notFound",
 } as const;
 
@@ -98,6 +100,12 @@ export const SEO_BY_ROUTE_KEY: Record<SeoRouteKey, SeoRouteConfig> = {
     description: "Missions, taches et acces rapide aux flux terrain.",
     canonicalPath: "/dashboard/operations",
   },
+  upgrade: {
+    title: "Abonnement et offres - E-Samba",
+    description:
+      "Renouvellement d'abonnement et choix d'offre Starter, Pro ou Gratuit pour votre flotte E-Samba.",
+    canonicalPath: "/upgrade",
+  },
   notFound: {
     title: "E-Samba",
     description:
@@ -129,6 +137,7 @@ const PATH_TO_ROUTE_KEY: Record<string, SeoRouteKey> = {
   "/dashboard/my-vehicle": SEO_ROUTE_KEYS.myVehicle,
   "/dashboard/history": SEO_ROUTE_KEYS.history,
   "/dashboard/operations": SEO_ROUTE_KEYS.operations,
+  "/upgrade": SEO_ROUTE_KEYS.upgrade,
 };
 
 export function getCanonicalUrlFromPath(path: string): string {

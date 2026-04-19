@@ -16,6 +16,7 @@ import { useDriverTerrainActivation } from '@/hooks/useDriverTerrainActivation';
 import { useUpdateDriverProfile } from '@/hooks/useDriverProfiles';
 import { isValidCameroonMobileInput, normalizeCameroonPhoneE164 } from '@/lib/cameroonPhone';
 import { MAX_DRIVER_TERRAIN_SNOOZE_USES } from '@/lib/driverTerrainSnooze';
+import { ROUTE_PATHS } from '@/navigation/routePaths';
 import { CheckCircle2, Smartphone } from 'lucide-react';
 
 /**
@@ -63,8 +64,8 @@ export function DriverTerrainActivationModal() {
     }
   };
 
-  const goToClosure = () => {
-    navigate('/dashboard/closure');
+  const goToTerrainHub = () => {
+    navigate(ROUTE_PATHS.terrain);
   };
 
   return (
@@ -81,7 +82,7 @@ export function DriverTerrainActivationModal() {
           </DialogTitle>
           <DialogDescription className="text-left text-slate-600 dark:text-slate-400 space-y-2">
             <span className="block">
-              L&apos;activation commence par <strong>ouvrir un créneau</strong> (écran Clôture / mission).
+              L&apos;activation commence par <strong>ouvrir un créneau</strong> (hub Terrain).
               Sans créneau, les rappels SMS Orange (+237) et les statistiques de flotte restent inactifs.
             </span>
           </DialogDescription>
@@ -92,7 +93,7 @@ export function DriverTerrainActivationModal() {
             <p className="font-medium text-slate-900 dark:text-slate-100 mb-1">Étapes</p>
             <ol className="list-decimal list-inside space-y-1 text-xs">
               <li>Renseignez votre numéro mobile (réception des SMS E-Samba).</li>
-              <li>Ouvrez l&apos;app → <strong>Clôture</strong> → démarrez un créneau sur votre véhicule.</li>
+              <li>Ouvrez l&apos;app → <strong>Terrain</strong> → « Ouvrir créneau » sur votre véhicule affecté.</li>
             </ol>
           </div>
 
@@ -131,7 +132,7 @@ export function DriverTerrainActivationModal() {
           {!hasEverShift && (
             <div className="rounded-md bg-amber-500/10 border border-amber-500/25 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
               Vous n&apos;avez pas encore ouvert de créneau. Utilisez le bouton ci-dessous pour accéder
-              à l&apos;écran de clôture.
+              au hub terrain.
             </div>
           )}
         </div>
@@ -157,8 +158,8 @@ export function DriverTerrainActivationModal() {
             )}
           </div>
           <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={goToClosure}>
-              Ouvrir Clôture / créneau
+            <Button type="button" variant="secondary" onClick={goToTerrainHub}>
+              Ouvrir le hub terrain
             </Button>
           </div>
         </DialogFooter>

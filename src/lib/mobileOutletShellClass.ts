@@ -23,7 +23,12 @@ export function getMobileOutletShellClass(pathname: string): string {
     return "bg-warning/[0.06] dark:bg-warning/[0.08]";
   }
 
-  if (p.startsWith("/dashboard/operations") || p.startsWith("/dashboard/scan")) {
+  if (
+    p.startsWith("/dashboard/operations") ||
+    p.startsWith("/dashboard/scan") ||
+    p === "/terrain" ||
+    p.startsWith("/terrain/")
+  ) {
     return "bg-primary/[0.055] dark:bg-primary/[0.09]";
   }
 

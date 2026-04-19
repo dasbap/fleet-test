@@ -1,6 +1,8 @@
 import { BillingRepository } from "@/repositories/billing.repository";
 
 export interface BillingSnapshot {
+  /** True si un abonnement payant (non-free) existe mais n’est plus dans la fenêtre active. */
+  lapsedPaid: boolean;
   subscription: {
     id: string;
     status: string;
@@ -23,6 +25,29 @@ export interface BillingSnapshot {
   }>;
 }
 
+/**
+ * Dernière ligne d’abonnement : plan payant non actif (statut ou dates hors fenêtre).
+ */
+export function computeLapsedPaidFromLatestSubscription(
+  latest: {
+    status: string;
+    starts_at: string;
+    ends_at: string;
+    plans: { code: string } | null;
+  } | null,
+  now: Date,
+): boolean {
+  if (!latest) return false;
+  const code = latest.plans?.code ?? "free";
+  if (code === "free") return false;
+  const ends = new Date(latest.ends_at);
+  const starts = new Date(latest.starts_at);
+  if (latest.status !== "active") return true;
+  if (ends < now) return true;
+  if (starts > now) return true;
+  return false;
+}
+
 export class BillingService {
   constructor(private repository: BillingRepository) {}
 
@@ -35,12 +60,17 @@ export class BillingService {
     }
 
     try {
-      const [subscription, recentPayments] = await Promise.all([
+      const now = new Date();
+      const [subscription, latest, recentPayments] = await Promise.all([
         this.repository.findActiveSubscriptionByFleetId(fleetId),
+        this.repository.findLatestSubscriptionByFleetId(fleetId),
         this.repository.findLatestPaymentsByOrgId(orgId),
       ]);
 
+      const lapsedPaid = computeLapsedPaidFromLatestSubscription(latest, now);
+
       return {
+        lapsedPaid,
         subscription: subscription
           ? {
               id: subscription.id,
@@ -74,6 +104,7 @@ export class BillingService {
         message.includes("policy")
       ) {
         return {
+          lapsedPaid: false,
           subscription: null,
           recentPayments: [],
         };

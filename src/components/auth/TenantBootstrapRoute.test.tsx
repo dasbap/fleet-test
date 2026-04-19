@@ -1,54 +1,76 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
-import type { ReactNode } from "react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { TenantBootstrapRoute } from "@/components/auth/TenantBootstrapRoute";
 
-const useAuthMock = vi.fn();
+const mockUseAuth = vi.fn();
 
 vi.mock("@/hooks/useAuth", () => ({
-  useAuth: () => useAuthMock(),
-}));
-
-vi.mock("@/navigation/guards/RequireAuth", () => ({
-  RequireAuth: ({ children }: { children: ReactNode }) => <>{children}</>,
+  useAuth: () => mockUseAuth(),
 }));
 
 vi.mock("@/pages/CreateFleet", () => ({
-  default: () => <div>create-fleet-screen</div>,
+  default: () => <div data-testid="create-fleet" />,
 }));
 
 describe("TenantBootstrapRoute", () => {
-  it("affiche la création de flotte sans tenant actif", () => {
-    useAuthMock.mockReturnValue({
-      memberships: [],
-      activeTenantContext: null,
-    });
-
-    render(
-      <MemoryRouter initialEntries={["/start"]}>
-        <TenantBootstrapRoute />
-      </MemoryRouter>
-    );
-
-    expect(screen.getByText("create-fleet-screen")).toBeInTheDocument();
+  beforeEach(() => {
+    mockUseAuth.mockReset();
   });
 
-  it("redirige vers dashboard si tenant actif", () => {
-    useAuthMock.mockReturnValue({
-      memberships: [{ fleet_id: "fleet-1" }],
-      activeTenantContext: { orgId: "org-1", fleetId: "fleet-1", role: "manager" },
-    });
-
-    render(
+  function renderAtStart() {
+    return render(
       <MemoryRouter initialEntries={["/start"]}>
         <Routes>
           <Route path="/start" element={<TenantBootstrapRoute />} />
-          <Route path="/dashboard" element={<div>dashboard-screen</div>} />
+          <Route path="/dashboard" element={<div data-testid="dashboard" />} />
         </Routes>
       </MemoryRouter>
     );
+  }
 
-    expect(screen.getByText("dashboard-screen")).toBeInTheDocument();
+  it("redirige vers le dashboard lorsque le contexte tenant est prêt", () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "u1" },
+      isLoading: false,
+      isTenantOrgLoading: false,
+      memberships: [
+        { id: "m1", fleet_id: "f1", role: "organizer" as const, is_active: true },
+      ],
+      activeTenantContext: {
+        orgId: "o1",
+        fleetId: "f1",
+        role: "organizer" as const,
+      },
+    });
+    renderAtStart();
+    expect(screen.getByTestId("dashboard")).toBeInTheDocument();
+  });
+
+  it("affiche le chargement lorsque les adhésions existent mais le contexte org est en cours de résolution", () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "u1" },
+      isLoading: false,
+      isTenantOrgLoading: true,
+      memberships: [
+        { id: "m1", fleet_id: "f1", role: "organizer" as const, is_active: true },
+      ],
+      activeTenantContext: null,
+    });
+    renderAtStart();
+    expect(document.querySelector(".animate-spin")).toBeTruthy();
+    expect(screen.queryByTestId("create-fleet")).not.toBeInTheDocument();
+  });
+
+  it("affiche la création de flotte lorsqu'il n'y a pas d'adhésion", () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "u1" },
+      isLoading: false,
+      isTenantOrgLoading: false,
+      memberships: [],
+      activeTenantContext: null,
+    });
+    renderAtStart();
+    expect(screen.getByTestId("create-fleet")).toBeInTheDocument();
   });
 });

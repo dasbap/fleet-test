@@ -22,6 +22,8 @@ export interface AuthContextValue {
   activeTenantContext: ActiveTenantContext | null;
   tenantOptions: TenantOption[];
   isLoading: boolean;
+  /** True tant que les flottes / org ne sont pas résolues après chargement des adhésions. */
+  isTenantOrgLoading: boolean;
   setActiveFleetId: (fleetId: string) => void;
   refreshMemberships: () => Promise<FleetMembership[]>;
   refreshUser: () => Promise<void>;

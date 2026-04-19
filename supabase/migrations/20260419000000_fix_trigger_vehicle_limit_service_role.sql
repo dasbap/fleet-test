@@ -9,9 +9,12 @@ CREATE OR REPLACE FUNCTION public.trg_enforce_fleet_vehicle_limit()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path TO 'public'
 AS $$
 DECLARE
-  v_ctx public.fleet_billing_context;
+  v_ctx jsonb;
+  v_max int;
+  v_cnt int;
 BEGIN
   -- Service-role context (seed / admin tools): no JWT → skip limit check
   IF auth.uid() IS NULL THEN
@@ -19,13 +22,16 @@ BEGIN
   END IF;
 
   SELECT public.get_fleet_billing_context(NEW.fleet_id) INTO v_ctx;
+  v_max := COALESCE((v_ctx->>'max_vehicles')::int, 999999);
 
-  IF v_ctx.vehicle_count >= v_ctx.vehicle_limit THEN
-    RAISE EXCEPTION
-      'Limite de véhicules atteinte pour cette flotte (plan: %, limite: %)',
-      v_ctx.plan_code,
-      v_ctx.vehicle_limit
-      USING ERRCODE = 'P0001';
+  IF v_max >= 999999 THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT COUNT(*)::int INTO v_cnt FROM public.vehicules WHERE fleet_id = NEW.fleet_id;
+
+  IF v_cnt + 1 > v_max THEN
+    RAISE EXCEPTION 'limite_vehicules_plan_atteinte';
   END IF;
 
   RETURN NEW;

@@ -67,7 +67,7 @@ const DeclareIncidentPage = lazy(
 const Scan = lazy(() => import("@/pages/Scan"));
 const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
 const ProtectedRoute = lazy(() =>
-  import("@/components/auth/ProtectedRoute").then((m) => ({ default: m.ProtectedRoute })),
+  import("@/components/layout/ProtectedRoute").then((m) => ({ default: m.ProtectedRoute })),
 );
 
 /**

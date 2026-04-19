@@ -12,12 +12,18 @@ interface RequireRoleProps {
   allow: readonly (AppRole | MobileAppRole)[];
   /** Redirection si le rôle ne convient pas (défaut : tableau de bord). */
   fallbackTo?: string;
+  /** Si défini et rôle = conducteur hors liste, prioritaire sur `fallbackTo`. */
+  fallbackWhenDriver?: string;
+  /** Si défini et rôle = mécanicien hors liste, prioritaire sur `fallbackTo`. */
+  fallbackWhenMechanic?: string;
 }
 
 function RoleGate({
   children,
   allow,
   fallbackTo = ROUTE_PATHS.dashboard,
+  fallbackWhenDriver,
+  fallbackWhenMechanic,
 }: RequireRoleProps) {
   const { role, isLoading, user } = useAuth();
   const location = useLocation();
@@ -40,7 +46,13 @@ function RoleGate({
   }
 
   if (!role || !allowedAppRoles.includes(role)) {
-    return <Navigate to={fallbackTo} replace />;
+    const target =
+      role === "driver" && fallbackWhenDriver !== undefined
+        ? fallbackWhenDriver
+        : role === "mechanic" && fallbackWhenMechanic !== undefined
+          ? fallbackWhenMechanic
+          : fallbackTo;
+    return <Navigate to={target} replace />;
   }
 
   return <>{children}</>;
