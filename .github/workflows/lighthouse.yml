@@ -107,6 +107,14 @@ jobs:
           uploadArtifacts: true
           temporaryPublicStorage: true
           runs: 2
+          chromeFlags: >-
+            --no-sandbox
+            --headless=new
+            --disable-gpu
+            --disable-dev-shm-usage
+            --disable-background-timer-throttling
+            --disable-backgrounding-occluded-windows
+            --disable-renderer-backgrounding
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
