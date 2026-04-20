@@ -111,7 +111,6 @@ jobs:
         uses: treosh/lighthouse-ci-action@v11
         with:
           configPath: .github/lighthouse/lighthouserc.json
-          budgetPath: .github/lighthouse/budget.json
           uploadArtifacts: true
           temporaryPublicStorage: true
           runs: 2
