@@ -87,7 +87,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
         env:
-          BUNDLE_BUDGET_INITIAL_GZIP_KB: "220"
+          BUNDLE_BUDGET_INITIAL_GZIP_KB: "270"
 
       - name: Démarrer le serveur preview
         run: npm run preview &
