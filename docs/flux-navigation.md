@@ -11,6 +11,18 @@ Ce document décrit les flux entre les pages et modules du site (routes, navigat
 
 Routes dashboard : `/dashboard` (index), `vehicles`, `drivers`, `closure`, `incidents`, `maintenance`, `reports`, `invitations`, `settings`, `profile`, `teams`, `create-fleet`, `finances`, `collections`, `alerts`, `roles`, `my-vehicle`, `history`.
 
+### Carte « SessionProvider / useSession » → implémentation réelle
+
+Snippets ou tutoriels externes décrivent souvent un *provider* global, une route du type `<ProtectedRoute><Page /></ProtectedRoute>` et un hook `useSession().currentFleet`. Voici l’équivalence dans ce dépôt :
+
+| Idée / pattern courant | Où c’est dans le code |
+|------------------------|------------------------|
+| `<SessionProvider><App /></SessionProvider>` dans [`main.tsx`](../src/main.tsx) | Aucun provider de session au point d’entrée : `main.tsx` enveloppe seulement `<App />` dans `Suspense`. Le contexte applicatif **session + adhésions flotte** est [`AuthProvider`](../src/contexts/AuthProvider.tsx), monté via [`AuthProviderLayout`](../src/components/auth/AuthProviderLayout.tsx) sur la branche de routes concernée dans [`app.routes.tsx`](../src/app/routes/app.routes.tsx), pour ne pas initialiser l’auth sur les pages publiques. |
+| Route `/dashboard` protégée | Arbre **imbriqué** : [`dashboard.routes.tsx`](../src/app/routes/dashboard.routes.tsx) définit `<Route path="/dashboard" element={<ProtectedRoute />}>` puis les écrans en enfants. [`ProtectedRoute`](../src/components/layout/ProtectedRoute.tsx) applique les gardes (auth, bootstrap tenant, onboarding, upgrade, rôles optionnels) et rend `<Outlet />`, pas un composant page passé en enfant direct. |
+| `useSession().currentFleet` (`fleet_id`, `role`, `plan_code`, `enables_reports`, …) | Le hook à utiliser est **`useAuth()`** (voir [`auth-context.ts`](../src/contexts/auth-context.ts)) : `userFleetId`, `activeTenantContext` (`fleetId`, `orgId`, `role`). Les champs type **plan / fonctionnalités facturées** ne sont pas sur ce contexte : les pages et gardes s’appuient sur d’autres hooks (ex. [`useFleetBillingContext`](../src/hooks/useFleetBillingContext.ts), [`useRouteAccess`](../src/hooks/useRouteAccess.ts)). |
+
+Pour le détail du post‑login et des redirections, voir aussi [auth-flow.md](./auth-flow.md).
+
 ### Menu sidebar (`DashboardSidebar.tsx`)
 
 - **Organizer** : Tableau de bord, Véhicules, Incidents, Maintenance, Équipes, Invitations, Rapports, Finances, Alertes, Rôles.
