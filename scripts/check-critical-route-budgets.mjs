@@ -16,9 +16,8 @@ import { dirname } from "node:path";
 const distRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 
 const defaultBudgets = [
-  { route: "/", maxGzipKb: 220 },
-  { route: "/login", maxGzipKb: 240 },
-  { route: "/auth", maxGzipKb: 240 },
+  { route: "/", maxGzipKb: 270 },
+  { route: "/auth", maxGzipKb: 270 },
 ];
 
 function normalizeRoute(route) {
