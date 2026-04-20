@@ -3,8 +3,14 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { EmptyStateDashboard } from "@/components/dashboard/EmptyStateDashboard";
 import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
+import {
+  PhoneAlertBanner,
+  PhoneCollectionModal,
+  useMissingPhoneCount,
+} from "@/components/shared/PhoneCollectionModal";
 import { DriverActivationHealthCard } from "@/components/dashboard/DriverActivationHealthCard";
 import { useActivation } from "@/hooks/useActivation";
+import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { X, PartyPopper } from "lucide-react";
 
@@ -36,10 +42,12 @@ function WelcomeBanner({ userName, onDismiss }: { userName?: string; onDismiss: 
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, userFleetId: currentFleetId } = useAuth();
   const { steps, completedCount, loading } = useActivation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const { missingCount } = useMissingPhoneCount(currentFleetId);
   const isAllDone = completedCount >= steps.length;
 
   // Detect ?welcome=true, show banner, then clean URL
@@ -102,6 +110,19 @@ export default function DashboardPage() {
             <h1 className="text-xl font-heading font-semibold text-slate-800 dark:text-slate-100">Tableau de bord</h1>
             <p className="text-sm text-slate-400 mt-0.5">Vue d'ensemble de votre flotte</p>
           </div>
+
+          <PhoneAlertBanner count={missingCount} onAction={() => setShowPhoneModal(true)} />
+          <PhoneCollectionModal
+            fleetId={currentFleetId}
+            open={showPhoneModal}
+            onClose={() => setShowPhoneModal(false)}
+            onComplete={(count) =>
+              toast({
+                title: "Numéros enregistrés",
+                description: `${count} numéro${count > 1 ? "s" : ""} enregistré${count > 1 ? "s" : ""} — séquences débloquées`,
+              })
+            }
+          />
 
           <PlaceholderStats />
           <DriverActivationHealthCard />

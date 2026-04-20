@@ -3,7 +3,8 @@ import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Zap, ArrowLeft, Mail, Lock, User, Building2 } from "lucide-react";
+import { Truck, ArrowLeft, Mail, Lock, User, Building2, Eye, EyeOff } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
   requestPasswordReset,
@@ -37,6 +38,11 @@ import {
   DEMO_CREDENTIAL_ACCOUNTS,
   DEMO_SHARED_PASSWORD,
 } from "@/features/auth/data/demoCredentials";
+import {
+  DEMO_QUICK_ACCOUNTS,
+  DEMO_QUICK_ROLE_COLORS,
+} from "@/features/auth/data/demoQuickAccess";
+import { buildAuthHref, isAuthSignupMode } from "@/navigation/authEntryUrl";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import {
   getSafePostLoginPath,
@@ -56,6 +62,7 @@ import {
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const isSignup = isAuthSignupMode(searchParams);
   const postLoginTarget = useMemo(
     () =>
       getSafePostLoginPath(searchParams.get(POST_LOGIN_NEXT_PARAM)) ??
@@ -63,9 +70,10 @@ const Auth = () => {
       ROUTE_PATHS.dashboard,
     [searchParams],
   );
+
   const { toast } = useToast();
-  const [isSignup, setIsSignup] = useState(searchParams.get("mode") === "signup");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isRecovery, setIsRecovery] = useState(false);
   const [recoveryPassword, setRecoveryPassword] = useState("");
@@ -91,6 +99,48 @@ const Auth = () => {
       password: DEMO_SHARED_PASSWORD,
     }));
     setShowDemoCredentials(false);
+  };
+
+  /** Connexion démo : même flux que le formulaire (`signIn` → `/post-login?next=`). */
+  const handleDemoQuickLogin = async (demoEmail: string) => {
+    setIsLoading(true);
+    setFormData((prev) => ({
+      ...prev,
+      email: demoEmail,
+      password: DEMO_SHARED_PASSWORD,
+    }));
+    try {
+      const { error } = await signIn(
+        demoEmail,
+        DEMO_SHARED_PASSWORD,
+        isMockAuthEnabled() ? mockLoginRole : undefined,
+      );
+      if (error) {
+        const description =
+          error.message === "Invalid login credentials"
+            ? "Email ou mot de passe incorrect"
+            : mapSupabaseErrorToFrench(error.message);
+        toast({
+          title: "Erreur de connexion",
+          description,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      toast({
+        title: "Connexion réussie!",
+        description: "Ouverture de session, préparation de votre espace…",
+      });
+      navigate(`/post-login?next=${encodeURIComponent(postLoginTarget)}`);
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Une erreur inattendue s'est produite",
+        variant: "destructive",
+      });
+    }
+    setIsLoading(false);
   };
 
   // Détecter le retour depuis le lien de réinitialisation (hash type=recovery)
@@ -250,9 +300,28 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Left Panel - Form */}
-      <div className="flex-1 flex flex-col justify-center px-8 py-12 lg:px-16">
+    <div className="min-h-screen bg-surface-overlay flex">
+      {/* Colonne gauche — branding (desktop uniquement, LCP léger sur mobile) */}
+      <div className="hidden lg:flex flex-col justify-between w-1/2 max-w-xl bg-surface p-12 border-r border-border/50">
+        <div className="flex items-center gap-3">
+          <Truck className="w-8 h-8 text-brand" aria-hidden />
+          <span className="text-xl font-heading font-semibold text-foreground">E-Samba</span>
+        </div>
+        <div>
+          <blockquote className="text-2xl font-heading font-medium text-foreground leading-relaxed">
+            « Gérez votre flotte intelligemment,
+            <br />
+            où que vous soyez en Afrique Centrale. »
+          </blockquote>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Suivi temps réel · Alertes automatiques · Rapports XAF
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">© 2026 E-Samba · Douala, Cameroun</p>
+      </div>
+
+      {/* Colonne formulaire */}
+      <div className="flex-1 flex flex-col justify-center bg-background px-8 py-12 lg:px-16">
         <div className="mx-auto w-full max-w-md">
           {/* Back Link */}
           <Link
@@ -266,7 +335,7 @@ const Auth = () => {
           {/* Logo */}
           <div className="flex items-center gap-2 mb-8">
             <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-              <Zap className="w-6 h-6 text-primary-foreground" />
+              <Truck className="w-6 h-6 text-primary-foreground" aria-hidden />
             </div>
             <span className="font-heading font-bold text-xl">E-Samba</span>
           </div>
@@ -489,27 +558,42 @@ const Auth = () => {
                 )}
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
                 <Input
                   id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  className="pl-11"
+                  type={showPassword ? "text" : "password"}
+                  placeholder={isSignup ? "Minimum 8 caractères" : "••••••••"}
+                  className="pl-11 pr-11"
                   value={formData.password}
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
                   required
+                  minLength={isSignup ? 8 : undefined}
+                  autoComplete={isSignup ? "new-password" : "current-password"}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+              disabled={isLoading}
+            >
               {isLoading
                 ? "Chargement..."
                 : isSignup
-                ? "Créer mon compte"
-                : "Se connecter"}
+                  ? "Créer mon compte"
+                  : "Se connecter"}
             </Button>
               </>
             )}
@@ -519,15 +603,58 @@ const Auth = () => {
           {!isRecovery && !isForgotPassword && (
             <>
               <p className="text-center text-muted-foreground mt-6">
-                {isSignup ? "Déjà un compte?" : "Pas encore de compte?"}{" "}
-                <button
-                  type="button"
-                  onClick={() => setIsSignup(!isSignup)}
-                  className="text-primary hover:underline font-medium"
-                >
-                  {isSignup ? "Se connecter" : "S'inscrire"}
-                </button>
+                {isSignup ? "Déjà un compte ? " : "Pas encore de compte ? "}
+                {isSignup ? (
+                  <Link
+                    to={buildAuthHref(searchParams, false)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Se connecter
+                  </Link>
+                ) : (
+                  <Link
+                    to={buildAuthHref(searchParams, true)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Démarrer gratuitement
+                  </Link>
+                )}
               </p>
+
+              {!isSignup && (
+                <>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-8">
+                    <div className="flex-1 h-px bg-border" />
+                    <span>ou accès démo</span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+                  <div className="space-y-2 mt-4">
+                    {DEMO_QUICK_ACCOUNTS.map((account, index) => (
+                      <button
+                        key={account.email}
+                        type="button"
+                        onClick={() => void handleDemoQuickLogin(account.email)}
+                        disabled={isLoading}
+                        className={cn(
+                          "w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-border",
+                          "bg-card hover:bg-surface-raised text-sm transition-colors",
+                          "disabled:opacity-50 disabled:pointer-events-none",
+                        )}
+                      >
+                        <span className="font-medium">
+                          Démo{" "}
+                          <span className={DEMO_QUICK_ROLE_COLORS[index] ?? "text-muted-foreground"}>
+                            {account.role}
+                          </span>
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {account.email.split("@")[0]}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
 
               <div className="mt-4 flex justify-center">
                 <button
@@ -535,15 +662,13 @@ const Auth = () => {
                   onClick={() => setShowDemoCredentials(true)}
                   className="text-xs text-muted-foreground hover:text-primary underline"
                 >
-                  Voir les identifiants démo
+                  Voir tous les identifiants démo
                 </button>
               </div>
             </>
           )}
         </div>
       </div>
-
-      {/* Panneau visuel désactivé pour réduire le LCP sur /auth en mobile 3G. */}
 
       {/* Dialog identifiants démo */}
       <Dialog open={showDemoCredentials} onOpenChange={setShowDemoCredentials}>

@@ -72,6 +72,10 @@ BEGIN
     RAISE EXCEPTION 'Objet manquant: RPC public.get_fleet_billing_context(uuid)';
   END IF;
 
+  IF to_regprocedure('public.get_auth_flow_session_snapshot(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: RPC public.get_auth_flow_session_snapshot(uuid)';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
     FROM pg_proc p
