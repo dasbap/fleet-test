@@ -8,7 +8,7 @@
       ],
       "numberOfRuns": 2,
       "settings": {
-        "chromeFlags": "--no-sandbox --headless=new --disable-gpu --disable-dev-shm-usage --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding",
+        "chromeFlags": "--no-sandbox --headless --disable-gpu --disable-dev-shm-usage",
         "maxWaitForLoad": 45000,
         "throttlingMethod": "devtools",
         "throttling": {
