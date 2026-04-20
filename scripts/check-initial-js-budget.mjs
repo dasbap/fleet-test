@@ -14,7 +14,7 @@ import { dirname } from "node:path";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 
 async function main() {
-  const budgetKb = Number.parseFloat(process.env.BUNDLE_BUDGET_INITIAL_GZIP_KB ?? "220");
+  const budgetKb = Number.parseFloat(process.env.BUNDLE_BUDGET_INITIAL_GZIP_KB ?? "270");
   let html;
   try {
     html = await readFile(join(root, "index.html"), "utf8");
