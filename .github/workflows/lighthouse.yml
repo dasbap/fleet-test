@@ -98,6 +98,12 @@ jobs:
       - name: Attendre le serveur
         run: npx wait-on http://localhost:4173 --timeout 60000
 
+      - name: Setup Chrome 124 (compatible Lighthouse 11)
+        uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+        with:
+          chrome-version: "124"
+
       - name: Lighthouse CI (perf, a11y)
         id: lhci
         uses: treosh/lighthouse-ci-action@v11
@@ -107,19 +113,14 @@ jobs:
           uploadArtifacts: true
           temporaryPublicStorage: true
           runs: 2
-          chromeFlags: >-
-            --no-sandbox
-            --headless=new
-            --disable-gpu
-            --disable-dev-shm-usage
-            --disable-background-timer-throttling
-            --disable-backgrounding-occluded-windows
-            --disable-renderer-backgrounding
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
 
       - name: Lighthouse CI (SEO — page d’accueil)
         run: npx lhci autorun --config=.github/lighthouse/lighthouserc-seo.json
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
 
       - name: Commentaire PR — résultats Lighthouse
         if: >
