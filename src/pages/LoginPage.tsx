@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { signIn } from "@/lib/auth-actions";
+import { isMockAuthEnabled } from "@/lib/authMode";
 import type { AppRole } from "@/types/auth";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import {
@@ -65,6 +66,8 @@ const ROLE_LABELS: Record<AppRole, string> = {
  * Connexion mobile-first — session mockée (VITE_USE_MOCK_AUTH).
  * Prêt pour branchement OTP / backend réel.
  */
+const mockAuth = isMockAuthEnabled();
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -132,7 +135,9 @@ export default function LoginPage() {
               <p className="font-heading text-lg font-semibold leading-tight">
                 Flotte E-Samba
               </p>
-              <p className="text-xs text-muted-foreground">Connexion (mode démo)</p>
+              {mockAuth && (
+                <p className="text-xs text-muted-foreground">Connexion (mode démo)</p>
+              )}
             </div>
           </div>
 
@@ -141,8 +146,9 @@ export default function LoginPage() {
               Connexion
             </h1>
             <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-              Email ou téléphone, puis mot de passe. Session stockée localement pour
-              les tests.
+              {mockAuth
+                ? "Email ou téléphone, puis mot de passe. Session stockée localement pour les tests."
+                : "Saisissez votre email et mot de passe pour accéder à votre espace."}
             </p>
           </div>
 
@@ -194,33 +200,35 @@ export default function LoginPage() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="testRole"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Rôle (test)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choisir un rôle" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => (
-                          <SelectItem key={r} value={r}>
-                            {ROLE_LABELS[r]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Simule le rôle applicatif pour valider les écrans par profil.
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {mockAuth && (
+                <FormField
+                  control={form.control}
+                  name="testRole"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rôle (test)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choisir un rôle" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => (
+                            <SelectItem key={r} value={r}>
+                              {ROLE_LABELS[r]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Simule le rôle applicatif pour valider les écrans par profil.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <Button
                 type="submit"
@@ -231,26 +239,28 @@ export default function LoginPage() {
                 {form.formState.isSubmitting ? "Connexion…" : "Se connecter"}
               </Button>
 
-              <div className="rounded-md border p-3">
-                <p className="text-xs text-muted-foreground">
-                  Identifiants démo rapides (mot de passe commun :{" "}
-                  <code className="rounded bg-muted px-1 py-0.5">{DEMO_SHARED_PASSWORD}</code>)
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {DEMO_CREDENTIAL_ACCOUNTS.map((account) => (
-                    <Button
-                      key={account.email}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className={cn("h-auto max-w-full truncate")}
-                      onClick={() => fillDemoCredentials(account.email)}
-                    >
-                      {account.role}
-                    </Button>
-                  ))}
+              {mockAuth && (
+                <div className="rounded-md border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Identifiants démo rapides (mot de passe commun :{" "}
+                    <code className="rounded bg-muted px-1 py-0.5">{DEMO_SHARED_PASSWORD}</code>)
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {DEMO_CREDENTIAL_ACCOUNTS.map((account) => (
+                      <Button
+                        key={account.email}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={cn("h-auto max-w-full truncate")}
+                        onClick={() => fillDemoCredentials(account.email)}
+                      >
+                        {account.role}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </form>
           </Form>
 
