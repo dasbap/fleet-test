@@ -72,8 +72,10 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # Fallback placeholders prevent client.ts module-level throw when secrets are unset.
+          # Non-empty URL/key = Supabase client init succeeds, app renders, FCP fires.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ci-placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key-ci-lighthouse' }}
 
       - name: Vérifier le budget JS initial (gzip)
         id: bundle
