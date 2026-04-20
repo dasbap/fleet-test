@@ -8,6 +8,7 @@
       ],
       "numberOfRuns": 2,
       "settings": {
+        "chromeFlags": "--no-sandbox --headless=new --disable-dev-shm-usage",
         "preset": "desktop",
         "throttling": {
           "rttMs": 40,
