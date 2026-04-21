@@ -15,6 +15,7 @@
     "node": "22.x"
   },
   "scripts": {
+    "postinstall": "playwright install",
     "dev": "vite",
     "dev:clean": "node scripts/clear-vite-cache.mjs && vite",
     "build": "vite build",
