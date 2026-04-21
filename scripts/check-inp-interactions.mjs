@@ -68,48 +68,51 @@ async function runScenario(page, route, interactions) {
 }
 
 async function main() {
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  const page = await context.newPage();
-
-  const scenarios = [
-    {
-      route: "/",
-      interactions: [
-        { type: "press", key: "PageDown", waitMs: 250 },
-        { type: "press", key: "PageUp", waitMs: 250 },
-      ],
-    },
-    {
-      route: "/login",
-      interactions: [
-        { type: "press", key: "Tab", waitMs: 100 },
-        { type: "press", key: "Tab", waitMs: 100 },
-      ],
-    },
-  ];
-
-  const results = [];
+  let browser;
   try {
+    browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await context.newPage();
+
+    const scenarios = [
+      {
+        route: "/",
+        interactions: [
+          { type: "press", key: "PageDown", waitMs: 250 },
+          { type: "press", key: "PageUp", waitMs: 250 },
+        ],
+      },
+      {
+        route: "/login",
+        interactions: [
+          { type: "press", key: "Tab", waitMs: 100 },
+          { type: "press", key: "Tab", waitMs: 100 },
+        ],
+      },
+    ];
+
+    const results = [];
     for (const scenario of scenarios) {
       results.push(await runScenario(page, scenario.route, scenario.interactions));
     }
+
+    let hasFailure = false;
+    for (const result of results) {
+      const value = result.inpMs ?? 0;
+      const ok = value <= MAX_INP_MS;
+      const status = ok ? "OK" : "FAIL";
+      console.log(`[${status}] ${result.route} -> INP~ ${value} ms (${result.reason})`);
+      if (!ok) hasFailure = true;
+    }
+
+    if (hasFailure) {
+      console.error(`Seuil INP dépassé (>${MAX_INP_MS} ms)`);
+      process.exit(1);
+    }
   } finally {
-    await browser.close();
-  }
-
-  let hasFailure = false;
-  for (const result of results) {
-    const value = result.inpMs ?? 0;
-    const ok = value <= MAX_INP_MS;
-    const status = ok ? "OK" : "FAIL";
-    console.log(`[${status}] ${result.route} -> INP~ ${value} ms (${result.reason})`);
-    if (!ok) hasFailure = true;
-  }
-
-  if (hasFailure) {
-    console.error(`Seuil INP dépassé (>${MAX_INP_MS} ms)`);
-    process.exit(1);
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 

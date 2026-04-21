@@ -68,6 +68,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
       - name: Build
         run: npm run build
 
@@ -86,8 +89,11 @@ jobs:
       - name: Run Lighthouse CI (critical routes only)
         run: npx lhci autorun --config=.github/lighthouse/lighthouserc.critical.json
 
-      - name: Vérifier INP interaction (script utilisateur)
-        run: npm run perf:inp:interaction
+      - name: Run INP interaction audit
+        run: node scripts/check-inp-interactions.mjs
+        env:
+          PERF_BASE_URL: http://127.0.0.1:4173
+          INP_MAX_MS: 200
 
       - name: Run Lighthouse CI (SEO — page d’accueil)
         run: npx lhci autorun --config=.github/lighthouse/lighthouserc-seo.json
