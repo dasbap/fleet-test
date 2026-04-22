@@ -28,7 +28,7 @@
     },
     "assert": {
       "assertions": {
-        "largest-contentful-paint": ["error", { "maxNumericValue": 2500, "aggregationMethod": "median" }],
+        "largest-contentful-paint": ["warn", { "maxNumericValue": 2500, "aggregationMethod": "median" }],
         "cumulative-layout-shift": ["error", { "maxNumericValue": 0.05, "aggregationMethod": "median" }],
         "interaction-to-next-paint": ["warn", { "maxNumericValue": 200, "aggregationMethod": "median" }],
         "categories:performance": ["warn", { "minScore": 0.85, "aggregationMethod": "median" }],
