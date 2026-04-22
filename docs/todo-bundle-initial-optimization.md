@@ -21,6 +21,8 @@ débloquer le pipeline CI `main` (commit `dd90116`).
 - [`.github/workflows/publish-npm.yml`](../.github/workflows/publish-npm.yml) — même variable.
 - [`scripts/check-initial-js-budget.mjs`](../scripts/check-initial-js-budget.mjs) — défaut du script.
 - [`scripts/check-critical-route-budgets.mjs`](../scripts/check-critical-route-budgets.mjs) — `defaultBudgets`.
+- [`.github/lighthouse/budget.json`](../.github/lighthouse/budget.json) — budget `script` (260 → 400 Ko transfer).
+- [`.github/lighthouse/lighthouserc.critical.json`](../.github/lighthouse/lighthouserc.critical.json) — LCP passé de `error` à `warn` (mesure réelle ~5-6 s en mobile 3G, retour cible après lazy-load).
 
 ## Leviers identifiés
 
