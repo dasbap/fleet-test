@@ -308,7 +308,10 @@ export default defineConfig(({ mode }) => {
         suppressWarnings: true,
       },
     }),
-    ...(isProd
+    // En mode capacitor, les assets sont servis depuis le WebView Android
+    // (schema capacitor://) sans negociation Accept-Encoding : les .br/.gz
+    // sont inutiles et provoquent des doublons AAPT lors de :app:mergeDebugAssets.
+    ...(isProd && mode !== "capacitor"
       ? [
           viteCompression({
             algorithm: "brotliCompress",
