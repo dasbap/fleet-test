@@ -32,7 +32,8 @@ BEGIN
     RAISE EXCEPTION 'Objet manquant: RPC public.rechercher_utilisateurs(text,int)';
   END IF;
 
-  IF to_regproc('public.get_inactive_members_for_nudge(integer,integer)') IS NULL THEN
+  -- to_regprocedure (et non to_regproc) : to_regproc n'accepte pas de signature d'arguments.
+  IF to_regprocedure('public.get_inactive_members_for_nudge(integer,integer)') IS NULL THEN
     RAISE EXCEPTION 'Objet manquant: RPC public.get_inactive_members_for_nudge(integer,integer)';
   END IF;
 
