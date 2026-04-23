@@ -49,6 +49,12 @@ try {
   Write-Host "1) Verification stack Supabase locale..." -ForegroundColor Cyan
   Ensure-SupabaseRunning
 
+  # Le script test-baseline-delta.ps1 laisse la DB dans l'etat baseline+deltas partiels.
+  # On reapplique ici l'ensemble complet des migrations pour que les tests de couverture
+  # RLS (02_policy_coverage.sql) voient les tables recentes (alert_comments, notification_tokens, ...).
+  Write-Host "1b) Reset DB avec toutes les migrations (supabase/migrations/)..." -ForegroundColor Cyan
+  Invoke-SupabaseCommand -CommandArgs @("db", "reset", "--no-seed")
+
   Write-Host "2) Execution des tests SQL..." -ForegroundColor Cyan
   foreach ($testFile in $tests) {
     Write-Host " - $testFile" -ForegroundColor DarkCyan
