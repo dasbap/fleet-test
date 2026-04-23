@@ -308,10 +308,10 @@ export default defineConfig(({ mode }) => {
         suppressWarnings: true,
       },
     }),
-    // Compression web serveur : brotli + gzip pour production web uniquement.
-    // Désactivé en mode capacitor : le WebView Android ne sert pas de fichiers compressés
-    // et les doublons .js + .js.gz provoquent une erreur "Duplicate resources" dans Gradle.
-    ...(mode === "production"
+    // En mode capacitor, les assets sont servis depuis le WebView Android
+    // (schema capacitor://) sans negociation Accept-Encoding : les .br/.gz
+    // sont inutiles et provoquent des doublons AAPT lors de :app:mergeDebugAssets.
+    ...(isProd && mode !== "capacitor"
       ? [
           viteCompression({
             algorithm: "brotliCompress",
