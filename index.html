@@ -44,7 +44,16 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!--
+        Placeholder de chargement : remplace par l'app React au montage.
+        Garantit un First Contentful Paint rapide (Lighthouse/Web Vitals)
+        meme si le bundle met plusieurs secondes a s'initialiser.
+      -->
+      <div id="app-loader" aria-hidden="true" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;text-align:center;color:inherit;font-family:inherit">
+        <p style="margin:0;font-size:1rem;letter-spacing:0.02em;opacity:0.9">E-Samba — chargement de l'application...</p>
+      </div>
+    </div>
     <noscript>
       <p>E-Samba – Gestion intelligente de flotte en Afrique Centrale. Suivi des véhicules, entretiens, alertes et supervision des opérations.</p>
     </noscript>
