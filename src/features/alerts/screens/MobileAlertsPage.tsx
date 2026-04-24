@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Bell, Info } from "lucide-react";
+import { AlertTriangle, Bell, Info, FileWarning } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlertsList, type Alert } from "@/hooks/useAlerts";
+import { useExpiringDocuments } from "@/hooks/useExpiringDocuments";
 import { cn } from "@/lib/utils";
 import {
   mobileFormLabelOverline,
@@ -38,6 +39,10 @@ const TYPE_LABELS: Record<Alert["type"], string> = {
   recurring_gap: "Écart récurrent",
   risky_driver: "Conducteur à risque",
   vehicle_blocked: "Véhicule bloqué",
+  maintenance_due: "Entretien dû",
+  document_expired: "Document expiré",
+  failure_risk: "Risque de panne",
+  geofence_exit: "Sortie zone",
 };
 
 function sortAlerts(alerts: Alert[], sortBy: SortOption): Alert[] {
@@ -77,6 +82,8 @@ export default function MobileAlertsPage() {
     search: search || undefined,
   });
 
+  const { criticalCount: docCriticalCount, expired: expiredDocs, expiringSoon } = useExpiringDocuments(30);
+
   const alerts = useMemo(
     () => sortAlerts(data || [], sortBy),
     [data, sortBy],
@@ -113,6 +120,34 @@ export default function MobileAlertsPage() {
           Suivi des alertes générées automatiquement par la flotte : type, gravité et statut.
         </p>
       </header>
+
+      {docCriticalCount > 0 && (
+        <Card className="border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/40">
+          <CardContent className="flex items-start gap-3 py-4">
+            <FileWarning className="h-5 w-5 shrink-0 text-orange-500 mt-0.5" aria-hidden />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-orange-800 dark:text-orange-200">
+                {expiredDocs.length > 0
+                  ? `${expiredDocs.length} permis expiré${expiredDocs.length > 1 ? "s" : ""}`
+                  : ""}
+                {expiredDocs.length > 0 && expiringSoon.length > 0 ? " · " : ""}
+                {expiringSoon.length > 0
+                  ? `${expiringSoon.length} expire${expiringSoon.length > 1 ? "nt" : ""} dans ≤ 7 j`
+                  : ""}
+              </p>
+              <p className="text-xs text-orange-700 dark:text-orange-300 mt-0.5">
+                Renouvelez les permis conducteurs concernés pour maintenir la conformité.
+              </p>
+            </div>
+            <button
+              className="text-xs text-orange-600 dark:text-orange-400 font-medium underline underline-offset-2 shrink-0"
+              onClick={() => setType("document_expired")}
+            >
+              Filtrer
+            </button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="space-y-4 py-4">
@@ -177,18 +212,14 @@ export default function MobileAlertsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les types</SelectItem>
-                  <SelectItem value="missing_closure">
-                    {TYPE_LABELS.missing_closure}
-                  </SelectItem>
-                  <SelectItem value="recurring_gap">
-                    {TYPE_LABELS.recurring_gap}
-                  </SelectItem>
-                  <SelectItem value="risky_driver">
-                    {TYPE_LABELS.risky_driver}
-                  </SelectItem>
-                  <SelectItem value="vehicle_blocked">
-                    {TYPE_LABELS.vehicle_blocked}
-                  </SelectItem>
+                  <SelectItem value="missing_closure">{TYPE_LABELS.missing_closure}</SelectItem>
+                  <SelectItem value="recurring_gap">{TYPE_LABELS.recurring_gap}</SelectItem>
+                  <SelectItem value="risky_driver">{TYPE_LABELS.risky_driver}</SelectItem>
+                  <SelectItem value="vehicle_blocked">{TYPE_LABELS.vehicle_blocked}</SelectItem>
+                  <SelectItem value="maintenance_due">{TYPE_LABELS.maintenance_due}</SelectItem>
+                  <SelectItem value="document_expired">{TYPE_LABELS.document_expired}</SelectItem>
+                  <SelectItem value="failure_risk">{TYPE_LABELS.failure_risk}</SelectItem>
+                  <SelectItem value="geofence_exit">{TYPE_LABELS.geofence_exit}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
