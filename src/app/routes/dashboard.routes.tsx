@@ -64,6 +64,21 @@ const RolesHubScreen = lazy(() =>
 const DeclareIncidentPage = lazy(
   () => import("@/features/incidents/screens/DeclareIncidentPage")
 );
+const FuelMonitoringPage = lazy(
+  () => import("@/features/fuel/screens/FuelMonitoringPage")
+);
+const DriverScoresPage = lazy(
+  () => import("@/features/drivers/screens/DriverScoresPage")
+);
+const DvirPage = lazy(
+  () => import("@/features/inspections/screens/DvirPage")
+);
+const PredictiveMaintenancePage = lazy(
+  () => import("@/features/maintenance/screens/PredictiveMaintenancePage")
+);
+const TransitCemacPage = lazy(
+  () => import("@/features/transit/screens/TransitCemacPage")
+);
 const Scan = lazy(() => import("@/pages/Scan"));
 const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
 const ProtectedRoute = lazy(() =>
@@ -172,6 +187,11 @@ export const dashboardRoutes = (
         }
       />
       <Route path="my-vehicle" element={<MobileDriverFleetPage />} />
+      <Route path="fuel" element={<FuelMonitoringPage />} />
+      <Route path="drivers/scores" element={<DriverScoresPage />} />
+      <Route path="inspections" element={<DvirPage />} />
+      <Route path="maintenance/predictive" element={<PredictiveMaintenancePage />} />
+      <Route path="transit" element={<TransitCemacPage />} />
       <Route
         path="history"
         element={

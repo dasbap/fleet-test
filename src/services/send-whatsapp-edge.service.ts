@@ -1,5 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { WhatsappTemplateName } from "@/constants/whatsapp-templates";
+import {
+  type WhatsappTemplateName,
+  INTERACTIVE_TEMPLATE_BUTTONS,
+  TEMPLATE_CATEGORIES,
+} from "@/constants/whatsapp-templates";
 
 export interface SendWhatsappInput {
   fleetId: string;
@@ -9,6 +13,11 @@ export interface SendWhatsappInput {
   alertId?: string;
   languageCode?: string;
   variables?: string[];
+  /**
+   * Composants boutons pour les templates interactifs (renseignés automatiquement si omis
+   * et que INTERACTIVE_TEMPLATE_BUTTONS contient des boutons pour ce template).
+   */
+  buttonComponents?: unknown[];
 }
 
 interface SendWhatsappSuccessResponse {
@@ -32,10 +41,15 @@ export class SendWhatsappEdgeService {
       throw new Error("recipientUserId ou recipientPhone requis pour l'envoi WhatsApp.");
     }
 
-    const { data, error } = await supabase.functions.invoke<
-      SendWhatsappSuccessResponse,
-      SendWhatsappInput
-    >("send-whatsapp", {
+    // Auto-inject button components for interactive templates if not provided.
+    const isInteractive = TEMPLATE_CATEGORIES[input.templateName] === "interactive";
+    const buttonComponents =
+      input.buttonComponents ??
+      (isInteractive ? (INTERACTIVE_TEMPLATE_BUTTONS[input.templateName] ?? []) : []);
+
+    const { data, error } = await supabase.functions.invoke<SendWhatsappSuccessResponse>(
+      "send-whatsapp",
+    {
       body: {
         fleetId: input.fleetId,
         alertId: input.alertId,
@@ -44,6 +58,7 @@ export class SendWhatsappEdgeService {
         templateName: input.templateName,
         languageCode: input.languageCode ?? "fr",
         variables: input.variables ?? [],
+        buttonComponents: buttonComponents.length > 0 ? buttonComponents : undefined,
       },
     });
 
