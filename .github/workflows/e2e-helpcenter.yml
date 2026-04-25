@@ -38,6 +38,8 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run HelpCenter i18n E2E
+        env:
+          VITE_USE_MOCK_AUTH: "true"
         run: npm run test:e2e:help
 
       - name: Upload Playwright report
