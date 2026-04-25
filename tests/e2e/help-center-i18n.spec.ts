@@ -39,7 +39,7 @@ async function seedSessionAndLocale(page: Page, locale: HelpLocaleCase["locale"]
       "esamba-mock-auth-v1",
       JSON.stringify({
         user: {
-          id: "mock-help-e2e-user",
+          id: "11111111-1111-4111-8111-111111111111",
           email: "organizer@esamba.test",
           created_at: nowIso,
           user_metadata: { full_name: "E2E Help User" },
@@ -47,7 +47,7 @@ async function seedSessionAndLocale(page: Page, locale: HelpLocaleCase["locale"]
         role: "organizer",
         memberships: [
           {
-            id: "mock-memb-help-e2e",
+            id: "22222222-2222-4222-8222-222222222222",
             fleet_id: demoFleetId,
             role: "organizer",
             is_active: true,
