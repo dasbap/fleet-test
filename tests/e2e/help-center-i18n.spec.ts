@@ -31,6 +31,7 @@ const HELP_LOCALE_CASES: HelpLocaleCase[] = [
 async function seedSessionAndLocale(page: Page, locale: HelpLocaleCase["locale"]): Promise<void> {
   await page.addInitScript((nextLocale) => {
     const nowIso = new Date().toISOString();
+    const demoFleetId = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
 
     window.localStorage.setItem("esamba_lang", nextLocale);
     window.localStorage.setItem("esamba-demo-auth-fallback", "true");
@@ -44,7 +45,14 @@ async function seedSessionAndLocale(page: Page, locale: HelpLocaleCase["locale"]
           user_metadata: { full_name: "E2E Help User" },
         },
         role: "organizer",
-        memberships: [],
+        memberships: [
+          {
+            id: "mock-memb-help-e2e",
+            fleet_id: demoFleetId,
+            role: "organizer",
+            is_active: true,
+          },
+        ],
       }),
     );
   }, locale);
