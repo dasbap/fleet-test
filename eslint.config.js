@@ -25,6 +25,7 @@ export default tseslint.config(
       "node_modules/**",
       "public/icons/**",
       "apps/mobile/.expo/**",
+      ".claude/worktrees/**",
     ],
   },
   {

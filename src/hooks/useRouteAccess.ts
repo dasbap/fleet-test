@@ -46,10 +46,10 @@ export function useRouteAccess(): RouteAccessResult {
 
   const orgAndFleetReady = !hasMemberships || Boolean(orgId && fleetId);
   const billingReady =
-    !Boolean(orgId && fleetId) ||
+    !(orgId && fleetId) ||
     (!billingQuery.isLoading && !billingQuery.isPending);
   const fleetBillingReady =
-    !Boolean(fleetId) ||
+    !fleetId ||
     (!fleetBillingQuery.isLoading && !fleetBillingQuery.isPending);
   const onboardingReady =
     !hasMemberships ||

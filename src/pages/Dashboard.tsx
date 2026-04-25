@@ -6,8 +6,8 @@ import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
 import {
   PhoneAlertBanner,
   PhoneCollectionModal,
-  useMissingPhoneCount,
 } from "@/components/shared/PhoneCollectionModal";
+import { useMissingPhoneCount } from "@/hooks/useMissingPhoneCount";
 import { DriverActivationHealthCard } from "@/components/dashboard/DriverActivationHealthCard";
 import { useActivation } from "@/hooks/useActivation";
 import { toast } from "@/hooks/use-toast";
