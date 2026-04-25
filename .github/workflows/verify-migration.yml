@@ -8,7 +8,7 @@ on:
       - release/**
     paths:
       - 'supabase/migrations/**'
-      - 'supabase/verify-migration-status.sql'
+      - 'supabase/scripts/verify/verify-migration-status.sql'
   pull_request:
     branches:
       - main
@@ -16,7 +16,7 @@ on:
       - release/**
     paths:
       - 'supabase/migrations/**'
-      - 'supabase/verify-migration-status.sql'
+      - 'supabase/scripts/verify/verify-migration-status.sql'
   workflow_dispatch: # Permet d'exécuter manuellement depuis GitHub
 
 permissions:
@@ -66,7 +66,7 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
           echo "Executing migration verification script..."
-          supabase db query < supabase/verify-migration-status.sql > migration-report.txt 2>&1 || true
+          supabase db query < supabase/scripts/verify/verify-migration-status.sql > migration-report.txt 2>&1 || true
           
           # Afficher le rapport
           echo "=== MIGRATION VERIFICATION REPORT ==="
