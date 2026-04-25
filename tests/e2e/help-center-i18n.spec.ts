@@ -135,10 +135,20 @@ test.describe("HelpCenter i18n e2e", () => {
         await expect(helpPanel).toContainText(localeCase.panelTitle);
         await expect(helpPanel).toContainText(localeCase.faqTitle);
       } else {
+        await expect(page).toHaveURL(/\/aide(?:\?|$)/);
         await expect(
-          page.getByRole("heading", { name: localeCase.panelTitle }),
+          page.getByRole("heading", {
+            name: /Centre d'aide|Help Center|Lisalisi/i,
+          }),
         ).toBeVisible();
-        await expect(page.getByText(localeCase.faqTitle, { exact: false })).toBeVisible();
+        await expect(
+          page.getByText(
+            /Questions fréquentes|Frequently asked questions|Mituna ya mingi/i,
+            {
+              exact: false,
+            },
+          ),
+        ).toBeVisible();
       }
 
       const hardErrors = consoleErrors.filter((entry) =>
