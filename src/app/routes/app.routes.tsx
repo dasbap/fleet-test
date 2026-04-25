@@ -1,11 +1,12 @@
 import { lazy } from "react";
-import { Route, Navigate, useParams } from "react-router-dom";
+import { Route, Navigate } from "react-router-dom";
 import { RootLayout } from "@/app/RootLayout";
 import AuthProviderLayout from "@/components/auth/AuthProviderLayout";
 import { dashboardRoutes } from "@/app/routes/dashboard.routes";
 import { authPublicRoutes } from "@/features/auth/routes";
 import { RoleGuard } from "@/navigation/guards/RequireRole";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { LegacyAideVideoRedirect } from "@/app/routes/LegacyAideVideoRedirect";
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -29,15 +30,6 @@ const TerrainLayout = lazy(() => import("@/layouts/TerrainLayout"));
 const TerrainPage = lazy(() => import("@/features/terrain/screens/TerrainPage"));
 const Scan = lazy(() => import("@/pages/Scan"));
 
-/** Ancien lien /aide/videos/:id → tuto dashboard (le paramètre doit être interpolé, pas littéral). */
-function RedirectLegacyAideVideoToTutorial() {
-  const { tutorialId } = useParams<{ tutorialId: string }>();
-  if (!tutorialId) {
-    return <Navigate to="/dashboard/tutorials" replace />;
-  }
-  return <Navigate to={`/dashboard/tutorials/${encodeURIComponent(tutorialId)}`} replace />;
-}
-
 /**
  * Arbre de routes racine : pages publiques, redirections, dashboard, 404.
  * Monté dans `App.tsx` sous `<Routes>` (avec Suspense au niveau parent).
@@ -52,7 +44,7 @@ export const appRoutes = (
     />
     <Route
       path="/aide/videos/:tutorialId"
-      element={<RedirectLegacyAideVideoToTutorial />}
+      element={<LegacyAideVideoRedirect />}
     />
     <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
     <Route

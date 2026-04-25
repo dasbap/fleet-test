@@ -114,7 +114,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
   }, []);
 
   const orgAndFleetReady = !hasMemberships || Boolean(orgId && fleetId);
-  const billingReady = !Boolean(orgId && fleetId) || !billingLoading;
+  const billingReady = !(orgId && fleetId) || !billingLoading;
   /** Sans orgId connu, on ne bloque pas sur l’onboarding (évite faux positifs au timeout). */
   const onboardingCompleted =
     !orgId || !hasMemberships

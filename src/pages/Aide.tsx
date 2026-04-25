@@ -1,7 +1,7 @@
 import { useTranslation as useT2 } from "react-i18next";
 import { Link } from "react-router-dom";
 import { HelpSearch, HelpFAQ } from "@/components/shared/HelpCenter";
-import { useHelpContext as useH2 } from "@/context/HelpContext";
+import { useHelpContext as useH2 } from "@/context/useHelpContext";
 
 const CATEGORIES_ALL = [
   { id: "fleet", labelKey: "category_fleet", emoji: "🚗", count: 4 },

@@ -1,6 +1,4 @@
 import {
-  createContext,
-  useContext,
   useState,
   useCallback,
   useMemo,
@@ -22,8 +20,7 @@ import {
   routeToCategory,
   searchArticlesHelper,
 } from "@/hooks/useHelp";
-
-const HelpContext = createContext<UseHelpReturn | null>(null);
+import { HelpContext } from "@/context/help.context.store";
 type PosthogWindow = Window & {
   posthog?: { capture: (event: string, props?: Record<string, unknown>) => void };
 };
@@ -141,8 +138,3 @@ export function HelpProvider({ children }: { children: ReactNode }) {
   return <HelpContext.Provider value={value}>{children}</HelpContext.Provider>;
 }
 
-export function useHelpContext(): UseHelpReturn {
-  const ctx = useContext(HelpContext);
-  if (!ctx) throw new Error("useHelpContext must be used within HelpProvider");
-  return ctx;
-}
