@@ -127,13 +127,13 @@ try {
         Write-Host "INFO: Aucun stack actif a stopper (ou arret deja effectue)." -ForegroundColor DarkYellow
     }
 
-    Write-Host "1) Demarrage stack locale Supabase (sans vector/logflare)..." -ForegroundColor Cyan
-    Invoke-SupabaseCommand -CommandArgs @("start", "-x", "vector,logflare")
-
-    Write-Host "2) Preparation d une chaine migrations temporaire baseline+deltas..." -ForegroundColor Cyan
+    Write-Host "1) Preparation d une chaine migrations temporaire baseline+deltas..." -ForegroundColor Cyan
     Move-Item $migrationsRoot $legacyRoot
     Move-Item $tempRoot $migrationsRoot
     $migrationSwapped = $true
+
+    Write-Host "2) Demarrage stack locale Supabase (sans vector/logflare)..." -ForegroundColor Cyan
+    Invoke-SupabaseCommand -CommandArgs @("start", "-x", "vector,logflare")
 
     Write-Host "3) Reset local sans seed (baseline+deltas)..." -ForegroundColor Cyan
     Invoke-SupabaseCommand -CommandArgs @("db", "reset", "--no-seed")
