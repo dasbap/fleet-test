@@ -63,8 +63,8 @@ jobs:
           version: latest
 
       - name: Start Supabase local stack
-        run: supabase start --workdir supabase
+        run: supabase start -x vector,logflare
 
       - name: Replay migrations from scratch
-        run: supabase db reset --workdir supabase
+        run: supabase db reset --no-seed
 
