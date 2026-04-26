@@ -4,6 +4,7 @@ type RoutePreloadTask = {
 };
 
 const isDashboardPath = (pathname: string) => pathname.startsWith("/dashboard");
+const heavyDashboardPaths = ["/dashboard/reports", "/dashboard/tracking"] as const;
 
 const dashboardLeafTasks: RoutePreloadTask[] = [
   { test: (p) => p === "/dashboard" || p === "/dashboard/", preload: () => import("@/features/home/screens/MobileHomePage") },
@@ -13,6 +14,7 @@ const dashboardLeafTasks: RoutePreloadTask[] = [
   { test: (p) => p.startsWith("/dashboard/incidents"), preload: () => import("@/pages/Incidents") },
   { test: (p) => p.startsWith("/dashboard/vehicles/"), preload: () => import("@/features/fleet/screens/FleetVehicleDetailPage") },
   { test: (p) => p.startsWith("/dashboard/vehicles"), preload: () => import("@/features/fleet/screens/MobileFleetPage") },
+  { test: (p) => p.startsWith("/dashboard/drivers/scores"), preload: () => import("@/features/drivers/screens/DriverScoresPage") },
   { test: (p) => p.startsWith("/dashboard/drivers"), preload: () => import("@/pages/Drivers") },
   { test: (p) => p.startsWith("/dashboard/shift") || p.startsWith("/dashboard/closure"), preload: () => import("@/pages/ShiftClosure") },
   { test: (p) => p.startsWith("/dashboard/settings"), preload: () => import("@/pages/Settings") },
@@ -43,7 +45,9 @@ const hasFastConnection = () => {
     connection?: { saveData?: boolean; effectiveType?: string };
   };
   if (nav.connection?.saveData) return false;
-  return nav.connection?.effectiveType !== "2g";
+  const networkType = nav.connection?.effectiveType;
+  if (!networkType) return true;
+  return networkType === "4g";
 };
 
 const scheduleIdle = (task: () => void) => {
@@ -64,7 +68,10 @@ export function preloadRouteChunksForPath(pathname: string) {
 
   if (isDashboardPath(normalizedPath)) {
     tasks.push(() => import("@/components/dashboard/DashboardLayout"));
-    const matchedDashboardTask = dashboardLeafTasks.find((task) => task.test(normalizedPath));
+    const isHeavyPath = heavyDashboardPaths.some((prefix) => normalizedPath.startsWith(prefix));
+    const matchedDashboardTask = isHeavyPath
+      ? undefined
+      : dashboardLeafTasks.find((task) => task.test(normalizedPath));
     if (matchedDashboardTask) tasks.push(matchedDashboardTask.preload);
   } else {
     const matchedRootTask = rootTasks.find((task) => task.test(normalizedPath));

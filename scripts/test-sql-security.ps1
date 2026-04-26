@@ -1,6 +1,12 @@
 # =====================================================
-# Tests SQL sécurité RLS/RPC (local)
+# Tests SQL sécurité RLS/RPC (local + linked)
 # =====================================================
+
+param(
+  [ValidateSet("linked", "local")]
+  [string]$Target = "local",
+  [switch]$ResetDatabase
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -22,6 +28,16 @@ function Invoke-SupabaseCommand {
   }
 }
 
+function Invoke-LocalSqlFile {
+  param([string]$SqlFile)
+  $containerName = "supabase_db_smart-fleet-africa"
+  $sqlRaw = Get-Content -Path $SqlFile -Raw
+  $output = $sqlRaw | docker exec -i $containerName psql -U postgres -d postgres -v ON_ERROR_STOP=1 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0) {
+    throw "Echec SQL local pour '$SqlFile': $output"
+  }
+}
+
 function Ensure-SupabaseRunning {
   try {
     Invoke-SupabaseCommand -CommandArgs @("status")
@@ -37,6 +53,7 @@ Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "TESTS SQL SECURITE (RLS/RPC)" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "Cible Supabase: $Target" -ForegroundColor Gray
 
 foreach ($testFile in $tests) {
   if (-not (Test-Path $testFile)) {
@@ -46,19 +63,31 @@ foreach ($testFile in $tests) {
 }
 
 try {
-  Write-Host "1) Verification stack Supabase locale..." -ForegroundColor Cyan
-  Ensure-SupabaseRunning
-
-  # Le script test-baseline-delta.ps1 laisse la DB dans l'etat baseline+deltas partiels.
-  # On reapplique ici l'ensemble complet des migrations pour que les tests de couverture
-  # RLS (02_policy_coverage.sql) voient les tables recentes (alert_comments, notification_tokens, ...).
-  Write-Host "1b) Reset DB avec toutes les migrations (supabase/migrations/)..." -ForegroundColor Cyan
-  Invoke-SupabaseCommand -CommandArgs @("db", "reset", "--no-seed")
+  if ($Target -eq "local") {
+    Write-Host "1) Verification stack Supabase locale..." -ForegroundColor Cyan
+    Ensure-SupabaseRunning
+    if ($ResetDatabase -or -not $PSBoundParameters.ContainsKey("ResetDatabase")) {
+      # Le script test-baseline-delta.ps1 laisse la DB dans l'etat baseline+deltas partiels.
+      # On reapplique ici l'ensemble complet des migrations pour que les tests de couverture
+      # RLS (02_policy_coverage.sql) voient les tables recentes (alert_comments, notification_tokens, ...).
+      Write-Host "1b) Reset DB locale avec toutes les migrations (supabase/migrations/)..." -ForegroundColor Cyan
+      Invoke-SupabaseCommand -CommandArgs @("db", "reset", "--no-seed")
+    }
+  }
+  elseif ($ResetDatabase) {
+    Write-Host "1) Reset DB linked demande..." -ForegroundColor Cyan
+    Invoke-SupabaseCommand -CommandArgs @("db", "reset", "--linked", "--no-seed")
+  }
 
   Write-Host "2) Execution des tests SQL..." -ForegroundColor Cyan
   foreach ($testFile in $tests) {
     Write-Host " - $testFile" -ForegroundColor DarkCyan
-    Invoke-SupabaseCommand -CommandArgs @("db", "query", "--file", $testFile)
+    if ($Target -eq "local") {
+      Invoke-LocalSqlFile -SqlFile $testFile
+    }
+    else {
+      Invoke-SupabaseCommand -CommandArgs @("db", "query", "--linked", "--file", $testFile)
+    }
   }
 
   Write-Host ""

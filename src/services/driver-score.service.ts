@@ -4,12 +4,29 @@ import type { DriverScoreSnapshotRow } from '@/repositories/driver-score.reposit
 
 export type { DriverScoreLevel };
 
+export interface GetDriverScoresOptions {
+  limit?: number;
+}
+
+const MAX_DRIVER_SCORES_LIMIT = 100;
+
+function sanitizeLimit(limit?: number): number | undefined {
+  if (typeof limit !== 'number' || !Number.isFinite(limit)) return undefined;
+  if (limit <= 0) return undefined;
+  return Math.min(Math.floor(limit), MAX_DRIVER_SCORES_LIMIT);
+}
+
 export class DriverScoreService {
   constructor(private repository: DriverScoreRepository) {}
 
-  async getDriverScores(fleetId: string): Promise<DriverScoreRow[]> {
+  async getDriverScores(
+    fleetId: string,
+    options?: GetDriverScoresOptions,
+  ): Promise<DriverScoreRow[]> {
     if (!fleetId) return [];
-    return this.repository.findByFleet(fleetId);
+    return this.repository.findByFleet(fleetId, {
+      limit: sanitizeLimit(options?.limit),
+    });
   }
 
   async calculateDriverScore(

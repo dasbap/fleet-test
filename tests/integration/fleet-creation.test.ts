@@ -13,15 +13,26 @@ import { createClient } from '@supabase/supabase-js';
 
 // Configuration pour les tests
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const testIntegrationUserId = process.env.TEST_INTEGRATION_USER_ID || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Les variables d\'environnement VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY doivent être définies');
+if (!supabaseUrl) {
+  throw new Error('La variable d\'environnement VITE_SUPABASE_URL doit être définie');
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const canRunIntegrationSuite = Boolean(supabaseServiceRoleKey && testIntegrationUserId);
+const describeIntegration = canRunIntegrationSuite ? describe : describe.skip;
 
-describe('Création de flotte - Tests d\'intégration', () => {
+const supabase = canRunIntegrationSuite
+  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  : null;
+
+describeIntegration('Création de flotte - Tests d\'intégration', () => {
   let testUserId: string;
   let testOrgId: string;
   let testFleetId: string;
@@ -29,26 +40,20 @@ describe('Création de flotte - Tests d\'intégration', () => {
   const testFleetName = `Test Flotte ${Date.now()}`;
 
   beforeAll(async () => {
-    // Créer un utilisateur de test ou utiliser un utilisateur existant
-    // Pour les tests, on suppose qu'un utilisateur de test existe déjà
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('Aucun utilisateur connecté pour les tests');
-    }
-    testUserId = user.id;
+    testUserId = testIntegrationUserId;
   });
 
   afterAll(async () => {
     // Nettoyer les données de test
     if (testFleetId) {
       // Supprimer les membreships
-      await supabase
+      await supabase!
         .from('flotte_adhesions')
         .delete()
         .eq('fleet_id', testFleetId);
       
       // Supprimer la flotte
-      await supabase
+      await supabase!
         .from('flottes')
         .delete()
         .eq('id', testFleetId);
@@ -56,7 +61,7 @@ describe('Création de flotte - Tests d\'intégration', () => {
 
     if (testOrgId) {
       // Supprimer l'organisation
-      await supabase
+      await supabase!
         .from('organisations')
         .delete()
         .eq('id', testOrgId);
@@ -64,7 +69,7 @@ describe('Création de flotte - Tests d\'intégration', () => {
   });
 
   it('devrait créer une organisation', async () => {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('organisations')
       .insert({
         name: testOrgName,
@@ -80,7 +85,7 @@ describe('Création de flotte - Tests d\'intégration', () => {
   });
 
   it('devrait créer une flotte via la fonction RPC creer_flotte_esamba', async () => {
-    const { data, error } = await supabase.rpc('creer_flotte_esamba', {
+    const { data, error } = await supabase!.rpc('creer_flotte_esamba', {
       p_org_id: testOrgId,
       p_name: testFleetName,
       p_collection_policy: 'mix',
@@ -93,7 +98,7 @@ describe('Création de flotte - Tests d\'intégration', () => {
   });
 
   it('devrait ajouter l\'utilisateur comme organizer via creer_ou_mettre_a_jour_adhesion_flotte', async () => {
-    const { data, error } = await supabase.rpc('creer_ou_mettre_a_jour_adhesion_flotte', {
+    const { data, error } = await supabase!.rpc('creer_ou_mettre_a_jour_adhesion_flotte', {
       p_fleet_id: testFleetId,
       p_user_id: testUserId,
       p_role: 'organizer',
@@ -106,7 +111,7 @@ describe('Création de flotte - Tests d\'intégration', () => {
   });
 
   it('devrait vérifier que le membership existe', async () => {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('flotte_adhesions')
       .select('*')
       .eq('fleet_id', testFleetId)
@@ -122,7 +127,7 @@ describe('Création de flotte - Tests d\'intégration', () => {
   });
 
   it('devrait créer un véhicule via la fonction RPC creer_vehicule_esamba', async () => {
-    const { data, error } = await supabase.rpc('creer_vehicule_esamba', {
+    const { data, error } = await supabase!.rpc('creer_vehicule_esamba', {
       p_fleet_id: testFleetId,
       p_registration: 'TEST-001',
       p_brand: 'Toyota',
@@ -137,7 +142,7 @@ describe('Création de flotte - Tests d\'intégration', () => {
   });
 
   it('devrait créer une invitation via la fonction RPC creer_invitation_esamba', async () => {
-    const { data, error } = await supabase.rpc('creer_invitation_esamba', {
+    const { data, error } = await supabase!.rpc('creer_invitation_esamba', {
       p_fleet_id: testFleetId,
       p_code: 'TEST-2024',
     });
@@ -150,7 +155,7 @@ describe('Création de flotte - Tests d\'intégration', () => {
   it('devrait vérifier que toutes les données sont créées (verifier_esamba_2024)', async () => {
     // Note: Cette fonction vérifie spécifiquement les données ESAMBA-2024
     // Pour les tests, on vérifie manuellement les données créées
-    const { data: fleet } = await supabase
+    const { data: fleet } = await supabase!
       .from('flottes')
       .select('*')
       .eq('id', testFleetId)
@@ -159,7 +164,7 @@ describe('Création de flotte - Tests d\'intégration', () => {
     expect(fleet).toBeDefined();
     expect(fleet?.name).toBe(testFleetName);
 
-    const { data: membership } = await supabase
+    const { data: membership } = await supabase!
       .from('flotte_adhesions')
       .select('*')
       .eq('fleet_id', testFleetId)

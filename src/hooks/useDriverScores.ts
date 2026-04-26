@@ -43,25 +43,57 @@ export interface DriverScoreSnapshot {
   created_at: string;
 }
 
+export interface UseDriverScoresOptions {
+  enabled?: boolean;
+  limit?: number;
+}
+
+const MAX_DRIVER_SCORES_LIMIT = 100;
+
+function normalizeLimit(limit?: number): number {
+  if (typeof limit !== 'number' || !Number.isFinite(limit)) return 0;
+  if (limit <= 0) return 0;
+  return Math.min(Math.floor(limit), MAX_DRIVER_SCORES_LIMIT);
+}
+
+function resolveDriverScoresOptions(
+  optionsOrEnabled?: UseDriverScoresOptions | boolean,
+): Required<UseDriverScoresOptions> {
+  if (typeof optionsOrEnabled === 'boolean') {
+    return { enabled: optionsOrEnabled, limit: 0 };
+  }
+
+  return {
+    enabled: optionsOrEnabled?.enabled ?? true,
+    limit: normalizeLimit(optionsOrEnabled?.limit),
+  };
+}
+
 /**
  * @param queryEnabled si false, aucune requête (ex. plan sans scoring conducteur).
  */
-export function useDriverScores(fleetId?: string, queryEnabled: boolean = true) {
+export function useDriverScores(
+  fleetId?: string,
+  optionsOrEnabled?: UseDriverScoresOptions | boolean,
+) {
   const { userFleetId } = useAuth();
   const targetFleetId = fleetId || userFleetId;
+  const { enabled, limit } = resolveDriverScoresOptions(optionsOrEnabled);
 
   return useQuery({
-    queryKey: ['driver-scores', targetFleetId],
+    queryKey: ['driver-scores', targetFleetId, limit],
     queryFn: async () => {
       if (!targetFleetId) return [];
       try {
-        return await driverScoreService.getDriverScores(targetFleetId);
+        return await driverScoreService.getDriverScores(targetFleetId, {
+          limit: limit > 0 ? limit : undefined,
+        });
       } catch {
         // En mode démo/offline, on garde le dashboard fonctionnel sans bloquer le rendu.
         return [];
       }
     },
-    enabled: !!targetFleetId && queryEnabled,
+    enabled: !!targetFleetId && enabled,
   });
 }
 

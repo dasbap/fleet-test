@@ -28,193 +28,211 @@ create index if not exists idx_travaux_maintenance_notes_trgm
 create index if not exists idx_travaux_maintenance_status_priority_trgm
   on public.travaux_maintenance using gin ((coalesce(status, '') || ' ' || coalesce(priority, '')) gin_trgm_ops);
 
-create or replace function public.search_fleet(
-  search_query text,
-  max_per_type int default 5,
-  fleet_id_filter uuid default null
-)
-returns table (
-  id uuid,
-  result_type text,
-  title text,
-  subtitle text,
-  badge text,
-  badge_variant text,
-  href text,
-  score int
-)
-language sql
-stable
-security invoker
-as $$
-  with params as (
-    select
-      left(trim(coalesce(search_query, '')), 80) as q,
-      greatest(1, least(coalesce(max_per_type, 5), 50)) as per_type
-  ),
-  target_fleet as (
-    select
-      case
-        when fleet_id_filter is not null then fleet_id_filter
-        else (
-          select fa.fleet_id
-          from public.flotte_adhesions fa
-          where fa.user_id = auth.uid()
-            and fa.is_active = true
-          order by fa.created_at asc
-          limit 1
-        )
-      end as fleet_id
-  ),
-  vehicle_results as (
-    select
-      v.id,
-      'vehicle'::text as result_type,
-      v.registration::text as title,
-      trim(coalesce(v.brand, '') || ' ' || coalesce(v.model, '')) || ' · ' || coalesce(v.current_km::text, '0') || ' km' as subtitle,
-      case
-        when v.status = 'ok' then 'Actif'
-        when exists (
-          select 1
-          from public.travaux_maintenance tm
-          where tm.vehicle_id = v.id
-            and tm.status in ('queued', 'in_progress', 'blocked')
-        ) then 'Entretien'
-        else 'Inactif'
-      end as badge,
-      case
-        when v.status = 'ok' then 'success'
-        when exists (
-          select 1
-          from public.travaux_maintenance tm
-          where tm.vehicle_id = v.id
-            and tm.status in ('queued', 'in_progress', 'blocked')
-        ) then 'warning'
-        else 'default'
-      end as badge_variant,
-      '/dashboard/vehicles/' || v.id::text as href,
-      case
-        when lower(v.registration) like lower((select q from params)) || '%' then 10
-        when v.registration ilike '%' || (select q from params) || '%' then 8
-        when similarity(coalesce(v.registration, ''), (select q from params)) >= 0.1 then 6
-        else 4
-      end as score
-    from public.vehicules v
-    join target_fleet tf on tf.fleet_id = v.fleet_id
-    where (select q from params) <> ''
-      and (
-        v.registration ilike '%' || (select q from params) || '%'
-        or coalesce(v.brand, '') ilike '%' || (select q from params) || '%'
-        or coalesce(v.model, '') ilike '%' || (select q from params) || '%'
-        or similarity(coalesce(v.registration, ''), (select q from params)) >= 0.1
-      )
-    order by score desc, v.registration asc
-    limit (select per_type from params)
-  ),
-  driver_results as (
-    select
-      p.user_id as id,
-      'driver'::text as result_type,
-      coalesce(p.full_name, 'Sans nom')::text as title,
-      coalesce(p.phone, 'Pas de téléphone')::text as subtitle,
-      fa.role::text as badge,
-      null::text as badge_variant,
-      '/dashboard/drivers'::text as href,
-      case
-        when lower(coalesce(p.full_name, '')) like lower((select q from params)) || '%' then 10
-        when coalesce(p.full_name, '') ilike '%' || (select q from params) || '%' then 8
-        when similarity(coalesce(p.full_name, ''), (select q from params)) >= 0.1 then 6
-        when coalesce(p.phone, '') ilike '%' || (select q from params) || '%' then 5
-        else 4
-      end as score
-    from public.flotte_adhesions fa
-    join target_fleet tf on tf.fleet_id = fa.fleet_id
-    join public.profils p on p.user_id = fa.user_id
-    where fa.is_active = true
-      and (select q from params) <> ''
-      and (
-        coalesce(p.full_name, '') ilike '%' || (select q from params) || '%'
-        or coalesce(p.phone, '') ilike '%' || (select q from params) || '%'
-        or similarity(coalesce(p.full_name, ''), (select q from params)) >= 0.1
-      )
-    order by score desc, title asc
-    limit (select per_type from params)
-  ),
-  alert_results as (
-    select
-      aa.id,
-      'alert'::text as result_type,
-      aa.message::text as title,
-      'Créée ' || to_char(aa.created_at, 'DD/MM/YYYY') as subtitle,
-      case aa.severity
-        when 'critical' then 'Critique'
-        when 'high' then 'Élevée'
-        when 'medium' then 'Moyenne'
-        else 'Faible'
-      end as badge,
-      aa.severity::text as badge_variant,
-      '/dashboard/alerts/' || aa.id::text as href,
-      case
-        when aa.severity = 'critical' then 10
-        when aa.severity = 'high' then 8
-        when aa.severity = 'medium' then 6
-        else 4
-      end as score
-    from public.alertes_automatiques aa
-    join target_fleet tf on tf.fleet_id = aa.fleet_id
-    where (select q from params) <> ''
-      and aa.resolved = false
-      and (
-        aa.message ilike '%' || (select q from params) || '%'
-        or coalesce(aa.severity, '') ilike '%' || (select q from params) || '%'
-        or similarity(coalesce(aa.message, ''), (select q from params)) >= 0.1
-      )
-    order by score desc, aa.created_at desc
-    limit (select per_type from params)
-  ),
-  maintenance_results as (
-    select
-      tm.id,
-      'maintenance'::text as result_type,
-      'Entretien ' || tm.status as title,
-      coalesce(to_char(tm.planned_at, 'DD/MM/YYYY'), 'Sans date') ||
-        case when tm.notes is not null and tm.notes <> ''
-          then ' · ' || left(tm.notes, 60)
-          else ''
-        end as subtitle,
-      case when tm.closed_at is not null then 'Terminé' else 'Planifié' end as badge,
-      case when tm.closed_at is not null then 'success' else 'info' end as badge_variant,
-      '/dashboard/maintenance?job=' || tm.id::text as href,
-      case
-        when tm.closed_at is null then 7
-        else 3
-      end as score
-    from public.travaux_maintenance tm
-    join target_fleet tf on tf.fleet_id = tm.fleet_id
-    where (select q from params) <> ''
-      and (
-        coalesce(tm.notes, '') ilike '%' || (select q from params) || '%'
-        or coalesce(tm.status, '') ilike '%' || (select q from params) || '%'
-        or coalesce(tm.priority, '') ilike '%' || (select q from params) || '%'
-        or similarity(coalesce(tm.notes, ''), (select q from params)) >= 0.1
-      )
-    order by score desc, tm.planned_at desc nulls last, tm.created_at desc
-    limit (select per_type from params)
-  )
-  select *
-  from vehicle_results
-  union all
-  select * from driver_results
-  union all
-  select * from alert_results
-  union all
-  select * from maintenance_results;
-$$;
+do $block$
+declare
+  required_tables text[] := array[
+    'vehicules',
+    'profils',
+    'flotte_adhesions',
+    'alertes_automatiques',
+    'travaux_maintenance'
+  ];
+  found_tables_count int;
+begin
+  select count(*)
+  into found_tables_count
+  from information_schema.tables
+  where table_schema = 'public'
+    and table_name = any (required_tables);
 
-grant execute on function public.search_fleet(text, int, uuid) to authenticated;
+  if found_tables_count = 5 then
+    create or replace function public.search_fleet(
+      search_query text,
+      max_per_type int default 5,
+      fleet_id_filter uuid default null
+    )
+    returns table (
+      id uuid,
+      result_type text,
+      title text,
+      subtitle text,
+      badge text,
+      badge_variant text,
+      href text,
+      score int
+    )
+    language sql
+    stable
+    security invoker
+    as $fn$
+      with params as (
+        select
+          left(trim(coalesce(search_query, '')), 80) as q,
+          greatest(1, least(coalesce(max_per_type, 5), 50)) as per_type
+      ),
+      target_fleet as (
+        select
+          case
+            when fleet_id_filter is not null then fleet_id_filter
+            else (
+              select fa.fleet_id
+              from public.flotte_adhesions fa
+              where fa.user_id = auth.uid()
+                and fa.is_active = true
+              order by fa.created_at asc
+              limit 1
+            )
+          end as fleet_id
+      ),
+      vehicle_results as (
+        select
+          v.id,
+          'vehicle'::text as result_type,
+          v.registration::text as title,
+          trim(coalesce(v.brand, '') || ' ' || coalesce(v.model, '')) || ' · ' || coalesce(v.current_km::text, '0') || ' km' as subtitle,
+          case
+            when v.status = 'ok' then 'Actif'
+            when exists (
+              select 1
+              from public.travaux_maintenance tm
+              where tm.vehicle_id = v.id
+                and tm.status in ('queued', 'in_progress', 'blocked')
+            ) then 'Entretien'
+            else 'Inactif'
+          end as badge,
+          case
+            when v.status = 'ok' then 'success'
+            when exists (
+              select 1
+              from public.travaux_maintenance tm
+              where tm.vehicle_id = v.id
+                and tm.status in ('queued', 'in_progress', 'blocked')
+            ) then 'warning'
+            else 'default'
+          end as badge_variant,
+          '/dashboard/vehicles/' || v.id::text as href,
+          case
+            when lower(v.registration) like lower((select q from params)) || '%' then 10
+            when v.registration ilike '%' || (select q from params) || '%' then 8
+            when similarity(coalesce(v.registration, ''), (select q from params)) >= 0.1 then 6
+            else 4
+          end as score
+        from public.vehicules v
+        join target_fleet tf on tf.fleet_id = v.fleet_id
+        where (select q from params) <> ''
+          and (
+            v.registration ilike '%' || (select q from params) || '%'
+            or coalesce(v.brand, '') ilike '%' || (select q from params) || '%'
+            or coalesce(v.model, '') ilike '%' || (select q from params) || '%'
+            or similarity(coalesce(v.registration, ''), (select q from params)) >= 0.1
+          )
+        order by score desc, v.registration asc
+        limit (select per_type from params)
+      ),
+      driver_results as (
+        select
+          p.user_id as id,
+          'driver'::text as result_type,
+          coalesce(p.full_name, 'Sans nom')::text as title,
+          coalesce(p.phone, 'Pas de téléphone')::text as subtitle,
+          fa.role::text as badge,
+          null::text as badge_variant,
+          '/dashboard/drivers'::text as href,
+          case
+            when lower(coalesce(p.full_name, '')) like lower((select q from params)) || '%' then 10
+            when coalesce(p.full_name, '') ilike '%' || (select q from params) || '%' then 8
+            when similarity(coalesce(p.full_name, ''), (select q from params)) >= 0.1 then 6
+            when coalesce(p.phone, '') ilike '%' || (select q from params) || '%' then 5
+            else 4
+          end as score
+        from public.flotte_adhesions fa
+        join target_fleet tf on tf.fleet_id = fa.fleet_id
+        join public.profils p on p.user_id = fa.user_id
+        where fa.is_active = true
+          and (select q from params) <> ''
+          and (
+            coalesce(p.full_name, '') ilike '%' || (select q from params) || '%'
+            or coalesce(p.phone, '') ilike '%' || (select q from params) || '%'
+            or similarity(coalesce(p.full_name, ''), (select q from params)) >= 0.1
+          )
+        order by score desc, title asc
+        limit (select per_type from params)
+      ),
+      alert_results as (
+        select
+          aa.id,
+          'alert'::text as result_type,
+          aa.message::text as title,
+          'Créée ' || to_char(aa.created_at, 'DD/MM/YYYY') as subtitle,
+          case aa.severity
+            when 'critical' then 'Critique'
+            when 'high' then 'Élevée'
+            when 'medium' then 'Moyenne'
+            else 'Faible'
+          end as badge,
+          aa.severity::text as badge_variant,
+          '/dashboard/alerts/' || aa.id::text as href,
+          case
+            when aa.severity = 'critical' then 10
+            when aa.severity = 'high' then 8
+            when aa.severity = 'medium' then 6
+            else 4
+          end as score
+        from public.alertes_automatiques aa
+        join target_fleet tf on tf.fleet_id = aa.fleet_id
+        where (select q from params) <> ''
+          and aa.resolved = false
+          and (
+            aa.message ilike '%' || (select q from params) || '%'
+            or coalesce(aa.severity, '') ilike '%' || (select q from params) || '%'
+            or similarity(coalesce(aa.message, ''), (select q from params)) >= 0.1
+          )
+        order by score desc, aa.created_at desc
+        limit (select per_type from params)
+      ),
+      maintenance_results as (
+        select
+          tm.id,
+          'maintenance'::text as result_type,
+          'Entretien ' || tm.status as title,
+          coalesce(to_char(tm.planned_at, 'DD/MM/YYYY'), 'Sans date') ||
+            case when tm.notes is not null and tm.notes <> ''
+              then ' · ' || left(tm.notes, 60)
+              else ''
+            end as subtitle,
+          case when tm.closed_at is not null then 'Terminé' else 'Planifié' end as badge,
+          case when tm.closed_at is not null then 'success' else 'info' end as badge_variant,
+          '/dashboard/maintenance?job=' || tm.id::text as href,
+          case
+            when tm.closed_at is null then 7
+            else 3
+          end as score
+        from public.travaux_maintenance tm
+        join target_fleet tf on tf.fleet_id = tm.fleet_id
+        where (select q from params) <> ''
+          and (
+            coalesce(tm.notes, '') ilike '%' || (select q from params) || '%'
+            or coalesce(tm.status, '') ilike '%' || (select q from params) || '%'
+            or coalesce(tm.priority, '') ilike '%' || (select q from params) || '%'
+            or similarity(coalesce(tm.notes, ''), (select q from params)) >= 0.1
+          )
+        order by score desc, tm.planned_at desc nulls last, tm.created_at desc
+        limit (select per_type from params)
+      )
+      select *
+      from vehicle_results
+      union all
+      select * from driver_results
+      union all
+      select * from alert_results
+      union all
+      select * from maintenance_results;
+    $fn$;
 
--- Compatibilité: conserver l'ancienne RPC côté client le temps de la transition.
-create or replace function public.rechercher_vehicules_flotte(
+    grant execute on function public.search_fleet(text, int, uuid) to authenticated;
+
+    -- Compatibilité: conserver l'ancienne RPC côté client le temps de la transition.
+    create or replace function public.rechercher_vehicules_flotte(
   p_fleet_id uuid,
   p_query text default '',
   p_status text[] default '{}',
@@ -223,27 +241,26 @@ create or replace function public.rechercher_vehicules_flotte(
   p_sort_by text default 'plate',
   p_limit int default 20,
   p_offset int default 0
-)
-returns table (
-  id uuid,
-  fleet_id uuid,
-  plate text,
-  brand text,
-  model text,
-  driver_name text,
-  km int,
-  status text,
-  pending_maint_type text,
-  alert_severity text,
-  alert_rank int,
-  search_text text,
-  similarity double precision,
-  total_count bigint
-)
-language sql
-stable
-security invoker
-as $$
+) returns table (
+      id uuid,
+      fleet_id uuid,
+      plate text,
+      brand text,
+      model text,
+      driver_name text,
+      km int,
+      status text,
+      pending_maint_type text,
+      alert_severity text,
+      alert_rank int,
+      search_text text,
+      similarity double precision,
+      total_count bigint
+    )
+    language sql
+    stable
+    security invoker
+    as $fn$
   with base as (
     select
       v.id,
@@ -404,7 +421,14 @@ as $$
     ranked.plate asc
   limit greatest(1, least(coalesce(p_limit, 20), 100))
   offset greatest(0, coalesce(p_offset, 0));
-$$;
+    $fn$;
 
-grant execute on function public.rechercher_vehicules_flotte(uuid, text, text[], text[], text[], text, int, int)
-to authenticated;
+    grant execute on function public.rechercher_vehicules_flotte(uuid, text, text[], text[], text[], text, int, int)
+    to authenticated;
+  else
+    raise notice 'Recherche flotte ignorée: %/5 tables requises trouvées (%).',
+      found_tables_count,
+      array_to_string(required_tables, ', ');
+  end if;
+end;
+$block$;

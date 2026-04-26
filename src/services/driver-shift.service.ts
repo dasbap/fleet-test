@@ -168,6 +168,22 @@ export class DriverShiftService {
   }
 
   /**
+   * Récupère les clôtures en attente de validation pour une flotte.
+   */
+  async getPendingClosuresForFleet(fleetId: string): Promise<
+    {
+      id: string;
+      created_at: string;
+      vehicleRegistration: string | null;
+    }[]
+  > {
+    if (!fleetId) {
+      return [];
+    }
+    return this.repository.findPendingClosuresForFleet(fleetId);
+  }
+
+  /**
    * Valide ou rejette une clôture
    */
   async reviewClosure(

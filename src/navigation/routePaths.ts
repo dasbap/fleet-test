@@ -18,6 +18,18 @@ export const ROUTE_PATHS = {
   terrainScan: "/terrain/scan",
   /** Raccourci atelier → maintenance. */
   maintenanceRoot: "/maintenance",
+  /** Monitoring carburant. */
+  fuel: "/fuel",
+  /** Liste des inspections DVIR. */
+  inspections: "/inspections",
+  /** Détail inspection DVIR via splat route. */
+  inspectionsDetail: (path: string) => `/inspections/${path}` as const,
+  /** Hub transit CEMAC. */
+  transit: "/transit",
+  /** Détail transit via splat route. */
+  transitDetail: (path: string) => `/transit/${path}` as const,
+  /** Maintenance prédictive. */
+  maintenancePredictive: "/maintenance/predictive",
   /** Renouvellement / passage à un plan payant. */
   upgrade: "/upgrade",
   /** Connexion mobile-first (session mockée si VITE_USE_MOCK_AUTH). */
@@ -53,6 +65,7 @@ export const ROUTE_PATHS = {
   dashboardSettings: "/dashboard/settings",
   dashboardRoles: "/dashboard/roles",
   dashboardDrivers: "/dashboard/drivers",
+  dashboardDriverScores: "/dashboard/drivers/scores",
   dashboardFinances: "/dashboard/finances",
   dashboardCollections: "/dashboard/collections",
   dashboardHistory: "/dashboard/history",

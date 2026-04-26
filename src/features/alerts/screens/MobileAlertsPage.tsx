@@ -5,6 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageLoader } from "@/components/dashboard/PageLoader";
+import {
+  ClosureBanner,
+  ExpiringDocumentsBanner,
+} from "@/components/alerts/ClosureBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlertsList, type Alert } from "@/hooks/useAlerts";
 import { cn } from "@/lib/utils";
@@ -113,6 +117,9 @@ export default function MobileAlertsPage() {
           Suivi des alertes générées automatiquement par la flotte : type, gravité et statut.
         </p>
       </header>
+
+      <ClosureBanner fleetId={userFleetId} compact />
+      <ExpiringDocumentsBanner fleetId={userFleetId} compact />
 
       <Card>
         <CardContent className="space-y-4 py-4">
