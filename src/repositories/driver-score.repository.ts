@@ -39,9 +39,20 @@ export interface DriverScoreSnapshotRow {
   created_at: string;
 }
 
+export interface FindDriverScoresOptions {
+  limit?: number;
+}
+
 export class DriverScoreRepository {
-  async findByFleet(fleetId: string): Promise<DriverScoreRow[]> {
-    const { data, error } = await supabase
+  async findByFleet(
+    fleetId: string,
+    options?: FindDriverScoresOptions,
+  ): Promise<DriverScoreRow[]> {
+    if (options?.limit && options.limit > 0) {
+      return this.findTopByFleet(fleetId, options.limit);
+    }
+
+    const query = supabase
       .from('scores_conducteurs')
       .select(
         `
@@ -50,11 +61,27 @@ export class DriverScoreRepository {
       `
       )
       .eq('fleet_id', fleetId)
-      .order('financial_score', { ascending: true });
+      .order('score_total', { ascending: false, nullsFirst: false })
+      .order('last_calculated_at', { ascending: false });
+
+    const { data, error } = await query;
 
     if (error) {
       throw new Error(error.message);
     }
+    return (data || []) as DriverScoreRow[];
+  }
+
+  async findTopByFleet(fleetId: string, limit: number): Promise<DriverScoreRow[]> {
+    const { data, error } = await supabase.rpc('get_top_driver_scores', {
+      p_fleet_id: fleetId,
+      p_limit: limit,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
     return (data || []) as DriverScoreRow[];
   }
 

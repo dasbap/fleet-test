@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { EmptyStateDashboard } from "@/components/dashboard/EmptyStateDashboard";
 import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
@@ -9,10 +9,23 @@ import {
 } from "@/components/shared/PhoneCollectionModal";
 import { useMissingPhoneCount } from "@/hooks/useMissingPhoneCount";
 import { DriverActivationHealthCard } from "@/components/dashboard/DriverActivationHealthCard";
+import {
+  ClosureBanner,
+  ExpiringDocumentsBanner,
+} from "@/components/alerts/ClosureBanner";
+import {
+  ActionableDashboard,
+  ActionableDashboardSkeleton,
+} from "@/components/dashboard/ActionableDashboard";
+import { useActionableDashboard } from "@/hooks/useActionableDashboard";
 import { useActivation } from "@/hooks/useActivation";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { X, PartyPopper } from "lucide-react";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { useDriverScores } from "@/hooks/useDriverScores";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 // ─── Welcome Banner ─────────────────────────────────────────────────────────
 
@@ -42,12 +55,27 @@ function WelcomeBanner({ userName, onDismiss }: { userName?: string; onDismiss: 
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const { user, userFleetId: currentFleetId } = useAuth();
   const { steps, completedCount, loading } = useActivation();
+  const {
+    kpis,
+    alerts,
+    resolveAlert,
+    scheduledJobs,
+    avgKm,
+    todayRevenueXaf,
+    totalVehicles,
+    coreLoading,
+  } = useActionableDashboard();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const { missingCount } = useMissingPhoneCount(currentFleetId);
+  const { data: topDriverScores = [] } = useDriverScores(currentFleetId, {
+    enabled: !!currentFleetId,
+    limit: 5,
+  });
   const isAllDone = completedCount >= steps.length;
 
   // Detect ?welcome=true, show banner, then clean URL
@@ -84,6 +112,8 @@ export default function DashboardPage() {
   if (completedCount === 0) {
     return (
       <div className="space-y-6">
+        <ClosureBanner fleetId={currentFleetId} />
+        <ExpiringDocumentsBanner fleetId={currentFleetId} />
         {showWelcome && (
           <WelcomeBanner
             userName={user?.user_metadata?.full_name ?? user?.email}
@@ -98,6 +128,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <ClosureBanner fleetId={currentFleetId} />
+      <ExpiringDocumentsBanner fleetId={currentFleetId} />
       {showWelcome && (
         <WelcomeBanner
           userName={user?.user_metadata?.full_name ?? user?.email}
@@ -124,14 +156,29 @@ export default function DashboardPage() {
             }
           />
 
-          <PlaceholderStats />
+          {coreLoading || !kpis ? (
+            <ActionableDashboardSkeleton />
+          ) : (
+            <ActionableDashboard
+              kpis={kpis}
+              alerts={alerts}
+              scheduledJobs={scheduledJobs}
+              avgKm={avgKm}
+              todayRevenueXaf={todayRevenueXaf}
+              totalVehicles={totalVehicles}
+              onNavigateVehicle={(vehicleId) =>
+                navigate(ROUTE_PATHS.dashboardVehicleDetail(vehicleId))
+              }
+              onNavigateAlerts={() => navigate(ROUTE_PATHS.dashboardAlerts)}
+              onNavigateMaintenance={() => navigate(ROUTE_PATHS.dashboardMaintenance)}
+              onResolveAlert={resolveAlert}
+            />
+          )}
           <DriverActivationHealthCard />
-          <PlaceholderActions />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <PlaceholderMap />
-            <PlaceholderFeed />
-          </div>
+          <DriverScoresQuickWidget
+            scores={topDriverScores}
+            onOpenScores={() => navigate(ROUTE_PATHS.dashboardDriverScores)}
+          />
         </div>
 
         {!isAllDone ? (
@@ -146,40 +193,46 @@ export default function DashboardPage() {
   );
 }
 
-function PlaceholderStats() {
+function DriverScoresQuickWidget({
+  scores,
+  onOpenScores,
+}: {
+  scores: Array<{ id: string; driver?: { full_name: string | null }; score_total: number | null }>;
+  onOpenScores: () => void;
+}) {
+  const sortedScores = [...scores].sort((a, b) => (b.score_total ?? 0) - (a.score_total ?? 0));
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      {["Véhicules actifs", "Alertes ouvertes", "Km parcourus", "Coût/km"].map((label) => (
-        <div key={label} className="bg-white dark:bg-surface border border-slate-100 dark:border-slate-800 rounded-xl p-4">
-          <p className="text-xs text-slate-400 mb-1">{label}</p>
-          <p className="text-xl font-semibold text-slate-800 dark:text-slate-100">—</p>
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="text-base">Scores conducteurs</CardTitle>
+          <Button type="button" variant="ghost" size="sm" onClick={onOpenScores}>
+            Voir tout
+          </Button>
         </div>
-      ))}
-    </div>
-  );
-}
-
-function PlaceholderActions() {
-  return (
-    <div className="bg-white dark:bg-surface border border-slate-100 dark:border-slate-800 rounded-xl p-4 h-32 flex items-center justify-center">
-      <p className="text-sm text-slate-400">Alertes actionnables</p>
-    </div>
-  );
-}
-
-function PlaceholderMap() {
-  return (
-    <div className="bg-white dark:bg-surface border border-slate-100 dark:border-slate-800 rounded-xl p-4 h-48 flex items-center justify-center">
-      <p className="text-sm text-slate-400">Carte de la flotte</p>
-    </div>
-  );
-}
-
-function PlaceholderFeed() {
-  return (
-    <div className="bg-white dark:bg-surface border border-slate-100 dark:border-slate-800 rounded-xl p-4 h-48 flex items-center justify-center">
-      <p className="text-sm text-slate-400">Activité récente</p>
-    </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {sortedScores.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Aucun score disponible pour le moment.
+          </p>
+        ) : (
+          sortedScores.map((score, index) => (
+            <div key={score.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {index + 1}. {score.driver?.full_name ?? "Conducteur inconnu"}
+                </p>
+              </div>
+              <p className="text-sm font-semibold tabular-nums">
+                {score.score_total != null ? Math.round(score.score_total) : "—"}
+              </p>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

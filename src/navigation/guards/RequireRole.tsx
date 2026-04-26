@@ -25,10 +25,11 @@ function RoleGate({
   fallbackWhenDriver,
   fallbackWhenMechanic,
 }: RequireRoleProps) {
-  const { role, isLoading, user } = useAuth();
+  const { role, activeTenantContext, isLoading, user } = useAuth();
   const location = useLocation();
   const loginWithReturn = getLoginPathPreservingReturn(location);
   const allowedAppRoles = allow.map((r) => toAppRole(r));
+  const effectiveRole = activeTenantContext?.role ?? role;
 
   if (isLoading) {
     return (
@@ -45,11 +46,11 @@ function RoleGate({
     return <Navigate to={loginWithReturn} replace />;
   }
 
-  if (!role || !allowedAppRoles.includes(role)) {
+  if (!effectiveRole || !allowedAppRoles.includes(effectiveRole)) {
     const target =
-      role === "driver" && fallbackWhenDriver !== undefined
+      effectiveRole === "driver" && fallbackWhenDriver !== undefined
         ? fallbackWhenDriver
-        : role === "mechanic" && fallbackWhenMechanic !== undefined
+        : effectiveRole === "mechanic" && fallbackWhenMechanic !== undefined
           ? fallbackWhenMechanic
           : fallbackTo;
     return <Navigate to={target} replace />;

@@ -63,6 +63,7 @@ describe("DashboardSidebar", () => {
     { name: /Incidents/i, href: "/dashboard/incidents" },
     { name: /Maintenance/i, href: "/dashboard/maintenance" },
     { name: /Équipes/i, href: "/dashboard/teams" },
+    { name: /Scores conducteurs/i, href: "/dashboard/drivers/scores" },
     { name: /Invitations/i, href: "/dashboard/invitations" },
     { name: /Rapports/i, href: "/dashboard/reports" },
     { name: /Suivi GPS/i, href: "/dashboard/tracking" },

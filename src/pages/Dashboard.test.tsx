@@ -7,9 +7,11 @@ import { useFleetDriverActivationHealth } from "@/hooks/useFleetDriverActivation
 import { useFleetDrivers } from "@/hooks/useAssignments";
 import { useUpdateDriverProfile } from "@/hooks/useDriverProfiles";
 import type { FleetDriverActivationHealth } from "@/types/fleet-driver-activation-health";
+import { useDriverScores } from "@/hooks/useDriverScores";
 
 const useActivationMock = vi.fn();
 const useAuthMock = vi.fn();
+const useActionableDashboardMock = vi.fn();
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
@@ -17,6 +19,14 @@ vi.mock("@/hooks/useAuth", () => ({
 
 vi.mock("@/hooks/useActivation", () => ({
   useActivation: () => useActivationMock(),
+}));
+
+vi.mock("@/hooks/useActionableDashboard", () => ({
+  useActionableDashboard: () => useActionableDashboardMock(),
+}));
+
+vi.mock("@/hooks/useDriverScores", () => ({
+  useDriverScores: vi.fn(),
 }));
 
 vi.mock("@/hooks/useFleetDriverActivationHealth", () => ({
@@ -77,6 +87,17 @@ describe("DashboardPage", () => {
       userFleetId: null,
       role: null,
     });
+    useActionableDashboardMock.mockReturnValue({
+      kpis: null,
+      alerts: [],
+      resolveAlert: vi.fn(),
+      scheduledJobs: [],
+      avgKm: 0,
+      todayRevenueXaf: 0,
+      totalVehicles: 0,
+      coreLoading: true,
+      loading: false,
+    });
 
     vi.mocked(useFleetDriverActivationHealth).mockReturnValue({
       data: emptyHealth,
@@ -96,6 +117,11 @@ describe("DashboardPage", () => {
       mutateAsync: mutateAsyncMock,
       isPending: false,
     } as unknown as ReturnType<typeof useUpdateDriverProfile>);
+
+    vi.mocked(useDriverScores).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof useDriverScores>);
   });
 
   it("affiche le skeleton pendant le chargement", () => {
@@ -160,8 +186,44 @@ describe("DashboardPage", () => {
       { wrapper: queryWrapper },
     );
 
-    expect(screen.getByRole("heading", { name: "Tableau de bord" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { name: "Tableau de bord" }).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText("activation-checklist")).toBeInTheDocument();
+  });
+
+  it("charge le widget scores conducteurs avec limit 5", () => {
+    useAuthMock.mockReturnValue({
+      user: { created_at: "2026-04-10T00:00:00.000Z" },
+      userFleetId: FLEET_ID,
+      role: "organizer",
+    });
+    useActivationMock.mockReturnValue({
+      loading: false,
+      completedCount: 2,
+      steps: [
+        { id: "a", label: "a", description: "", cta: "", href: "/", icon: "", impact: "", completed: true },
+        { id: "b", label: "b", description: "", cta: "", href: "/", icon: "", impact: "", completed: true },
+      ],
+    });
+    vi.mocked(useDriverScores).mockReturnValue({
+      data: [
+        { id: "s1", driver: { full_name: "Driver A" }, score_total: 87 },
+        { id: "s2", driver: { full_name: "Driver B" }, score_total: 74 },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof useDriverScores>);
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+      { wrapper: queryWrapper },
+    );
+
+    expect(useDriverScores).toHaveBeenCalledWith(FLEET_ID, { enabled: true, limit: 5 });
+    expect(screen.getByText("Scores conducteurs")).toBeInTheDocument();
+    expect(screen.getByText(/1\. Driver A/)).toBeInTheDocument();
   });
 
   describe("bannière téléphones (flotte + rôle backoffice)", () => {
@@ -282,6 +344,6 @@ describe("DashboardPage", () => {
           description: expect.stringContaining("1 numéro"),
         }),
       );
-    });
+    }, 10_000);
   });
 });

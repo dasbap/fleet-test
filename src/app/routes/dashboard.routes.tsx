@@ -64,6 +64,9 @@ const RolesHubScreen = lazy(() =>
 const DeclareIncidentPage = lazy(
   () => import("@/features/incidents/screens/DeclareIncidentPage")
 );
+const DriverScoresPage = lazy(
+  () => import("@/features/drivers/screens/DriverScoresPage")
+);
 const Scan = lazy(() => import("@/pages/Scan"));
 const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
 const ProtectedRoute = lazy(() =>
@@ -89,6 +92,14 @@ export const dashboardRoutes = (
         element={
           <RoleGuard allow={DASHBOARD_BACKOFFICE_ROLES}>
             <Drivers />
+          </RoleGuard>
+        }
+      />
+      <Route
+        path="drivers/scores"
+        element={
+          <RoleGuard allow={DASHBOARD_BACKOFFICE_ROLES}>
+            <DriverScoresPage />
           </RoleGuard>
         }
       />

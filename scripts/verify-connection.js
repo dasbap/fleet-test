@@ -15,8 +15,8 @@ const root = join(__dirname, '..');
 function loadEnvLocal() {
   const envPath = join(root, '.env.local');
   if (!existsSync(envPath)) return;
-  const content = readFileSync(envPath, 'utf8');
-  content.split('\n').forEach((line) => {
+  const content = readFileSync(envPath, 'utf8').replace(/^\uFEFF/, '');
+  content.split(/\r?\n/).forEach((line) => {
     const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
     if (m) {
       const v = m[2].trim().replace(/^["']|["']$/g, '');

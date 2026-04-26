@@ -4,10 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBilling } from "@/hooks/useBilling";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { isMockAuthEnabled } from "@/lib/authMode";
-import { AUTH_FLOW_MAX_WAIT_MS, detectFirstLogin } from "@/lib/auth-flow";
+import { AUTH_FLOW_MAX_WAIT_MS, computeAuthFlowDecision } from "@/lib/auth-flow";
 import { computePlanGate } from "@/lib/compute-plan-gate";
 import type { RouteAccessResult } from "@/services/route-access.service";
 import { RouteAccessRepository } from "@/repositories/route-access.repository";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const routeAccessRepository = new RouteAccessRepository();
 
@@ -91,22 +92,28 @@ export function useRouteAccess(): RouteAccessResult {
   const onboardingCompleted = onboardingQuery.isError
     ? false
     : (onboardingQuery.data ?? false);
-  const firstLogin = detectFirstLogin(
-    user.created_at,
-    session?.user?.last_sign_in_at ?? null,
-  );
-  const role = activeTenantContext?.role ?? null;
-  const isFleetAdmin = role === "organizer" || role === "manager";
-
-  if ((firstLogin || !onboardingCompleted) && isFleetAdmin) {
-    return { state: "onboarding", orgId };
-  }
 
   const planGate = computePlanGate(
     fleetBillingQuery.data ?? null,
     billingQuery.data ?? null,
   );
-  if (planGate.plan_expired) {
+
+  const decision = computeAuthFlowDecision({
+    hasUser: Boolean(user?.id),
+    hasMemberships: memberships.length > 0,
+    userCreatedAt: user.created_at,
+    lastSignInAt: session?.user?.last_sign_in_at ?? null,
+    onboardingCompleted,
+    lapsedPaid: planGate.plan_expired,
+    role: activeTenantContext?.role ?? null,
+    safeNextPath: ROUTE_PATHS.dashboard,
+  });
+
+  if (decision.path === ROUTE_PATHS.onboarding) {
+    return { state: "onboarding", orgId };
+  }
+
+  if (decision.path === ROUTE_PATHS.upgrade) {
     return { state: "upgrade", orgId };
   }
 
