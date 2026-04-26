@@ -15,6 +15,7 @@ import {
 } from "@/lib/public-pricing";
 import { cn } from "@/lib/utils";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { MobileMoneyUpgradeButton } from "@/services/MobileMoneyService";
 
 const SUPPORT_EMAIL = "support@e-samba.com";
 
@@ -49,6 +50,7 @@ const upgradePlans: Array<{
   name: string;
   description: string;
   price: string;
+  priceXAF: number;
   popular: boolean;
   features: string[];
   cta: string;
@@ -58,6 +60,7 @@ const upgradePlans: Array<{
     name: "Gratuit",
     description: "Pour tester le pilotage sans engagement",
     price: formatPublicPriceXaf(PUBLIC_PRICE_FREE_PER_VEHICLE_XAF),
+    priceXAF: PUBLIC_PRICE_FREE_PER_VEHICLE_XAF,
     popular: false,
     features: [
       "Jusqu'à 3 véhicules",
@@ -71,6 +74,7 @@ const upgradePlans: Array<{
     name: "Starter",
     description: "Pour les petites flottes qui démarrent",
     price: formatPublicPriceXaf(PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF),
+    priceXAF: PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF,
     popular: false,
     features: [
       "Jusqu'à 5 véhicules",
@@ -85,6 +89,7 @@ const upgradePlans: Array<{
     name: "Pro",
     description: "Pour les flottes en croissance",
     price: formatPublicPriceXaf(PUBLIC_PRICE_PRO_PER_VEHICLE_XAF),
+    priceXAF: PUBLIC_PRICE_PRO_PER_VEHICLE_XAF,
     popular: true,
     features: [
       "Jusqu'à 25 véhicules",
@@ -102,6 +107,10 @@ const upgradePlans: Array<{
  * ou accès direct à `/upgrade`.
  */
 export default function Upgrade() {
+  const merchantCodes = {
+    orange: import.meta.env.VITE_ORANGE_MONEY_MERCHANT as string | undefined,
+    mtn: import.meta.env.VITE_MTN_MOMO_MERCHANT as string | undefined,
+  };
   const {
     user,
     orgId,
@@ -212,13 +221,22 @@ export default function Upgrade() {
                 ))}
               </ul>
 
-              <Button
-                className="w-full"
-                variant={plan.popular ? "default" : "outline"}
-                asChild
-              >
-                <a href={buildRenewalMailto(plan.key, fleetLabel)}>{plan.cta}</a>
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  className="w-full"
+                  variant={plan.popular ? "default" : "outline"}
+                  asChild
+                >
+                  <a href={buildRenewalMailto(plan.key, fleetLabel)}>{plan.cta}</a>
+                </Button>
+                {plan.key !== "free" ? (
+                  <MobileMoneyUpgradeButton
+                    plan={{ name: plan.name, priceXAF: plan.priceXAF }}
+                    merchantCodes={merchantCodes}
+                    onSuccess={() => window.location.assign(ROUTE_PATHS.dashboard)}
+                  />
+                ) : null}
+              </div>
             </div>
           ))}
         </div>

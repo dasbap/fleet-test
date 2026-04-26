@@ -76,6 +76,7 @@ describe("RequireRole / RoleGuard", () => {
     mockUseAuth.mockReturnValue({
       user: { id: "u1", email: "a@b.c" },
       role: "organizer",
+      activeTenantContext: { orgId: "o1", fleetId: "f1", role: "organizer" },
       isLoading: false,
     });
     mockIsMockAuthEnabled.mockReturnValue(false);
@@ -102,6 +103,7 @@ describe("RequireRole / RoleGuard", () => {
     mockUseAuth.mockReturnValue({
       user: { id: "u1", email: "a@b.c" },
       role: "driver",
+      activeTenantContext: { orgId: "o1", fleetId: "f1", role: "driver" },
       isLoading: false,
     });
     mockIsMockAuthEnabled.mockReturnValue(false);
@@ -134,6 +136,7 @@ describe("RequireRole / RoleGuard", () => {
     mockUseAuth.mockReturnValue({
       user: { id: "u1", email: "a@b.c" },
       role: "driver",
+      activeTenantContext: { orgId: "o1", fleetId: "f1", role: "driver" },
       isLoading: false,
     });
     mockIsMockAuthEnabled.mockReturnValue(false);
@@ -170,6 +173,35 @@ describe("RequireRole / RoleGuard", () => {
     );
 
     expect(container.querySelector(".animate-spin")).toBeInTheDocument();
+    expect(screen.queryByText("Contenu rôle")).not.toBeInTheDocument();
+  });
+
+  it("privilégie le rôle de la flotte active sur le rôle global", () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "u1", email: "a@b.c" },
+      role: "organizer",
+      activeTenantContext: { orgId: "o1", fleetId: "f2", role: "driver" },
+      isLoading: false,
+    });
+    mockIsMockAuthEnabled.mockReturnValue(false);
+
+    render(
+      <MemoryRouter initialEntries={["/prot"]}>
+        <Routes>
+          <Route
+            path="/prot"
+            element={
+              <RoleGuard allow={["organizer"]} fallbackWhenDriver="/terrain-hub">
+                <div>Contenu rôle</div>
+              </RoleGuard>
+            }
+          />
+          <Route path="/terrain-hub" element={<div data-testid="terrain">Terrain</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("terrain")).toBeInTheDocument();
     expect(screen.queryByText("Contenu rôle")).not.toBeInTheDocument();
   });
 });

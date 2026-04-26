@@ -29,6 +29,24 @@ const ProtectedRoute = lazy(() =>
 const TerrainLayout = lazy(() => import("@/layouts/TerrainLayout"));
 const TerrainPage = lazy(() => import("@/features/terrain/screens/TerrainPage"));
 const Scan = lazy(() => import("@/pages/Scan"));
+const FuelMonitoringPage = lazy(
+  () => import("@/features/fuel/screens/FuelMonitoringPage")
+);
+const DvirInspectionsPage = lazy(
+  () => import("@/features/inspections/screens/DvirInspectionsPage")
+);
+const DvirDetailPage = lazy(
+  () => import("@/features/inspections/screens/DvirDetailPage")
+);
+const TransitCemacPage = lazy(
+  () => import("@/features/transit/screens/TransitCemacPage")
+);
+const TransitDetailPage = lazy(
+  () => import("@/features/transit/screens/TransitDetailPage")
+);
+const PredictiveMaintenancePage = lazy(
+  () => import("@/features/maintenance/screens/PredictiveMaintenancePage")
+);
 
 /**
  * Arbre de routes racine : pages publiques, redirections, dashboard, 404.
@@ -38,6 +56,15 @@ export const appRoutes = (
   <Route element={<RootLayout />}>
     <Route path="/" element={<Index />} />
     <Route path="/aide" element={<AidePage />} />
+    <Route path="/fuel" element={<FuelMonitoringPage />} />
+    <Route path="/inspections" element={<DvirInspectionsPage />} />
+    <Route path="/inspections/*" element={<DvirDetailPage />} />
+    <Route path="/transit" element={<TransitCemacPage />} />
+    <Route path="/transit/*" element={<TransitDetailPage />} />
+    <Route
+      path="/maintenance/predictive"
+      element={<PredictiveMaintenancePage />}
+    />
     <Route
       path="/aide/videos"
       element={<Navigate to="/dashboard/tutorials" replace />}

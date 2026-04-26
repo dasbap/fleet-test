@@ -90,12 +90,35 @@ Checklist : prévisualisations 401, variables `VITE_*`, auth Supabase, DNS et do
 - `npm run lint` — lint ESLint
 - `npm run test` — tests unitaires
 - `npm run test:integration` — tests d’intégration
+- `npm run test:integration:supabase` — suite SQL Supabase (auto: `CI=true` => linked, sinon local)
+- `npm run test:integration:supabase:local` — suite SQL Supabase forcée en local
+- `npm run test:integration:supabase:linked` — suite SQL Supabase forcée en linked (CI/projet lié)
 - `npm run build:capacitor` — build web avec chemins relatifs (`base: './'`) pour Capacitor
 - `npm run cap:doctor` — diagnostic Node/Capacitor (explique pourquoi `npx cap sync` peut échouer)
 - `npm run cap:sync` — synchronise Capacitor (Android/iOS) avec un runtime Node 22 isolé
 - `npm run mobile:prepare` — `build:capacitor` puis `cap:sync` (met à jour `android/` et `ios/`)
 - `npm run cap:assets` — régénère icônes et splash natifs à partir de `assets/logo.svg` (@capacitor/assets)
 - `npm run store:screenshots` — génère les visuels type captures boutique dans `store-assets/`
+
+### CI/local Supabase integration tests
+
+Point d’entrée recommandé pour les tests SQL Supabase (conversion tunnel, sécurité RLS/RPC, baseline+deltas) :
+
+```sh
+npm run test:integration:supabase
+```
+
+Comportement auto:
+
+- si `CI=true`, la cible est `linked`
+- sinon, la cible est `local`
+
+Variantes explicites:
+
+```sh
+npm run test:integration:supabase:local
+npm run test:integration:supabase:linked
+```
 
 ### App mobile (Capacitor)
 

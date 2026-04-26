@@ -51,8 +51,8 @@ export default defineConfig(({ mode }) => {
           if (n.includes("posthog-js")) return "vendor-analytics";
           if (n.includes("firebase")) return "vendor-firebase";
           if (n.includes("/i18next/") || n.includes("/react-i18next/")) return "vendor-i18n";
+          if (n.includes("/recharts/") || n.includes("/victory-vendor/")) return "vendor-charts";
           if (n.includes("/zustand/")) return "vendor-state";
-          if (n.includes("mapbox-gl")) return "vendor-maps";
           if (
             n.includes("/leaflet/") ||
             n.includes("/react-leaflet/") ||

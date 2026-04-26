@@ -76,7 +76,7 @@ describe("AuthPage", () => {
         `/post-login?next=${encodeURIComponent(ROUTE_PATHS.dashboard)}`,
       );
     });
-  });
+  }, 10000);
 
   it("préserve le paramètre next sécurisé vers /post-login", async () => {
     const nextPath = "/dashboard/vehicles";

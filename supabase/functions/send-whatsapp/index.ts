@@ -119,6 +119,28 @@ async function insertOutboundLog(
   }
 }
 
+async function assertFleetAccess(
+  supabase: ReturnType<typeof createServiceClient>,
+  fleetId: string,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("flotte_adhesions")
+    .select("id")
+    .eq("fleet_id", fleetId)
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[send-whatsapp] Échec vérification accès flotte:", error);
+    throw new Error("Impossible de vérifier les droits d'accès.");
+  }
+
+  return Boolean(data?.id);
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return jsonResponse({ error: "Méthode non autorisée." }, 405);
@@ -137,6 +159,17 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createServiceClient();
+    const hasFleetAccess = await assertFleetAccess(
+      supabase,
+      payload.fleetId,
+      authUserId,
+    );
+    if (!hasFleetAccess) {
+      return jsonResponse(
+        { error: "Accès refusé à cette flotte pour l'envoi WhatsApp." },
+        403,
+      );
+    }
 
     const recipientPhone = await resolveRecipientPhone(supabase, payload);
     await insertOutboundLog(supabase, payload, {

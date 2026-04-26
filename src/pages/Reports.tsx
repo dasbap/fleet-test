@@ -4,6 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { useFleetReport } from "@/hooks/useFleetReport";
@@ -50,6 +60,7 @@ const MaintenanceTrendsChart = lazy(() =>
 );
 
 export default function Reports() {
+  type ExportFormat = "pdf" | "excel";
   const { role, userFleetId } = useAuth();
   const userRole = role || "organizer";
   const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
@@ -61,6 +72,9 @@ export default function Reports() {
 
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
+  const [isExcelExporting, setIsExcelExporting] = useState(false);
+  const [confirmExportOpen, setConfirmExportOpen] = useState(false);
+  const [pendingExportFormat, setPendingExportFormat] = useState<ExportFormat | null>(null);
   const { completeStep, steps } = useActivation();
 
   const reportQueryEnabled =
@@ -134,6 +148,7 @@ export default function Reports() {
 
   const handleExportExcel = async () => {
     if (!report) return;
+    setIsExcelExporting(true);
     try {
       const { generateFleetExcel } = await import("@/lib/generateFleetExcel");
       await generateFleetExcel(report);
@@ -145,7 +160,51 @@ export default function Reports() {
           e instanceof Error ? e.message : "Une erreur est survenue lors de la génération du fichier Excel.",
         variant: "destructive",
       });
+    } finally {
+      setIsExcelExporting(false);
     }
+  };
+
+  const requestExport = (format: ExportFormat) => {
+    if (!report || isLoading || isPdfExporting || isExcelExporting) return;
+    setPendingExportFormat(format);
+    setConfirmExportOpen(true);
+  };
+
+  const scheduleIdleExport = (task: () => Promise<void>) => {
+    const runner = () => {
+      void task();
+    };
+
+    if ("requestIdleCallback" in window) {
+      const requestIdle = (window as Window & {
+        requestIdleCallback: (callback: () => void, options?: { timeout: number }) => number;
+      }).requestIdleCallback;
+      requestIdle(runner, { timeout: 1200 });
+      return;
+    }
+
+    window.setTimeout(runner, 0);
+  };
+
+  const confirmExport = async () => {
+    setConfirmExportOpen(false);
+    const format = pendingExportFormat;
+    setPendingExportFormat(null);
+    if (!format) return;
+
+    toast({
+      title: `Export ${exportFormatLabel(format)} planifié`,
+      description: "Le traitement démarre dès qu’un créneau inactif est disponible.",
+    });
+
+    scheduleIdleExport(async () => {
+      if (format === "pdf") {
+        await handleExportPDF();
+        return;
+      }
+      await handleExportExcel();
+    });
   };
 
   const quickRanges = [
@@ -200,8 +259,8 @@ export default function Reports() {
                 </div>
                 <div className="flex gap-2">
                   <Button 
-                    onClick={() => void handleExportPDF()} 
-                    disabled={!report || isLoading || isPdfExporting}
+                    onClick={() => requestExport("pdf")}
+                    disabled={!report || isLoading || isPdfExporting || isExcelExporting}
                     size="lg"
                   >
                     {isPdfExporting ? (
@@ -212,13 +271,17 @@ export default function Reports() {
                     {isPdfExporting ? "Préparation du PDF…" : "Télécharger PDF"}
                   </Button>
                   <Button 
-                    onClick={handleExportExcel} 
-                    disabled={!report || isLoading}
+                    onClick={() => requestExport("excel")}
+                    disabled={!report || isLoading || isPdfExporting || isExcelExporting}
                     size="lg"
                     variant="outline"
                   >
-                    <FileSpreadsheet className="mr-2 h-5 w-5" />
-                    Télécharger Excel
+                    {isExcelExporting ? (
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    ) : (
+                      <FileSpreadsheet className="mr-2 h-5 w-5" />
+                    )}
+                    {isExcelExporting ? "Préparation Excel…" : "Télécharger Excel"}
                   </Button>
                 </div>
               </div>
@@ -475,8 +538,34 @@ export default function Reports() {
                   </div>
                 </>
               )}
+      <AlertDialog open={confirmExportOpen} onOpenChange={setConfirmExportOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer l’export {exportFormatLabel(pendingExportFormat)}</AlertDialogTitle>
+            <AlertDialogDescription>
+              L’export charge des librairies lourdes uniquement maintenant, pour limiter la mémoire mobile
+              avant action explicite. Continuer l’export ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void confirmExport()}
+              disabled={isPdfExporting || isExcelExporting}
+            >
+              Continuer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
+}
+
+function exportFormatLabel(format: "pdf" | "excel" | null) {
+  if (format === "pdf") return "PDF";
+  if (format === "excel") return "Excel";
+  return "fichier";
 }
 
 function ChartSkeleton() {

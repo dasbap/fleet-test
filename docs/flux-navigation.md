@@ -23,6 +23,12 @@ Snippets ou tutoriels externes décrivent souvent un *provider* global, une rout
 
 Pour le détail du post‑login et des redirections, voir aussi [auth-flow.md](./auth-flow.md).
 
+### Préparation migration Data Router
+
+- Une esquisse non intrusive est disponible dans [`src/app/router/createAppRouter.tsx`](../src/app/router/createAppRouter.tsx).
+- Cette esquisse convertit `appRoutes` en `RouteObject[]` avec `createRoutesFromElements`.
+- Elle n’est pas branchée en production : le runtime actuel reste `BrowserRouter` + `<Routes>` dans [`src/App.tsx`](../src/App.tsx).
+
 ### Menu sidebar (`DashboardSidebar.tsx`)
 
 - **Organizer** : Tableau de bord, Véhicules, Incidents, Maintenance, Équipes, Invitations, Rapports, Finances, Alertes, Rôles.
