@@ -12,6 +12,11 @@ export default defineConfig({
     timeout: 5_000,
   },
   retries: isCI ? 2 : 0,
+  reporter: [
+    ["list"],
+    ["json", { outputFile: "test-results/e2e-report.json" }],
+    ["junit", { outputFile: "test-results/e2e-junit.xml" }],
+  ],
   use: {
     baseURL: BASE_URL,
     trace: "retain-on-failure",
