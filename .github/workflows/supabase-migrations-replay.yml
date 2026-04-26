@@ -68,3 +68,22 @@ jobs:
       - name: Replay migrations from scratch
         run: supabase db reset --no-seed
 
+      - name: Export local Supabase env
+        run: supabase status -o env >> "$GITHUB_ENV"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Supabase Vitest integration tests
+        run: npm run test:integration:supabase:vitest
+        env:
+          VITE_SUPABASE_URL: ${{ env.API_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ env.ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+
