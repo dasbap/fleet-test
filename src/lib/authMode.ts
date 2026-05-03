@@ -10,6 +10,7 @@ function readDemoFallbackFlag(): boolean {
 }
 
 export function isMockAuthEnabled(): boolean {
+  if (import.meta.env.PROD) return false;
   return import.meta.env.VITE_USE_MOCK_AUTH === "true" || readDemoFallbackFlag();
 }
 

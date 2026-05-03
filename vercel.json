@@ -50,8 +50,16 @@
     { "source": "/dashboard/my-vehicle/", "destination": "/dashboard/my-vehicle/index.html" },
     { "source": "/dashboard/history", "destination": "/dashboard/history/index.html" },
     { "source": "/dashboard/history/", "destination": "/dashboard/history/index.html" },
+    { "source": "/dashboard/fuel", "destination": "/dashboard/fuel/index.html" },
+    { "source": "/dashboard/fuel/", "destination": "/dashboard/fuel/index.html" },
+    { "source": "/dashboard/inspections", "destination": "/dashboard/inspections/index.html" },
+    { "source": "/dashboard/inspections/", "destination": "/dashboard/inspections/index.html" },
     { "source": "/dashboard/operations", "destination": "/dashboard/operations/index.html" },
     { "source": "/dashboard/operations/", "destination": "/dashboard/operations/index.html" },
+    { "source": "/dashboard/maintenance/predictive", "destination": "/dashboard/maintenance/predictive/index.html" },
+    { "source": "/dashboard/maintenance/predictive/", "destination": "/dashboard/maintenance/predictive/index.html" },
+    { "source": "/dashboard/transit", "destination": "/dashboard/transit/index.html" },
+    { "source": "/dashboard/transit/", "destination": "/dashboard/transit/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -69,6 +77,10 @@
         {
           "key": "Permissions-Policy",
           "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://eu.posthog.com https://eu-assets.i.posthog.com https://*.sentry.io https://o*.ingest.sentry.io; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
         }
       ]
     },
