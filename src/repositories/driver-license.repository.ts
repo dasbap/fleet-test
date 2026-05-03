@@ -100,4 +100,21 @@ export class DriverLicenseRepository {
       throw new Error(error.message);
     }
   }
+
+  /** Permis expirant dans les prochains `withinDays` jours (ou déjà expirés). */
+  async findExpiringByFleet(fleetId: string, withinDays = 30): Promise<DriverLicense[]> {
+    const today = new Date().toISOString().slice(0, 10);
+    const horizon = new Date(Date.now() + withinDays * 86_400_000).toISOString().slice(0, 10);
+
+    const { data, error } = await supabase
+      .from('driver_licenses')
+      .select('*')
+      .eq('fleet_id', fleetId)
+      .not('expires_at', 'is', null)
+      .lte('expires_at', horizon)
+      .order('expires_at', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return (data || []) as DriverLicense[];
+  }
 }

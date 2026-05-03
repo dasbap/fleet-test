@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { EmptyStateDashboard } from "@/components/dashboard/EmptyStateDashboard";
 import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
@@ -9,6 +9,12 @@ import {
   useMissingPhoneCount,
 } from "@/components/shared/PhoneCollectionModal";
 import { DriverActivationHealthCard } from "@/components/dashboard/DriverActivationHealthCard";
+import {
+  ActionableDashboard,
+  ActionableDashboardSkeleton,
+} from "@/components/dashboard/ActionableDashboard";
+import { useActionableDashboard } from "@/hooks/useActionableDashboard";
+import { ClosureBanner } from "@/components/shared/ClosureBanner";
 import { useActivation } from "@/hooks/useActivation";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -42,6 +48,7 @@ function WelcomeBanner({ userName, onDismiss }: { userName?: string; onDismiss: 
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const { user, userFleetId: currentFleetId } = useAuth();
   const { steps, completedCount, loading } = useActivation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -49,6 +56,17 @@ export default function DashboardPage() {
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const { missingCount } = useMissingPhoneCount(currentFleetId);
   const isAllDone = completedCount >= steps.length;
+
+  const {
+    kpis,
+    alerts,
+    resolveAlert,
+    scheduledJobs,
+    avgKm,
+    todayRevenueXaf,
+    totalVehicles,
+    coreLoading: dashboardCoreLoading,
+  } = useActionableDashboard();
 
   // Detect ?welcome=true, show banner, then clean URL
   useEffect(() => {
@@ -86,7 +104,7 @@ export default function DashboardPage() {
       <div className="space-y-6">
         {showWelcome && (
           <WelcomeBanner
-            userName={user?.user_metadata?.full_name ?? user?.email}
+            userName={(user?.user_metadata?.full_name as string | undefined) ?? user?.email}
             onDismiss={() => setShowWelcome(false)}
           />
         )}
@@ -100,7 +118,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {showWelcome && (
         <WelcomeBanner
-          userName={user?.user_metadata?.full_name ?? user?.email}
+          userName={(user?.user_metadata?.full_name as string | undefined) ?? user?.email}
           onDismiss={() => setShowWelcome(false)}
         />
       )}
@@ -111,6 +129,7 @@ export default function DashboardPage() {
             <p className="text-sm text-slate-400 mt-0.5">Vue d'ensemble de votre flotte</p>
           </div>
 
+          <ClosureBanner />
           <PhoneAlertBanner count={missingCount} onAction={() => setShowPhoneModal(true)} />
           <PhoneCollectionModal
             fleetId={currentFleetId}
@@ -124,14 +143,23 @@ export default function DashboardPage() {
             }
           />
 
-          <PlaceholderStats />
+          {dashboardCoreLoading || !kpis ? (
+            <ActionableDashboardSkeleton />
+          ) : (
+            <ActionableDashboard
+              kpis={kpis}
+              alerts={alerts}
+              scheduledJobs={scheduledJobs}
+              avgKm={avgKm}
+              todayRevenueXaf={todayRevenueXaf}
+              totalVehicles={totalVehicles}
+              onNavigateVehicle={(id) => navigate(`/dashboard/vehicles/${id}`)}
+              onNavigateAlerts={() => navigate("/dashboard/alerts")}
+              onNavigateMaintenance={() => navigate("/dashboard/maintenance")}
+              onResolveAlert={resolveAlert}
+            />
+          )}
           <DriverActivationHealthCard />
-          <PlaceholderActions />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <PlaceholderMap />
-            <PlaceholderFeed />
-          </div>
         </div>
 
         {!isAllDone ? (
@@ -142,43 +170,6 @@ export default function DashboardPage() {
           </div>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function PlaceholderStats() {
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      {["Véhicules actifs", "Alertes ouvertes", "Km parcourus", "Coût/km"].map((label) => (
-        <div key={label} className="bg-white dark:bg-surface border border-slate-100 dark:border-slate-800 rounded-xl p-4">
-          <p className="text-xs text-slate-400 mb-1">{label}</p>
-          <p className="text-xl font-semibold text-slate-800 dark:text-slate-100">—</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PlaceholderActions() {
-  return (
-    <div className="bg-white dark:bg-surface border border-slate-100 dark:border-slate-800 rounded-xl p-4 h-32 flex items-center justify-center">
-      <p className="text-sm text-slate-400">Alertes actionnables</p>
-    </div>
-  );
-}
-
-function PlaceholderMap() {
-  return (
-    <div className="bg-white dark:bg-surface border border-slate-100 dark:border-slate-800 rounded-xl p-4 h-48 flex items-center justify-center">
-      <p className="text-sm text-slate-400">Carte de la flotte</p>
-    </div>
-  );
-}
-
-function PlaceholderFeed() {
-  return (
-    <div className="bg-white dark:bg-surface border border-slate-100 dark:border-slate-800 rounded-xl p-4 h-48 flex items-center justify-center">
-      <p className="text-sm text-slate-400">Activité récente</p>
     </div>
   );
 }

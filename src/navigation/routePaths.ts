@@ -58,4 +58,14 @@ export const ROUTE_PATHS = {
   dashboardHistory: "/dashboard/history",
   dashboardCreateFleet: "/dashboard/create-fleet",
   dashboardIncidentDeclare: "/dashboard/incidents/declare",
+  /** Journal carburant (saisies + monitoring). */
+  dashboardFuel: "/dashboard/fuel",
+  /** Classement et scores de performance des conducteurs. */
+  dashboardDriverScores: "/dashboard/drivers/scores",
+  /** DVIR — contrôles journaliers des véhicules. */
+  dashboardInspections: "/dashboard/inspections",
+  /** Maintenance prédictive IA — scores de risque de pannes. */
+  dashboardPredictiveMaintenance: "/dashboard/maintenance/predictive",
+  /** Transits CEMAC — passages frontières Zone CEMAC. */
+  dashboardTransitCemac: "/dashboard/transit",
 } as const;

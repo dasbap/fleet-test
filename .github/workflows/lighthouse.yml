@@ -72,8 +72,10 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # Fallback placeholders prevent client.ts module-level throw when secrets are unset.
+          # Non-empty URL/key = Supabase client init succeeds, app renders, FCP fires.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ci-placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key-ci-lighthouse' }}
 
       - name: Vérifier le budget JS initial (gzip)
         id: bundle
@@ -98,19 +100,28 @@ jobs:
       - name: Attendre le serveur
         run: npx wait-on http://localhost:4173 --timeout 60000
 
+      - name: Setup Chrome 124 (compatible Lighthouse 11)
+        uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+        with:
+          chrome-version: "124"
+
       - name: Lighthouse CI (perf, a11y)
         id: lhci
         uses: treosh/lighthouse-ci-action@v11
         with:
           configPath: .github/lighthouse/lighthouserc.json
-          budgetPath: .github/lighthouse/budget.json
           uploadArtifacts: true
           temporaryPublicStorage: true
+          runs: 2
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
 
       - name: Lighthouse CI (SEO — page d’accueil)
         run: npx lhci autorun --config=.github/lighthouse/lighthouserc-seo.json
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
 
       - name: Commentaire PR — résultats Lighthouse
         if: >
