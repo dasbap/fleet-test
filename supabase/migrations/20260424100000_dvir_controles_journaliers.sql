@@ -33,7 +33,7 @@ CREATE POLICY "fleet_members_read_controles" ON public.controles_journaliers
       SELECT 1 FROM public.flotte_adhesions fa
       WHERE fa.fleet_id = controles_journaliers.fleet_id
         AND fa.user_id = auth.uid()
-        AND fa.status = 'active'
+        AND fa.is_active = true
     )
   );
 
@@ -44,7 +44,7 @@ CREATE POLICY "fleet_members_create_controles" ON public.controles_journaliers
       SELECT 1 FROM public.flotte_adhesions fa
       WHERE fa.fleet_id = controles_journaliers.fleet_id
         AND fa.user_id = auth.uid()
-        AND fa.status = 'active'
+        AND fa.is_active = true
     )
   );
 
