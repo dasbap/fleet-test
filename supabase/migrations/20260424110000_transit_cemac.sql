@@ -64,8 +64,8 @@ create policy "fleet_members_read_transits"
   for select
   using (
     fleet_id in (
-      select fleet_id from public.membres_flotte
-      where user_id = auth.uid() and status = 'active'
+      select fleet_id from public.flotte_adhesions
+      where user_id = auth.uid() and is_active = true
     )
   );
 
@@ -75,8 +75,8 @@ create policy "fleet_members_create_transits"
   for insert
   with check (
     fleet_id in (
-      select fleet_id from public.membres_flotte
-      where user_id = auth.uid() and status = 'active'
+      select fleet_id from public.flotte_adhesions
+      where user_id = auth.uid() and is_active = true
     )
   );
 
@@ -86,7 +86,7 @@ create policy "fleet_members_update_transits"
   for update
   using (
     fleet_id in (
-      select fleet_id from public.membres_flotte
-      where user_id = auth.uid() and status = 'active'
+      select fleet_id from public.flotte_adhesions
+      where user_id = auth.uid() and is_active = true
     )
   );
