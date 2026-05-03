@@ -4,29 +4,66 @@
 create extension if not exists pg_trgm;
 
 -- Index trigram: véhicules
-create index if not exists idx_vehicules_registration_trgm
-  on public.vehicules using gin (registration gin_trgm_ops);
+-- Garde : ignoré si la table n'existe pas encore (ex. rejoue depuis un baseline squashé).
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'vehicules'
+  ) then
+    create index if not exists idx_vehicules_registration_trgm
+      on public.vehicules using gin (registration gin_trgm_ops);
 
-create index if not exists idx_vehicules_brand_model_trgm
-  on public.vehicules using gin ((coalesce(brand, '') || ' ' || coalesce(model, '')) gin_trgm_ops);
+    create index if not exists idx_vehicules_brand_model_trgm
+      on public.vehicules using gin ((coalesce(brand, '') || ' ' || coalesce(model, '')) gin_trgm_ops);
+  end if;
+end;
+$$;
 
 -- Index trigram: profils (conducteurs / membres flotte)
-create index if not exists idx_profils_full_name_trgm
-  on public.profils using gin (coalesce(full_name, '') gin_trgm_ops);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'profils'
+  ) then
+    create index if not exists idx_profils_full_name_trgm
+      on public.profils using gin (coalesce(full_name, '') gin_trgm_ops);
 
-create index if not exists idx_profils_phone_trgm
-  on public.profils using gin (coalesce(phone, '') gin_trgm_ops);
+    create index if not exists idx_profils_phone_trgm
+      on public.profils using gin (coalesce(phone, '') gin_trgm_ops);
+  end if;
+end;
+$$;
 
 -- Index trigram: alertes
-create index if not exists idx_alertes_automatiques_message_trgm
-  on public.alertes_automatiques using gin (message gin_trgm_ops);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'alertes_automatiques'
+  ) then
+    create index if not exists idx_alertes_automatiques_message_trgm
+      on public.alertes_automatiques using gin (message gin_trgm_ops);
+  end if;
+end;
+$$;
 
 -- Index trigram: maintenance
-create index if not exists idx_travaux_maintenance_notes_trgm
-  on public.travaux_maintenance using gin (coalesce(notes, '') gin_trgm_ops);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'travaux_maintenance'
+  ) then
+    create index if not exists idx_travaux_maintenance_notes_trgm
+      on public.travaux_maintenance using gin (coalesce(notes, '') gin_trgm_ops);
 
-create index if not exists idx_travaux_maintenance_status_priority_trgm
-  on public.travaux_maintenance using gin ((coalesce(status, '') || ' ' || coalesce(priority, '')) gin_trgm_ops);
+    create index if not exists idx_travaux_maintenance_status_priority_trgm
+      on public.travaux_maintenance using gin ((coalesce(status, '') || ' ' || coalesce(priority, '')) gin_trgm_ops);
+  end if;
+end;
+$$;
 
 create or replace function public.search_fleet(
   search_query text,
