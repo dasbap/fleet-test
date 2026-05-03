@@ -4,9 +4,9 @@
 -- ── Table principale ────────────────────────────────────────────────────────
 create table if not exists public.transits_cemac (
   id               uuid primary key default gen_random_uuid(),
-  fleet_id         uuid not null references public.fleets(id) on delete cascade,
+  fleet_id         uuid not null references public.flottes(id) on delete cascade,
   vehicle_id       uuid not null references public.vehicules(id) on delete cascade,
-  driver_id        uuid references public.profils(id) on delete set null,
+  driver_id        uuid references auth.users(id) on delete set null,
 
   -- Corridor CEMAC
   departure_country text not null,                 -- Ex: "CM" (Cameroun)

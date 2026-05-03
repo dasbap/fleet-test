@@ -2,7 +2,7 @@
 -- Ces tables sont créées par les migrations legacy ; ce fichier garantit leur existence
 -- dans le contexte de rejeu depuis ce point de départ (CI ghost-folder).
 
-create table if not exists public.fleets (
+create table if not exists public.flottes (
   id         uuid primary key default gen_random_uuid(),
   name       text,
   created_at timestamptz default now()
@@ -10,7 +10,7 @@ create table if not exists public.fleets (
 
 create table if not exists public.flotte_adhesions (
   id         uuid primary key default gen_random_uuid(),
-  fleet_id   uuid references public.fleets(id) on delete cascade,
+  fleet_id   uuid references public.flottes(id) on delete cascade,
   user_id    uuid,
   role       text,
   is_active  boolean not null default true,
@@ -26,7 +26,7 @@ create table if not exists public.profils (
 
 create table if not exists public.vehicules (
   id           uuid primary key default gen_random_uuid(),
-  fleet_id     uuid references public.fleets(id) on delete cascade,
+  fleet_id     uuid references public.flottes(id) on delete cascade,
   registration text,
   brand        text,
   model        text,
@@ -46,7 +46,7 @@ create table if not exists public.affectations_vehicules (
 
 create table if not exists public.travaux_maintenance (
   id         uuid primary key default gen_random_uuid(),
-  fleet_id   uuid references public.fleets(id) on delete cascade,
+  fleet_id   uuid references public.flottes(id) on delete cascade,
   vehicle_id uuid references public.vehicules(id) on delete cascade,
   status     text,
   priority   text,
@@ -58,7 +58,7 @@ create table if not exists public.travaux_maintenance (
 
 create table if not exists public.alertes_automatiques (
   id         uuid primary key default gen_random_uuid(),
-  fleet_id   uuid references public.fleets(id) on delete cascade,
+  fleet_id   uuid references public.flottes(id) on delete cascade,
   vehicle_id uuid references public.vehicules(id) on delete cascade,
   message    text,
   severity   text,
