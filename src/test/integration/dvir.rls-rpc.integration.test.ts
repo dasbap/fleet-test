@@ -225,7 +225,7 @@ describe.skipIf(!runIntegration)("DVIR SQL/RLS - matrice rôles + filtres RPC + 
     expect(Array.isArray(unsafeRows)).toBe(true);
     expect((unsafeRows ?? []).length).toBeGreaterThanOrEqual(2);
     for (const row of unsafeRows ?? []) {
-      expect(row.status).toBe("unsafe");
+      expect(row.overall_status).toBe("unsafe");
     }
 
     const { data: vehicleRows, error: vehicleError } = await supabase.rpc("get_dvir_list", {
