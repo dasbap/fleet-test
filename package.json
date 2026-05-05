@@ -201,6 +201,11 @@
     "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
+  "overrides": {
+    "@capacitor/assets": {
+      "sharp": "^0.34.0"
+    }
+  },
   "devDependencies": {
     "prisma": "^6.0.0",
     "@capacitor/assets": "^3.0.5",
