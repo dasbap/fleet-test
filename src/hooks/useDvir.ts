@@ -25,6 +25,15 @@ export function useDvirRecent(limit = 30) {
   });
 }
 
+export function useDvirById(id: string | undefined) {
+  return useQuery({
+    queryKey: ["dvir-by-id", id],
+    queryFn: () => (id ? repo.findById(id) : null),
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+}
+
 export function useCreateDvir() {
   const queryClient = useQueryClient();
   const { user, userFleetId } = useAuth();
