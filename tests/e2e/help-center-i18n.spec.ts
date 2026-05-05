@@ -51,19 +51,24 @@ async function seedSessionAndLocale(page: Page, locale: HelpLocaleCase["locale"]
 }
 
 async function mockSupabaseRequests(page: Page): Promise<void> {
-  // Abort all Supabase REST / auth / realtime HTTP requests that would open
-  // persistent long-polls and prevent the page from reaching a settled state
-  // in CI (the placeholder URL never connects and keeps retrying).
-  // These broad catches are registered first so the specific billing mock
-  // below (registered last = highest priority in Playwright's LIFO order)
-  // can still intercept and fulfill its own URL.
+  // Realtime WebSocket upgrade requests → abort (no console.error side-effect
+  // from aborting WebSocket connections, and they keep no HTTP long-poll open).
   await page.route("**/realtime/v1/**", (route) => route.abort());
-  await page.route("**/auth/v1/**", (route) => route.abort());
-  await page.route("**/rest/v1/**", (route) => route.abort());
 
-  // Fulfill the billing context RPC with a "pro" plan so the help bubble is
-  // shown. Registered last → matched first (Playwright LIFO), overriding the
-  // broad REST abort above for this specific endpoint.
+  // Auth and generic REST requests → return an empty 200 so the app's
+  // fetch calls succeed silently (no "TypeError: Failed to fetch" in
+  // console.error → hardErrors assertion stays green).
+  // Registered before the billing mock (lower LIFO priority).
+  await page.route("**/auth/v1/**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "{}" }),
+  );
+  await page.route("**/rest/v1/**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
+  );
+
+  // Billing context RPC → fulfill with a "pro" plan so HelpBubble is shown.
+  // Registered last → highest LIFO priority → overrides the generic REST
+  // catch-all above for this specific URL.
   await page.route("**/rest/v1/rpc/get_fleet_billing_context", async (route) => {
     await route.fulfill({
       status: 200,
