@@ -3,6 +3,9 @@
   "private": false,
   "version": "0.1.0",
   "type": "module",
+  "workspaces": [
+    "packages/db"
+  ],
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
@@ -15,10 +18,10 @@
     "node": "22.x"
   },
   "scripts": {
-    "postinstall": "playwright install",
+    "postinstall": "prisma generate --schema packages/db/prisma/schema.prisma && node scripts/install-playwright.mjs",
     "dev": "vite",
     "dev:clean": "node scripts/clear-vite-cache.mjs && vite",
-    "build": "vite build",
+    "build": "prisma generate --schema packages/db/prisma/schema.prisma && vite build",
     "build:analyze": "vite build --mode analyze",
     "build:capacitor": "vite build --mode capacitor",
     "build:dev": "vite build --mode development",
@@ -64,6 +67,13 @@
     "install:supabase-cli": "powershell -ExecutionPolicy Bypass -File scripts/install-supabase-cli.ps1",
     "verify:supabase-link": "powershell -ExecutionPolicy Bypass -File scripts/verify-supabase-link.ps1",
     "supabase": "supabase",
+    "db:generate": "prisma generate --schema packages/db/prisma/schema.prisma",
+    "db:pull": "prisma db pull --schema packages/db/prisma/schema.prisma",
+    "db:push": "prisma db push --schema packages/db/prisma/schema.prisma",
+    "db:migrate:dev": "prisma migrate dev --schema packages/db/prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema packages/db/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema packages/db/prisma/schema.prisma",
+    "db:format": "prisma format --schema packages/db/prisma/schema.prisma",
     "cleanup:db": "node scripts/run-cleanup-db.js",
     "cleanup:db:cli": "powershell -ExecutionPolicy Bypass -File scripts/run-cleanup-via-cli.ps1",
     "test:migrations": "powershell -ExecutionPolicy Bypass -File scripts/test-migrations.ps1",
@@ -109,6 +119,7 @@
     "rum:web-vitals:report": "node scripts/report-rum-web-vitals.mjs"
   },
   "dependencies": {
+    "@prisma/client": "^6.0.0",
     "@capacitor/android": "^8.3.0",
     "@capacitor/app": "^8.1.0",
     "@capacitor/camera": "^8.0.2",
@@ -162,7 +173,6 @@
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
-    "firebase": "^12.11.0",
     "i18next": "^26.0.4",
     "i18next-browser-languagedetector": "^8.2.1",
     "i18next-http-backend": "^3.0.4",
@@ -190,7 +200,13 @@
     "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
+  "overrides": {
+    "@capacitor/assets": {
+      "sharp": "^0.34.0"
+    }
+  },
   "devDependencies": {
+    "prisma": "^6.0.0",
     "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^9.32.0",
     "@lhci/cli": "^0.15.1",
