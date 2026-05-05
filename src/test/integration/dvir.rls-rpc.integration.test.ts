@@ -94,7 +94,7 @@ describe.skipIf(!runIntegration)("DVIR SQL/RLS - matrice rôles + filtres RPC + 
 
     testUserId = sessionData.user.id;
 
-    const { data: org, error: orgError } = await supabase
+    const { data: org, error: orgError } = await supabaseAdmin
       .from("organisations")
       .insert({
         name: `Test DVIR Org ${unique}`,
