@@ -86,6 +86,11 @@ CREATE TABLE IF NOT EXISTS public.travaux_maintenance (
   parts                 jsonb DEFAULT '[]'::jsonb,
   created_at            timestamptz NOT NULL DEFAULT now()
 );
+-- Guard: add columns that may be absent when the table exists from an older baseline.
+ALTER TABLE public.travaux_maintenance
+  ADD COLUMN IF NOT EXISTS notes      text,
+  ADD COLUMN IF NOT EXISTS planned_at timestamptz,
+  ADD COLUMN IF NOT EXISTS parts      jsonb DEFAULT '[]'::jsonb;
 
 CREATE TABLE IF NOT EXISTS public.alertes_automatiques (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),

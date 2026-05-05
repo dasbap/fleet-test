@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useVehiclesSimple } from "@/hooks/useVehicles";
-import { useCreateDvir, useDvirChecklistConfig, useDvirList } from "@/hooks/useDvir";
+import { useCreateDvir, useDvirRecent } from "@/hooks/useDvir";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const CRITICAL_ITEM_SLUGS = ["freins_service", "frein_main", "direction", "pneus"];
@@ -12,13 +12,12 @@ export default function DvirInspectionsPage() {
   const [vehicleId, setVehicleId] = useState("");
   const [odometerKm, setOdometerKm] = useState("");
   const { data: vehicles = [] } = useVehiclesSimple(userFleetId ?? undefined);
-  const { data: dvirRows = [], isLoading } = useDvirList({ limit: 30 });
-  const { data: checklist = [] } = useDvirChecklistConfig();
+  const { data: dvirRows = [], isLoading } = useDvirRecent(30);
   const createMutation = useCreateDvir();
 
-  const criticalItems = useMemo(
-    () => checklist.filter((item) => CRITICAL_ITEM_SLUGS.includes(item.slug)),
-    [checklist],
+  const vehicleMap = useMemo(
+    () => new Map(vehicles.map((v) => [v.id, v.registration])),
+    [vehicles],
   );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -28,7 +27,7 @@ export default function DvirInspectionsPage() {
     }
 
     const items = Object.fromEntries(
-      criticalItems.map((item) => [item.slug, { status: "ok" as const }]),
+      CRITICAL_ITEM_SLUGS.map((slug) => [slug, { status: "ok" as const }]),
     );
 
     await createMutation.mutateAsync({
@@ -102,7 +101,7 @@ export default function DvirInspectionsPage() {
               <li key={row.id} className="rounded border p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="font-medium">{row.vehicle_registration ?? "Véhicule inconnu"}</p>
+                    <p className="font-medium">{vehicleMap.get(row.vehicle_id) ?? "Véhicule inconnu"}</p>
                     <p className="text-sm text-muted-foreground">
                       {new Date(row.inspected_at).toLocaleString("fr-FR")} - statut {row.overall_status}
                     </p>

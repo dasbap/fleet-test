@@ -127,6 +127,13 @@ export default function Upgrade() {
     canQueryBilling ? fleetId : null,
   );
 
+  const [momoDialog, setMomoDialog] = useState<{
+    planCode: string;
+    planName: string;
+    vehicleCount: number;
+    amountXaf: number;
+  } | null>(null);
+
   if (authLoading) {
     return <PageLoader />;
   }
@@ -148,13 +155,6 @@ export default function Upgrade() {
   }
 
   const fleetLabel = [orgId, fleetId].filter(Boolean).join(" / ");
-
-  const [momoDialog, setMomoDialog] = useState<{
-    planCode: string;
-    planName: string;
-    vehicleCount: number;
-    amountXaf: number;
-  } | null>(null);
 
   return (
     <div className="bg-muted/30 min-h-screen py-10 md:py-16">
