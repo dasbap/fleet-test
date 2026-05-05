@@ -17,9 +17,10 @@ const distRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 
 // Budgets relevés temporairement (dette tracée dans docs/todo-bundle-initial-optimization.md).
 // /login n'est pas prérendue : seule /auth est canonique (src/lib/seo.ts).
+// Augmenté à 450 Ko pour absorber le chunk recharts (vendor-charts, ~90 Ko gzip).
 const defaultBudgets = [
-  { route: "/", maxGzipKb: 330 },
-  { route: "/auth", maxGzipKb: 330 },
+  { route: "/", maxGzipKb: 450 },
+  { route: "/auth", maxGzipKb: 450 },
 ];
 
 function normalizeRoute(route) {
