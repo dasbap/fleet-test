@@ -8,7 +8,7 @@ import { PageLoader } from "@/components/dashboard/PageLoader";
 import { useAuth } from "@/hooks/useAuth";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { planValueMessages } from "@/lib/plan-value-messages";
-import { useIncidentAlertsMock } from "@/features/alerts/store/incidentAlertsMockStore";
+import { useIncidentAlerts } from "@/features/alerts/hooks/useIncidentAlerts";
 import {
   filterIncidentAlerts,
   sortIncidentAlertsByPriority,
@@ -41,7 +41,7 @@ export default function IncidentAlertsListPage() {
   const { userFleetId, isLoading: authLoading } = useAuth();
   const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
   const navigate = useNavigate();
-  const raw = useIncidentAlertsMock();
+  const { data: raw = [], isLoading: alertsLoading } = useIncidentAlerts(userFleetId ?? undefined);
   const [severity, setSeverity] = useState<IncidentSeverityFilter>("all");
   const [status, setStatus] = useState<IncidentStatusFilter>("all");
 
@@ -58,7 +58,7 @@ export default function IncidentAlertsListPage() {
     billingQuery.isSuccess &&
     billingQuery.data.anomalyInsightsEnabled === false;
 
-  if (authLoading) {
+  if (authLoading || alertsLoading) {
     return <PageLoader />;
   }
 
@@ -112,15 +112,6 @@ export default function IncidentAlertsListPage() {
           </AlertDescription>
         </Alert>
       )}
-
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>Données de démonstration</AlertTitle>
-        <AlertDescription>
-          Les alertes sont simulées en mémoire (commentaires et statuts sont
-          conservés pendant la session).
-        </AlertDescription>
-      </Alert>
 
       <div className="space-y-3">
         <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">

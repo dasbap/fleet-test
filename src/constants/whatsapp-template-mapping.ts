@@ -39,3 +39,27 @@ export function getDashboardWhatsappTemplate(
 ): WhatsappTemplateName | null {
   return DASHBOARD_ACTION_TEMPLATE_MAP[actionKind] ?? null;
 }
+
+/**
+ * Templates interactifs déclenchés par des événements conducteur.
+ */
+export type DriverBotEvent =
+  | "shift_open_reminder"
+  | "shift_close_reminder"
+  | "fuel_confirm"
+  | "doc_expiry_action"
+  | "score_update"
+  | "profile_complete";
+
+const DRIVER_BOT_TEMPLATE_MAP: Record<DriverBotEvent, WhatsappTemplateName> = {
+  shift_open_reminder: "shift_open_reminder_cta_fr",
+  shift_close_reminder: "shift_close_reminder_qr_fr",
+  fuel_confirm: "fuel_entry_confirm_qr_fr",
+  doc_expiry_action: "doc_expiry_action_qr_fr",
+  score_update: "driver_score_update_cta_fr",
+  profile_complete: "driver_profile_complete_qr_fr",
+};
+
+export function getDriverBotTemplate(event: DriverBotEvent): WhatsappTemplateName {
+  return DRIVER_BOT_TEMPLATE_MAP[event];
+}

@@ -1,96 +1,58 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { DvirRepository, type DvirStatus } from "@/repositories/dvir.repository";
-import { DvirService, type DvirCreateInput } from "@/services/dvir.service";
+import {
+  DvirRepository,
+  type DvirInsert,
+  type DvirEntry,
+} from "@/repositories/dvir.repository";
 
-const dvirRepository = new DvirRepository();
-const dvirService = new DvirService(dvirRepository);
+export type { DvirEntry };
+export type { InspectionType, OverallStatus } from "@/repositories/dvir.repository";
 
-export type { DvirStatus };
-export type { DvirListItem, DvirChecklistConfigItem } from "@/repositories/dvir.repository";
-export type { DvirCreateInput } from "@/services/dvir.service";
+const repo = new DvirRepository();
 
-export interface UseDvirListFilters {
-  vehicleId?: string;
-  inspectedBy?: string;
-  status?: DvirStatus;
-  dateFrom?: string;
-  dateTo?: string;
-  limit?: number;
-  offset?: number;
-}
-
-export function useDvirList(filters: UseDvirListFilters = {}) {
+export function useDvirRecent(limit = 30) {
   const { userFleetId } = useAuth();
 
   return useQuery({
-    queryKey: ["dvir-list", userFleetId, filters],
-    queryFn: async () => {
-      if (!userFleetId) {
-        return [];
-      }
-
-      return dvirService.list({
-        fleetId: userFleetId,
-        vehicleId: filters.vehicleId,
-        inspectedBy: filters.inspectedBy,
-        status: filters.status,
-        dateFrom: filters.dateFrom,
-        dateTo: filters.dateTo,
-        limit: filters.limit ?? 50,
-        offset: filters.offset ?? 0,
-      });
-    },
+    queryKey: ["dvir-recent", userFleetId, limit],
+    queryFn: () =>
+      userFleetId ? repo.findRecentByFleet(userFleetId, limit) : [],
     enabled: !!userFleetId,
     staleTime: 60_000,
-  });
-}
-
-export function useDvirChecklistConfig() {
-  return useQuery({
-    queryKey: ["dvir-checklist-config"],
-    queryFn: () => dvirService.getChecklistConfig(),
-    staleTime: 5 * 60_000,
-  });
-}
-
-export function useDvirById(id?: string) {
-  return useQuery({
-    queryKey: ["dvir-by-id", id],
-    queryFn: () => dvirService.getById(id!),
-    enabled: !!id,
+    refetchInterval: 5 * 60_000,
   });
 }
 
 export function useCreateDvir() {
-  const { user, userFleetId } = useAuth();
   const queryClient = useQueryClient();
+  const { user, userFleetId } = useAuth();
 
   return useMutation({
     mutationFn: async (
-      input: Omit<DvirCreateInput, "fleetId" | "inspectedBy">,
-    ): Promise<void> => {
+      input: Omit<DvirInsert, "fleet_id" | "inspected_by">,
+    ): Promise<DvirEntry> => {
       if (!user) throw new Error("Utilisateur non connecté");
       if (!userFleetId) throw new Error("Aucune flotte active");
 
-      await dvirService.create({
+      return repo.create({
         ...input,
-        fleetId: userFleetId,
-        inspectedBy: user.id,
+        fleet_id: userFleetId,
+        inspected_by: user.id,
       });
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["dvir-list"] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dvir-recent"] });
       toast({
-        title: "Inspection enregistrée",
-        description: "Le rapport DVIR a été créé avec succès.",
+        title: "Contrôle enregistré",
+        description: "Le contrôle journalier a été transmis.",
       });
     },
-    onError: (error: Error) => {
+    onError: (err: Error) => {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: err.message,
         variant: "destructive",
       });
     },
