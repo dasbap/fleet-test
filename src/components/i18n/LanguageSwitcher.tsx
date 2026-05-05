@@ -6,7 +6,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { analytics, syncAnalyticsLanguage } from "@/lib/analytics";
 import { SUPPORTED_LANGS } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -38,8 +37,10 @@ export function LanguageSwitcher({ className }: LanguageSwitcherProps) {
       onValueChange={(next) => {
         const prev = i18n.language;
         void i18n.changeLanguage(next).then(() => {
-          analytics.languageChanged(prev, next);
-          syncAnalyticsLanguage();
+          import("@/lib/analytics").then(({ analytics, syncAnalyticsLanguage }) => {
+            analytics.languageChanged(prev, next);
+            syncAnalyticsLanguage();
+          });
         });
       }}
     >

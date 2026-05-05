@@ -116,7 +116,7 @@ export default function DashboardPage() {
         <ExpiringDocumentsBanner fleetId={currentFleetId} />
         {showWelcome && (
           <WelcomeBanner
-            userName={user?.user_metadata?.full_name ?? user?.email}
+            userName={(user?.user_metadata?.full_name as string | undefined) ?? user?.email}
             onDismiss={() => setShowWelcome(false)}
           />
         )}
@@ -132,7 +132,7 @@ export default function DashboardPage() {
       <ExpiringDocumentsBanner fleetId={currentFleetId} />
       {showWelcome && (
         <WelcomeBanner
-          userName={user?.user_metadata?.full_name ?? user?.email}
+          userName={(user?.user_metadata?.full_name as string | undefined) ?? user?.email}
           onDismiss={() => setShowWelcome(false)}
         />
       )}
@@ -143,6 +143,7 @@ export default function DashboardPage() {
             <p className="text-sm text-slate-400 mt-0.5">Vue d'ensemble de votre flotte</p>
           </div>
 
+          <ClosureBanner />
           <PhoneAlertBanner count={missingCount} onAction={() => setShowPhoneModal(true)} />
           <PhoneCollectionModal
             fleetId={currentFleetId}
@@ -235,6 +236,7 @@ function DriverScoresQuickWidget({
     </Card>
   );
 }
+
 
 function DashboardSkeleton() {
   return (
