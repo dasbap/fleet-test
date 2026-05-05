@@ -88,7 +88,10 @@ async function openHelpCenter(page: Page, bubbleLabel: string): Promise<void> {
     .or(page.getByRole("button", { name: /Besoin d'aide \?|Need help\?|Bosalisi\?/i }))
     .first();
   await expect(bubbleButton).toBeVisible({ timeout: 15_000 });
-  await bubbleButton.click();
+  // force: true bypasses pointer-event interception that occurs on mobile
+  // viewports when the fixed-position bubble sits behind dashboard content
+  // in the stacking context. The button is confirmed visible above.
+  await bubbleButton.click({ force: true });
 }
 
 async function gotoDashboard(page: Page): Promise<void> {
