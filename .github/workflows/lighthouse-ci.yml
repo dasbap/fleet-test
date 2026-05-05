@@ -23,6 +23,8 @@ on:
       - main
       - master
       - develop
+      - PRINCIPALE
+      - fix/ci-green-main
       - release/**
     paths:
       - "src/**"
@@ -37,6 +39,8 @@ on:
       - main
       - master
       - develop
+      - PRINCIPALE
+      - fix/ci-green-main
       - release/**
     paths:
       - "src/**"
