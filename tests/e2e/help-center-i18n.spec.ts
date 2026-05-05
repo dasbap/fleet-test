@@ -50,7 +50,20 @@ async function seedSessionAndLocale(page: Page, locale: HelpLocaleCase["locale"]
   }, locale);
 }
 
-async function mockBillingContext(page: Page): Promise<void> {
+async function mockSupabaseRequests(page: Page): Promise<void> {
+  // Abort all Supabase REST / auth / realtime HTTP requests that would open
+  // persistent long-polls and prevent the page from reaching a settled state
+  // in CI (the placeholder URL never connects and keeps retrying).
+  // These broad catches are registered first so the specific billing mock
+  // below (registered last = highest priority in Playwright's LIFO order)
+  // can still intercept and fulfill its own URL.
+  await page.route("**/realtime/v1/**", (route) => route.abort());
+  await page.route("**/auth/v1/**", (route) => route.abort());
+  await page.route("**/rest/v1/**", (route) => route.abort());
+
+  // Fulfill the billing context RPC with a "pro" plan so the help bubble is
+  // shown. Registered last → matched first (Playwright LIFO), overriding the
+  // broad REST abort above for this specific endpoint.
   await page.route("**/rest/v1/rpc/get_fleet_billing_context", async (route) => {
     await route.fulfill({
       status: 200,
@@ -74,21 +87,11 @@ async function openHelpCenter(page: Page, bubbleLabel: string): Promise<void> {
 }
 
 async function gotoDashboard(page: Page): Promise<void> {
-  let lastError: unknown = null;
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      await page.goto("/dashboard", { waitUntil: "domcontentloaded", timeout: 20_000 });
-      await page.waitForLoadState("networkidle", { timeout: 10_000 });
-      return;
-    } catch (error) {
-      lastError = error;
-      if (attempt < 3) {
-        await page.waitForTimeout(1_000);
-      }
-    }
-  }
-
-  throw lastError ?? new Error("Navigation dashboard impossible");
+  // Navigate and wait for the React app to mount (<main> from DashboardLayout).
+  // We deliberately avoid waitForLoadState("networkidle"): SPAs with WebSocket
+  // keep-alive connections (Supabase Realtime) never reach network-idle in CI.
+  await page.goto("/dashboard", { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await page.waitForSelector("main", { state: "attached", timeout: 15_000 });
 }
 
 test.describe("HelpCenter i18n e2e", () => {
@@ -104,7 +107,7 @@ test.describe("HelpCenter i18n e2e", () => {
       });
 
       await seedSessionAndLocale(page, localeCase.locale);
-      await mockBillingContext(page);
+      await mockSupabaseRequests(page);
       await gotoDashboard(page);
 
       await openHelpCenter(page, localeCase.bubbleLabel);
