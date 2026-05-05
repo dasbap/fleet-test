@@ -96,6 +96,13 @@ describe.skipIf(!runIntegration)("DVIR SQL/RLS - matrice rôles + filtres RPC + 
 
     testUserId = sessionData.user.id;
 
+    // The on_auth_user_created trigger that normally creates the profils row may be
+    // absent from local migrations. Insert it explicitly so flotte_adhesions FK holds.
+    const { error: profilError } = await supabaseAdmin
+      .from("profils")
+      .insert({ user_id: testUserId, full_name: "Test DVIR User" });
+    if (profilError) throw new Error(`Impossible de créer le profil de test: ${profilError.message}`);
+
     const { data: org, error: orgError } = await supabaseAdmin
       .from("organisations")
       .insert({
