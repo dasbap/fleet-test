@@ -20,10 +20,10 @@ export default function DvirDetailPage() {
       ) : (
         <section className="mt-4 rounded-lg border p-4">
           <p>
-            <span className="font-medium">Véhicule :</span> {data.vehicle_registration ?? "Inconnu"}
+            <span className="font-medium">Véhicule :</span> {data.vehicle?.registration ?? "Inconnu"}
           </p>
           <p>
-            <span className="font-medium">Inspecteur :</span> {data.inspector_name ?? data.inspected_by}
+            <span className="font-medium">Inspecteur :</span> {data.inspected_by}
           </p>
           <p>
             <span className="font-medium">Type :</span> {data.inspection_type}
