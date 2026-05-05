@@ -28,26 +28,20 @@ jobs:
         with:
           version: latest
 
-      # Démarrer une instance Supabase locale fraîche
-      # --ignore-health-check évite les faux échecs sur les timeouts réseau
+      # Démarrer une instance Supabase locale fraîche (sans services optionnels lourds)
       - name: Start Supabase local
-        run: supabase start --ignore-health-check
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase start -x vector,logflare
 
-      # Appliquer toutes les migrations dans l'ordre chronologique
-      # La migration 20260415193000_unified_fleet_search.sql contient
-      # des CREATE TABLE IF NOT EXISTS guards pour toutes ses dépendances
-      - name: Apply all migrations
-        run: supabase db push --local
-        # Si une migration échoue, afficher le contexte complet
-        continue-on-error: false
+      # Rejouer toutes les migrations depuis zéro (équivalent db reset + apply)
+      - name: Replay all migrations
+        run: supabase db reset --no-seed
 
       # Vérifier que search_fleet fonctionne sans auth (retourne 0 rows, pas d'erreur)
+      # Les arguments sont castés explicitement pour lever toute ambiguïté de type.
       - name: Smoke test — search_fleet sans auth
         run: |
           supabase db query \
-            "SELECT count(*) AS result FROM public.search_fleet('Toyota', 5, NULL);" \
+            "SELECT count(*) AS result FROM public.search_fleet('Toyota'::text, 5::int, NULL::uuid);" \
             --local | grep -E "^[[:space:]]*0$" && echo "✅ CI safe: 0 rows without auth" \
             || (echo "❌ search_fleet a retourné des lignes sans auth ou a planté" && exit 1)
 

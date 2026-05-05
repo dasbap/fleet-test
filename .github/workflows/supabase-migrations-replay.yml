@@ -69,7 +69,9 @@ jobs:
         run: supabase db reset --no-seed
 
       - name: Export local Supabase env
-        run: supabase status -o env >> "$GITHUB_ENV"
+        # supabase status -o env peut entourer les valeurs de guillemets ("eyJ...").
+        # On les supprime pour éviter que SERVICE_ROLE_KEY commence par un " invalide en base64.
+        run: supabase status -o env | sed 's/="\(.*\)"$/=\1/' >> "$GITHUB_ENV"
 
       - name: Setup Node
         uses: actions/setup-node@v4
