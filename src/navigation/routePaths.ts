@@ -65,6 +65,7 @@ export const ROUTE_PATHS = {
   dashboardSettings: "/dashboard/settings",
   dashboardRoles: "/dashboard/roles",
   dashboardDrivers: "/dashboard/drivers",
+  /** Classement et scores de performance des conducteurs. */
   dashboardDriverScores: "/dashboard/drivers/scores",
   dashboardFinances: "/dashboard/finances",
   dashboardCollections: "/dashboard/collections",
@@ -73,8 +74,6 @@ export const ROUTE_PATHS = {
   dashboardIncidentDeclare: "/dashboard/incidents/declare",
   /** Journal carburant (saisies + monitoring). */
   dashboardFuel: "/dashboard/fuel",
-  /** Classement et scores de performance des conducteurs. */
-  dashboardDriverScores: "/dashboard/drivers/scores",
   /** DVIR — contrôles journaliers des véhicules. */
   dashboardInspections: "/dashboard/inspections",
   /** Maintenance prédictive IA — scores de risque de pannes. */

@@ -53,6 +53,17 @@ export class DvirRepository {
     return (data ?? []) as unknown as DvirEntry[];
   }
 
+  async findById(id: string): Promise<DvirEntry | null> {
+    const { data, error } = await supabase
+      .from("controles_journaliers")
+      .select("*, vehicle:vehicules(registration, brand, model)")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    return data as unknown as DvirEntry | null;
+  }
+
   async findTodayByVehicle(fleetId: string, vehicleId: string): Promise<DvirEntry[]> {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
