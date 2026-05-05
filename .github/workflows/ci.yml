@@ -8,9 +8,10 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, PRINCIPALE, fix/ci-green-main]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, PRINCIPALE, fix/ci-green-main]
+  workflow_dispatch:
 
 jobs:
   # ── Job 1 : Migrations & tests DB ──────────────────────────────────────
