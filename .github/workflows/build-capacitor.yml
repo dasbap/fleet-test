@@ -51,6 +51,9 @@ jobs:
           node-version: "22"
           cache: "npm"
 
+      - name: Install libvips (requis par @capacitor/assets/sharp en fallback compilation)
+        run: sudo apt-get install -y --no-install-recommends libvips-dev
+
       - name: Install dependencies
         run: npm ci
 
