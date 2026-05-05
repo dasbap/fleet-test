@@ -19,7 +19,9 @@ const supabase = runIntegration
   ? createClient(supabaseUrl, supabaseAnonKey)
   : (null as unknown as ReturnType<typeof createClient>);
 const supabaseAdmin = runIntegration
-  ? createClient(supabaseUrl, supabaseServiceRoleKey)
+  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
   : (null as unknown as ReturnType<typeof createClient>);
 
 describe.skipIf(!runIntegration)("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
