@@ -1,5 +1,21 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export interface FuelEntry {
+  id: string;
+  fleet_id: string;
+  vehicle_id: string;
+  driver_user_id: string;
+  liters: number;
+  amount_xof: number;
+  odometer_km: number;
+  purchased_at: string;
+  station_name: string | null;
+  receipt_ref: string | null;
+  created_at: string;
+  vehicle?: { registration: string; brand: string | null; model: string | null } | null;
+  driver?: { full_name: string | null } | null;
+}
+
 export interface FuelEntryInsert {
   fleet_id: string;
   vehicle_id: string;
@@ -14,6 +30,23 @@ export interface FuelEntryInsert {
 }
 
 export class FuelRepository {
+  async findByFleet(
+    fleetId: string,
+    options: { limit?: number; offset?: number } = {},
+  ): Promise<FuelEntry[]> {
+    const { data, error } = await supabase
+      .from("journal_carburant")
+      .select(
+        "*, vehicle:vehicules(registration, brand, model), driver:profils(full_name)",
+      )
+      .eq("fleet_id", fleetId)
+      .order("purchased_at", { ascending: false })
+      .range(options.offset ?? 0, (options.offset ?? 0) + (options.limit ?? 50) - 1);
+
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as FuelEntry[];
+  }
+
   async create(entry: FuelEntryInsert): Promise<void> {
     const { error } = await supabase.rpc("enregistrer_carburant_offline", {
       p_fleet_id: entry.fleet_id,

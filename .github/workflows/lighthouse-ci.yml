@@ -83,11 +83,21 @@ jobs:
       - name: Attendre le serveur
         run: npx wait-on http://localhost:4173 --timeout 60000
 
+      - name: Setup Chrome 124 (compatible Lighthouse 11)
+        uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+        with:
+          chrome-version: "124"
+
       - name: Run Lighthouse CI (perf, a11y)
         run: npx lhci autorun --config=.github/lighthouse/lighthouserc.json
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
 
       - name: Run Lighthouse CI (critical routes only)
         run: npx lhci autorun --config=.github/lighthouse/lighthouserc.critical.json
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
 
       - name: Run INP interaction audit
         run: node scripts/check-inp-interactions.mjs
@@ -97,3 +107,5 @@ jobs:
 
       - name: Run Lighthouse CI (SEO — page d’accueil)
         run: npx lhci autorun --config=.github/lighthouse/lighthouserc-seo.json
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}

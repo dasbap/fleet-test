@@ -20,6 +20,7 @@ export type MechanicOperationsPayload = {
 };
 
 function isOperationsMockEnabled(): boolean {
+  if (import.meta.env.PROD) return false;
   return import.meta.env.VITE_OPERATIONS_MOCK === "true";
 }
 

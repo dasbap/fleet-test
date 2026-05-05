@@ -1,13 +1,9 @@
-import { Award, Info, RefreshCw } from "lucide-react";
+import { Award, RefreshCw, TrendingUp, Users, Info } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { PageLoader } from "@/components/dashboard/PageLoader";
-import {
-  useCalculateDriverScore,
-  useDriverScores,
-  type DriverScore,
-} from "@/hooks/useDriverScores";
+import { useDriverScores, useCalculateDriverScore, type DriverScore } from "@/hooks/useDriverScores";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import {
@@ -17,17 +13,17 @@ import {
   mobileScreenTitle,
 } from "@/lib/mobile/mobileUiTokens";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 const LEVEL_CONFIG = {
   green: {
     label: "Excellent",
-    badgeClass:
-      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+    badgeClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
     barClass: "bg-emerald-500",
   },
   orange: {
     label: "Moyen",
-    badgeClass:
-      "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
+    badgeClass: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
     barClass: "bg-orange-500",
   },
   red: {
@@ -39,18 +35,19 @@ const LEVEL_CONFIG = {
 
 function ScoreBar({ value, barClass }: { value: number | null; barClass: string }) {
   const pct = value ?? 0;
-
   return (
     <div className="flex items-center gap-2">
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
         <div className={cn("h-full rounded-full transition-all", barClass)} style={{ width: `${pct}%` }} />
       </div>
-      <span className="w-6 text-right text-xs tabular-nums text-muted-foreground">
+      <span className="text-xs tabular-nums w-6 text-right text-muted-foreground">
         {value != null ? Math.round(value) : "—"}
       </span>
     </div>
   );
 }
+
+// ─── Driver score card ────────────────────────────────────────────────────────
 
 function DriverScoreCard({
   score,
@@ -73,7 +70,7 @@ function DriverScoreCard({
 
   return (
     <Card>
-      <CardContent className="space-y-3 py-4">
+      <CardContent className="py-4 space-y-3">
         <div className="flex items-center gap-3">
           <div
             className={cn(
@@ -85,16 +82,17 @@ function DriverScoreCard({
           >
             {rank}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{driverName}</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm truncate">{driverName}</p>
             <p className="text-xs text-muted-foreground">Mis à jour le {updatedAt}</p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Badge className={cfg.badgeClass}>{cfg.label}</Badge>
             <span className="text-xl font-bold tabular-nums">{total}</span>
           </div>
         </div>
 
+        {/* Sub-scores */}
         <div className="space-y-1.5">
           {[
             { label: "Incidents", value: score.incidents_score },
@@ -103,7 +101,7 @@ function DriverScoreCard({
             { label: "Stabilité", value: score.operational_stability_score },
           ].map(({ label, value }) => (
             <div key={label} className="grid grid-cols-[80px_1fr] items-center gap-2">
-              <span className="truncate text-xs text-muted-foreground">{label}</span>
+              <span className="text-xs text-muted-foreground truncate">{label}</span>
               <ScoreBar value={value} barClass={cfg.barClass} />
             </div>
           ))}
@@ -113,7 +111,7 @@ function DriverScoreCard({
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 gap-1.5 text-xs"
+            className="h-7 text-xs gap-1.5"
             onClick={onRecalculate}
             disabled={isPending}
           >
@@ -126,6 +124,8 @@ function DriverScoreCard({
   );
 }
 
+// ─── Summary bar ─────────────────────────────────────────────────────────────
+
 function ScoreSummary({ scores }: { scores: DriverScore[] }) {
   const green = scores.filter((s) => s.score_level === "green").length;
   const orange = scores.filter((s) => s.score_level === "orange").length;
@@ -134,24 +134,9 @@ function ScoreSummary({ scores }: { scores: DriverScore[] }) {
   return (
     <div className="grid grid-cols-3 gap-3">
       {[
-        {
-          label: "Excellents",
-          count: green,
-          color: "text-emerald-600 dark:text-emerald-400",
-          bg: "bg-emerald-50 border-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900",
-        },
-        {
-          label: "Moyens",
-          count: orange,
-          color: "text-orange-600 dark:text-orange-400",
-          bg: "bg-orange-50 border-orange-100 dark:bg-orange-950/30 dark:border-orange-900",
-        },
-        {
-          label: "À risque",
-          count: red,
-          color: "text-red-600 dark:text-red-400",
-          bg: "bg-red-50 border-red-100 dark:bg-red-950/30 dark:border-red-900",
-        },
+        { label: "Excellents", count: green, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900" },
+        { label: "Moyens", count: orange, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900" },
+        { label: "À risque", count: red, color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900" },
       ].map(({ label, count, color, bg }) => (
         <Card key={label} className={cn("border", bg)}>
           <CardContent className="py-3 text-center">
@@ -164,13 +149,17 @@ function ScoreSummary({ scores }: { scores: DriverScore[] }) {
   );
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function DriverScoresPage() {
   const { userFleetId, isLoading: authLoading } = useAuth();
   const { data: scores = [], isLoading } = useDriverScores();
   const { mutate: recalculate, isPending: recalcPending, variables: recalcVars } =
     useCalculateDriverScore();
 
-  const sortedScores = [...scores].sort((a, b) => (b.score_total ?? 0) - (a.score_total ?? 0));
+  const sorted = [...scores].sort(
+    (a, b) => (b.score_total ?? 0) - (a.score_total ?? 0),
+  );
 
   if (authLoading || isLoading) return <PageLoader />;
 
@@ -186,30 +175,33 @@ export default function DriverScoresPage() {
         </p>
       </header>
 
-      {sortedScores.length > 0 && <ScoreSummary scores={sortedScores} />}
+      {sorted.length > 0 && <ScoreSummary scores={sorted} />}
 
-      {sortedScores.length === 0 ? (
+      {sorted.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center text-muted-foreground">
             <Info className="h-8 w-8" />
             <p className="text-sm">Aucun score calculé pour cette flotte.</p>
             <p className="text-xs">
-              Les scores sont calculés automatiquement après 7 jours d&apos;activité ou à la demande.
+              Les scores sont calculés automatiquement après 7 jours d'activité ou à la demande.
             </p>
           </CardContent>
         </Card>
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {sortedScores.map((score, index) => (
+          {sorted.map((score, i) => (
             <li key={score.id}>
               <DriverScoreCard
                 score={score}
-                rank={index + 1}
+                rank={i + 1}
                 onRecalculate={() =>
                   userFleetId &&
                   recalculate({ driverUserId: score.driver_user_id, fleetId: userFleetId })
                 }
-                isPending={recalcPending && recalcVars?.driverUserId === score.driver_user_id}
+                isPending={
+                  recalcPending &&
+                  recalcVars?.driverUserId === score.driver_user_id
+                }
               />
             </li>
           ))}

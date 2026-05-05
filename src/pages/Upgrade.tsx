@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { AlertTriangle, Check, Zap } from "lucide-react";
+import { AlertTriangle, Check, Smartphone, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/dashboard/PageLoader";
@@ -15,7 +16,7 @@ import {
 } from "@/lib/public-pricing";
 import { cn } from "@/lib/utils";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
-import { MobileMoneyUpgradeButton } from "@/services/MobileMoneyService";
+import { MoMoPaymentDialog } from "@/components/billing/MoMoPaymentDialog";
 
 const SUPPORT_EMAIL = "support@e-samba.com";
 
@@ -148,6 +149,13 @@ export default function Upgrade() {
 
   const fleetLabel = [orgId, fleetId].filter(Boolean).join(" / ");
 
+  const [momoDialog, setMomoDialog] = useState<{
+    planCode: string;
+    planName: string;
+    vehicleCount: number;
+    amountXaf: number;
+  } | null>(null);
+
   return (
     <div className="bg-muted/30 min-h-screen py-10 md:py-16">
       <div className="container mx-auto max-w-6xl space-y-8 px-4">
@@ -221,30 +229,55 @@ export default function Upgrade() {
                 ))}
               </ul>
 
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
+                {plan.key !== "free" && (
+                  <Button
+                    className="w-full bg-orange-500 hover:bg-orange-600"
+                    onClick={() => {
+                      const pricePerVehicle =
+                        plan.key === "pro"
+                          ? PUBLIC_PRICE_PRO_PER_VEHICLE_XAF
+                          : PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF;
+                      const defaultVehicles = plan.key === "pro" ? 5 : 3;
+                      setMomoDialog({
+                        planCode: plan.key,
+                        planName: plan.name,
+                        vehicleCount: defaultVehicles,
+                        amountXaf: pricePerVehicle * defaultVehicles,
+                      });
+                    }}
+                  >
+                    <Smartphone className="h-4 w-4 mr-1.5" />
+                    Payer Mobile Money
+                  </Button>
+                )}
                 <Button
                   className="w-full"
-                  variant={plan.popular ? "default" : "outline"}
+                  variant={plan.key !== "free" ? "outline" : plan.popular ? "default" : "outline"}
                   asChild
                 >
                   <a href={buildRenewalMailto(plan.key, fleetLabel)}>{plan.cta}</a>
                 </Button>
-                {plan.key !== "free" ? (
-                  <MobileMoneyUpgradeButton
-                    plan={{ name: plan.name, priceXAF: plan.priceXAF }}
-                    merchantCodes={merchantCodes}
-                    onSuccess={() => window.location.assign(ROUTE_PATHS.dashboard)}
-                  />
-                ) : null}
               </div>
             </div>
           ))}
         </div>
 
         <p className="text-muted-foreground text-center text-xs">
-          Paiements : Mobile Money et cartes bancaires — comme sur le reste de la plateforme.
+          Paiements acceptés : Orange Money, MTN MoMo. Activation sous 24 h après confirmation.
         </p>
       </div>
+
+      {momoDialog && (
+        <MoMoPaymentDialog
+          open={Boolean(momoDialog)}
+          onClose={() => setMomoDialog(null)}
+          planCode={momoDialog.planCode}
+          planName={momoDialog.planName}
+          vehicleCount={momoDialog.vehicleCount}
+          amountXaf={momoDialog.amountXaf}
+        />
+      )}
     </div>
   );
 }
