@@ -20,6 +20,12 @@ jobs:
     name: Playwright HelpCenter (fr/en/ln)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Valeurs factices : le client Supabase s'initialise sans planter (URL valide requise),
+      # mais l'app tourne en mode mock-auth (esamba-demo-auth-fallback=true côté test).
+      # Les seuls appels réseau Supabase (billing RPC) sont interceptés par Playwright.
+      VITE_SUPABASE_URL: https://placeholder-e2e.supabase.co
+      VITE_SUPABASE_ANON_KEY: placeholder-anon-key-e2e-only
 
     steps:
       - name: Checkout

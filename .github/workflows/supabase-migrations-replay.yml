@@ -62,9 +62,6 @@ jobs:
         with:
           version: latest
 
-      - name: Start Supabase local stack
+      - name: Start Supabase local stack (applies all migrations from scratch)
         run: supabase start --workdir supabase
-
-      - name: Replay migrations from scratch
-        run: supabase db reset --workdir supabase
 
