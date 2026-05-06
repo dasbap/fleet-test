@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { FuelRepository, type FuelEntry } from "@/repositories/fuel.repository";
+import { detectFuelOverconsumption } from "@/services/fuel.service";
 
 const repo = new FuelRepository();
 
@@ -41,4 +43,17 @@ export function useFuelSummary(): FuelSummary & { isLoading: boolean } {
     entryCount: entries.length,
     isLoading,
   };
+}
+
+/**
+ * Retourne un Set<string> des entry IDs anomaleux (surconsommation détectée).
+ * Recalculé en mémoire dès que les données changent — pas de requête supplémentaire.
+ */
+export function useFuelAnomalies(threshold100km = 30): Set<string> {
+  const { data: entries = [] } = useFuelLogs(200);
+  return useMemo(
+    () => detectFuelOverconsumption(entries, threshold100km),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [entries, threshold100km],
+  );
 }
