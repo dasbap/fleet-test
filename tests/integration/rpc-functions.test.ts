@@ -10,85 +10,57 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createClient } from '@supabase/supabase-js';
+import {
+  bootstrapIntegrationAuth,
+  canRunIntegrationAuthBootstrap,
+  getMissingAuthEnv,
+} from './_auth';
 
-// Configuration pour les tests
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
-const testIntegrationUserId = process.env.TEST_INTEGRATION_USER_ID || '';
-const testIntegrationEmail = process.env.TEST_INTEGRATION_EMAIL || 'integration.tests@esamba.test';
-const testIntegrationPassword = process.env.TEST_INTEGRATION_PASSWORD || 'Integration2025!';
-
-if (!supabaseUrl) {
-  throw new Error('La variable d\'environnement VITE_SUPABASE_URL doit être définie');
-}
-
-const canRunIntegrationSuite = Boolean(
-  supabaseServiceRoleKey && supabaseAnonKey && testIntegrationUserId,
-);
+const canRunIntegrationSuite = canRunIntegrationAuthBootstrap();
 const describeIntegration = canRunIntegrationSuite ? describe : describe.skip;
-
-const supabaseAdmin = canRunIntegrationSuite
-  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    })
-  : null;
-
-const supabaseUser = canRunIntegrationSuite
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    })
-  : null;
 
 describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
   let testUserId: string;
   let testOrgId: string;
   let testFleetId: string;
+  let supabaseAdmin: Awaited<ReturnType<typeof bootstrapIntegrationAuth>>['admin'];
+  let supabaseUser: Awaited<ReturnType<typeof bootstrapIntegrationAuth>>['user'];
   const testOrgName = `Test RPC Org ${Date.now()}`;
   const testFleetName = `Test RPC Flotte ${Date.now()}`;
 
   beforeAll(async () => {
-    testUserId = testIntegrationUserId;
-    const { error } = await supabaseUser!.auth.signInWithPassword({
-      email: testIntegrationEmail,
-      password: testIntegrationPassword,
-    });
-    expect(error).toBeNull();
+    const context = await bootstrapIntegrationAuth();
+    supabaseAdmin = context.admin;
+    supabaseUser = context.user;
+    testUserId = context.userId;
   });
 
   afterAll(async () => {
     // Nettoyer les données de test
     if (testFleetId) {
-      await supabaseAdmin!
+      await supabaseAdmin
         .from('flotte_adhesions')
         .delete()
         .eq('fleet_id', testFleetId);
       
-      await supabaseAdmin!
+      await supabaseAdmin
         .from('vehicules')
         .delete()
         .eq('fleet_id', testFleetId);
       
-      await supabaseAdmin!
+      await supabaseAdmin
         .from('flotte_invitations')
         .delete()
         .eq('fleet_id', testFleetId);
       
-      await supabaseAdmin!
+      await supabaseAdmin
         .from('flottes')
         .delete()
         .eq('id', testFleetId);
     }
 
     if (testOrgId) {
-      await supabaseAdmin!
+      await supabaseAdmin
         .from('organisations')
         .delete()
         .eq('id', testOrgId);
@@ -97,7 +69,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
 
   it('create_esamba_fleet devrait utiliser les tables organisations et flottes', async () => {
     // Créer une organisation d'abord
-    const { data: org, error: orgError } = await supabaseAdmin!
+    const { data: org, error: orgError } = await supabaseAdmin
       .from('organisations')
       .insert({
         name: testOrgName,
@@ -111,7 +83,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
     testOrgId = org.id;
 
     // Tester la fonction RPC
-    const { data, error } = await supabaseAdmin!.rpc('create_esamba_fleet', {
+    const { data, error } = await supabaseAdmin.rpc('create_esamba_fleet', {
       p_org_id: testOrgId,
       p_name: testFleetName,
       p_collection_policy: 'mix',
@@ -122,7 +94,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
     testFleetId = data;
 
     // Vérifier que la flotte existe dans la table flottes (pas fleets)
-    const { data: fleet, error: fleetError } = await supabaseAdmin!
+    const { data: fleet, error: fleetError } = await supabaseAdmin
       .from('flottes')
       .select('*')
       .eq('id', testFleetId)
@@ -134,7 +106,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
   });
 
   it('upsert_fleet_membership devrait utiliser la table flotte_adhesions', async () => {
-    const { error: deniedError } = await supabaseUser!.rpc('upsert_fleet_membership', {
+    const { error: deniedError } = await supabaseUser.rpc('upsert_fleet_membership', {
       p_fleet_id: testFleetId,
       p_user_id: '00000000-0000-0000-0000-000000000001',
       p_role: 'driver',
@@ -144,7 +116,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
     expect(deniedError).toBeDefined();
     expect(deniedError?.message).toMatch(/Permission refusée|Permission denied/);
 
-    const { data, error } = await supabaseUser!.rpc('upsert_fleet_membership', {
+    const { data, error } = await supabaseUser.rpc('upsert_fleet_membership', {
       p_fleet_id: testFleetId,
       p_user_id: testUserId,
       p_role: 'organizer',
@@ -155,7 +127,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
     expect(data).toBeDefined();
 
     // Vérifier que le membership existe dans flotte_adhesions (pas fleet_memberships)
-    const { data: membership, error: membershipError } = await supabaseAdmin!
+    const { data: membership, error: membershipError } = await supabaseAdmin
       .from('flotte_adhesions')
       .select('*')
       .eq('fleet_id', testFleetId)
@@ -168,7 +140,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
   });
 
   it('create_esamba_vehicle devrait utiliser les tables flottes et vehicules', async () => {
-    const { data, error } = await supabaseAdmin!.rpc('create_esamba_vehicle', {
+    const { data, error } = await supabaseAdmin.rpc('create_esamba_vehicle', {
       p_fleet_id: testFleetId,
       p_registration: 'RPC-TEST-001',
       p_brand: 'Honda',
@@ -181,7 +153,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
     expect(data).toBeDefined();
 
     // Vérifier que le véhicule existe dans vehicules (pas vehicles)
-    const { data: vehicle, error: vehicleError } = await supabaseAdmin!
+    const { data: vehicle, error: vehicleError } = await supabaseAdmin
       .from('vehicules')
       .select('*')
       .eq('id', data)
@@ -193,7 +165,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
   });
 
   it('create_esamba_invitation devrait utiliser les tables flottes et flotte_invitations', async () => {
-    const { data, error } = await supabaseAdmin!.rpc('create_esamba_invitation', {
+    const { data, error } = await supabaseAdmin.rpc('create_esamba_invitation', {
       p_fleet_id: testFleetId,
       p_code: 'RPC-TEST-2024',
     });
@@ -203,7 +175,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
     expect(data).toBe('RPC-TEST-2024');
 
     // Vérifier que l'invitation existe dans flotte_invitations (pas fleet_invitations)
-    const { data: invitation, error: invitationError } = await supabaseAdmin!
+    const { data: invitation, error: invitationError } = await supabaseAdmin
       .from('flotte_invitations')
       .select('*')
       .eq('code', 'RPC-TEST-2024')
@@ -216,7 +188,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
 
   it('verifier_esamba_2024 devrait retourner les 5 critères de vérification', async () => {
     // Vérifie que la RPC verifier_esamba_2024 s'exécute et retourne la structure attendue
-    const { data, error } = await supabaseAdmin!.rpc('verifier_esamba_2024');
+    const { data, error } = await supabaseAdmin.rpc('verifier_esamba_2024');
 
     expect(error).toBeNull();
     expect(data).toBeDefined();
@@ -248,7 +220,7 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
     
     // Vérifier que la fonction existe et peut être appelée
     // (même si elle échoue car l'utilisateur n'existe pas)
-    const { error } = await supabaseUser!.rpc('add_member_by_email', {
+    const { error } = await supabaseUser.rpc('add_member_by_email', {
       p_fleet_id: testFleetId,
       p_email: testEmail,
       p_role: 'driver',
@@ -261,3 +233,10 @@ describeIntegration('Fonctions RPC - Vérification des noms de tables', () => {
     expect(error?.message).not.toMatch(/relation.*does not exist|table.*does not exist/i);
   });
 });
+
+if (!canRunIntegrationSuite) {
+  // Commentaire explicite dans la sortie Vitest quand la suite est skip.
+  console.warn(
+    `[tests/integration] Suite ignoree: variables manquantes (${getMissingAuthEnv().join(', ')})`,
+  );
+}
