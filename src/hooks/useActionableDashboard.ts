@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { MaintenanceRepository } from "@/repositories/maintenance.repository";
 import type { MaintenanceJob } from "@/hooks/useMaintenance";
 import type { DashboardAlert, KpiSummary } from "@/types/dashboard";
+import { useFuelSummary } from "@/hooks/useFuelLogs";
 
 const EMPTY_KPIS: KpiSummary = {
   activeVehicles: 0,
@@ -42,6 +43,8 @@ export function useActionableDashboard() {
   const kpisQuery = useDashboardKpis();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: fleetVehicles = [], isLoading: fleetLoading } = useFleetVehicles();
+  // Carburant : données déjà requêtées si FuelMonitoringPage actif (React Query déduplique)
+  const fuelSummary = useFuelSummary();
 
   const kpis = useMemo((): KpiSummary | null => {
     if (kpisQuery.data) return kpisQuery.data;
@@ -103,6 +106,8 @@ export function useActionableDashboard() {
     avgKm,
     todayRevenueXaf: stats?.todayRevenue ?? 0,
     totalVehicles: stats?.totalVehicles ?? 0,
+    fuelSpendXof: fuelSummary.totalAmountXof,
+    fuelLiters: fuelSummary.totalLiters,
     coreLoading,
     loading,
   };
@@ -116,6 +121,8 @@ export type UseActionableDashboardReturn = {
   avgKm: number;
   todayRevenueXaf: number;
   totalVehicles: number;
+  fuelSpendXof: number;
+  fuelLiters: number;
   coreLoading: boolean;
   loading: boolean;
 };

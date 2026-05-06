@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from "react";
-import { Banknote, Bell, Truck, Wrench } from "lucide-react";
+import { Banknote, Bell, Droplets, Truck, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { VehicleDto } from "@/types/dto/vehicle.dto";
@@ -125,8 +125,8 @@ export function ActionableDashboardSkeleton() {
         <Sk className="h-7 w-40" />
         <Sk className="h-4 w-20" />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="rounded-card border border-surface-raised bg-surface p-4 space-y-2">
             <Sk className="h-3 w-20" />
             <Sk className="h-8 w-16" />
@@ -167,6 +167,8 @@ export interface ActionableDashboardProps {
   avgKm: number;
   todayRevenueXaf: number;
   totalVehicles: number;
+  fuelSpendXof: number;
+  fuelLiters: number;
   onNavigateVehicle: (vehicleId: string) => void;
   onNavigateAlerts: () => void;
   onNavigateMaintenance: () => void;
@@ -180,6 +182,8 @@ export function ActionableDashboard({
   avgKm,
   todayRevenueXaf,
   totalVehicles,
+  fuelSpendXof,
+  fuelLiters,
   onNavigateVehicle,
   onNavigateAlerts,
   onNavigateMaintenance,
@@ -234,6 +238,7 @@ export function ActionableDashboard({
     wrench: <Wrench className="h-4 w-4" strokeWidth={1.5} />,
     bell: <Bell className="h-4 w-4" strokeWidth={1.5} />,
     xaf: <Banknote className="h-4 w-4" strokeWidth={1.5} />,
+    fuel: <Droplets className="h-4 w-4" strokeWidth={1.5} />,
   };
 
   return (
@@ -246,7 +251,7 @@ export function ActionableDashboard({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <KpiCard
           label="Véhicules actifs"
           value={kpis.activeVehicles}
@@ -296,6 +301,12 @@ export function ActionableDashboard({
           value={formatXaf(todayRevenueXaf)}
           sub={`KM moyen : ${formatAvgKm(avgKm)}`}
           icon={icons.xaf}
+        />
+        <KpiCard
+          label="Carburant (total)"
+          value={formatXaf(fuelSpendXof)}
+          sub={fuelLiters > 0 ? `${fuelLiters.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} L` : "Aucune saisie"}
+          icon={icons.fuel}
         />
       </div>
 
