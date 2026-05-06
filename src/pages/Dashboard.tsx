@@ -78,6 +78,8 @@ export default function DashboardPage() {
     avgKm,
     todayRevenueXaf,
     totalVehicles,
+    fuelSpendXof,
+    fuelLiters,
     coreLoading,
   } = useActionableDashboard();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -181,6 +183,8 @@ export default function DashboardPage() {
               avgKm={avgKm}
               todayRevenueXaf={todayRevenueXaf}
               totalVehicles={totalVehicles}
+              fuelSpendXof={fuelSpendXof}
+              fuelLiters={fuelLiters}
               onNavigateVehicle={(vehicleId) =>
                 navigate(ROUTE_PATHS.dashboardVehicleDetail(vehicleId))
               }
