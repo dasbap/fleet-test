@@ -5,46 +5,16 @@
  * Usage : node scripts/verify-supabase-health.js
  */
 
-import { readFileSync, existsSync, readdirSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
+import { getMissingEnv, loadEnvWithLocalFallback } from './_env-loader.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 
-function parseEnvContent(content) {
-  const normalized = content.replace(/^\uFEFF/, '');
-  normalized.split(/\r?\n/).forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) return;
-
-    const separatorIndex = trimmed.indexOf('=');
-    if (separatorIndex <= 0) return;
-
-    const key = trimmed.slice(0, separatorIndex).trim();
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) return;
-
-    const rawValue = trimmed.slice(separatorIndex + 1).trim();
-    const value = rawValue.replace(/^["']|["']$/g, '');
-    if (!process.env[key]) process.env[key] = value;
-  });
-}
-
-function loadEnvLocal() {
-  const candidatePaths = [
-    join(root, '.env.local'),
-    join(process.cwd(), '.env.local'),
-  ];
-
-  for (const envPath of candidatePaths) {
-    if (!existsSync(envPath)) continue;
-    const content = readFileSync(envPath, 'utf8');
-    parseEnvContent(content);
-  }
-}
-
-loadEnvLocal();
+loadEnvWithLocalFallback(root);
 
 const url = process.env.VITE_SUPABASE_URL;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
@@ -141,8 +111,11 @@ async function main() {
   log('Vérification Supabase (env, connexion, migrations)', '');
   log('');
 
-  if (!url || !anonKey) {
-    log('VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY requis dans .env.local', 'err');
+  const missing = getMissingEnv(['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']);
+  if (missing.length > 0) {
+    log(`Variables manquantes (${missing.join(', ')}).`, 'err');
+    log('Priorite: environnement runtime CI. Fallback local: .env.local.', 'err');
+    log('Test local: npm run verify:supabase', 'err');
     process.exit(1);
   }
   if (url.match(/votre-projet|example\.com/) || anonKey.length < 50 || anonKey.match(/votre_cle|example/)) {

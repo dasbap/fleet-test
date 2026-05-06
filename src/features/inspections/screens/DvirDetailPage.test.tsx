@@ -31,5 +31,9 @@ describe("DvirDetailPage", () => {
     expect(screen.getByText("Détail inspection DVIR")).toBeInTheDocument();
     expect(screen.getByText(/AB-123-CD/)).toBeInTheDocument();
     expect(screen.getByText(/Inspecteur Test/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Modifier" })).toHaveAttribute(
+      "href",
+      "/inspections/dvir-1/modifier",
+    );
   });
 });

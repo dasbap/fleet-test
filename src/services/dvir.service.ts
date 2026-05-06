@@ -1,11 +1,13 @@
+import { computeOverallDvirStatus } from "@/lib/dvir-status";
 import {
   DvirRepository,
   type DvirChecklistConfigItem,
+  type DvirDetail,
   type DvirInsertInput,
   type DvirItemStatus,
   type DvirListFilters,
   type DvirListItem,
-  type DvirStatus,
+  type DvirUpdatePayload,
 } from "@/repositories/dvir.repository";
 
 export interface DvirCreateInput {
@@ -18,13 +20,23 @@ export interface DvirCreateInput {
   odometerKm?: number | null;
 }
 
+export interface DvirUpdateInput {
+  id: string;
+  items: Record<string, { status: DvirItemStatus; note?: string }>;
+  notes?: string | null;
+  odometerKm?: number | null;
+  inspectionType: DvirInsertInput["inspection_type"];
+}
+
+const VALID_ITEM_STATUSES = new Set(["ok", "defaut", "defect", "na"]);
+const MAX_NOTES_LENGTH = 2000;
+const MAX_ITEM_NOTE_LENGTH = 500;
+
 export class DvirService {
   constructor(private repository: DvirRepository) {}
 
   async list(filters: DvirListFilters): Promise<DvirListItem[]> {
-    if (!filters.fleetId) {
-      throw new Error("L'ID de flotte est requis");
-    }
+    if (!filters.fleetId) throw new Error("L'ID de flotte est requis");
     return this.repository.getList(filters);
   }
 
@@ -32,84 +44,68 @@ export class DvirService {
     return this.repository.getChecklistConfig();
   }
 
-  async getById(id: string): Promise<DvirListItem | null> {
-    if (!id) {
-      throw new Error("L'identifiant DVIR est requis");
-    }
+  async getById(id: string): Promise<DvirDetail | null> {
+    if (!id) throw new Error("L'identifiant DVIR est requis");
     return this.repository.getById(id);
   }
 
   async create(input: DvirCreateInput): Promise<void> {
-    this.validateCreateInput(input);
+    this.validateInput(input);
 
     const normalizedItems = this.normalizeItems(input.items);
-    const overallStatus = this.computeOverallStatus(normalizedItems);
-    const payload: DvirInsertInput = {
+    await this.repository.create({
       fleet_id: input.fleetId,
       vehicle_id: input.vehicleId,
       inspected_by: input.inspectedBy,
       inspection_type: input.inspectionType,
       items: normalizedItems,
-      overall_status: overallStatus,
-      notes: this.sanitizeText(input.notes),
+      overall_status: computeOverallDvirStatus(normalizedItems),
+      notes: this.sanitizeText(input.notes, MAX_NOTES_LENGTH),
       odometer_km: input.odometerKm ?? null,
-    };
-
-    await this.repository.create(payload);
+    });
   }
 
-  private validateCreateInput(input: DvirCreateInput): void {
-    if (!input.fleetId) throw new Error("L'ID de flotte est requis");
+  async update(input: DvirUpdateInput): Promise<void> {
+    if (!input.id) throw new Error("L'identifiant DVIR est requis");
+    this.validateInput(input);
+
+    const normalizedItems = this.normalizeItems(input.items);
+    await this.repository.update(input.id, {
+      items: normalizedItems,
+      overall_status: computeOverallDvirStatus(normalizedItems),
+      notes: this.sanitizeText(input.notes, MAX_NOTES_LENGTH),
+      odometer_km: input.odometerKm ?? null,
+      inspection_type: input.inspectionType,
+    });
+  }
+
+  private validateInput(input: Pick<DvirCreateInput, "fleetId" | "vehicleId" | "inspectedBy" | "inspectionType" | "odometerKm">): void {
+    if (!("fleetId" in input) || !input.fleetId) throw new Error("L'ID de flotte est requis");
     if (!input.vehicleId) throw new Error("L'ID du véhicule est requis");
     if (!input.inspectedBy) throw new Error("L'ID de l'inspecteur est requis");
     if (!input.inspectionType) throw new Error("Le type d'inspection est requis");
-    if (input.odometerKm != null && input.odometerKm < 0) {
-      throw new Error("Le kilométrage doit être positif");
+    if (input.odometerKm != null && (input.odometerKm < 0 || input.odometerKm > 9_999_999)) {
+      throw new Error("Kilométrage invalide (0–9 999 999)");
     }
   }
 
   private normalizeItems(items: DvirCreateInput["items"]): DvirInsertInput["items"] {
     const normalized: DvirInsertInput["items"] = {};
-
     for (const [key, value] of Object.entries(items)) {
-      const status = value?.status;
-      if (!status || !["ok", "defaut", "defect", "na"].includes(status)) {
-        throw new Error(`Statut invalide pour l'item ${key}`);
+      if (!value?.status || !VALID_ITEM_STATUSES.has(value.status)) {
+        throw new Error(`Statut invalide pour l'item « ${key} »`);
       }
-
       normalized[key] = {
-        status,
-        note: this.sanitizeText(value.note),
+        status: value.status,
+        note: this.sanitizeText(value.note, MAX_ITEM_NOTE_LENGTH),
       };
     }
-
     return normalized;
   }
 
-  private computeOverallStatus(items: DvirInsertInput["items"]): DvirStatus {
-    const criticalKeys = new Set(["freins_service", "frein_main", "direction", "pneus"]);
-    let hasNonCriticalIssue = false;
-
-    for (const [key, item] of Object.entries(items)) {
-      const isDefect = item.status === "defaut" || item.status === "defect";
-      if (!isDefect) {
-        continue;
-      }
-
-      if (criticalKeys.has(key)) {
-        return "unsafe";
-      }
-      hasNonCriticalIssue = true;
-    }
-
-    return hasNonCriticalIssue ? "minor_issues" : "ok";
-  }
-
-  private sanitizeText(value?: string | null): string | null {
-    if (!value) {
-      return null;
-    }
-    const normalized = value.trim().replace(/\s+/g, " ");
-    return normalized.length > 0 ? normalized : null;
+  private sanitizeText(value?: string | null, maxLength = MAX_NOTES_LENGTH): string | null {
+    if (!value) return null;
+    const trimmed = value.trim().replace(/\s+/g, " ");
+    return trimmed.length > 0 ? trimmed.slice(0, maxLength) : null;
   }
 }

@@ -35,6 +35,9 @@ const FuelMonitoringPage = lazy(
 const DvirInspectionsPage = lazy(
   () => import("@/features/inspections/screens/DvirInspectionsPage")
 );
+const DvirChecklistPage = lazy(
+  () => import("@/features/inspections/screens/DvirChecklistPage")
+);
 const DvirDetailPage = lazy(
   () => import("@/features/inspections/screens/DvirDetailPage")
 );
@@ -57,6 +60,8 @@ export const appRoutes = (
     <Route path="/" element={<Index />} />
     <Route path="/aide" element={<AidePage />} />
     <Route path="/fuel" element={<FuelMonitoringPage />} />
+    <Route path="/inspections/nouveau" element={<DvirChecklistPage />} />
+    <Route path="/inspections/:dvirId/modifier" element={<DvirChecklistPage />} />
     <Route path="/inspections" element={<DvirInspectionsPage />} />
     <Route path="/inspections/*" element={<DvirDetailPage />} />
     <Route path="/transit" element={<TransitCemacPage />} />

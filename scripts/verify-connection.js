@@ -5,34 +5,24 @@
  * Usage : node scripts/verify-connection.js
  */
 
-import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { getMissingEnv, loadEnvWithLocalFallback } from './_env-loader.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 
-function loadEnvLocal() {
-  const envPath = join(root, '.env.local');
-  if (!existsSync(envPath)) return;
-  const content = readFileSync(envPath, 'utf8').replace(/^\uFEFF/, '');
-  content.split(/\r?\n/).forEach((line) => {
-    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
-    if (m) {
-      const v = m[2].trim().replace(/^["']|["']$/g, '');
-      if (!process.env[m[1]]) process.env[m[1]] = v;
-    }
-  });
-}
-
-loadEnvLocal();
+loadEnvWithLocalFallback(root);
 
 const url = process.env.VITE_SUPABASE_URL;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 async function main() {
-  if (!url || !anonKey) {
-    console.error('ERREUR: VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY requis dans .env.local');
+  const missing = getMissingEnv(['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']);
+  if (missing.length > 0) {
+    console.error(`ERREUR: variables manquantes (${missing.join(', ')}).`);
+    console.error('Priorite: environnement runtime CI. Fallback local: .env.local.');
+    console.error('Test local: npm run verify:connection');
     process.exit(1);
   }
 
