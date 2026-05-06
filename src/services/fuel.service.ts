@@ -1,5 +1,44 @@
 import type { OfflineFuelCreatePayload } from "@/types/offline-queue";
-import { FuelRepository } from "@/repositories/fuel.repository";
+import { FuelRepository, type FuelEntry } from "@/repositories/fuel.repository";
+
+// ─── Anomaly detection ────────────────────────────────────────────────────────
+
+/**
+ * Détecte les entrées carburant dont la consommation aux 100 km dépasse le seuil.
+ * Algorithme : pour chaque véhicule, trie par odomètre et calcule L/100km
+ * entre deux pleins consécutifs. Retourne un Set des entryId anomaleux.
+ *
+ * Seuil par défaut : 30 L/100km (conservateur pour Afrique centrale, véhicules utilitaires)
+ */
+export function detectFuelOverconsumption(
+  entries: FuelEntry[],
+  threshold100km = 30,
+): Set<string> {
+  const byVehicle = new Map<string, FuelEntry[]>();
+  for (const e of entries) {
+    const list = byVehicle.get(e.vehicle_id) ?? [];
+    list.push(e);
+    byVehicle.set(e.vehicle_id, list);
+  }
+
+  const flagged = new Set<string>();
+  for (const vehicleEntries of byVehicle.values()) {
+    const sorted = [...vehicleEntries].sort(
+      (a, b) => a.odometer_km - b.odometer_km,
+    );
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = sorted[i - 1];
+      const curr = sorted[i];
+      const distanceKm = curr.odometer_km - prev.odometer_km;
+      if (distanceKm <= 0) continue; // lecture odomètre invalide, on skip
+      const consumption100km = (curr.liters / distanceKm) * 100;
+      if (consumption100km > threshold100km) {
+        flagged.add(curr.id);
+      }
+    }
+  }
+  return flagged;
+}
 
 export interface FuelEntryInput {
   fleetId: string;
