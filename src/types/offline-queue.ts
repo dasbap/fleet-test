@@ -1,6 +1,6 @@
 export type OfflineJobStatus = "pending" | "syncing" | "succeeded" | "failed";
 
-export type OfflineJobType = "incident:create" | "shift:start" | "shift:close" | "fuel:create";
+export type OfflineJobType = "incident:create" | "shift:start" | "shift:close" | "fuel:create" | "dvir:create";
 
 export interface OfflineJobBase<TType extends OfflineJobType = OfflineJobType, TPayload = unknown> {
   id: string;
@@ -65,9 +65,24 @@ export type OfflineShiftStartJob = OfflineJobBase<"shift:start", OfflineShiftSta
 export type OfflineShiftCloseJob = OfflineJobBase<"shift:close", OfflineShiftClosePayload>;
 export type OfflineFuelCreateJob = OfflineJobBase<"fuel:create", OfflineFuelCreatePayload>;
 
+export interface OfflineDvirCreatePayload {
+  fleetId: string;
+  vehicleId: string;
+  inspectedBy: string;
+  inspectionType: "pre_trip" | "post_trip" | "weekly" | "periodic" | "interim";
+  items: Record<string, { status: string; note?: string | null }>;
+  notes?: string | null;
+  odometerKm?: number | null;
+  /** Base64 data URLs des photos (max 5) — uploadées à la synchro */
+  photoDataUrls?: string[];
+}
+
+export type OfflineDvirCreateJob = OfflineJobBase<"dvir:create", OfflineDvirCreatePayload>;
+
 export type OfflineJob =
   | OfflineIncidentCreateJob
   | OfflineShiftStartJob
   | OfflineShiftCloseJob
-  | OfflineFuelCreateJob;
+  | OfflineFuelCreateJob
+  | OfflineDvirCreateJob;
 

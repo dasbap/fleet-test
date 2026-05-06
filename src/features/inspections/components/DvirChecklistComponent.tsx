@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Camera, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -251,6 +252,32 @@ export function DvirChecklistComponent({ mode, dvirId, onSaved }: DvirChecklistC
   const [rowState, setRowState] = useState<Record<string, { status: DvirItemStatus; note: string }>>({});
   const [formBootstrapped, setFormBootstrapped] = useState(false);
 
+  // Photos : max 5 fichiers + aperçus en mémoire
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const addPhotos = useCallback((files: FileList | null) => {
+    if (!files) return;
+    const accepted = Array.from(files)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, 5 - photoFiles.length);
+    if (accepted.length === 0) return;
+    setPhotoFiles((prev) => [...prev, ...accepted].slice(0, 5));
+    setPhotoPreviews((prev) => [
+      ...prev,
+      ...accepted.map((f) => URL.createObjectURL(f)),
+    ].slice(0, 5));
+  }, [photoFiles.length]);
+
+  const removePhoto = useCallback((idx: number) => {
+    setPhotoPreviews((prev) => {
+      URL.revokeObjectURL(prev[idx]);
+      return prev.filter((_, i) => i !== idx);
+    });
+    setPhotoFiles((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
   const [errors, setErrors] = useState<{ vehicleId?: string; km?: string }>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -354,6 +381,7 @@ export function DvirChecklistComponent({ mode, dvirId, onSaved }: DvirChecklistC
           odometerKm: odom,
           notes: notesValue,
           items: itemsPayload,
+          photoFiles,
         });
         onSaved?.();
         navigate(ROUTE_PATHS.inspections, { replace: true });
@@ -544,6 +572,64 @@ export function DvirChecklistComponent({ mode, dvirId, onSaved }: DvirChecklistC
       <ChecklistSection title="Éléments critiques" badge="Immobilisation" badgeTone="destructive" items={criticalItems} state={rowState} onStatus={handleStatus} onNote={handleNote} />
       <ChecklistSection title="Éléments standards" badge="Défauts mineurs" badgeTone="warning" items={standardItems} state={rowState} onStatus={handleStatus} onNote={handleNote} />
       <ChecklistSection title="Propreté & présentation" badge="Info" badgeTone="muted" items={infoItems} state={rowState} onStatus={handleStatus} onNote={handleNote} />
+
+      {/* Section photos défauts */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-sm">Photos des défauts</CardTitle>
+            <span className="text-xs text-muted-foreground">{photoFiles.length}/5</span>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {photoPreviews.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {photoPreviews.map((url, idx) => (
+                <div key={idx} className="relative h-20 w-20 shrink-0">
+                  <img
+                    src={url}
+                    alt={`Photo ${idx + 1}`}
+                    className="h-full w-full rounded-lg object-cover border border-border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(idx)}
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:text-destructive"
+                    aria-label="Supprimer la photo"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {photoFiles.length < 5 && (
+            <>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="hidden"
+                onChange={(e) => addPhotos(e.target.files)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full gap-2"
+                onClick={() => photoInputRef.current?.click()}
+              >
+                <Camera className="h-4 w-4" />
+                {photoFiles.length === 0 ? "Ajouter des photos" : "Ajouter une photo"}
+              </Button>
+            </>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Optionnel · JPEG, PNG ou WebP · max 5 Mo par photo
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-2">
