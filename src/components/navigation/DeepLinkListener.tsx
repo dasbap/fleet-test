@@ -11,6 +11,7 @@ import {
 } from "@/lib/deepLinks/deepLinkConfig";
 import { navigateFromDeepLinkUrl } from "@/lib/deepLinks/deepLinkNavigation";
 import { consumePendingDeepLink } from "@/lib/deepLinks/pendingDeepLink";
+import { registerPushNotificationListeners } from "@/lib/pushNotifications/pushNotificationHandler";
 
 /**
  * Écoute les liens profonds natifs (Capacitor) et les événements push / bridge (`window`).
@@ -61,6 +62,7 @@ export function DeepLinkListener() {
     }
 
     let removeUrlOpen: (() => void) | undefined;
+    let removePush: (() => void) | undefined;
 
     const handleUrl = (url: string, source: string) => {
       deepLinkLogInfo("URL entrante", { url, source, ...deepLinkLogContext() });
@@ -79,8 +81,14 @@ export function DeepLinkListener() {
       }
     });
 
+    // Push notifications : tap → navigation SPA
+    void registerPushNotificationListeners().then((cleanup) => {
+      removePush = cleanup;
+    });
+
     return () => {
       removeUrlOpen?.();
+      removePush?.();
     };
   }, [navigate]);
 
