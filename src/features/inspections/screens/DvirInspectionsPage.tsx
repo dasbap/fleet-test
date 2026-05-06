@@ -2,32 +2,29 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useVehiclesSimple } from "@/hooks/useVehicles";
-import { useCreateDvir, useDvirRecent } from "@/hooks/useDvir";
+import { useCreateDvir, useDvirChecklistConfig, useDvirList } from "@/hooks/useDvir";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
-
-const CRITICAL_ITEM_SLUGS = ["freins_service", "frein_main", "direction", "pneus"];
 
 export default function DvirInspectionsPage() {
   const { userFleetId } = useAuth();
   const [vehicleId, setVehicleId] = useState("");
   const [odometerKm, setOdometerKm] = useState("");
-  const { data: vehicles = [] } = useVehiclesSimple(userFleetId ?? undefined);
-  const { data: dvirRows = [], isLoading } = useDvirRecent(30);
+  const { data: vehicles = [], isLoading: vehiclesLoading } = useVehiclesSimple(userFleetId ?? undefined);
+  const { data: dvirRows = [], isLoading } = useDvirList({ limit: 30 });
+  const { data: checklist = [] } = useDvirChecklistConfig();
   const createMutation = useCreateDvir();
 
-  const vehicleMap = useMemo(
-    () => new Map(vehicles.map((v) => [v.id, v.registration])),
-    [vehicles],
+  const criticalItems = useMemo(
+    () => checklist.filter((item) => item.severity === "critical"),
+    [checklist],
   );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!vehicleId) {
-      return;
-    }
+    if (!vehicleId) return;
 
     const items = Object.fromEntries(
-      CRITICAL_ITEM_SLUGS.map((slug) => [slug, { status: "ok" as const }]),
+      criticalItems.map((item) => [item.slug, { status: "ok" as const }]),
     );
 
     await createMutation.mutateAsync({
@@ -38,6 +35,7 @@ export default function DvirInspectionsPage() {
       items,
     });
 
+    setVehicleId("");
     setOdometerKm("");
   };
 
@@ -48,6 +46,14 @@ export default function DvirInspectionsPage() {
         <p className="mt-2 text-muted-foreground">
           Suivi des contrôles journaliers avec statut de conformité.
         </p>
+        <p className="mt-2">
+          <Link
+            className="text-sm font-medium text-primary underline"
+            to={ROUTE_PATHS.inspectionsNew}
+          >
+            Nouvelle inspection complète (15 points)
+          </Link>
+        </p>
       </header>
 
       <section className="rounded-lg border p-4">
@@ -57,12 +63,15 @@ export default function DvirInspectionsPage() {
         </p>
         <form className="grid gap-3 md:grid-cols-3" onSubmit={handleSubmit}>
           <select
-            className="rounded border bg-background p-2"
+            className="rounded border bg-background p-2 disabled:opacity-60"
             value={vehicleId}
             onChange={(event) => setVehicleId(event.target.value)}
+            disabled={vehiclesLoading}
             required
           >
-            <option value="">Sélectionner un véhicule</option>
+            <option value="">
+              {vehiclesLoading ? "Chargement des véhicules..." : "Sélectionner un véhicule"}
+            </option>
             {vehicles.map((vehicle) => (
               <option key={vehicle.id} value={vehicle.id}>
                 {vehicle.registration}
@@ -73,6 +82,7 @@ export default function DvirInspectionsPage() {
             className="rounded border bg-background p-2"
             type="number"
             min={0}
+            max={9999999}
             value={odometerKm}
             onChange={(event) => setOdometerKm(event.target.value)}
             placeholder="Kilométrage (optionnel)"
@@ -80,11 +90,18 @@ export default function DvirInspectionsPage() {
           <button
             className="rounded bg-primary px-4 py-2 text-primary-foreground disabled:opacity-60"
             type="submit"
-            disabled={createMutation.isPending || !vehicleId}
+            disabled={createMutation.isPending || !vehicleId || vehiclesLoading}
           >
             {createMutation.isPending ? "Enregistrement..." : "Enregistrer"}
           </button>
         </form>
+        {createMutation.isError ? (
+          <p className="mt-2 text-sm text-destructive" role="alert">
+            {createMutation.error instanceof Error
+              ? createMutation.error.message
+              : "Une erreur est survenue. Veuillez réessayer."}
+          </p>
+        ) : null}
       </section>
 
       <section className="rounded-lg border p-4">
@@ -101,7 +118,7 @@ export default function DvirInspectionsPage() {
               <li key={row.id} className="rounded border p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="font-medium">{vehicleMap.get(row.vehicle_id) ?? "Véhicule inconnu"}</p>
+                    <p className="font-medium">{row.vehicle_registration ?? "Véhicule inconnu"}</p>
                     <p className="text-sm text-muted-foreground">
                       {new Date(row.inspected_at).toLocaleString("fr-FR")} - statut {row.overall_status}
                     </p>

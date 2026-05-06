@@ -157,6 +157,7 @@ describe.skipIf(!runIntegration)("DVIR SQL/RLS - matrice rôles + filtres RPC + 
     }
 
     if (testFleetId) {
+      await supabaseAdmin.from("alertes_automatiques").delete().eq("fleet_id", testFleetId);
       await supabase.from("vehicules").delete().eq("fleet_id", testFleetId);
       await supabase.from("flotte_adhesions").delete().eq("fleet_id", testFleetId);
       await supabase.from("flottes").delete().eq("id", testFleetId);
@@ -273,5 +274,17 @@ describe.skipIf(!runIntegration)("DVIR SQL/RLS - matrice rôles + filtres RPC + 
     expect(page2?.length).toBe(1);
 
     expect(page1?.[0]?.id).not.toBe(page2?.[0]?.id);
+  });
+
+  it("crée une alerte (alertes_automatiques) lors d'un DVIR unsafe via trigger", async () => {
+    const id = await insertDvir({ status: "unsafe" });
+    const { data, error } = await supabase
+      .from("controles_journaliers")
+      .select("dvir_alert_created, dvir_alert_id")
+      .eq("id", id)
+      .single();
+    expect(error).toBeNull();
+    expect(data?.dvir_alert_created).toBe(true);
+    expect(data?.dvir_alert_id).toBeTruthy();
   });
 });

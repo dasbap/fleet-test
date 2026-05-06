@@ -22,6 +22,10 @@ export const ROUTE_PATHS = {
   fuel: "/fuel",
   /** Liste des inspections DVIR. */
   inspections: "/inspections",
+  /** Nouveau rapport DVIR (checklist complète). */
+  inspectionsNew: "/inspections/nouveau",
+  /** Modification d'un rapport DVIR (édition 24h / auteur). */
+  inspectionsEdit: (dvirId: string) => `/inspections/${dvirId}/modifier` as const,
   /** Détail inspection DVIR via splat route. */
   inspectionsDetail: (path: string) => `/inspections/${path}` as const,
   /** Hub transit CEMAC. */

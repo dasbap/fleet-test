@@ -50,6 +50,9 @@ describe("DvirInspectionsPage", () => {
     );
 
     expect(screen.getByText("Inspections DVIR")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Nouvelle inspection complète (15 points)" }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("AB-123-CD").length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByDisplayValue("Sélectionner un véhicule"), {

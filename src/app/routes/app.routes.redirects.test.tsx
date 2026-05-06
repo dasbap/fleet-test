@@ -91,6 +91,10 @@ vi.mock("@/features/inspections/screens/DvirInspectionsPage", () => ({
   default: () => <div data-testid="inspections-page">Inspections</div>,
 }));
 
+vi.mock("@/features/inspections/screens/DvirChecklistPage", () => ({
+  default: () => <div data-testid="inspections-checklist-page">Inspections checklist</div>,
+}));
+
 vi.mock("@/features/inspections/screens/DvirDetailPage", () => ({
   default: () => <div data-testid="inspections-detail-page">Inspections detail</div>,
 }));
