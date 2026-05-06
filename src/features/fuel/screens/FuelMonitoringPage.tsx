@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Fuel, Plus, TrendingDown, Droplets, Banknote, Info } from "lucide-react";
+import { Fuel, Plus, TrendingDown, Droplets, Banknote, Info, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageLoader } from "@/components/dashboard/PageLoader";
-import { useFuelLogs, useFuelSummary, type FuelEntry } from "@/hooks/useFuelLogs";
+import { useFuelLogs, useFuelSummary, useFuelAnomalies, type FuelEntry } from "@/hooks/useFuelLogs";
 import { useCreateFuelEntry } from "@/hooks/useFuel";
 import { useFleetVehicles } from "@/hooks/useDashboardStats";
 import { useAuth } from "@/hooks/useAuth";
@@ -62,7 +62,7 @@ function SummaryCard({
 
 // ─── Fuel entry row ───────────────────────────────────────────────────────────
 
-function FuelEntryRow({ entry }: { entry: FuelEntry }) {
+function FuelEntryRow({ entry, isAnomalous }: { entry: FuelEntry; isAnomalous?: boolean }) {
   const vehicleName = [entry.vehicle?.brand, entry.vehicle?.model]
     .filter(Boolean)
     .join(" ") || entry.vehicle?.registration || "—";
@@ -86,7 +86,15 @@ function FuelEntryRow({ entry }: { entry: FuelEntry }) {
             <p className="text-xs text-muted-foreground">{plate} · {driver}</p>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
-            <Badge variant="secondary">{entry.liters.toFixed(1)} L</Badge>
+            <div className="flex items-center gap-1">
+              {isAnomalous && (
+                <Badge variant="destructive" className="flex items-center gap-1 text-xs px-1.5 py-0.5">
+                  <AlertTriangle className="h-3 w-3" />
+                  Surconso.
+                </Badge>
+              )}
+              <Badge variant="secondary">{entry.liters.toFixed(1)} L</Badge>
+            </div>
             <span className="text-sm font-medium text-orange-600 dark:text-orange-400">
               {entry.amount_xof.toLocaleString("fr-FR")} XOF
             </span>
@@ -232,6 +240,7 @@ export default function FuelMonitoringPage() {
   const { userFleetId, isLoading: authLoading } = useAuth();
   const { data: entries = [], isLoading: entriesLoading } = useFuelLogs(50);
   const summary = useFuelSummary();
+  const flaggedIds = useFuelAnomalies();
   const [showDialog, setShowDialog] = useState(false);
 
   if (authLoading) return <PageLoader />;
@@ -253,6 +262,16 @@ export default function FuelMonitoringPage() {
           Saisir
         </Button>
       </header>
+
+      {/* Anomaly banner */}
+      {flaggedIds.size > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40 px-4 py-2.5 text-sm text-red-800 dark:text-red-300">
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+          <span>
+            <strong>{flaggedIds.size} saisie{flaggedIds.size > 1 ? "s" : ""}</strong> dépassent le seuil de surconsommation (&gt;30 L/100 km).
+          </span>
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -305,7 +324,7 @@ export default function FuelMonitoringPage() {
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {entries.map((entry) => (
             <li key={entry.id}>
-              <FuelEntryRow entry={entry} />
+              <FuelEntryRow entry={entry} isAnomalous={flaggedIds.has(entry.id)} />
             </li>
           ))}
         </ul>
