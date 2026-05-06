@@ -3,6 +3,11 @@ import type { AlertDto } from "@/types/dto/alert.dto";
 import type { Incident } from "@/repositories/incident.repository";
 import type { MaintenanceJob, Priority } from "@/repositories/maintenance.repository";
 
+export interface FuelCostEntry {
+  purchased_at: string;
+  amount_xof: number;
+}
+
 export interface VehicleHistoryEvent {
   id: string;
   at: string;
@@ -117,17 +122,21 @@ export function countCriticalAlerts(alerts: AlertDto[]): number {
   return alerts.filter((a) => a.severity === "critical").length;
 }
 
-export function buildVehicleDetailStats(jobs: MaintenanceJob[], alerts: AlertDto[]): VehicleDetailStats {
+export function buildVehicleDetailStats(
+  jobs: MaintenanceJob[],
+  alerts: AlertDto[],
+  fuelEntries: FuelCostEntry[] = [],
+): VehicleDetailStats {
   const completedCount = jobs.filter(isMaintenanceJobDone).length;
   const pendingCount = jobs.filter((j) => !isMaintenanceJobDone(j)).length;
   const criticalAlerts = countCriticalAlerts(alerts);
-  return {
-    totalCostXaf12m: 0,
-    avgCostPerMonth: 0,
-    completedCount,
-    pendingCount,
-    criticalAlerts,
-  };
+  const twelveMonthsAgo = Date.now() - 12 * 30 * 24 * 60 * 60 * 1000;
+  const recentFuel = fuelEntries.filter(
+    (e) => new Date(e.purchased_at).getTime() >= twelveMonthsAgo,
+  );
+  const totalCostXaf12m = recentFuel.reduce((s, e) => s + e.amount_xof, 0);
+  const avgCostPerMonth = Math.round(totalCostXaf12m / 12);
+  return { totalCostXaf12m, avgCostPerMonth, completedCount, pendingCount, criticalAlerts };
 }
 
 /** Prochaine intervention non terminée (échéance la plus proche). */
@@ -163,8 +172,16 @@ export function maintenancePriorityLabel(priority: Priority): string {
 }
 
 /** Libellé court pour badge (liste / timeline). */
-export function maintenanceShortLabel(_job: MaintenanceJob): string {
-  return "Intervention";
+export function maintenanceShortLabel(job: MaintenanceJob): string {
+  const firstNote = job.notes?.trim().split("\n")[0]?.trim();
+  if (firstNote) return firstNote.length > 42 ? firstNote.slice(0, 42) + "…" : firstNote;
+  const map: Record<Priority, string> = {
+    low: "Entretien mineur",
+    medium: "Entretien standard",
+    high: "Entretien prioritaire",
+    critical: "Intervention critique",
+  };
+  return map[job.priority] ?? "Intervention";
 }
 
 /**

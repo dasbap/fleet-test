@@ -47,6 +47,19 @@ export class FuelRepository {
     return (data ?? []) as unknown as FuelEntry[];
   }
 
+  /** Pleins d'un véhicule (page détail flotte). */
+  async findByVehicle(fleetId: string, vehicleId: string, limit = 100): Promise<FuelEntry[]> {
+    const { data, error } = await supabase
+      .from("journal_carburant")
+      .select("id, vehicle_id, purchased_at, amount_xof, liters, odometer_km")
+      .eq("fleet_id", fleetId)
+      .eq("vehicle_id", vehicleId)
+      .order("purchased_at", { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as FuelEntry[];
+  }
+
   async create(entry: FuelEntryInsert): Promise<void> {
     const { error } = await supabase.rpc("enregistrer_carburant_offline", {
       p_fleet_id: entry.fleet_id,

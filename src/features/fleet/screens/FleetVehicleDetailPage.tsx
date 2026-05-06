@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   CalendarClock,
   ChevronDown,
+  Droplets,
   Pencil,
   Plus,
   Share2,
@@ -21,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useVehicleDetail } from "@/hooks/useVehicles";
 import { useVehicleAlerts } from "@/hooks/useAlerts";
 import { useVehicleMaintenanceJobs, useMaintenanceJob } from "@/hooks/useMaintenance";
+import { useFuelLogsByVehicle } from "@/hooks/useFuel";
 import {
   buildVehicleDetailStats,
   daysUntil,
@@ -41,6 +43,7 @@ import { recordRecentVehicleView } from "@/lib/storage/flotteEsambaLocalCache";
 import type { VehicleDto } from "@/types/dto/vehicle.dto";
 import type { MaintenanceJob } from "@/repositories/maintenance.repository";
 import type { AlertDto } from "@/types/dto/alert.dto";
+import type { FuelEntry } from "@/repositories/fuel.repository";
 
 const maintenanceEvidenceRepository = new MaintenanceEvidenceRepository();
 
@@ -481,6 +484,40 @@ function VehicleInfoPanel({ vehicle }: { vehicle: VehicleDto }) {
   );
 }
 
+function FuelHistorySection({ entries }: { entries: FuelEntry[] }) {
+  if (entries.length === 0) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Aucun plein carburant enregistré pour ce véhicule.
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {entries.slice(0, 12).map((e) => (
+        <Card key={e.id} className="border-border/60">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+              <Droplets className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">{formatXaf(e.amount_xof)}</p>
+              <p className="text-xs text-muted-foreground">
+                {e.liters.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} L
+                {" · "}
+                {e.odometer_km.toLocaleString("fr-FR")} km
+              </p>
+            </div>
+            <span className="shrink-0 text-xs text-muted-foreground">{formatDateShort(e.purchased_at)}</span>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 function FleetVehicleDetailSkeleton() {
   return (
     <div className="mx-auto max-w-4xl space-y-5 p-4 pb-24">
@@ -517,15 +554,17 @@ function VehicleDetailLoaded({
   jobs,
   jobsLoading,
   alerts,
+  fuelEntries,
   onShare,
 }: {
   vehicle: VehicleDto;
   jobs: MaintenanceJob[];
   jobsLoading: boolean;
   alerts: AlertDto[];
+  fuelEntries: FuelEntry[];
   onShare: () => void;
 }) {
-  const stats = useMemo(() => buildVehicleDetailStats(jobs, alerts), [jobs, alerts]);
+  const stats = useMemo(() => buildVehicleDetailStats(jobs, alerts, fuelEntries), [jobs, alerts, fuelEntries]);
   const nextJob = useMemo(() => pickNextPendingMaintenance(jobs), [jobs]);
   const maintenanceHref = ROUTE_PATHS.dashboardMaintenance;
   const declareHref = `${ROUTE_PATHS.dashboardIncidentDeclare}?vehicleId=${encodeURIComponent(vehicle.id)}`;
@@ -570,6 +609,13 @@ function VehicleDetailLoaded({
               <MaintenanceTimeline jobs={jobs} maintenanceHref={maintenanceHref} />
             )}
           </section>
+
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Historique carburant</h2>
+            </div>
+            <FuelHistorySection entries={fuelEntries} />
+          </section>
         </div>
         <div className="space-y-4">
           <VehicleInfoPanel vehicle={vehicle} />
@@ -600,6 +646,7 @@ export default function FleetVehicleDetailPage() {
     userFleetId ?? undefined,
     vehicleId
   );
+  const { data: fuelEntries = [] } = useFuelLogsByVehicle(vehicleId);
 
   if (!vehicleId) {
     return (
@@ -670,6 +717,7 @@ export default function FleetVehicleDetailPage() {
       jobs={maintenanceJobs}
       jobsLoading={jobsLoading}
       alerts={vehicleAlerts}
+      fuelEntries={fuelEntries}
       onShare={handleShare}
     />
   );
