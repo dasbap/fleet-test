@@ -1,6 +1,8 @@
 import * as offlineStorage from "@/lib/storage/offline-queue.storage";
 import { createQueueManager } from "../../packages/offline-core/src/queue-manager";
 import type {
+  OfflineDvirCreateJob,
+  OfflineDvirCreatePayload,
   OfflineFuelCreateJob,
   OfflineFuelCreatePayload,
   OfflineIncidentCreateJob,
@@ -64,6 +66,11 @@ export class OfflineQueueService {
   async enqueueFuelCreate(payload: OfflineFuelCreatePayload): Promise<OfflineFuelCreateJob> {
     const job = await this.enqueueJob("fuel:create", payload, payload.vehicleId);
     return job as OfflineFuelCreateJob;
+  }
+
+  async enqueueDvirCreate(payload: OfflineDvirCreatePayload): Promise<OfflineDvirCreateJob> {
+    const job = await this.enqueueJob("dvir:create", payload, payload.vehicleId);
+    return job as OfflineDvirCreateJob;
   }
 
   async getPendingJobs(now: Date = new Date()): Promise<OfflineJob[]> {

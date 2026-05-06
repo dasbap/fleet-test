@@ -18,6 +18,7 @@ export interface DvirCreateInput {
   items: Record<string, { status: DvirItemStatus; note?: string }>;
   notes?: string | null;
   odometerKm?: number | null;
+  photoUrls?: string[];
 }
 
 export interface DvirUpdateInput {
@@ -49,7 +50,7 @@ export class DvirService {
     return this.repository.getById(id);
   }
 
-  async create(input: DvirCreateInput): Promise<void> {
+  async create(input: DvirCreateInput, photoUrls: string[] = []): Promise<void> {
     this.validateInput(input);
 
     const normalizedItems = this.normalizeItems(input.items);
@@ -62,6 +63,7 @@ export class DvirService {
       overall_status: computeOverallDvirStatus(normalizedItems),
       notes: this.sanitizeText(input.notes, MAX_NOTES_LENGTH),
       odometer_km: input.odometerKm ?? null,
+      photo_urls: photoUrls.length > 0 ? photoUrls : undefined,
     });
   }
 
