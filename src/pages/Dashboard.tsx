@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useNetworkOnline } from "@/features/account/hooks/useNetworkOnline";
+import { WifiOff } from "lucide-react";
 import { EmptyStateDashboard } from "@/components/dashboard/EmptyStateDashboard";
 import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
 import {
@@ -54,9 +56,19 @@ function WelcomeBanner({ userName, onDismiss }: { userName?: string; onDismiss: 
 
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 
+function OfflineBanner() {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 px-4 py-2 text-sm text-amber-800 dark:text-amber-200">
+      <WifiOff className="h-4 w-4 flex-shrink-0" />
+      <span>Mode hors ligne — données issues du cache local.</span>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, userFleetId: currentFleetId } = useAuth();
+  const isOnline = useNetworkOnline();
   const { steps, completedCount, loading } = useActivation();
   const {
     kpis,
@@ -112,6 +124,7 @@ export default function DashboardPage() {
   if (completedCount === 0) {
     return (
       <div className="space-y-6">
+        {!isOnline && <OfflineBanner />}
         <ClosureBanner fleetId={currentFleetId} />
         <ExpiringDocumentsBanner fleetId={currentFleetId} />
         {showWelcome && (
@@ -128,6 +141,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {!isOnline && <OfflineBanner />}
       <ClosureBanner fleetId={currentFleetId} />
       <ExpiringDocumentsBanner fleetId={currentFleetId} />
       {showWelcome && (
