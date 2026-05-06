@@ -57,6 +57,7 @@ export interface DvirInsertInput {
   overall_status: DvirStatus;
   notes?: string | null;
   odometer_km?: number | null;
+  photo_urls?: string[];
 }
 
 /** Ligne lue seule (liste ou détail sans clé `items` dérivée côté client). */
