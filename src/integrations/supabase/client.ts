@@ -19,16 +19,19 @@ if (typeof SUPABASE_ANON_KEY !== 'string' || !SUPABASE_ANON_KEY) {
   );
 }
 
-// Configuration minimaliste et robuste du client Supabase
 export const supabase: SupabaseClient = createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
   {
     auth: {
       storage: localStorage,
+      // Clé namespaced — évite les collisions si plusieurs apps sur le même domaine
+      storageKey: "sfa_auth_token",
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      // PKCE : protection contre l'interception du code OAuth (RFC 7636)
+      flowType: "pkce",
     },
     db: {
       schema: 'public',
@@ -40,4 +43,3 @@ export const supabase: SupabaseClient = createClient(
     },
   }
 );
-
