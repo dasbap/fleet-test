@@ -33,6 +33,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
+      // Sert le cache persisté même hors ligne (évite l'état "paused" offline)
+      networkMode: "offlineFirst",
+      // Évite les re-fetch inutiles pendant 5 min (réseau instable Afrique)
+      staleTime: 5 * 60 * 1000,
     },
   },
 });
