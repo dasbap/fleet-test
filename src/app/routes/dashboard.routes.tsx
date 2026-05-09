@@ -85,6 +85,9 @@ const GeofencingPage = lazy(
 const ScheduledReportsPage = lazy(
   () => import("@/features/reports/screens/ScheduledReportsPage")
 );
+const BillingPage = lazy(
+  () => import("@/features/billing/screens/BillingPage")
+);
 const Scan = lazy(() => import("@/pages/Scan"));
 const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
 const ProtectedRoute = lazy(() =>
@@ -227,6 +230,14 @@ export const dashboardRoutes = (
         element={
           <RoleGuard allow={["organizer", "manager"]}>
             <ScheduledReportsPage />
+          </RoleGuard>
+        }
+      />
+      <Route
+        path="billing"
+        element={
+          <RoleGuard allow={["organizer", "manager"]}>
+            <BillingPage />
           </RoleGuard>
         }
       />

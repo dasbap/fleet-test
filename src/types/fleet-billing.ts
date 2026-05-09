@@ -1,27 +1,42 @@
 /**
  * Contexte facturation / droits applicatifs pour une flotte.
- *
- * Source de vérité : RPC `get_fleet_billing_context` (hybride).
- * - Abonnement actif + ligne `plans` si présent.
- * - Sinon plan implicite `free` : 3 véhicules max, finance et IA désactivés.
+ * Source de vérité : RPC `get_fleet_billing_context`.
  */
+export type BillingStatus = 'trial' | 'active' | 'grace' | 'suspended' | 'enterprise';
+
 export interface FleetBillingContext {
-  /** Code plan (`free`, `starter`, etc.). */
+  /** Code plan (`free`, `starter`, `pro`, `enterprise`). */
   planCode: string;
-  /** True si un abonnement actif non-free est en place. */
+  planName: string;
+  /** True si abonnement actif non-free. */
   isPaid: boolean;
-  /** Nombre de véhicules enregistrés sur la flotte. */
+
+  // ── Véhicules ──────────────────────────────────────────────
+  /** Nombre de véhicules enregistrés. */
   vehicleCount: number;
-  /** Plafond véhicules (grand nombre = illimité côté métier). */
+  /** Véhicules avec billing_status = 'active'. */
+  activeVehicles: number;
+  /** Licences achetées dans l'abonnement en cours. */
+  vehicleSlots: number;
+  /** Plafond absolu du plan (999999 = illimité). */
   maxVehicles: number;
-  /** Accès module finances / encaissements. */
+
+  // ── État facturation ────────────────────────────────────────
+  billingStatus: BillingStatus;
+  /** Date d'expiration du trial (plan free). */
+  trialEndsAt: string | null;
+  /** Date de fin de l'abonnement payant. */
+  subscriptionEndsAt: string | null;
+  /** Date limite de la période de grâce (7j après expiration). */
+  graceUntil: string | null;
+
+  // ── Features plan ───────────────────────────────────────────
   financeEnabled: boolean;
-  /** Accès fonctionnalités d’assistance type IA (UI). */
   aiEnabled: boolean;
-  /** Rapports d’activité / exports analytiques. */
   reportsEnabled: boolean;
-  /** Scoring conducteur (affichage et calcul côté serveur). */
   driverScoringEnabled: boolean;
-  /** Analyse d’anomalies et alertes automatiques associées. */
   anomalyInsightsEnabled: boolean;
+  geofencingEnabled: boolean;
+  scheduledReportsEnabled: boolean;
+  offlineDriverEnabled: boolean;
 }
