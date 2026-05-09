@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "dashboard": "Tableau ya mbele",
+    "fleet": "Milinga",
+    "maintenance": "Mosala ya milinga",
+    "alerts": "Bibilisi",
+    "reports": "Mikanda",
+    "settings": "Bilangi"
+  },
+  "actions": {
+    "add": "Kobakisa",
+    "edit": "Kobongola",
+    "delete": "Kolongola",
+    "save": "Kobomba",
+    "cancel": "Kobomela",
+    "confirm": "Kolakisa",
+    "back": "Kozonga",
+    "next": "Elongo",
+    "close": "Kokanga",
+    "plan": "Kotia esika",
+    "resolve": "Kosilisa",
+    "export": "Kotinda",
+    "search": "Koluka"
+  },
+  "status": {
+    "active": "Ezali na mosala",
+    "maintenance": "Ozali na mosala",
+    "inactive": "Ekómi mpé",
+    "resolved": "Esilisi",
+    "pending": "Ozali kozela",
+    "overdue": "Eleki ntango"
+  },
+  "severity": {
+    "critical": "Ya nkanda mingi",
+    "warning": "Mateli",
+    "info": "Sango"
+  },
+  "empty": {
+    "noVehicles": "Milinga ezali te",
+    "noAlerts": "Bibilisi ezali te",
+    "noMaintenance": "Mosala ya milinga ezali te"
+  },
+  "settingsPage": {
+    "title": "Bilangi",
+    "description": "Biloko ya kosala mpe kotia esika na esika na yo ya E-Samba.",
+    "languageSectionTitle": "Lokuta",
+    "languageSectionDescription": "Pona lokuta oyo elongi na interface. Lingala ezali mingi mpo na basali ya milinga."
+  },
+  "languageSwitcher": {
+    "ariaLabel": "Lokuta ya interface"
+  },
+  "dialog": {
+    "close": "Kokanga"
+  },
+  "searchPalette": {
+    "openAria": "Kofungola boluki",
+    "dialogTitle": "Boluki ya mokili mobimba",
+    "dialogDescription": "Luka na kati ya mituka, entretien mpe ba alertes.",
+    "placeholder": "Luka motuka, mokumbi to alerte…",
+    "clear": "Kolongola boluki",
+    "resultsAria": "Ba résultats ya boluki",
+    "emptyTitle": "Résultat ezali te mpo na \"{query}\"",
+    "emptyHint": "Meka plaque, kombo ya mokumbi to lolenge ya entretien.",
+    "idlePrompt": "Koma ata ba caractères mibale",
+    "hintNavigate": "Kotambola",
+    "hintOpen": "Kofungola",
+    "hintClose": "Kokanga",
+    "hintShortcut": "Kofungola boluki",
+    "loadingState": "Boluki ezali kosalema",
+    "resultsCount": "{{count}} ba résultats",
+    "noResults": "Résultat ezali te"
+  },
+  "loading": "Kozela…",
+  "error": "Likambo na kati"
+}

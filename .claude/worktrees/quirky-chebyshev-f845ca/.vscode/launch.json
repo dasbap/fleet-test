@@ -1,0 +1,119 @@
+{
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "devPort",
+      "type": "promptString",
+      "description": "Port du serveur de développement",
+      "default": "8080"
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Mocha Tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+      "args": [
+        "-u",
+        "tdd",
+        "--timeout",
+        "999999",
+        "--colors",
+        "${workspaceFolder}/test"
+      ],
+      "internalConsoleOptions": "openOnSessionStart",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Vitest (watch)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": ["--watch"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Vitest (run once)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": ["--run"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Lancer serveur Vite (terminal)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev -- --port ${input:devPort}",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Déboguer l'application React (Vite)",
+      "type": "chrome",
+      "request": "launch",
+      "preLaunchTask": "Démarrer le serveur de développement",
+      "url": "http://localhost:${input:devPort}",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///src/*": "${webRoot}/src/*",
+        "/@fs/*": "${webRoot}/*",
+        "/@id/*": "${webRoot}/*"
+      }
+    },
+    {
+      "name": "Déboguer (serveur déjà lancé)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:${input:devPort}",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///src/*": "${webRoot}/src/*",
+        "/@fs/*": "${webRoot}/*",
+        "/@id/*": "${webRoot}/*"
+      }
+    },
+    {
+      "name": "Attacher à Chrome",
+      "type": "chrome",
+      "request": "attach",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///src/*": "${webRoot}/src/*",
+        "/@fs/*": "${webRoot}/*",
+        "/@id/*": "${webRoot}/*"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Démarrer serveur + Déboguer Chrome",
+      "configurations": [
+        "Lancer serveur Vite (terminal)",
+        "Déboguer (serveur déjà lancé)"
+      ],
+      "stopAll": true
+    },
+    {
+      "name": "Démarrer serveur + Attacher à Chrome",
+      "configurations": [
+        "Lancer serveur Vite (terminal)",
+        "Attacher à Chrome"
+      ],
+      "stopAll": true
+    }
+  ]
+}

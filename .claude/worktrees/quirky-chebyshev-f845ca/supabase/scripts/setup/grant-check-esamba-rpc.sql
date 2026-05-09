@@ -1,0 +1,47 @@
+-- =====================================================
+-- GRANT PERMISSIONS FOR check_esamba_2024 RPC FUNCTION
+-- =====================================================
+-- Cette commande permet aux utilisateurs authentifiés d'exécuter
+-- la fonction RPC check_esamba_2024() pour vérifier les données ESAMBA
+
+GRANT EXECUTE ON FUNCTION public.check_esamba_2024() TO authenticated;
+
+-- Note: Si la fonction n'existe pas encore, créez-la d'abord avec:
+-- CREATE OR REPLACE FUNCTION public.check_esamba_2024()
+-- RETURNS TABLE (
+--   organisation boolean,
+--   flotte boolean,
+--   membership_organizer boolean,
+--   vehicule_esamba_001 boolean,
+--   invitation_esamba_2024 boolean
+-- )
+-- LANGUAGE plpgsql
+-- SECURITY DEFINER
+-- AS $$
+-- BEGIN
+--   RETURN QUERY
+--   SELECT
+--     EXISTS(SELECT 1 FROM orgs WHERE name = 'Organisation ESAMBA') as organisation,
+--     EXISTS(SELECT 1 FROM fleets WHERE name = 'Flotte ESAMBA') as flotte,
+--     EXISTS(
+--       SELECT 1 FROM fleet_memberships fm
+--       JOIN fleets f ON f.id = fm.fleet_id
+--       WHERE f.name = 'Flotte ESAMBA'
+--         AND fm.user_id = auth.uid()
+--         AND fm.role = 'organizer'
+--         AND fm.is_active = true
+--     ) as membership_organizer,
+--     EXISTS(
+--       SELECT 1 FROM vehicles v
+--       JOIN fleets f ON f.id = v.fleet_id
+--       WHERE f.name = 'Flotte ESAMBA'
+--         AND v.registration = 'ESAMBA-001'
+--     ) as vehicule_esamba_001,
+--     EXISTS(
+--       SELECT 1 FROM fleet_invitations fi
+--       JOIN fleets f ON f.id = fi.fleet_id
+--       WHERE f.name = 'Flotte ESAMBA'
+--         AND fi.code = 'ESAMBA-2024'
+--     ) as invitation_esamba_2024;
+-- END;
+-- $$;

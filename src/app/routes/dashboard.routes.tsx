@@ -79,6 +79,12 @@ const PredictiveMaintenancePage = lazy(
 const TransitCemacPage = lazy(
   () => import("@/features/transit/screens/TransitCemacPage")
 );
+const GeofencingPage = lazy(
+  () => import("@/features/geofencing/screens/GeofencingPage")
+);
+const ScheduledReportsPage = lazy(
+  () => import("@/features/reports/screens/ScheduledReportsPage")
+);
 const Scan = lazy(() => import("@/pages/Scan"));
 const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
 const ProtectedRoute = lazy(() =>
@@ -201,10 +207,26 @@ export const dashboardRoutes = (
       <Route path="maintenance/predictive" element={<PredictiveMaintenancePage />} />
       <Route path="transit" element={<TransitCemacPage />} />
       <Route
+        path="geofencing"
+        element={
+          <RoleGuard allow={["organizer", "manager"]}>
+            <GeofencingPage />
+          </RoleGuard>
+        }
+      />
+      <Route
         path="history"
         element={
           <RoleGuard allow={DASHBOARD_HISTORY_ROLES}>
             <History />
+          </RoleGuard>
+        }
+      />
+      <Route
+        path="reports/scheduled"
+        element={
+          <RoleGuard allow={["organizer", "manager"]}>
+            <ScheduledReportsPage />
           </RoleGuard>
         }
       />

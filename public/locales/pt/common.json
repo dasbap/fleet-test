@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "dashboard": "Painel",
+    "fleet": "Frota",
+    "maintenance": "Manutenção",
+    "alerts": "Alertas",
+    "reports": "Relatórios",
+    "settings": "Configurações"
+  },
+  "actions": {
+    "add": "Adicionar",
+    "edit": "Editar",
+    "delete": "Excluir",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "close": "Fechar",
+    "plan": "Planificar",
+    "resolve": "Resolver",
+    "export": "Exportar",
+    "search": "Pesquisar"
+  },
+  "status": {
+    "active": "Ativo",
+    "maintenance": "Em manutenção",
+    "inactive": "Inativo",
+    "resolved": "Resolvido",
+    "pending": "Pendente",
+    "overdue": "Atrasado"
+  },
+  "severity": {
+    "critical": "Crítico",
+    "warning": "Aviso",
+    "info": "Info"
+  },
+  "empty": {
+    "noVehicles": "Nenhum veículo na frota",
+    "noAlerts": "Nenhum alerta ativo",
+    "noMaintenance": "Nenhuma manutenção agendada"
+  },
+  "settingsPage": {
+    "title": "Configurações",
+    "description": "Ferramentas de administração e configuração do seu espaço E-Samba.",
+    "languageSectionTitle": "Idioma",
+    "languageSectionDescription": "Escolha o idioma da interface. O Lingala cobre principalmente o uso em campo (motoristas)."
+  },
+  "languageSwitcher": {
+    "ariaLabel": "Idioma da interface"
+  },
+  "dialog": {
+    "close": "Fechar"
+  },
+  "searchPalette": {
+    "openAria": "Abrir pesquisa",
+    "dialogTitle": "Pesquisa universal",
+    "dialogDescription": "Pesquisar veículos, manutenções e alertas.",
+    "placeholder": "Pesquisar veículo, motorista, alerta…",
+    "clear": "Limpar pesquisa",
+    "resultsAria": "Resultados da pesquisa",
+    "emptyTitle": "Sem resultados para \"{query}\"",
+    "emptyHint": "Tente a matrícula, nome do motorista ou tipo de manutenção.",
+    "idlePrompt": "Digite pelo menos 2 caracteres",
+    "hintNavigate": "Navegar",
+    "hintOpen": "Abrir",
+    "hintClose": "Fechar",
+    "hintShortcut": "Abrir pesquisa",
+    "loadingState": "Pesquisando",
+    "resultsCount": "{{count}} resultados",
+    "noResults": "Sem resultados"
+  },
+  "loading": "Carregando…",
+  "error": "Ocorreu um erro"
+}
