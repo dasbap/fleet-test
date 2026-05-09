@@ -1,0 +1,265 @@
+---
+description: Règles spécifiques aux composants UI et shadcn/ui
+globs:
+  - "**/*.tsx"
+  - "**/components/**/*"
+---
+
+# Règles Composants Frontend - Smart Fleet Africa
+
+## Structure des composants
+
+- Un composant par fichier
+- Nommer les fichiers en PascalCase (ex: `DriverCard.tsx`, `MaintenanceFormDialog.tsx`)
+- Exporter par défaut les composants principaux
+- Exporter nommés pour les sous-composants et utilitaires
+
+## Utilisation de shadcn/ui
+
+- Utiliser les composants shadcn/ui existants dans `@/components/ui/`
+- Ne pas modifier les composants de base, créer des wrappers si nécessaire
+- Importer depuis les chemins alias définis (`@/components/ui/...`)
+
+```tsx
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+```
+
+## Patterns de Dialogs
+
+- Utiliser `Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle` pour les modales
+- Gérer l'état `open` et `onOpenChange` avec `useState`
+- Inclure `DialogDescription` pour l'accessibilité
+
+```tsx
+const [isOpen, setIsOpen] = useState(false);
+
+<Dialog open={isOpen} onOpenChange={setIsOpen}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Titre du dialog</DialogTitle>
+      <DialogDescription>Description optionnelle</DialogDescription>
+    </DialogHeader>
+    {/* Contenu */}
+  </DialogContent>
+</Dialog>
+```
+
+## Patterns de Formulaires
+
+- Utiliser `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormMessage`
+- Combiner avec `react-hook-form` et `zodResolver`
+- Gérer la soumission avec `form.handleSubmit`
+
+```tsx
+const form = useForm<FormData>({
+  resolver: zodResolver(schema),
+});
+
+<Form {...form}>
+  <form onSubmit={form.handleSubmit(onSubmit)}>
+    <FormField
+      control={form.control}
+      name="fieldName"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Label</FormLabel>
+          <FormControl>
+            <Input {...field} />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  </form>
+</Form>
+```
+
+## Styling avec Tailwind CSS
+
+- Utiliser Tailwind CSS pour tous les styles
+- Utiliser la fonction `cn()` de `@/lib/utils` pour combiner les classes
+- Respecter le système de design existant (variables CSS dans `index.css`)
+- Utiliser les classes utilitaires Tailwind plutôt que du CSS personnalisé
+
+```tsx
+import { cn } from "@/lib/utils";
+
+<div className={cn(
+  "flex items-center gap-2",
+  isActive && "bg-primary text-primary-foreground",
+  className
+)}>
+```
+
+## Thème et design system
+
+- **Thème sombre forcé** par exigence produit ; pas de choix light/system pour l’utilisateur. Voir ADR [docs/adr/0001-forced-theme-dark.md](../../docs/adr/0001-forced-theme-dark.md).
+- **Dépendance unique** : Utiliser uniquement next-themes pour le thème (mode dark/light). Ne pas ajouter d'autre librairie dédiée au thème ; cela limite la surface d'attaque et évite la complexité supplémentaire.
+- Le thème est centralisé : **ThemeProvider** (next-themes) pour le mode dark/light, **variables CSS dans `index.css`** pour les tokens (couleurs, radius, etc.).
+- Ne pas utiliser de couleurs Tailwind en dur (ex. `green-500`, `blue-500`) dans les composants : utiliser uniquement les tokens du design system (`primary`, `accent`, `success`, `warning`, `destructive`, `muted`, `info`, etc.).
+- Les composants qui ont besoin du thème courant utilisent `useTheme()` ou, quand le thème est forcé dark (ADR 0001), une valeur en dur `theme="dark"` (ex. Sonner).
+- **Séparation des couches** : Modifications du thème et du design system limitées à la couche présentation (composants, `index.css`, ThemeProvider, `tailwind.config.ts`). Aucun impact sur les hooks, services ou repositories.
+- **Layout shift** : Dans `.dark` (index.css), ne définir que des variables de couleurs / tokens ; pas de dimensions, padding ou font-size qui changeraient le layout (évite le CLS).
+
+## Thème et montage
+
+- Avec **forcedTheme="dark"** (ADR 0001), aucun switch thème n’est exposé ; pas de composant ThemeToggle. Les composants qui lisent le thème utilisent une valeur en dur (ex. Sonner `theme="dark"`).
+- Pour tout composant qui lit l’environnement client (`localStorage`, `document`) — hors thème — s’appuyer sur `useMounted()` avant d’afficher un état dérivé, ou afficher un état neutre (skeleton).
+- Utiliser le hook `useMounted()` de `@/hooks/useMounted` : ne rendre la partie UI dépendante du client qu’une fois `mounted === true`.
+
+## Patterns de Tables
+
+- Utiliser `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`
+- Gérer les états vides avec des messages appropriés
+- Implémenter la pagination pour les grandes listes
+
+```tsx
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Colonne 1</TableHead>
+      <TableHead>Colonne 2</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {data.length === 0 ? (
+      <TableRow>
+        <TableCell colSpan={2} className="text-center">
+          Aucune donnée disponible
+        </TableCell>
+      </TableRow>
+    ) : (
+      data.map((item) => (
+        <TableRow key={item.id}>
+          <TableCell>{item.field1}</TableCell>
+          <TableCell>{item.field2}</TableCell>
+        </TableRow>
+      ))
+    )}
+  </TableBody>
+</Table>
+```
+
+## Gestion des états de chargement
+
+- Utiliser `Skeleton` pour les états de chargement
+- Afficher des skeletons correspondant à la structure finale
+- Gérer `isLoading` depuis React Query
+
+```tsx
+import { Skeleton } from "@/components/ui/skeleton";
+
+if (isLoading) {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-4 w-1/2" />
+    </div>
+  );
+}
+```
+
+## Gestion des états vides
+
+- Afficher des messages clairs pour les états vides
+- Utiliser des icônes Lucide React pour améliorer l'UX
+- Proposer des actions pour remplir l'état vide
+
+```tsx
+import { Inbox } from "lucide-react";
+
+{data.length === 0 && (
+  <div className="flex flex-col items-center justify-center py-12 text-center">
+    <Inbox className="h-12 w-12 text-muted-foreground mb-4" />
+    <p className="text-muted-foreground">Aucune donnée disponible</p>
+    <Button onClick={handleAdd} className="mt-4">
+      Ajouter un élément
+    </Button>
+  </div>
+)}
+```
+
+## Gestion des erreurs dans les composants
+
+- Afficher des messages d'erreur utilisateur-friendly
+- Utiliser `toast` pour les notifications d'erreur
+- Ne pas exposer les détails techniques aux utilisateurs
+
+```tsx
+import { toast } from "@/hooks/use-toast";
+
+if (error) {
+  toast({
+    title: "Erreur",
+    description: "Une erreur est survenue. Veuillez réessayer.",
+    variant: "destructive",
+  });
+  return null;
+}
+```
+
+## Patterns de Cards
+
+- Utiliser `Card`, `CardHeader`, `CardTitle`, `CardContent`, `CardDescription`
+- Structurer le contenu de manière claire
+- Utiliser des icônes Lucide React pour les en-têtes
+
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle className="flex items-center gap-2">
+      <Car className="h-5 w-5" />
+      Titre de la carte
+    </CardTitle>
+    <CardDescription>Description optionnelle</CardDescription>
+  </CardHeader>
+  <CardContent>
+    {/* Contenu */}
+  </CardContent>
+</Card>
+```
+
+## Accessibilité
+
+- Utiliser les composants Radix UI (base de shadcn/ui) qui sont accessibles par défaut
+- Ajouter des labels appropriés pour les champs de formulaire
+- Utiliser `DialogDescription` pour les descriptions de dialogs
+- Respecter l'ordre tab pour la navigation au clavier
+
+## Composition de composants
+
+- Créer des composants réutilisables et composables
+- Extraire la logique dans des hooks personnalisés
+- Séparer les composants de présentation des composants de logique
+
+```tsx
+// Composant de présentation
+const VehicleCard = ({ vehicle, onEdit }: VehicleCardProps) => {
+  return (
+    <Card>
+      {/* Présentation */}
+    </Card>
+  );
+};
+
+// Composant avec logique
+const VehicleCardContainer = ({ vehicleId }: { vehicleId: string }) => {
+  const { data: vehicle } = useVehicle(vehicleId);
+  const { mutate: editVehicle } = useUpdateVehicle();
+
+  if (!vehicle) return <Skeleton />;
+
+  return <VehicleCard vehicle={vehicle} onEdit={editVehicle} />;
+};
+```
+
+## Bonnes pratiques
+
+- Toujours typer les props avec `interface` ou `type`
+- Utiliser des valeurs par défaut pour les props optionnelles
+- Gérer les cas limites (données nulles, états vides, erreurs)
+- Documenter les composants complexes avec des commentaires
+- Respecter la structure de dossiers existante (`components/`, `components/ui/`, etc.)

@@ -9,6 +9,7 @@
     }
   ],
   "configurations": [
+    
     {
       "name": "Mocha Tests",
       "type": "node",

@@ -1,0 +1,3 @@
+# Copier ce fichier vers local.properties (non versionné) et adapter le chemin.
+# Exemple Windows (Android Studio par défaut) :
+sdk.dir=C:/Users/VOTRE_UTILISATEUR/AppData/Local/Android/Sdk

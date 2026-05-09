@@ -13,6 +13,7 @@ import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { isNativePlatform } from "@/lib/platform";
 import MobileLayout from "@/layouts/MobileLayout";
+import { OfflinePendingSyncBridge } from "@/components/OfflinePendingSyncBridge";
 const NotificationsPermissionGate = lazy(() =>
   import("@/components/notifications/NotificationsPermissionGate").then((module) => ({
     default: module.NotificationsPermissionGate,
@@ -63,6 +64,7 @@ export default function DashboardLayout() {
             displayName={fullName}
             initials={initials}
           />
+          <OfflinePendingSyncBridge />
           <OfflineBanner />
           <ActivationBanner />
           <DriverTerrainActivationModal />

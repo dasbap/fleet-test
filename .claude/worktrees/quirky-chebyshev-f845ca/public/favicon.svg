@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Fond vert avec coins légèrement arrondis -->
+  <rect width="64" height="64" rx="6" fill="#22c55e"/>
+  <!-- Éclair noir centré -->
+  <path d="M32 18 L24 32 L30 32 L26 46 L40 28 L34 28 L38 18 Z" fill="#000000"/>
+</svg>

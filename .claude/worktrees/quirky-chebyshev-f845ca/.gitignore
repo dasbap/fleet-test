@@ -1,0 +1,67 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Fichiers d'environnement
+.env
+.env.local
+.env.*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/README.md
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vercel
+.vercel
+
+# Cursor / IDE - tout sauf la config MCP (partage equipe)
+.cursor/*
+!.cursor/mcp.json
+
+# Lighthouse CI (sorties locales de lhci autorun)
+.lighthouseci
+
+# Expo local state
+.expo/
+apps/mobile/.expo/
+
+# Rapports de test temporaires
+TEST-REPORT-*.json
+# Playwright (artefacts locaux)
+test-results/
+!.cursor/rules/
+!.cursor/rules/*.mdc
+
+# Android - ressources natives (mipmaps, splash) : versionnees pour CI / builds reproductibles.
+# Icones sources : resources/icon.svg, resources/icon.png (regeneres via npm run cap:assets).
+# Ne pas ignorer android/app/src/main/res/ ni le dossier resources/ a la racine.
+
+# Android - publication Play (ne jamais versionner)
+android/keystore.properties
+android/*.jks
+android/*.keystore
+android/app/*.jks
+android/app/*.keystore
+android/.github-android-secrets.local.txt
+

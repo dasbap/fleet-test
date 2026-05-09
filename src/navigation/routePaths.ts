@@ -84,4 +84,8 @@ export const ROUTE_PATHS = {
   dashboardPredictiveMaintenance: "/dashboard/maintenance/predictive",
   /** Transits CEMAC — passages frontières Zone CEMAC. */
   dashboardTransitCemac: "/dashboard/transit",
+  /** Géofencing — zones géographiques + alertes entrée/sortie. */
+  dashboardGeofencing: "/dashboard/geofencing",
+  /** Rapports programmés — envoi automatique PDF/Excel. */
+  dashboardScheduledReports: "/dashboard/reports/scheduled",
 } as const;

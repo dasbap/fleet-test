@@ -1,0 +1,14 @@
+{
+  "title": "إدارة الأسطول",
+  "vehicle": "مركبة",
+  "plate": "لوحة التسجيل",
+  "brand": "العلامة",
+  "model": "الطراز",
+  "year": "السنة",
+  "mileage": "المسافة المقطوعة",
+  "driver": "السائق",
+  "addVehicle": "إضافة مركبة",
+  "vehicleDetail": "بطاقة المركبة",
+  "totalFleet": "{{count}} مركبة",
+  "totalFleet_other": "{{count}} مركبات"
+}

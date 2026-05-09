@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aligné sur le design system web (index.css) : primary #00C853, accent #FFC107 -->
+<resources>
+    <color name="colorPrimary">#00C853</color>
+    <color name="colorPrimaryDark">#009624</color>
+    <color name="colorAccent">#FFC107</color>
+    <color name="splash_background">#00C853</color>
+</resources>

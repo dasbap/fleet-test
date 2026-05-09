@@ -17,6 +17,7 @@ const LANGS = [
   { code: "wo", label: "Wolof", flag: "🇸🇳" },
   { code: "sw", label: "Kiswahili", flag: "🇹🇿" },
   { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "pt", label: "Português", flag: "🇧🇷" },
 ] as const;
 
 interface LanguageSwitcherProps {

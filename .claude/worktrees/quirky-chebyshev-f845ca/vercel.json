@@ -1,0 +1,92 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "framework": "vite",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "e-samba.com" }],
+      "destination": "https://www.e-samba.com/:path*",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    { "source": "/auth", "destination": "/auth/index.html" },
+    { "source": "/auth/", "destination": "/auth/index.html" },
+    { "source": "/dashboard", "destination": "/dashboard/index.html" },
+    { "source": "/dashboard/", "destination": "/dashboard/index.html" },
+    { "source": "/dashboard/vehicles", "destination": "/dashboard/vehicles/index.html" },
+    { "source": "/dashboard/vehicles/", "destination": "/dashboard/vehicles/index.html" },
+    { "source": "/dashboard/drivers", "destination": "/dashboard/drivers/index.html" },
+    { "source": "/dashboard/drivers/", "destination": "/dashboard/drivers/index.html" },
+    { "source": "/dashboard/closure", "destination": "/dashboard/closure/index.html" },
+    { "source": "/dashboard/closure/", "destination": "/dashboard/closure/index.html" },
+    { "source": "/dashboard/incidents", "destination": "/dashboard/incidents/index.html" },
+    { "source": "/dashboard/incidents/", "destination": "/dashboard/incidents/index.html" },
+    { "source": "/dashboard/maintenance", "destination": "/dashboard/maintenance/index.html" },
+    { "source": "/dashboard/maintenance/", "destination": "/dashboard/maintenance/index.html" },
+    { "source": "/dashboard/reports", "destination": "/dashboard/reports/index.html" },
+    { "source": "/dashboard/reports/", "destination": "/dashboard/reports/index.html" },
+    { "source": "/dashboard/invitations", "destination": "/dashboard/invitations/index.html" },
+    { "source": "/dashboard/invitations/", "destination": "/dashboard/invitations/index.html" },
+    { "source": "/dashboard/settings", "destination": "/dashboard/settings/index.html" },
+    { "source": "/dashboard/settings/", "destination": "/dashboard/settings/index.html" },
+    { "source": "/dashboard/profile", "destination": "/dashboard/profile/index.html" },
+    { "source": "/dashboard/profile/", "destination": "/dashboard/profile/index.html" },
+    { "source": "/dashboard/teams", "destination": "/dashboard/teams/index.html" },
+    { "source": "/dashboard/teams/", "destination": "/dashboard/teams/index.html" },
+    { "source": "/dashboard/create-fleet", "destination": "/dashboard/create-fleet/index.html" },
+    { "source": "/dashboard/create-fleet/", "destination": "/dashboard/create-fleet/index.html" },
+    { "source": "/dashboard/finances", "destination": "/dashboard/finances/index.html" },
+    { "source": "/dashboard/finances/", "destination": "/dashboard/finances/index.html" },
+    { "source": "/dashboard/collections", "destination": "/dashboard/collections/index.html" },
+    { "source": "/dashboard/collections/", "destination": "/dashboard/collections/index.html" },
+    { "source": "/dashboard/alerts", "destination": "/dashboard/alerts/index.html" },
+    { "source": "/dashboard/alerts/", "destination": "/dashboard/alerts/index.html" },
+    { "source": "/dashboard/roles", "destination": "/dashboard/roles/index.html" },
+    { "source": "/dashboard/roles/", "destination": "/dashboard/roles/index.html" },
+    { "source": "/dashboard/my-vehicle", "destination": "/dashboard/my-vehicle/index.html" },
+    { "source": "/dashboard/my-vehicle/", "destination": "/dashboard/my-vehicle/index.html" },
+    { "source": "/dashboard/history", "destination": "/dashboard/history/index.html" },
+    { "source": "/dashboard/history/", "destination": "/dashboard/history/index.html" },
+    { "source": "/dashboard/fuel", "destination": "/dashboard/fuel/index.html" },
+    { "source": "/dashboard/fuel/", "destination": "/dashboard/fuel/index.html" },
+    { "source": "/dashboard/inspections", "destination": "/dashboard/inspections/index.html" },
+    { "source": "/dashboard/inspections/", "destination": "/dashboard/inspections/index.html" },
+    { "source": "/dashboard/operations", "destination": "/dashboard/operations/index.html" },
+    { "source": "/dashboard/operations/", "destination": "/dashboard/operations/index.html" },
+    { "source": "/dashboard/maintenance/predictive", "destination": "/dashboard/maintenance/predictive/index.html" },
+    { "source": "/dashboard/maintenance/predictive/", "destination": "/dashboard/maintenance/predictive/index.html" },
+    { "source": "/dashboard/transit", "destination": "/dashboard/transit/index.html" },
+    { "source": "/dashboard/transit/", "destination": "/dashboard/transit/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://eu.posthog.com https://eu-assets.i.posthog.com https://*.sentry.io https://o*.ingest.sentry.io; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    }
+  ]
+}

@@ -1,0 +1,218 @@
+/* Styles globaux E-Samba : police auto-hebergee, tokens, reset et utilitaires */
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/poppins-400.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF,
+    U+0131,
+    U+0152-0153,
+    U+02BB-02BC,
+    U+02C6,
+    U+02DA,
+    U+02DC,
+    U+2000-206F,
+    U+2074,
+    U+20AC,
+    U+2122,
+    U+2191,
+    U+2193,
+    U+2212,
+    U+2215,
+    U+FEFF,
+    U+FFFD;
+}
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/poppins-600.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF,
+    U+0131,
+    U+0152-0153,
+    U+02BB-02BC,
+    U+02C6,
+    U+02DA,
+    U+02DC,
+    U+2000-206F,
+    U+2074,
+    U+20AC,
+    U+2122,
+    U+2191,
+    U+2193,
+    U+2212,
+    U+2215,
+    U+FEFF,
+    U+FFFD;
+}
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/poppins-700.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF,
+    U+0131,
+    U+0152-0153,
+    U+02BB-02BC,
+    U+02C6,
+    U+02DA,
+    U+02DC,
+    U+2000-206F,
+    U+2074,
+    U+20AC,
+    U+2122,
+    U+2191,
+    U+2193,
+    U+2212,
+    U+2215,
+    U+FEFF,
+    U+FFFD;
+}
+
+:root {
+  --es-font-sans: "Poppins", system-ui, -apple-system, sans-serif;
+  --es-font-heading: "Poppins", system-ui, -apple-system, sans-serif;
+  --es-font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --es-brand: #10b981;
+  --es-brand-dark: #059669;
+  --es-brand-light: #34d399;
+
+  --es-surface: #1e293b;
+  --es-surface-raised: #334155;
+  --es-surface-overlay: #0f172a;
+
+  --es-text-muted: #94a3b8;
+  --es-text-faint: #475569;
+
+  --es-border: rgba(148, 163, 184, 0.12);
+  --es-border-light: rgba(148, 163, 184, 0.06);
+
+  --es-radius-sm: 0.375rem;
+  --es-radius-md: 0.5rem;
+  --es-radius-lg: 0.75rem;
+  --es-radius-xl: 1rem;
+  --es-radius-2xl: 1.5rem;
+
+  --es-danger: #ef4444;
+  --es-warning: #f59e0b;
+  --es-info: #3b82f6;
+  --es-success: #10b981;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--es-font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scrollbar-gutter: stable;
+}
+
+img,
+video,
+svg,
+canvas {
+  max-width: 100%;
+  height: auto;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+[style*="aspect-ratio"] {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--es-surface-raised);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--es-text-faint);
+}
+
+:focus-visible {
+  outline: 2px solid var(--es-brand);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+::selection {
+  background-color: rgba(16, 185, 129, 0.25);
+  color: hsl(var(--foreground));
+}
+
+.font-heading {
+  font-family: var(--es-font-heading);
+}
+
+.bg-surface {
+  background-color: var(--es-surface);
+}
+
+.bg-surface-raised {
+  background-color: var(--es-surface-raised);
+}
+
+.bg-surface-overlay {
+  background-color: var(--es-surface-overlay);
+}
+
+.text-brand {
+  color: var(--es-brand);
+}
+
+.border-brand {
+  border-color: var(--es-brand);
+}
+
+.rounded-card {
+  border-radius: var(--es-radius-lg);
+}
