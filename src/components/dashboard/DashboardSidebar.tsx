@@ -31,6 +31,7 @@ import {
   Map,
   MapPin,
   CalendarClock,
+  CreditCard,
 } from "lucide-react";
 import { signOut } from "@/lib/auth-actions";
 import { toast } from "@/hooks/use-toast";
@@ -59,6 +60,7 @@ const organizerNavCore = [
   { icon: MapPin, label: "Géofencing", href: ROUTE_PATHS.dashboardGeofencing },
   { icon: CalendarClock, label: "Rapports auto", href: ROUTE_PATHS.dashboardScheduledReports },
   { icon: DollarSign, label: "Finances", href: ROUTE_PATHS.dashboardFinances },
+  { icon: CreditCard, label: "Abonnement", href: ROUTE_PATHS.dashboardBilling },
   { icon: Bell, label: "Alertes", href: ROUTE_PATHS.dashboardAlerts },
 ] as const;
 
@@ -118,6 +120,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
       { icon: MapPin, label: "Géofencing", href: ROUTE_PATHS.dashboardGeofencing },
       { icon: CalendarClock, label: "Rapports auto", href: ROUTE_PATHS.dashboardScheduledReports },
       { icon: DollarSign, label: "Encaissements", href: ROUTE_PATHS.dashboardCollections },
+      { icon: CreditCard, label: "Abonnement", href: ROUTE_PATHS.dashboardBilling },
       { icon: Bell, label: "Alertes", href: ROUTE_PATHS.dashboardAlerts },
     ]),
     driver: [
