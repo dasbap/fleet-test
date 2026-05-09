@@ -88,4 +88,5 @@ export const ROUTE_PATHS = {
   dashboardGeofencing: "/dashboard/geofencing",
   /** Rapports programmés — envoi automatique PDF/Excel. */
   dashboardScheduledReports: "/dashboard/reports/scheduled",
+  dashboardBilling: "/dashboard/billing",
 } as const;
