@@ -8,7 +8,7 @@ import Backend from "i18next-http-backend";
 
 const LEGACY_LANG_KEY = "smartfleet:language";
 const LANG_STORAGE_KEY = "esamba_lang";
-export const SUPPORTED_LANGS = ["fr", "en", "ln", "ar", "wo", "sw", "es"] as const;
+export const SUPPORTED_LANGS = ["fr", "en", "ln", "ar", "wo", "sw", "es", "pt"] as const;
 
 /** Migre l’ancienne clé localStorage vers esamba_lang sans écraser une valeur déjà définie. */
 function migrateLegacyLanguageKey(): void {

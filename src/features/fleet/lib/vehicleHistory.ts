@@ -81,6 +81,12 @@ export interface VehicleDetailStats {
   criticalAlerts: number;
 }
 
+/** Entrée minimale pour calcul coûts (évite dépendance directe vers fuel.repository) */
+export interface FuelCostEntry {
+  purchased_at: string;
+  amount_xof: number;
+}
+
 /** Gravité visuelle pour la timeline (couleurs). */
 export type TimelineSeverity = "info" | "warning" | "critical";
 

@@ -1,0 +1,226 @@
+---
+description: Patterns React et TypeScript pour composants fonctionnels, hooks personnalisés et gestion d'état
+globs:
+  - "**/*.tsx"
+  - "**/*.ts"
+---
+
+# Patterns React - Smart Fleet Africa
+
+> **Note** : Pour l'architecture Repository + Services, voir `architecture.mdc`. Les hooks doivent toujours appeler les services, jamais directement Supabase ou les repositories.
+
+## Composants fonctionnels
+
+- Utiliser uniquement des composants fonctionnels (pas de classes)
+- Exporter par défaut les composants principaux
+- Typage explicite des props avec `interface` ou `type`
+- Utiliser `React.forwardRef` pour les composants qui nécessitent une ref
+
+```tsx
+interface ComponentProps {
+  title: string;
+  onAction: () => void;
+}
+
+const Component = ({ title, onAction }: ComponentProps) => {
+  // ...
+};
+
+export default Component;
+```
+
+## Hooks personnalisés
+
+- Créer des hooks personnalisés pour la logique réutilisable
+- Préfixer les hooks avec `use` (ex: `useVehicles`, `useAuth`)
+- Utiliser React Query (`useQuery`, `useMutation`) pour les données serveur
+- **Appeler les services, jamais directement Supabase ou les repositories** (voir `architecture.mdc`)
+- Gérer les états de chargement et erreurs dans les hooks
+
+```tsx
+import { VehicleService } from '@/services/vehicle.service';
+import { VehicleRepository } from '@/repositories/vehicle.repository';
+
+const vehicleRepository = new VehicleRepository();
+const vehicleService = new VehicleService(vehicleRepository);
+
+export function useVehicles(fleetId?: string) {
+  return useQuery({
+    queryKey: ['vehicles', fleetId],
+    queryFn: () => vehicleService.getVehicles(fleetId),
+  });
+}
+```
+
+## Gestion d'état avec React Query
+
+- Utiliser `useQuery` pour les lectures de données
+- Utiliser `useMutation` pour les modifications
+- Invalider le cache avec `queryClient.invalidateQueries` après mutations
+- Utiliser des `queryKey` descriptifs et hiérarchiques
+- **Appeler les services dans les mutations, jamais directement Supabase**
+
+```tsx
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/hooks/use-toast';
+import { VehicleService } from '@/services/vehicle.service';
+
+const queryClient = useQueryClient();
+
+const mutation = useMutation({
+  mutationFn: (data: VehicleInsert) => vehicleService.createVehicle(data),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    toast({
+      title: 'Véhicule ajouté',
+      description: 'Le véhicule a été créé avec succès.',
+    });
+  },
+  onError: (error: Error) => {
+    toast({
+      title: 'Erreur',
+      description: error.message,
+      variant: 'destructive',
+    });
+  },
+});
+```
+
+## TypeScript
+
+- Utiliser les types explicites (éviter `any` sauf cas exceptionnels)
+- Utiliser `interface` pour les objets complexes
+- Préférer les types union pour les valeurs limitées
+- Utiliser `z.infer<typeof schema>` pour les types Zod
+
+```tsx
+type VehicleStatus = 'ok' | 'blocked';
+
+interface Vehicle {
+  id: string;
+  registration: string;
+  status: VehicleStatus;
+}
+```
+
+## Formulaires avec React Hook Form + Zod
+
+- Utiliser `react-hook-form` avec `zodResolver` pour la validation
+- Définir les schémas Zod avant les composants
+- Utiliser les composants `Form`, `FormField`, `FormItem` de shadcn/ui
+- Gérer la soumission avec `onSubmit` du hook `useForm`
+
+```tsx
+const schema = z.object({
+  registration: z.string().min(1, "Le numéro d'immatriculation est requis"),
+});
+
+type FormData = z.infer<typeof schema>;
+
+const form = useForm<FormData>({
+  resolver: zodResolver(schema),
+});
+```
+
+## Performance
+
+- Éviter les re-renders inutiles avec `React.memo`, `useMemo`, `useCallback`
+- Utiliser le lazy loading pour les routes et composants lourds
+- Optimiser les requêtes avec React Query (cache, staleTime)
+- Implémenter la pagination pour les grandes listes
+- Utiliser `Promise.all` pour les requêtes parallèles (dans les services, pas dans les hooks)
+
+```tsx
+// Dans un service (pas dans un hook)
+async getDashboardData(fleetId: string) {
+  const [vehicles, drivers, incidents] = await Promise.all([
+    this.vehicleRepository.findAll({ fleet_id: fleetId }),
+    this.fleetMemberRepository.findAll({ fleet_id: fleetId }),
+    this.incidentRepository.findAll({ fleet_id: fleetId }),
+  ]);
+  
+  return { vehicles, drivers, incidents };
+}
+
+// Dans le hook
+export function useDashboardData(fleetId: string) {
+  return useQuery({
+    queryKey: ['dashboard-data', fleetId],
+    queryFn: () => dashboardService.getDashboardData(fleetId),
+  });
+}
+```
+
+## Gestion des états de chargement
+
+- Afficher des composants `Skeleton` pendant le chargement
+- Gérer les états `isLoading`, `isError` de React Query
+- Fournir des valeurs par défaut pour éviter les erreurs
+
+```tsx
+const { data, isLoading } = useQuery(...);
+
+if (isLoading) {
+  return <Skeleton className="h-4 w-full" />;
+}
+```
+
+## Structure des fichiers
+
+- Un composant par fichier
+- Nommer les fichiers en PascalCase pour les composants (ex: `DriverCard.tsx`)
+- Nommer les hooks en camelCase avec préfixe "use" (ex: `useVehicles.ts`)
+- Exporter par défaut les composants principaux
+- Exporter nommés pour les utilitaires et hooks
+
+## Conventions de nommage
+
+- Composants: PascalCase (ex: `DriverCard.tsx`)
+- Hooks: camelCase avec préfixe "use" (ex: `useVehicles.ts`)
+- Utilitaires: camelCase (ex: `generateFleetPDF.ts`)
+- Constantes: UPPER_SNAKE_CASE
+- Variables et fonctions: camelCase
+- Types/Interfaces: PascalCase
+
+## Patterns de composants
+
+### Composants avec état local
+
+```tsx
+const [isOpen, setIsOpen] = useState(false);
+
+<Dialog open={isOpen} onOpenChange={setIsOpen}>
+  {/* Contenu */}
+</Dialog>
+```
+
+### Composants avec props optionnelles
+
+```tsx
+interface Props {
+  fleetId?: string;
+  onSuccess?: () => void;
+}
+
+const Component = ({ fleetId, onSuccess }: Props) => {
+  // Utiliser des valeurs par défaut
+  const effectiveFleetId = fleetId || userFleetId;
+};
+```
+
+### Gestion des erreurs
+
+```tsx
+import { toast } from '@/hooks/use-toast';
+
+const { data, error, isLoading } = useQuery(...);
+
+if (error) {
+  toast({
+    title: 'Erreur',
+    description: 'Une erreur est survenue lors du chargement.',
+    variant: 'destructive',
+  });
+  return null;
+}
+```

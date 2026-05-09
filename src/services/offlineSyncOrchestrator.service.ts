@@ -10,6 +10,8 @@ import { VehicleRepository } from "@/repositories/vehicle.repository";
 import { DriverShiftService } from "@/services/driver-shift.service";
 import { FuelRepository } from "@/repositories/fuel.repository";
 import { FuelService } from "@/services/fuel.service";
+import { DvirRepository } from "@/repositories/dvir.repository";
+import { DvirService } from "@/services/dvir.service";
 import type {
   OfflineIncidentCreateJob,
   OfflineIncidentCreatePayload,
@@ -26,6 +28,8 @@ const vehicleRepository = new VehicleRepository();
 const driverShiftService = new DriverShiftService(driverShiftRepository, vehicleRepository);
 const fuelRepository = new FuelRepository();
 const fuelService = new FuelService(fuelRepository);
+const dvirRepository = new DvirRepository();
+const dvirService = new DvirService(dvirRepository);
 
 let syncLock = false;
 
@@ -205,11 +209,40 @@ async function processFuelCreateJob(job: OfflineJob): Promise<boolean> {
   }
 }
 
+async function processDvirCreateJob(job: OfflineJob): Promise<boolean> {
+  const marked = await offlineQueueService.markSyncing(job.id);
+  if (!marked || marked.type !== "dvir:create") return false;
+  try {
+    const payload = marked.payload;
+    await dvirService.create(
+      {
+        fleetId: payload.fleetId,
+        vehicleId: payload.vehicleId,
+        inspectedBy: payload.inspectedBy,
+        inspectionType: payload.inspectionType,
+        items: payload.items,
+        notes: payload.notes ?? null,
+        odometerKm: payload.odometerKm ?? null,
+      },
+      // Les photos base64 sont ignorées à la synchro — la saisie hors ligne
+      // ne supporte pas l'upload de photos pour l'instant.
+      [],
+    );
+    await offlineQueueService.markSucceeded(marked.id);
+    return true;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Erreur inconnue";
+    await offlineQueueService.markFailed(marked.id, message);
+    return false;
+  }
+}
+
 const jobHandlers: Record<OfflineJobType, (job: OfflineJob) => Promise<boolean>> = {
   "incident:create": (job) => processIncidentCreateJob(job as OfflineIncidentCreateJob),
   "shift:start": processShiftStartJob,
   "shift:close": processShiftCloseJob,
   "fuel:create": processFuelCreateJob,
+  "dvir:create": processDvirCreateJob,
 };
 
 async function processJob(job: OfflineJob): Promise<boolean> {

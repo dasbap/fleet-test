@@ -1,0 +1,14 @@
+{
+  "title": "Gestión de flota",
+  "vehicle": "Vehículo",
+  "plate": "Matrícula",
+  "brand": "Marca",
+  "model": "Modelo",
+  "year": "Año",
+  "mileage": "Kilometraje",
+  "driver": "Conductor",
+  "addVehicle": "Añadir un vehículo",
+  "vehicleDetail": "Ficha del vehículo",
+  "totalFleet": "{{count}} vehículo",
+  "totalFleet_other": "{{count}} vehículos"
+}

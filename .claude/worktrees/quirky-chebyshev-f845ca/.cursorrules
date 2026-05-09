@@ -1,0 +1,22 @@
+# Règles pour l'assistant IA Cursor - Smart Fleet Africa
+
+## Structure des règles
+
+Les règles sont organisées dans `.cursor/rules/` pour une meilleure spécialisation :
+
+- **`architecture.mdc`** : Architecture Repository + Services avec React Query (toujours appliquée)
+- **`general.mdc`** : Règles générales du projet (toujours appliquée)
+- **`react-patterns.mdc`** : Patterns React, TypeScript, hooks personnalisés et gestion d'état
+- **`api-guidelines.mdc`** : Guidelines pour React Query, query keys, invalidation
+- **`frontend-components.mdc`** : Règles spécifiques aux composants UI et shadcn/ui
+
+## Documentation
+
+Pour plus de détails sur l'architecture du projet, voir :
+- **`ARCHITECTURE.md`** : Documentation complète de l'architecture Repository + Services
+
+## Règle fondamentale
+
+**Toujours respecter l'architecture en couches** : Composants → Hooks → Services → Repositories → Supabase
+
+Les règles détaillées sont dans les fichiers spécialisés mentionnés ci-dessus.
