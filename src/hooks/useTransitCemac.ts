@@ -67,7 +67,7 @@ export function useCemacTaxCalculator() {
       cargoWeightKg?: number;
       goodsValueXaf?: number;
     }) => {
-      const { supabase } = await import("@/lib/supabaseClient");
+      const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.rpc("calculate_cemac_taxes", {
         p_corridor:        params.corridor,
         p_country_from:    params.countryFrom,
