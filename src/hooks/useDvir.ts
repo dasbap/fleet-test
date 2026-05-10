@@ -32,6 +32,9 @@ export type { DvirStatus };
 export type { DvirDetail, DvirListItem, DvirChecklistConfigItem } from "@/repositories/dvir.repository";
 export type { DvirCreateInput, DvirUpdateInput } from "@/services/dvir.service";
 
+// Alias pour compatibilité avec DvirPage.tsx
+export type DvirEntry = import("@/repositories/dvir.repository").DvirListItem;
+
 export interface UseDvirListFilters {
   vehicleId?: string;
   inspectedBy?: string;
@@ -62,6 +65,11 @@ export function useDvirList(filters: UseDvirListFilters = {}) {
     staleTime: 60_000,
     retry: false,
   });
+}
+
+/** Alias pratique : retourne les N dernières inspections de la flotte */
+export function useDvirRecent(limit = 20) {
+  return useDvirList({ limit });
 }
 
 export function useDvirChecklistConfig() {

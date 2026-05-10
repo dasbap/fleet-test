@@ -6,6 +6,9 @@ const VALID_ITEM_STATUSES = new Set<string>(["ok", "defaut", "defect", "na"]);
 
 export type DvirInspectionType = "pre_trip" | "post_trip" | "weekly" | "periodic" | "interim";
 export type DvirStatus = "ok" | "minor_issues" | "defects_noted" | "unsafe";
+// Alias courts pour compatibilité avec les pages importées
+export type InspectionType = DvirInspectionType;
+export type OverallStatus = DvirStatus;
 export type DvirItemStatus = "ok" | "defaut" | "defect" | "na";
 
 export interface DvirListItem {
