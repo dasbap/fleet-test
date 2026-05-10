@@ -77,13 +77,14 @@ DROP TRIGGER IF EXISTS trg_scheduled_reports_updated_at ON public.scheduled_repo
 CREATE TRIGGER trg_scheduled_reports_updated_at
   BEFORE UPDATE ON public.scheduled_reports
   FOR EACH ROW
-  EXECUTE FUNCTION public.set_updated_at_tracking();
+  EXECUTE FUNCTION public.touch_updated_at();
 
 -- ─── RLS ──────────────────────────────────────────────────────────────────────
 
 ALTER TABLE public.scheduled_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scheduled_report_runs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS scheduled_reports_select_policy ON public.scheduled_reports;
 CREATE POLICY scheduled_reports_select_policy
   ON public.scheduled_reports FOR SELECT
   USING (
@@ -95,6 +96,7 @@ CREATE POLICY scheduled_reports_select_policy
     )
   );
 
+DROP POLICY IF EXISTS scheduled_reports_write_policy ON public.scheduled_reports;
 CREATE POLICY scheduled_reports_write_policy
   ON public.scheduled_reports FOR ALL
   USING (
@@ -104,6 +106,7 @@ CREATE POLICY scheduled_reports_write_policy
     public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager')
   );
 
+DROP POLICY IF EXISTS scheduled_report_runs_select_policy ON public.scheduled_report_runs;
 CREATE POLICY scheduled_report_runs_select_policy
   ON public.scheduled_report_runs FOR SELECT
   USING (

@@ -57,6 +57,30 @@ export function useCreateTransit() {
   });
 }
 
+/** Calcule les taxes CEMAC via RPC avant création du transit */
+export function useCemacTaxCalculator() {
+  return useMutation({
+    mutationFn: async (params: {
+      corridor: string;
+      countryFrom: string;
+      countryTo: string;
+      cargoWeightKg?: number;
+      goodsValueXaf?: number;
+    }) => {
+      const { supabase } = await import("@/lib/supabaseClient");
+      const { data, error } = await supabase.rpc("calculate_cemac_taxes", {
+        p_corridor:        params.corridor,
+        p_country_from:    params.countryFrom,
+        p_country_to:      params.countryTo,
+        p_cargo_weight_kg: params.cargoWeightKg ?? 0,
+        p_goods_value_xaf: params.goodsValueXaf ?? 0,
+      });
+      if (error) throw new Error(error.message);
+      return data as { corridor: string; total_xaf: number; breakdown: { name: string; amount: number }[] };
+    },
+  });
+}
+
 export function useUpdateTransitStatus() {
   const queryClient = useQueryClient();
 
