@@ -87,6 +87,28 @@ export function useAckDashcamAlert() {
   });
 }
 
+// ─── Envoi batch d'alertes (1 appel réseau pour N alertes) ───────────────────
+// Utiliser en lieu et place d'appels individuels → économie Supabase free tier
+export function useSendDashcamAlerts() {
+  return useMutation({
+    mutationFn: async (alerts: {
+      dashcam_id: string;
+      event_type: string;
+      confidence?: number;
+      snapshot_url?: string;
+      gps?: { lat: number; lon: number };
+      speed_kmh?: number;
+      metadata?: Record<string, unknown>;
+    }[]) => {
+      const { data, error } = await supabase.functions.invoke("dashcam-ai-webhook", {
+        body: { alerts },
+      });
+      if (error) throw error;
+      return data as { processed: number; inserted: number };
+    },
+  });
+}
+
 // ─── Enregistrer une nouvelle dashcam ─────────────────────────────────────────
 export function useRegisterDashcam() {
   const qc = useQueryClient();
