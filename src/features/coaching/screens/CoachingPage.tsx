@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCoachingSessions, useVoicePlayer, CoachingSession } from "@/hooks/useVoiceCoaching";
-import { useFleetBillingContext } from "@/lib/fleet-billing-context";
+import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { cn } from "@/lib/utils";
 
 const LANG_LABELS: Record<string, string> = { fr: "FR", en: "EN", ln: "LN" };

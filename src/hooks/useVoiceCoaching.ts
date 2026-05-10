@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface CoachingSession {
   id: string;
