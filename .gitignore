@@ -1,3 +1,6 @@
+# Claude worktrees (internes, jamais commiter)
+.claude/worktrees/
+
 # Logs
 logs
 *.log
