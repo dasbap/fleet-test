@@ -32,6 +32,8 @@ import {
   MapPin,
   CalendarClock,
   CreditCard,
+  Mic,
+  Video,
 } from "lucide-react";
 import { signOut } from "@/lib/auth-actions";
 import { toast } from "@/hooks/use-toast";
@@ -62,6 +64,8 @@ const organizerNavCore = [
   { icon: DollarSign, label: "Finances", href: ROUTE_PATHS.dashboardFinances },
   { icon: CreditCard, label: "Abonnement", href: ROUTE_PATHS.dashboardBilling },
   { icon: Bell, label: "Alertes", href: ROUTE_PATHS.dashboardAlerts },
+  { icon: Mic, label: "Coaching vocal", href: ROUTE_PATHS.dashboardCoaching },
+  { icon: Video, label: "Dashcam AI", href: ROUTE_PATHS.dashboardDashcam },
 ] as const;
 
 const organizerRetentionLink = {
@@ -122,12 +126,15 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
       { icon: DollarSign, label: "Encaissements", href: ROUTE_PATHS.dashboardCollections },
       { icon: CreditCard, label: "Abonnement", href: ROUTE_PATHS.dashboardBilling },
       { icon: Bell, label: "Alertes", href: ROUTE_PATHS.dashboardAlerts },
+      { icon: Mic, label: "Coaching vocal", href: ROUTE_PATHS.dashboardCoaching },
+      { icon: Video, label: "Dashcam AI", href: ROUTE_PATHS.dashboardDashcam },
     ]),
     driver: [
       { icon: LayoutDashboard, label: "Mon tableau", href: "/dashboard" },
       { icon: Car, label: "Mon véhicule", href: "/dashboard/my-vehicle" },
       { icon: DollarSign, label: "Clôture", href: "/dashboard/closure" },
       { icon: Wrench, label: "Signaler", href: "/dashboard/incidents" },
+      { icon: Mic, label: "Coaching vocal", href: ROUTE_PATHS.dashboardCoaching },
     ],
     mechanic: [
       { icon: LayoutDashboard, label: "Interventions", href: "/dashboard/maintenance" },

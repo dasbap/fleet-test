@@ -88,6 +88,12 @@ const ScheduledReportsPage = lazy(
 const BillingPage = lazy(
   () => import("@/features/billing/screens/BillingPage")
 );
+const CoachingPage = lazy(
+  () => import("@/features/coaching/screens/CoachingPage")
+);
+const DashcamPage = lazy(
+  () => import("@/features/dashcam/screens/DashcamPage")
+);
 const Scan = lazy(() => import("@/pages/Scan"));
 const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
 const ProtectedRoute = lazy(() =>
@@ -238,6 +244,15 @@ export const dashboardRoutes = (
         element={
           <RoleGuard allow={["organizer", "manager"]}>
             <BillingPage />
+          </RoleGuard>
+        }
+      />
+      <Route path="coaching" element={<CoachingPage />} />
+      <Route
+        path="dashcam"
+        element={
+          <RoleGuard allow={["organizer", "manager"]}>
+            <DashcamPage />
           </RoleGuard>
         }
       />
