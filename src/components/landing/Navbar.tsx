@@ -10,6 +10,7 @@ const Navbar = () => {
     { name: "Fonctionnalités", href: "#features" },
     { name: "Modules", href: "#modules" },
     { name: "Tarifs", href: "#pricing" },
+    { name: "FAQ", href: "#faq" },
     { name: "Contact", href: "#contact" },
   ];
 
@@ -44,6 +45,9 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-4">
             <Button variant="ghost" asChild>
               <Link to="/auth">Connexion</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <a href="#demo">Demander une démo</a>
             </Button>
             <Button asChild>
               <Link to="/auth?mode=signup">Démarrer</Link>
