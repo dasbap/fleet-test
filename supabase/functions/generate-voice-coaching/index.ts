@@ -112,7 +112,9 @@ serve(async (req) => {
     );
 
     const body = await req.json();
-    const { driver_user_id, fleet_id, shift_id, score, lang = "fr" } = body;
+    // use_elevenlabs: false par défaut → Web Speech API côté client (gratuit)
+    // Mettre à true uniquement quand l'utilisateur clique "Générer audio premium"
+    const { driver_user_id, fleet_id, shift_id, score, lang = "fr", use_elevenlabs = false } = body;
     const driver_id = driver_user_id; // alias local
 
     if (!driver_id || !fleet_id || score === undefined) {
@@ -136,11 +138,12 @@ serve(async (req) => {
     // Génération du texte
     const coachingText = buildCoachingText(lang, score, scoreDelta);
 
-    // TTS ElevenLabs (optionnel)
+    // TTS ElevenLabs uniquement si explicitement demandé (use_elevenlabs: true)
+    // → Par défaut Web Speech API côté client (0 coût, 0 latence réseau)
     let audioUrl: string | null = null;
     let ttsProvider = "web-speech";
 
-    const audioBuffer = await generateElevenLabsAudio(coachingText, lang);
+    const audioBuffer = use_elevenlabs ? await generateElevenLabsAudio(coachingText, lang) : null;
     if (audioBuffer) {
       const fileName = `coaching/${driver_id}/${Date.now()}.mp3`;
       const { error: uploadErr } = await supabase.storage

@@ -33,17 +33,20 @@ export function useCoachingSessions(driverId: string | undefined) {
 }
 
 // ─── Génère une session de coaching post-trajet ───────────────────────────────
+// use_elevenlabs: false par défaut (Web Speech côté client, 0 coût)
+// Passer true uniquement sur action utilisateur explicite "Audio premium"
 export function useGenerateCoaching() {
   return useMutation({
     mutationFn: async (params: {
-      driver_id: string;
+      driver_user_id: string;
       fleet_id: string;
-      trip_id?: string;
+      shift_id?: string;
       score: number;
       lang?: "fr" | "en" | "ln";
+      use_elevenlabs?: boolean;
     }) => {
       const { data, error } = await supabase.functions.invoke("generate-voice-coaching", {
-        body: params,
+        body: { use_elevenlabs: false, ...params },
       });
       if (error) throw error;
       return data as { session_id: string; coaching_text: string; audio_url: string | null; push_sent: boolean };

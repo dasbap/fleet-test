@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mic, Play, Square, TrendingUp, TrendingDown, Minus, Volume2 } from "lucide-react";
+import { Mic, Play, Square, TrendingUp, TrendingDown, Minus, Volume2, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,9 +62,10 @@ function SessionCard({
             >
               {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
-            {session.tts_provider === "elevenlabs" && (
-              <Volume2 className="h-3.5 w-3.5 text-muted-foreground" title="Audio ElevenLabs" />
-            )}
+            {session.tts_provider === "elevenlabs"
+            ? <Volume2 className="h-3.5 w-3.5 text-purple-500" title="Audio ElevenLabs" />
+            : <Sparkles className="h-3.5 w-3.5 text-muted-foreground opacity-50" title="Passer en audio premium" />
+          }
           </div>
         </div>
 
