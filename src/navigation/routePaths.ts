@@ -93,4 +93,8 @@ export const ROUTE_PATHS = {
   dashboardCoaching: "/dashboard/coaching",
   /** Dashcam AI — surveillance vidéo intelligente. */
   dashboardDashcam: "/dashboard/dashcam",
+  /** Page publique sécurité. */
+  securite: "/securite",
+  /** Politique de cookies. */
+  cookies: "/cookies",
 } as const;

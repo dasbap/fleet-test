@@ -20,6 +20,12 @@ interface ImportMetaEnv {
   readonly VITE_MAPBOX_TOKEN?: string;
   /** Quota offline tutoriels en MB (ex: 250). */
   readonly VITE_TUTORIAL_OFFLINE_QUOTA_MB?: string;
+  /** Nombre de tutoriels accessibles sur le plan Free (défaut : 3). */
+  readonly VITE_TUTORIAL_QUOTA_FREE?: string;
+  /** Nombre de tutoriels accessibles sur le plan Pro (défaut : 50). */
+  readonly VITE_TUTORIAL_QUOTA_PRO?: string;
+  /** Nombre de tutoriels accessibles sur le plan Enterprise (-1 = illimité). */
+  readonly VITE_TUTORIAL_QUOTA_ENTERPRISE?: string;
 }
 
 interface ImportMeta {

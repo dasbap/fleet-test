@@ -47,6 +47,8 @@ const TransitCemacPage = lazy(
 const TransitDetailPage = lazy(
   () => import("@/features/transit/screens/TransitDetailPage")
 );
+const SecuritePage = lazy(() => import('@/pages/Securite'));
+const CookiesPage = lazy(() => import('@/pages/Cookies'));
 const PredictiveMaintenancePage = lazy(
   () => import("@/features/maintenance/screens/PredictiveMaintenancePage")
 );
@@ -78,6 +80,8 @@ export const appRoutes = (
       path="/aide/videos/:tutorialId"
       element={<LegacyAideVideoRedirect />}
     />
+    <Route path="/securite" element={<SecuritePage />} />
+    <Route path="/cookies" element={<CookiesPage />} />
     <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
     <Route
       path="/signup"
