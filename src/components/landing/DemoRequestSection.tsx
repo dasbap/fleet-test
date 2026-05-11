@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CheckCircle2, ArrowRight, Building2, Truck, Phone, FileDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || "237600000000";
+const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || "237641461148";
 const DEMO_WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Bonjour, je souhaite demander une démo de E-Samba pour ma flotte.")}`;
 
 const benefits = [
