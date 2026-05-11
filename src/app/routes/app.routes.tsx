@@ -7,6 +7,7 @@ import { authPublicRoutes } from "@/features/auth/routes";
 import { RoleGuard } from "@/navigation/guards/RequireRole";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { LegacyAideVideoRedirect } from "@/app/routes/LegacyAideVideoRedirect";
+import { AccesRestreint } from "@/components/layout/AccesRestreint";
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -69,7 +70,7 @@ const PredictiveMaintenancePage = lazy(
 export const appRoutes = (
   <Route element={<RootLayout />}>
     <Route path="/" element={<Index />} />
-    <Route path="/aide" element={<AidePage />} />
+    <Route path="/aide" element={<AccesRestreint><AidePage /></AccesRestreint>} />
     <Route path="/fuel" element={<FuelMonitoringPage />} />
     <Route path="/inspections/nouveau" element={<DvirChecklistPage />} />
     <Route path="/inspections/:dvirId/modifier" element={<DvirChecklistPage />} />
@@ -91,14 +92,14 @@ export const appRoutes = (
     />
     <Route path="/securite" element={<SecuritePage />} />
     <Route path="/cookies" element={<CookiesPage />} />
-    <Route path="/confidentialite" element={<ConfidentialitePage />} />
-    <Route path="/conditions" element={<ConditionsPage />} />
+    <Route path="/confidentialite" element={<AccesRestreint><ConfidentialitePage /></AccesRestreint>} />
+    <Route path="/conditions" element={<AccesRestreint><ConditionsPage /></AccesRestreint>} />
     <Route path="/apropos" element={<AproposPage />} />
     <Route path="/blog" element={<BlogPage />} />
     <Route path="/carrieres" element={<CarrieresPage />} />
     <Route path="/partenaires" element={<PartenairesPage />} />
-    <Route path="/documentation" element={<DocumentationPage />} />
-    <Route path="/api" element={<ApiDocsPage />} />
+    <Route path="/documentation" element={<AccesRestreint><DocumentationPage /></AccesRestreint>} />
+    <Route path="/api" element={<AccesRestreint><ApiDocsPage /></AccesRestreint>} />
     <Route path="/status" element={<StatusPage />} />
     <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
     <Route
