@@ -20,7 +20,7 @@ export default function ConfidentialitePage() {
         <p>
           <strong className="text-foreground">E-Samba</strong> (ci-après «&nbsp;la Société&nbsp;»),
           société de droit camerounais enregistrée au Registre du Commerce et du
-          Crédit Mobilier (RCCM) de Douala sous le numéro <strong className="text-foreground">RC/DLA/2024/B/XXXX</strong>,
+          Crédit Mobilier (RCCM) de Douala sous le numéro <strong className="text-foreground">RC/Y/2024/P/107816791685</strong>,
           dont le siège social est situé à Douala, Cameroun, est responsable du
           traitement de vos données à caractère personnel collectées via la
           plateforme E-Samba (e-samba.com).
