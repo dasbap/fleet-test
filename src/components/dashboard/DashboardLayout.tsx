@@ -76,4 +76,9 @@ export default function DashboardLayout() {
               <Outlet />
             </Suspense>
           </main>
-          <HelpBubble disabled={hideHelpBubb
+          <HelpBubble disabled={hideHelpBubble} />
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
+  );
+}

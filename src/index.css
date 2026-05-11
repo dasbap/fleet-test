@@ -234,4 +234,7 @@
 
   /** Conteneur page mobile : gouttières cohérentes avec encoches (safe area). */
   .mobile-gutter-x {
-    padding-left: max(1rem, env(safe-area-ins
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
