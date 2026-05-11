@@ -68,7 +68,7 @@ export default function DashboardLayout() {
           <OfflineBanner />
           <ActivationBanner />
           <DriverTerrainActivationModal />
-          <main className="flex-1 p-6 overflow-auto">
+          <main className="flex-1 p-6 md:p-8 overflow-auto bg-gradient-to-br from-background via-background to-primary/[0.03]">
             <Suspense fallback={null}>
               <NotificationsPermissionGate />
             </Suspense>
@@ -76,9 +76,4 @@ export default function DashboardLayout() {
               <Outlet />
             </Suspense>
           </main>
-          <HelpBubble disabled={hideHelpBubble} />
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
-  );
-}
+          <HelpBubble disabled={hideHelpBubb

@@ -86,14 +86,15 @@
 
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 6%;
-    --sidebar-primary: 145 100% 39%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 45 100% 51%;
-    --sidebar-accent-foreground: 0 0% 6%;
-    --sidebar-border: 0 0% 88%;
-    --sidebar-ring: 145 100% 39%;
+    /* Sidebar toujours sombre indépendamment du thème clair/sombre */
+    --sidebar-background: 220 16% 10%;
+    --sidebar-foreground: 0 0% 92%;
+    --sidebar-primary: 145 100% 42%;
+    --sidebar-primary-foreground: 0 0% 6%;
+    --sidebar-accent: 220 16% 17%;
+    --sidebar-accent-foreground: 0 0% 92%;
+    --sidebar-border: 220 16% 16%;
+    --sidebar-ring: 145 100% 42%;
 
     --chart-1: 145 100% 39%;
     --chart-2: 45 100% 51%;
@@ -233,7 +234,4 @@
 
   /** Conteneur page mobile : gouttières cohérentes avec encoches (safe area). */
   .mobile-gutter-x {
-    padding-left: max(1rem, env(safe-area-inset-left));
-    padding-right: max(1rem, env(safe-area-inset-right));
-  }
-}
+    padding-left: max(1rem, env(safe-area-ins
