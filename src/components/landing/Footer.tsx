@@ -47,14 +47,14 @@ const Footer = () => {
             <h4 className="font-heading font-semibold mb-4">Produit</h4>
             <ul className="space-y-2">
               {[
-                { name: "Fonctionnalités", href: "#features" },
-                { name: "Modules", href: "#modules" },
-                { name: "Tarifs", href: "#pricing" },
-                { name: "Sécurité", href: "/securite" },
+                { name: "Fonctionnalités", to: "/#features" },
+                { name: "Modules", to: "/#modules" },
+                { name: "Tarifs", to: "/#pricing" },
+                { name: "Sécurité", to: "/securite" },
               ].map((link) => (
                 <li key={link.name}>
                   <Link
-                    to={link.href}
+                    to={link.to}
                     className="text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
                     {link.name}
@@ -69,18 +69,18 @@ const Footer = () => {
             <h4 className="font-heading font-semibold mb-4">Entreprise</h4>
             <ul className="space-y-2">
               {[
-                { name: "À propos", href: "#" },
-                { name: "Blog", href: "#" },
-                { name: "Carrières", href: "#" },
-                { name: "Partenaires", href: "#" },
+                { name: "À propos", to: "/apropos" },
+                { name: "Blog", to: "/blog" },
+                { name: "Carrières", to: "/carrieres" },
+                { name: "Partenaires", to: "/partenaires" },
               ].map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
+                  <Link
+                    to={link.to}
                     className="text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -91,18 +91,18 @@ const Footer = () => {
             <h4 className="font-heading font-semibold mb-4">Support</h4>
             <ul className="space-y-2">
               {[
-                { name: "Centre d'aide", href: "#" },
-                { name: "Documentation", href: "#" },
-                { name: "API", href: "#" },
-                { name: "Status", href: "#" },
+                { name: "Centre d'aide", to: "/aide" },
+                { name: "Documentation", to: "/documentation" },
+                { name: "API", to: "/api" },
+                { name: "Status", to: "/status" },
               ].map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
+                  <Link
+                    to={link.to}
                     className="text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -113,13 +113,13 @@ const Footer = () => {
             <h4 className="font-heading font-semibold mb-4">Légal</h4>
             <ul className="space-y-2">
               {[
-                { name: "Confidentialité", href: "#" },
-                { name: "Conditions", href: "#" },
-                { name: "Cookies", href: "/cookies" },
+                { name: "Confidentialité", to: "/confidentialite" },
+                { name: "Conditions", to: "/conditions" },
+                { name: "Cookies", to: "/cookies" },
               ].map((link) => (
                 <li key={link.name}>
                   <Link
-                    to={link.href}
+                    to={link.to}
                     className="text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
                     {link.name}
@@ -133,7 +133,7 @@ const Footer = () => {
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            © {currentYear} E-Samba. Tous droits réservés.
+            © {currentYear} E-Samba SARL — RC/DLA/2024/B/XXXX. Tous droits réservés.
           </p>
           <p className="text-sm text-muted-foreground">
             Made with ❤️ for Africa

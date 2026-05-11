@@ -49,6 +49,15 @@ const TransitDetailPage = lazy(
 );
 const SecuritePage = lazy(() => import('@/pages/Securite'));
 const CookiesPage = lazy(() => import('@/pages/Cookies'));
+const ConfidentialitePage = lazy(() => import('@/pages/Confidentialite'));
+const ConditionsPage = lazy(() => import('@/pages/Conditions'));
+const AproposPage = lazy(() => import('@/pages/Apropos'));
+const BlogPage = lazy(() => import('@/pages/Blog'));
+const CarrieresPage = lazy(() => import('@/pages/Carrieres'));
+const PartenairesPage = lazy(() => import('@/pages/Partenaires'));
+const DocumentationPage = lazy(() => import('@/pages/Documentation'));
+const ApiDocsPage = lazy(() => import('@/pages/ApiDocs'));
+const StatusPage = lazy(() => import('@/pages/Status'));
 const PredictiveMaintenancePage = lazy(
   () => import("@/features/maintenance/screens/PredictiveMaintenancePage")
 );
@@ -82,6 +91,15 @@ export const appRoutes = (
     />
     <Route path="/securite" element={<SecuritePage />} />
     <Route path="/cookies" element={<CookiesPage />} />
+    <Route path="/confidentialite" element={<ConfidentialitePage />} />
+    <Route path="/conditions" element={<ConditionsPage />} />
+    <Route path="/apropos" element={<AproposPage />} />
+    <Route path="/blog" element={<BlogPage />} />
+    <Route path="/carrieres" element={<CarrieresPage />} />
+    <Route path="/partenaires" element={<PartenairesPage />} />
+    <Route path="/documentation" element={<DocumentationPage />} />
+    <Route path="/api" element={<ApiDocsPage />} />
+    <Route path="/status" element={<StatusPage />} />
     <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
     <Route
       path="/signup"
