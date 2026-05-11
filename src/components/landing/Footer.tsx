@@ -133,7 +133,7 @@ const Footer = () => {
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            © {currentYear} E-Samba SARL — RC/Y/2024/P/107816791685. Tous droits réservés.
+            © {currentYear} E-Samba — Tous droits réservés.
           </p>
           <p className="text-sm text-muted-foreground">
             Made with ❤️ for Africa
