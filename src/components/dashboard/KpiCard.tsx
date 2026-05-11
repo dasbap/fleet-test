@@ -1,21 +1,23 @@
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 
 interface Props {
   label: string;
-  value: number;
+  value: number | string;
   delta?: { value: number; label: string };
   status?: "danger" | "warning" | "success" | "neutral";
   actionHint?: string;
   selected?: boolean;
+  icon?: LucideIcon;
   onClick: () => void;
 }
 
-const statusColors = {
-  danger: "text-red-500  dark:text-red-400",
-  warning: "text-amber-600 dark:text-amber-400",
-  success: "text-emerald-600 dark:text-emerald-400",
-  neutral: "text-slate-900 dark:text-slate-100",
+const statusConfig = {
+  danger:  { value: "text-red-500 dark:text-red-400",         gradient: "from-red-500/8 to-transparent",         border: "border-red-500/25" },
+  warning: { value: "text-amber-500 dark:text-amber-400",     gradient: "from-amber-500/8 to-transparent",       border: "border-amber-500/25" },
+  success: { value: "text-emerald-500 dark:text-emerald-400", gradient: "from-emerald-500/8 to-transparent",     border: "border-emerald-500/25" },
+  neutral: { value: "text-foreground",                         gradient: "from-primary/6 to-transparent",         border: "border-transparent" },
 };
 
 export function KpiCard({
@@ -25,46 +27,26 @@ export function KpiCard({
   status = "neutral",
   actionHint,
   selected,
+  icon: Icon,
   onClick,
 }: Props) {
+  const cfg = statusConfig[status];
+
   return (
-    <button
+    <motion.button
       onClick={onClick}
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className={cn(
-        "group text-left bg-surface-raised rounded-card p-4 border-[1.5px] transition-colors",
+        "group text-left rounded-2xl p-5 border w-full",
+        "bg-card bg-gradient-to-br",
+        cfg.gradient,
+        "shadow-sm hover:shadow-md transition-all duration-200",
         selected
-          ? "border-brand"
-          : "border-transparent hover:border-surface-raised"
+          ? "border-primary ring-2 ring-primary/20"
+          : cn("hover:border-primary/30", cfg.border),
       )}
     >
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "text-[22px] font-medium leading-none",
-          statusColors[status]
-        )}
-      >
-        {value.toLocaleString("fr-FR")}
-      </p>
-
-      {delta && (
-        <p className="text-xs mt-1 flex items-center gap-1">
-          <span
-            className={delta.value > 0 ? "text-red-500" : "text-emerald-600"}
-          >
-            {delta.value > 0 ? "↑" : "↓"} {Math.abs(delta.value)}
-          </span>
-          <span className="text-slate-400">{delta.label}</span>
-        </p>
-      )}
-
-      {actionHint && (
-        <p className="text-xs text-brand mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          {actionHint}
-        </p>
-      )}
-    </button>
-  );
-}
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase trac
