@@ -49,4 +49,44 @@ export function KpiCard({
       )}
     >
       <div className="flex items-start justify-between gap-2 mb-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase trac
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest leading-none">
+          {label}
+        </p>
+        {Icon && (
+          <div className={cn(
+            "p-1.5 rounded-lg",
+            status === "neutral"
+              ? "bg-primary/10 text-primary"
+              : "bg-current/10",
+          )}>
+            <Icon className={cn("h-3.5 w-3.5", cfg.value)} />
+          </div>
+        )}
+      </div>
+
+      <p className={cn("text-4xl font-bold leading-none tracking-tight mb-2", cfg.value)}>
+        {typeof value === "number" ? value.toLocaleString("fr-FR") : value}
+      </p>
+
+      {delta && (
+        <div className="flex items-center gap-1.5">
+          <span className={cn(
+            "text-xs font-semibold px-1.5 py-0.5 rounded-full",
+            delta.value > 0
+              ? "text-red-600 bg-red-500/10"
+              : "text-emerald-600 bg-emerald-500/10",
+          )}>
+            {delta.value > 0 ? "↑" : "↓"} {Math.abs(delta.value)}
+          </span>
+          <span className="text-xs text-muted-foreground">{delta.label}</span>
+        </div>
+      )}
+
+      {actionHint && (
+        <p className="text-xs text-primary mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {actionHint} →
+        </p>
+      )}
+    </motion.button>
+  );
+}
