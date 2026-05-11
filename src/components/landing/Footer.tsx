@@ -4,32 +4,6 @@ import { Zap, Mail, Phone, MapPin } from "lucide-react";
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
-  const footerLinks = {
-    product: [
-      { name: "Fonctionnalités", href: "#features" },
-      { name: "Modules", href: "#modules" },
-      { name: "Tarifs", href: "#pricing" },
-      { name: "Sécurité", href: "#" },
-    ],
-    company: [
-      { name: "À propos", href: "#" },
-      { name: "Blog", href: "#" },
-      { name: "Carrières", href: "#" },
-      { name: "Partenaires", href: "#" },
-    ],
-    support: [
-      { name: "Centre d'aide", href: "#" },
-      { name: "Documentation", href: "#" },
-      { name: "API", href: "#" },
-      { name: "Status", href: "#" },
-    ],
-    legal: [
-      { name: "Confidentialité", href: "#" },
-      { name: "Conditions", href: "#" },
-      { name: "Cookies", href: "#" },
-    ],
-  };
-
   return (
     <footer id="contact" className="bg-card border-t border-border">
       <div className="container mx-auto px-4 py-16">
@@ -55,11 +29,11 @@ const Footer = () => {
                 contact@e-samba.com
               </a>
               <a
-                href="tel:+237600000000"
+                href="tel:+237641461148"
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                +237 6 00 00 00 00
+                +237 6 41 46 11 48
               </a>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="w-4 h-4" />
@@ -68,27 +42,38 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Links */}
+          {/* Produit */}
           <div>
             <h4 className="font-heading font-semibold mb-4">Produit</h4>
             <ul className="space-y-2">
-              {footerLinks.product.map((link) => (
+              {[
+                { name: "Fonctionnalités", href: "#features" },
+                { name: "Modules", href: "#modules" },
+                { name: "Tarifs", href: "#pricing" },
+                { name: "Sécurité", href: "/securite" },
+              ].map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
+                  <Link
+                    to={link.href}
                     className="text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
           </div>
 
+          {/* Entreprise */}
           <div>
             <h4 className="font-heading font-semibold mb-4">Entreprise</h4>
             <ul className="space-y-2">
-              {footerLinks.company.map((link) => (
+              {[
+                { name: "À propos", href: "#" },
+                { name: "Blog", href: "#" },
+                { name: "Carrières", href: "#" },
+                { name: "Partenaires", href: "#" },
+              ].map((link) => (
                 <li key={link.name}>
                   <a
                     href={link.href}
@@ -101,10 +86,16 @@ const Footer = () => {
             </ul>
           </div>
 
+          {/* Support */}
           <div>
             <h4 className="font-heading font-semibold mb-4">Support</h4>
             <ul className="space-y-2">
-              {footerLinks.support.map((link) => (
+              {[
+                { name: "Centre d'aide", href: "#" },
+                { name: "Documentation", href: "#" },
+                { name: "API", href: "#" },
+                { name: "Status", href: "#" },
+              ].map((link) => (
                 <li key={link.name}>
                   <a
                     href={link.href}
@@ -117,17 +108,22 @@ const Footer = () => {
             </ul>
           </div>
 
+          {/* Légal */}
           <div>
             <h4 className="font-heading font-semibold mb-4">Légal</h4>
             <ul className="space-y-2">
-              {footerLinks.legal.map((link) => (
+              {[
+                { name: "Confidentialité", href: "#" },
+                { name: "Conditions", href: "#" },
+                { name: "Cookies", href: "/cookies" },
+              ].map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
+                  <Link
+                    to={link.href}
                     className="text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
