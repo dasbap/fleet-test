@@ -233,4 +233,53 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
                 }
               >
                 <User className="w-5 h-5" />
-      
+                <span>Mon profil</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={location.pathname === "/dashboard/settings"}
+            >
+              <Link
+                to="/dashboard/settings"
+                aria-current={
+                  location.pathname === "/dashboard/settings"
+                    ? "page"
+                    : undefined
+                }
+              >
+                <Settings className="w-5 h-5" />
+                <span>Paramètres</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={async () => {
+                try {
+                  const { error } = await signOut();
+                  if (error) throw error;
+                  window.location.href = "/";
+                } catch {
+                  toast({
+                    title: "Erreur de déconnexion",
+                    description:
+                      "Impossible de vous déconnecter. Réessayez ou vérifiez votre connexion.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              <LogOut className="w-5 h-5" />
+              <span>Déconnexion</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
+  );
+};
+
+export default DashboardSidebar;
