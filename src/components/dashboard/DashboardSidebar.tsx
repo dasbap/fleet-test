@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -146,41 +147,67 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
 
   const items = menuItems[userRole];
 
+  const containerVariants = {
+    hidden: {},
+    show: { transition: { staggerChildren: 0.04 } },
+  };
+  const itemVariants = {
+    hidden: { opacity: 0, x: -8 },
+    show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+  };
+
   return (
     <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border">
-        <Link to="/" className="flex items-center gap-2 px-2 py-3">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+      <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
+        <Link to="/" className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
             <Zap className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-heading font-bold text-lg">E-Samba</span>
+          <div className="flex flex-col">
+            <span className="font-heading font-bold text-base leading-none text-sidebar-foreground">E-Samba</span>
+            <span className="text-[10px] text-sidebar-foreground/50 leading-none mt-0.5 font-medium tracking-wide">Smart Fleet Africa</span>
+          </div>
         </Link>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] tracking-widest font-semibold uppercase px-3 mb-1">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                    >
-                      <Link
-                        to={item.href}
-                        aria-current={isActive ? "page" : undefined}
-                      >
-                        <item.icon className="w-5 h-5" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              <motion.div variants={containerVariants} initial="hidden" animate="show">
+                {items.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <motion.div key={item.href} variants={itemVariants}>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          className={isActive ? "bg-primary/15 text-primary font-semibold" : "hover:bg-sidebar-accent"}
+                        >
+                          <Link
+                            to={item.href}
+                            aria-current={isActive ? "page" : undefined}
+                            className="flex items-center gap-3 px-3 py-2 rounded-lg"
+                          >
+                            <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "text-sidebar-foreground/60"}`} />
+                            <span className="text-sm">{item.label}</span>
+                            {isActive && (
+                              <motion.div
+                                layoutId="sidebar-active-pill"
+                                className="ml-auto w-1.5 h-1.5 rounded-full bg-primary"
+                              />
+                            )}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -206,53 +233,4 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
                 }
               >
                 <User className="w-5 h-5" />
-                <span>Mon profil</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={location.pathname === "/dashboard/settings"}
-            >
-              <Link
-                to="/dashboard/settings"
-                aria-current={
-                  location.pathname === "/dashboard/settings"
-                    ? "page"
-                    : undefined
-                }
-              >
-                <Settings className="w-5 h-5" />
-                <span>Paramètres</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={async () => {
-                try {
-                  const { error } = await signOut();
-                  if (error) throw error;
-                  window.location.href = "/";
-                } catch {
-                  toast({
-                    title: "Erreur de déconnexion",
-                    description:
-                      "Impossible de vous déconnecter. Réessayez ou vérifiez votre connexion.",
-                    variant: "destructive",
-                  });
-                }
-              }}
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Déconnexion</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
-  );
-};
-
-export default DashboardSidebar;
+      
