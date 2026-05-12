@@ -1,6 +1,5 @@
 import * as Sentry from "@sentry/react";
-import { lazy, Suspense } from "react";
-import { ClerkProvider } from "@clerk/clerk-react";
+import { lazy, Suspense, type ReactNode } from "react";
 import Providers from "@/components/Providers";
 import { PageSEO } from "@/components/PageSEO";
 import { BrowserRouter, Routes } from "react-router-dom";
@@ -19,6 +18,18 @@ const DeepLinkListener = lazy(() =>
 );
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+
+// Import dynamique : @clerk/clerk-react n'est chargé que si la clé est présente.
+// Quand VITE_CLERK_PUBLISHABLE_KEY est absent, ce code est tree-shaké par Rollup.
+const ClerkProviderLazy = CLERK_KEY
+  ? lazy(() =>
+      import("@clerk/clerk-react").then((m) => ({
+        default: ({ children }: { children: ReactNode }) => (
+          <m.ClerkProvider publishableKey={CLERK_KEY}>{children}</m.ClerkProvider>
+        ),
+      }))
+    )
+  : null;
 
 const AppContent = () => (
   <Sentry.ErrorBoundary
@@ -46,4 +57,25 @@ const AppContent = () => (
           </Suspense>
           <PageSEO />
           <Suspense fallback={<RoutePageFallback />}>
-            <Routes>{appRoutes}</Routes
+            <Routes>{appRoutes}</Routes>
+          </Suspense>
+        </HelpProvider>
+      </BrowserRouter>
+    </Providers>
+  </Sentry.ErrorBoundary>
+);
+
+// ClerkProvider enveloppe l'app si la clé est présente (chargé dynamiquement).
+// L'auth Supabase reste active par défaut (VITE_AUTH_PROVIDER=supabase).
+const App = () =>
+  ClerkProviderLazy ? (
+    <Suspense fallback={null}>
+      <ClerkProviderLazy>
+        <AppContent />
+      </ClerkProviderLazy>
+    </Suspense>
+  ) : (
+    <AppContent />
+  );
+
+export default App;
