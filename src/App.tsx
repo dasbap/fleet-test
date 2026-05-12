@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/react";
 import { lazy, Suspense } from "react";
+import { ClerkProvider } from "@clerk/clerk-react";
 import Providers from "@/components/Providers";
 import { PageSEO } from "@/components/PageSEO";
 import { BrowserRouter, Routes } from "react-router-dom";
@@ -17,7 +18,9 @@ const DeepLinkListener = lazy(() =>
   }))
 );
 
-const App = () => (
+const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+
+const AppContent = () => (
   <Sentry.ErrorBoundary
     fallback={AppErrorFallback}
     onError={(error, componentStack, eventId) => {
@@ -50,5 +53,17 @@ const App = () => (
     </Providers>
   </Sentry.ErrorBoundary>
 );
+
+// ClerkProvider enveloppe l'app si la clé est présente.
+// L'auth Supabase existante reste active (VITE_AUTH_PROVIDER=supabase).
+// Basculer sur "clerk" dans .env une fois le JWT template Supabase configuré.
+const App = () =>
+  CLERK_KEY ? (
+    <ClerkProvider publishableKey={CLERK_KEY}>
+      <AppContent />
+    </ClerkProvider>
+  ) : (
+    <AppContent />
+  );
 
 export default App;
