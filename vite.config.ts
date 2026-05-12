@@ -38,10 +38,15 @@ export default defineConfig(({ mode }) => {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
           const n = id.replace(/\\/g, "/");
+          // Clerk dans son propre chunk — évite un conflit d'ordre d'init avec React
+          if (n.includes("/@clerk/")) return "vendor-clerk";
           if (
             n.includes("/react-dom/") ||
             n.includes("/react-router") ||
-            (n.includes("/react/") && !n.includes("react-query"))
+            // Strict : seulement le package 'react' lui-même, pas @clerk/react ou @stripe/react-*
+            n.match(/\/node_modules\/react\//) ||
+            n.match(/\/node_modules\/react-dom\//) ||
+            n.match(/\/node_modules\/scheduler\//)
           ) {
             return "vendor-react";
           }
