@@ -46,24 +46,4 @@ const AppContent = () => (
           </Suspense>
           <PageSEO />
           <Suspense fallback={<RoutePageFallback />}>
-            <Routes>{appRoutes}</Routes>
-          </Suspense>
-        </HelpProvider>
-      </BrowserRouter>
-    </Providers>
-  </Sentry.ErrorBoundary>
-);
-
-// ClerkProvider enveloppe l'app si la clé est présente.
-// L'auth Supabase existante reste active (VITE_AUTH_PROVIDER=supabase).
-// Basculer sur "clerk" dans .env une fois le JWT template Supabase configuré.
-const App = () =>
-  CLERK_KEY ? (
-    <ClerkProvider publishableKey={CLERK_KEY}>
-      <AppContent />
-    </ClerkProvider>
-  ) : (
-    <AppContent />
-  );
-
-export default App;
+            <Routes>{appRoutes}</Routes
