@@ -106,6 +106,10 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
       .order("created_at", { ascending: false });
 
     if (error) {
+      // AbortError pendant une transition auth (signInWithPassword) — non bloquant
+      if (error.message?.includes("AbortError") || error.code === "20") {
+        return [];
+      }
       console.error("Error fetching fleet adhesions (minimal):", error);
       throw new Error(error.message);
     }
