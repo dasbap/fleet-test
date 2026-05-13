@@ -1,21 +1,22 @@
 /**
- * clerk-webhook — Edge Function Supabase
+ * clerk-webhook — Edge Function Supabase (v3 — schéma réel vérifié)
  *
- * Reçoit les événements Clerk (user.created, user.updated, user.deleted,
- * organizationMembership.created) et maintient les tables Supabase en sync.
+ * Schéma vérifié via execute_sql :
+ *   profils          : user_id UUID (PK, pas de default), clerk_user_id UNIQUE
+ *   flottes          : org_id UUID, billing_status, trial_ends_at, clerk_org_id
+ *   flotte_adhesions : role role_type enum, UNIQUE(fleet_id,user_id,role)
+ *   abonnements      : plan_id UUID FK — non créé ici (couplé au billing)
  *
  * Variables d'environnement requises :
- *   CLERK_WEBHOOK_SECRET      — signing secret du webhook Clerk (whsec_…)
+ *   CLERK_WEBHOOK_SECRET      — signing secret Clerk (whsec_…)
  *   SUPABASE_URL              — injecté automatiquement
  *   SUPABASE_SERVICE_ROLE_KEY — injecté automatiquement
- *   SENTRY_DSN                — optionnel, capture les erreurs
+ *   SENTRY_DSN                — optionnel
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { Webhook } from "npm:svix@1.41.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
-
-// ── Client Supabase service role ─────────────────────────────────────────────
 
 function createServiceClient() {
   const url = Deno.env.get("SUPABASE_URL");
@@ -24,8 +25,6 @@ function createServiceClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-// ── Sentry (best-effort, pas bloquant) ───────────────────────────────────────
-
 async function captureException(err: unknown, ctx: Record<string, string> = {}): Promise<void> {
   const dsn = Deno.env.get("SENTRY_DSN");
   if (!dsn) return;
@@ -33,18 +32,11 @@ async function captureException(err: unknown, ctx: Record<string, string> = {}):
     const { hub } = await import("npm:@sentry/core@8");
     hub.captureException(err, { extra: ctx });
   } catch {
-    // Sentry indisponible — on log uniquement
     console.error("[clerk-webhook] sentry capture failed", err, ctx);
   }
 }
 
-// ── Types Clerk simplifiés ───────────────────────────────────────────────────
-
-interface ClerkEmailAddress {
-  email_address: string;
-  id: string;
-}
-
+interface ClerkEmailAddress { email_address: string; id: string; }
 interface ClerkUserData {
   id: string;
   first_name: string | null;
@@ -53,35 +45,17 @@ interface ClerkUserData {
   primary_email_address_id: string | null;
   phone_numbers: { phone_number: string; id: string }[];
   primary_phone_number_id: string | null;
-  created_at: number; // ms epoch
 }
-
 interface ClerkOrgMembershipData {
-  organization: { id: string; name: string; slug: string | null };
+  organization: { id: string; name: string };
   public_user_data: { user_id: string };
-  role: string; // "org:admin" | "org:member" | etc.
+  role: string;
 }
-
-interface ClerkEvent {
-  type: string;
-  data: Record<string, unknown>;
-  object: string;
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function primaryEmail(user: ClerkUserData): string | null {
-  if (!user.primary_email_address_id) return null;
-  return (
-    user.email_addresses.find((e) => e.id === user.primary_email_address_id)?.email_address ?? null
-  );
-}
+interface ClerkEvent { type: string; data: Record<string, unknown>; }
 
 function primaryPhone(user: ClerkUserData): string | null {
   if (!user.primary_phone_number_id) return null;
-  return (
-    user.phone_numbers.find((p) => p.id === user.primary_phone_number_id)?.phone_number ?? null
-  );
+  return user.phone_numbers.find((p) => p.id === user.primary_phone_number_id)?.phone_number ?? null;
 }
 
 function fullName(user: ClerkUserData): string | null {
@@ -89,7 +63,6 @@ function fullName(user: ClerkUserData): string | null {
   return parts.length ? parts.join(" ") : null;
 }
 
-/** Mappe le rôle Clerk ("org:admin" / "org:member") vers AppRole E-Samba */
 function mapClerkRole(clerkRole: string): string {
   if (clerkRole === "org:admin") return "organizer";
   if (clerkRole === "org:manager") return "manager";
@@ -103,47 +76,39 @@ function jsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
-// ── Handlers d'événements ────────────────────────────────────────────────────
-
 /**
  * user.created
- *
- * 1. Crée le profil dans `profils` (ON CONFLICT DO NOTHING → idempotent)
- * 2. Si l'utilisateur n'a aucune flotte, crée une flotte trial + adhésion organizer
+ * → upsert profil (user_id généré côté app) ON CONFLICT clerk_user_id DO NOTHING
+ * → si aucune adhésion, crée flotte trial + adhésion organizer
  */
 async function handleUserCreated(
   supabase: ReturnType<typeof createServiceClient>,
   data: ClerkUserData,
 ): Promise<void> {
-  const email = primaryEmail(data);
-  const phone = primaryPhone(data);
   const name = fullName(data);
+  const phone = primaryPhone(data);
+  const newUserId = crypto.randomUUID();
 
-  // 1. Créer le profil (idempotent)
-  const { data: profil, error: profilError } = await supabase
+  const { error: profilError } = await supabase
     .from("profils")
-    .insert({
-      clerk_user_id: data.id,
-      full_name: name,
-      phone: phone,
-      // user_id est généré automatiquement par Supabase (uuid_generate_v4)
-    })
+    .upsert(
+      { user_id: newUserId, clerk_user_id: data.id, full_name: name, phone },
+      { onConflict: "clerk_user_id", ignoreDuplicates: true },
+    );
+
+  if (profilError) throw new Error(`Erreur upsert profil: ${profilError.message}`);
+
+  // Récupérer le user_id réel (peut différer si doublon)
+  const { data: profil, error: fetchError } = await supabase
+    .from("profils")
     .select("user_id")
+    .eq("clerk_user_id", data.id)
     .single();
 
-  if (profilError) {
-    // Code 23505 = contrainte unicité → déjà existant, on ignore
-    if ((profilError as { code?: string }).code === "23505") {
-      console.log(`[clerk-webhook] profil déjà existant pour ${data.id}`);
-      return;
-    }
-    throw new Error(`Erreur insertion profil: ${profilError.message}`);
-  }
+  if (fetchError || !profil?.user_id) throw new Error("Profil introuvable après upsert.");
+  const userId = profil.user_id as string;
 
-  const userId = profil?.user_id as string;
-  if (!userId) throw new Error("user_id manquant après insertion profil.");
-
-  // 2. Vérifier si l'utilisateur est déjà membre d'une flotte
+  // Vérifier si déjà membre d'une flotte
   const { data: existingAdhesions } = await supabase
     .from("flotte_adhesions")
     .select("id")
@@ -151,57 +116,39 @@ async function handleUserCreated(
     .limit(1);
 
   if (existingAdhesions?.length) {
-    // Déjà membre → pas de flotte trial à créer
+    console.log(`[clerk-webhook] user.created → profil ${userId} (flotte existante)`);
     return;
   }
 
-  // 3. Créer une flotte trial pour les nouveaux utilisateurs sans org Clerk
+  // Créer flotte trial (30 jours)
+  const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
   const flotteName = name ? `Flotte de ${name}` : "Ma flotte";
+
   const { data: flotte, error: flotteError } = await supabase
     .from("flottes")
     .insert({
       name: flotteName,
-      // org_id est le user_id → tenant isolé sans org Clerk
       org_id: userId,
-      plan: "trial",
+      billing_status: "trial",
+      trial_ends_at: trialEndsAt,
     })
     .select("id")
     .single();
 
-  if (flotteError) {
-    throw new Error(`Erreur création flotte trial: ${flotteError.message}`);
-  }
+  if (flotteError) throw new Error(`Erreur création flotte: ${flotteError.message}`);
+  const fleetId = flotte!.id as string;
 
-  const fleetId = flotte?.id as string;
+  const { error: adhesionError } = await supabase
+    .from("flotte_adhesions")
+    .insert({ fleet_id: fleetId, user_id: userId, role: "organizer", is_active: true });
 
-  // 4. Adhésion organizer
-  const { error: adhesionError } = await supabase.from("flotte_adhesions").insert({
-    fleet_id: fleetId,
-    user_id: userId,
-    role: "organizer",
-    is_active: true,
-  });
-
-  if (adhesionError) {
-    throw new Error(`Erreur création adhésion: ${adhesionError.message}`);
-  }
-
-  // 5. Abonnement trial (30 jours)
-  const trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-  await supabase.from("abonnements").insert({
-    fleet_id: fleetId,
-    plan: "trial",
-    status: "active",
-    trial_ends_at: trialEnd,
-  });
+  if (adhesionError) throw new Error(`Erreur adhésion: ${adhesionError.message}`);
 
   console.log(`[clerk-webhook] user.created → profil ${userId}, flotte ${fleetId}`);
 }
 
 /**
- * user.updated
- *
- * Synchronise email / nom dans `profils`.
+ * user.updated → sync full_name + phone
  */
 async function handleUserUpdated(
   supabase: ReturnType<typeof createServiceClient>,
@@ -209,65 +156,41 @@ async function handleUserUpdated(
 ): Promise<void> {
   const { error } = await supabase
     .from("profils")
-    .update({
-      full_name: fullName(data),
-      phone: primaryPhone(data),
-      updated_at: new Date().toISOString(),
-    })
+    .update({ full_name: fullName(data), phone: primaryPhone(data) })
     .eq("clerk_user_id", data.id);
 
-  if (error) {
-    throw new Error(`Erreur mise à jour profil: ${error.message}`);
-  }
-
-  console.log(`[clerk-webhook] user.updated → clerk_user_id ${data.id}`);
+  if (error) throw new Error(`Erreur update profil: ${error.message}`);
+  console.log(`[clerk-webhook] user.updated → ${data.id}`);
 }
 
 /**
- * user.deleted
- *
- * Soft-delete : désactive toutes les adhésions + marque le profil supprimé.
- * On ne supprime jamais de données (conformité audit CEMAC).
+ * user.deleted → désactive les adhésions (soft delete, audit CEMAC)
  */
 async function handleUserDeleted(
   supabase: ReturnType<typeof createServiceClient>,
   data: { id: string },
 ): Promise<void> {
-  // Récupérer le user_id Supabase
-  const { data: profil, error: profilError } = await supabase
+  const { data: profil } = await supabase
     .from("profils")
     .select("user_id")
     .eq("clerk_user_id", data.id)
     .maybeSingle();
 
-  if (profilError || !profil?.user_id) {
-    // Profil introuvable → rien à supprimer
+  if (!profil?.user_id) {
     console.warn(`[clerk-webhook] user.deleted — profil introuvable pour ${data.id}`);
     return;
   }
 
-  const userId = profil.user_id as string;
-
-  // Désactiver toutes les adhésions
   await supabase
     .from("flotte_adhesions")
-    .update({ is_active: false, updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
+    .update({ is_active: false })
+    .eq("user_id", profil.user_id);
 
-  // Marquer le profil comme supprimé
-  await supabase
-    .from("profils")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("user_id", userId);
-
-  console.log(`[clerk-webhook] user.deleted → user_id ${userId}`);
+  console.log(`[clerk-webhook] user.deleted → adhésions désactivées pour ${profil.user_id}`);
 }
 
 /**
- * organizationMembership.created
- *
- * Synchronise un membership Clerk org → flotte E-Samba.
- * Si la flotte n'existe pas encore pour cette org Clerk, elle est créée.
+ * organizationMembership.created → sync flotte org + adhésion
  */
 async function handleOrgMembershipCreated(
   supabase: ReturnType<typeof createServiceClient>,
@@ -277,7 +200,6 @@ async function handleOrgMembershipCreated(
   const clerkOrgId = data.organization.id;
   const mappedRole = mapClerkRole(data.role);
 
-  // Récupérer le user_id Supabase
   const { data: profil } = await supabase
     .from("profils")
     .select("user_id")
@@ -285,12 +207,9 @@ async function handleOrgMembershipCreated(
     .maybeSingle();
 
   if (!profil?.user_id) {
-    console.warn(
-      `[clerk-webhook] orgMembership.created — profil introuvable pour clerk_user ${clerkUserId}`,
-    );
+    console.warn(`[clerk-webhook] orgMembership — profil introuvable pour ${clerkUserId}`);
     return;
   }
-
   const userId = profil.user_id as string;
 
   // Trouver ou créer la flotte pour cette org Clerk
@@ -301,52 +220,40 @@ async function handleOrgMembershipCreated(
     .maybeSingle();
 
   if (!flotte?.id) {
-    const { data: newFlotte, error: flotteError } = await supabase
+    const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: newFlotte, error } = await supabase
       .from("flottes")
       .insert({
         name: data.organization.name,
+        org_id: crypto.randomUUID(),
         clerk_org_id: clerkOrgId,
-        org_id: clerkOrgId,
-        plan: "trial",
+        billing_status: "trial",
+        trial_ends_at: trialEndsAt,
       })
       .select("id")
       .single();
 
-    if (flotteError) {
-      throw new Error(`Erreur création flotte org: ${flotteError.message}`);
-    }
+    if (error) throw new Error(`Erreur création flotte org: ${error.message}`);
     flotte = newFlotte;
   }
-
   const fleetId = flotte!.id as string;
 
-  // Upsert de l'adhésion (idempotent)
-  const { error: adhesionError } = await supabase.from("flotte_adhesions").upsert(
-    {
-      fleet_id: fleetId,
-      user_id: userId,
-      role: mappedRole,
-      is_active: true,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "fleet_id,user_id", ignoreDuplicates: false },
-  );
+  // Upsert adhésion — UNIQUE(fleet_id, user_id, role)
+  const { error: adhesionError } = await supabase
+    .from("flotte_adhesions")
+    .upsert(
+      { fleet_id: fleetId, user_id: userId, role: mappedRole, is_active: true },
+      { onConflict: "fleet_id,user_id,role", ignoreDuplicates: false },
+    );
 
-  if (adhesionError) {
-    throw new Error(`Erreur upsert adhésion org: ${adhesionError.message}`);
-  }
-
-  console.log(
-    `[clerk-webhook] orgMembership.created → user ${userId}, flotte ${fleetId}, role ${mappedRole}`,
-  );
+  if (adhesionError) throw new Error(`Erreur upsert adhésion org: ${adhesionError.message}`);
+  console.log(`[clerk-webhook] orgMembership → user ${userId}, flotte ${fleetId}, role ${mappedRole}`);
 }
 
 // ── Point d'entrée ────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
-  if (req.method !== "POST") {
-    return jsonResponse({ error: "Méthode non autorisée." }, 405);
-  }
+  if (req.method !== "POST") return jsonResponse({ error: "Méthode non autorisée." }, 405);
 
   const webhookSecret = Deno.env.get("CLERK_WEBHOOK_SECRET");
   if (!webhookSecret) {
@@ -354,22 +261,16 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Configuration serveur manquante." }, 500);
   }
 
-  // Lire le body en texte brut (requis pour la vérification svix)
   let rawBody: string;
-  try {
-    rawBody = await req.text();
-  } catch {
-    return jsonResponse({ error: "Impossible de lire le body." }, 400);
-  }
+  try { rawBody = await req.text(); }
+  catch { return jsonResponse({ error: "Body illisible." }, 400); }
 
-  // ── Vérification signature svix ────────────────────────────────────────────
   const svixId = req.headers.get("svix-id");
   const svixTimestamp = req.headers.get("svix-timestamp");
   const svixSignature = req.headers.get("svix-signature");
 
-  if (!svixId || !svixTimestamp || !svixSignature) {
+  if (!svixId || !svixTimestamp || !svixSignature)
     return jsonResponse({ error: "Headers svix manquants." }, 401);
-  }
 
   let event: ClerkEvent;
   try {
@@ -381,13 +282,12 @@ Deno.serve(async (req: Request) => {
     }) as ClerkEvent;
   } catch (err) {
     console.error("[clerk-webhook] Signature invalide:", err);
-    return jsonResponse({ error: "Signature webhook invalide." }, 401);
+    return jsonResponse({ error: "Signature invalide." }, 401);
   }
 
-  // ── Idempotence basée sur svix-id ──────────────────────────────────────────
-  // Clerk rejoue les webhooks en cas d'échec → on vérifie si déjà traité
   const supabase = createServiceClient();
 
+  // Idempotence via svix-id
   const { data: existingEvent } = await supabase
     .from("clerk_webhook_events")
     .select("id")
@@ -395,56 +295,42 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
 
   if (existingEvent?.id) {
-    console.log(`[clerk-webhook] event ${svixId} déjà traité — ignoré.`);
+    console.log(`[clerk-webhook] ${svixId} déjà traité — ignoré.`);
     return jsonResponse({ success: true, skipped: true });
   }
 
-  // Enregistrer l'événement (avant traitement pour éviter les doublons en cas de replay)
   await supabase.from("clerk_webhook_events").insert({
     svix_id: svixId,
     event_type: event.type,
     payload: event.data,
-    received_at: new Date().toISOString(),
   });
 
-  // ── Dispatch ───────────────────────────────────────────────────────────────
   try {
     switch (event.type) {
       case "user.created":
         await handleUserCreated(supabase, event.data as unknown as ClerkUserData);
         break;
-
       case "user.updated":
         await handleUserUpdated(supabase, event.data as unknown as ClerkUserData);
         break;
-
       case "user.deleted":
         await handleUserDeleted(supabase, event.data as { id: string });
         break;
-
       case "organizationMembership.created":
-        await handleOrgMembershipCreated(
-          supabase,
-          event.data as unknown as ClerkOrgMembershipData,
-        );
+        await handleOrgMembershipCreated(supabase, event.data as unknown as ClerkOrgMembershipData);
         break;
-
       default:
-        // Événement non géré — on acquitte quand même pour éviter les replays Clerk
         console.log(`[clerk-webhook] événement ignoré : ${event.type}`);
     }
 
-    // Marquer comme traité avec succès
     await supabase
       .from("clerk_webhook_events")
-      .update({ processed_at: new Date().toISOString(), status: "success" })
+      .update({ status: "success", processed_at: new Date().toISOString() })
       .eq("svix_id", svixId);
 
     return jsonResponse({ success: true });
   } catch (err) {
-    console.error(`[clerk-webhook] Erreur traitement ${event.type}:`, err);
-
-    // Marquer comme échoué
+    console.error(`[clerk-webhook] Erreur ${event.type}:`, err);
     await supabase
       .from("clerk_webhook_events")
       .update({
@@ -453,9 +339,7 @@ Deno.serve(async (req: Request) => {
         processed_at: new Date().toISOString(),
       })
       .eq("svix_id", svixId);
-
     await captureException(err, { eventType: event.type, svixId });
-
-    return jsonResponse({ error: "Erreur traitement webhook." }, 500);
+    return jsonResponse({ error: "Erreur traitement." }, 500);
   }
 });
