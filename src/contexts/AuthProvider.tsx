@@ -224,7 +224,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === "INITIAL_SESSION") {
         return;
       }
@@ -235,28 +235,26 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       }
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
-      try {
+
+      // Déférer fetchMemberships hors du callback Supabase Auth pour éviter l'AbortError :
+      // signInWithPassword avorte les fetch en cours pendant sa propre résolution.
+      // setTimeout(0) laisse la transition auth se terminer avant de requêter la DB.
+      setTimeout(() => {
         if (nextSession?.user) {
-          await fetchMemberships(nextSession.user);
+          fetchMemberships(nextSession.user)
+            .catch((e) =>
+              console.error("Erreur memberships (onAuthStateChange):", e)
+            )
+            .finally(() => setIsLoading(false));
         } else {
           setRole(null);
           setMemberships([]);
           setOrgId(null);
           setActiveFleetIdState(null);
           setTenantOptions([]);
+          setIsLoading(false);
         }
-      } catch (e) {
-        console.error(
-          "Erreur lors du chargement des memberships (onAuthStateChange):",
-          e
-        );
-        setRole(null);
-        setMemberships([]);
-        setActiveFleetIdState(null);
-        setTenantOptions([]);
-      } finally {
-        setIsLoading(false);
-      }
+      }, 0);
     });
 
     void initSession();
