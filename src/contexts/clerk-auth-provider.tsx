@@ -78,20 +78,37 @@ export function ClerkAuthProvider({ children }: { children: ReactNode }) {
       const client = await createClerkSupabaseClient(getToken);
 
       // 1. Trouver le profil Supabase via clerk_user_id (policy RLS dédiée)
-      const { data: profil, error: profilError } = await client
-        .from("profils")
-        .select("user_id, full_name, phone")
-        .eq("clerk_user_id", clerkUser.id)
-        .single();
+      //    Si introuvable au premier essai, on poll jusqu'à 5s (race condition webhook Clerk).
+      const fetchProfil = () =>
+        client
+          .from("profils")
+          .select("user_id, full_name, phone")
+          .eq("clerk_user_id", clerkUser.id)
+          .single();
 
-      if (profilError || !profil?.user_id) {
-        // Profil pas encore synchronisé par le webhook — état vide
+      let profilResult = await fetchProfil();
+
+      if (profilResult.error || !profilResult.data?.user_id) {
+        // Profil pas encore créé par le webhook Clerk — polling 500ms × 10 = 5s max
+        const POLL_INTERVAL_MS = 500;
+        const POLL_MAX_ATTEMPTS = 10;
+
+        for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
+          await new Promise<void>((r) => setTimeout(r, POLL_INTERVAL_MS));
+          profilResult = await fetchProfil();
+          if (!profilResult.error && profilResult.data?.user_id) break;
+        }
+      }
+
+      if (profilResult.error || !profilResult.data?.user_id) {
+        // Webhook toujours pas reçu après 5s → état vide, l'utilisateur verra l'onboarding
+        console.warn("[ClerkAuth] Profil introuvable après polling — webhook Clerk en retard ?");
         setIsLoading(false);
         setIsTenantOrgLoading(false);
         return;
       }
 
-      const userId = profil.user_id as string;
+      const userId = profilResult.data.user_id as string;
       setSupabaseUserId(userId);
 
       // 2. Récupérer les adhésions de cet utilisateur
