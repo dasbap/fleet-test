@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +20,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, format, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
+import { toast } from "@/hooks/use-toast";
 import type { BillingStatus } from "@/types/fleet-billing";
 
 const PLANS = [
@@ -74,9 +78,47 @@ const STATUS_CONFIG: Record<BillingStatus, { label: string; color: string; icon:
   enterprise: { label: "Entreprise",          color: "bg-purple-100 text-purple-700",icon: Zap },
 };
 
+/**
+ * Gère le retour depuis Notch Pay (?status=success&ref=ESAMBA-xxx).
+ * L'activation réelle est faite par le webhook — on informe simplement l'utilisateur.
+ */
+function useNotchPayCallback() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const status = searchParams.get("status");
+    const ref = searchParams.get("ref");
+    if (!status) return;
+
+    if (status === "success" || status === "complete") {
+      toast({
+        title: "Paiement reçu",
+        description: ref
+          ? `Référence ${ref} — activation en cours via webhook. Rechargez dans quelques instants.`
+          : "Activation en cours via webhook. Rechargez dans quelques instants.",
+      });
+    } else if (status === "failed" || status === "cancelled") {
+      toast({
+        title: "Paiement non complété",
+        description: "Le paiement a été annulé ou a échoué. Vous pouvez réessayer depuis /upgrade.",
+        variant: "destructive",
+      });
+    }
+
+    // Nettoie les params sans recharger la page
+    const next = new URLSearchParams(searchParams);
+    next.delete("status");
+    next.delete("ref");
+    setSearchParams(next, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
 export default function BillingPage() {
   const { userFleetId } = useAuth();
+  const navigate = useNavigate();
   const billing = useFleetBillingContext(userFleetId ?? undefined);
+  useNotchPayCallback();
 
   if (billing.isLoading) {
     return (
@@ -249,49 +291,13 @@ export default function BillingPage() {
                   onClick={() => {
                     if (plan.code === "enterprise") {
                       window.open("mailto:contact@e-samba.africa?subject=Devis Entreprise", "_blank");
+                    } else {
+                      void navigate(ROUTE_PATHS.upgrade);
                     }
-                    // TODO: ouvrir dialog initiate-payment pour starter/pro
                   }}
                 >
                   <CreditCard className="w-4 h-4 mr-2" />
                   {isCurrent ? "Plan actuel" : plan.cta}
                 </Button>
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Modules activés */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Modules activés</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: "Finances",           enabled: ctx.financeEnabled },
-            { label: "Rapports",           enabled: ctx.reportsEnabled },
-            { label: "Scoring conducteur", enabled: ctx.driverScoringEnabled },
-            { label: "Anomalies IA",       enabled: ctx.anomalyInsightsEnabled },
-            { label: "Géofencing",         enabled: ctx.geofencingEnabled },
-            { label: "Rapports auto",      enabled: ctx.scheduledReportsEnabled },
-            { label: "Offline conducteur", enabled: ctx.offlineDriverEnabled },
-            { label: "IA avancée",         enabled: ctx.aiEnabled },
-          ].map(({ label, enabled }) => (
-            <div
-              key={label}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
-                enabled
-                  ? "border-green-200 bg-green-50 text-green-800"
-                  : "border-border bg-muted/30 text-muted-foreground"
-              }`}
-            >
-              {enabled
-                ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                : <XCircle className="w-4 h-4 text-muted-foreground/50 shrink-0" />}
-              {label}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+    
