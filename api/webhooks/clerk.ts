@@ -29,12 +29,12 @@ import {
   handleUserCreated,
   handleUserDeleted,
   handleUserUpdated,
-} from "../../src/lib/webhooks/clerk/handlers";
+} from "../../src/lib/webhooks/clerk/handlers.js";
 import {
   isPostgresUniqueViolation,
   type ClerkOrgMembershipPayload,
   type ClerkUserPayload,
-} from "../../src/lib/webhooks/clerk/pure";
+} from "../../src/lib/webhooks/clerk/pure.js";
 
 export const config = { runtime: "edge" };
 

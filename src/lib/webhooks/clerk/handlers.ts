@@ -10,7 +10,7 @@ import {
   primaryPhoneFromUser,
   type ClerkOrgMembershipPayload,
   type ClerkUserPayload,
-} from "./pure";
+} from "./pure.js";
 
 const LOG = "[Clerk webhook]";
 
