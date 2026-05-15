@@ -102,6 +102,21 @@ Attendre la propagation DNS et le certificat SSL (géré par Vercel).
 
 ---
 
-## 6. Rollout production combiné (web + stores)
+## 6. Webhook Clerk — un seul endpoint actif
+
+Deux implémentations existent dans le dépôt ; **le dashboard Clerk ne doit en appeler qu’une** à la fois pour la production (éviter double logique, retries parallèles et bruit opérationnel).
+
+| Implémentation | Fichier | Où le déployer |
+| --- | --- | --- |
+| **Recommandé pour www.e-samba.com** | [`api/webhooks/clerk.ts`](../api/webhooks/clerk.ts) | **Vercel** : route `/api/webhooks/clerk` (runtime Edge). URL type `https://www.e-samba.com/api/webhooks/clerk` (voir commentaire en tête du fichier). |
+| Alternative | [`supabase/functions/clerk-webhook/`](../supabase/functions/clerk-webhook/) | Projet **Supabase** (Edge Function + URL dédiée). |
+
+**Variables côté Vercel** (en plus des `VITE_*`) : `CLERK_WEBHOOK_SECRET`, `SUPABASE_URL` (ou `VITE_SUPABASE_URL`), `SUPABASE_SERVICE_ROLE_KEY`. Sans elles, le handler renvoie une erreur de configuration.
+
+**Idempotence** : le handler Vercel enregistre chaque événement dans la table `clerk_webhook_events` (clé `svix_id`) avant traitement ; un doublon est ignoré. La fonction Supabase suit le même principe. **Malgré cela**, garder **une seule** URL dans Clerk reste la règle de bonne conduite (un seul chemin à surveiller et à faire évoluer).
+
+---
+
+## 7. Rollout production combiné (web + stores)
 
 Pour une procédure incluant déploiement progressif sur les stores, surveillance 24 h et montée en charge : [`rollout-production-web-mobile.md`](./rollout-production-web-mobile.md).

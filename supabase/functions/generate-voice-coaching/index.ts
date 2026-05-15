@@ -7,7 +7,17 @@ const corsHeaders = {
 };
 
 // ─── i18n coaching messages ───────────────────────────────────────────────────
-const MESSAGES: Record<string, Record<string, (...args: any[]) => string>> = {
+interface CoachingLocale {
+  excellent: (score: number, delta: string) => string;
+  good: (score: number, delta: string) => string;
+  average: (score: number, delta: string) => string;
+  poor: (score: number, delta: string) => string;
+  deltaUp: (d: number) => string;
+  deltaDown: (d: number) => string;
+  deltaFlat: () => string;
+}
+
+const MESSAGES: Record<string, CoachingLocale> = {
   fr: {
     excellent: (score: number, delta: string) =>
       `Excellent trajet ! Score ${score}/100. ${delta}Continuez sur cette lancée, votre conduite est exemplaire.`,

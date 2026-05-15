@@ -35,7 +35,8 @@ export const i18nReady: Promise<typeof i18n> = i18n
     supportedLngs: [...SUPPORTED_LANGS],
     fallbackLng: "fr",
     defaultNS: "common",
-    ns: ["common", "fleet", "maintenance", "alerts", "help"],
+    // Un seul namespace au démarrage : les autres (/locales/.../fleet.json, etc.) se chargent à la demande (moins de blocage avant le premier rendu).
+    ns: ["common"],
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],
       caches: ["localStorage"],
@@ -43,6 +44,13 @@ export const i18nReady: Promise<typeof i18n> = i18n
     },
     backend: {
       loadPath: "/locales/{{lng}}/{{ns}}.json",
+      // Timeout par requête (Wi‑Fi / IP locale / VPN) : évite un init i18n qui ne se termine jamais.
+      requestOptions: () => ({
+        mode: "cors" as const,
+        credentials: "same-origin" as const,
+        cache: "no-store" as const,
+        signal: AbortSignal.timeout(15_000),
+      }),
     },
     interpolation: {
       escapeValue: false,

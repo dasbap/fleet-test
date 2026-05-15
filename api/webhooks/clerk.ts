@@ -1,27 +1,48 @@
 /**
- * Webhook Clerk → Supabase
- * Synchronise les événements Clerk (utilisateurs, organisations, adhésions)
- * vers les tables `profils`, `flottes` et `flotte_adhesions` de Supabase.
+ * Webhook Clerk → Supabase (point d’entrée unique sur Vercel).
+ * Synchronise utilisateurs, organisations et adhésions vers `profils`, `flottes`,
+ * `flotte_adhesions` ; idempotence via `clerk_webhook_events` (svix-id).
  *
  * URL à enregistrer dans le dashboard Clerk :
  *   https://www.e-samba.com/api/webhooks/clerk
  *
- * Événements à activer dans Clerk :
- *   user.created | user.updated
+ * Variables Vercel : CLERK_WEBHOOK_SECRET, SUPABASE_URL (ou VITE_SUPABASE_URL),
+ * SUPABASE_SERVICE_ROLE_KEY.
+ *
+ * Routing Vercel : `vercel.json` exclut les chemins `/api…` du fallback SPA
+ * (`/((?!api(/|$)).*)` → `index.html`) pour éviter qu’un POST webhook soit réécrit
+ * vers le HTML. Les fonctions `/api/*.ts` sont toujours prioritaires sur les rewrites.
+ *
+ * Vérification locale : `npm run test:clerk-webhook`
+ *
+ * Événements recommandés dans Clerk :
+ *   user.created | user.updated | user.deleted
  *   organization.created | organization.updated
  *   organizationMembership.created | organizationMembership.updated
  */
 
 import { Webhook } from "svix";
 import { createClient } from "@supabase/supabase-js";
-
-// Client Supabase avec le service role (bypass RLS — serveur uniquement)
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
-);
+import {
+  handleOrganizationUpsert,
+  handleOrgMembershipSync,
+  handleUserCreated,
+  handleUserDeleted,
+  handleUserUpdated,
+} from "../../src/lib/webhooks/clerk/handlers";
+import {
+  isPostgresUniqueViolation,
+  type ClerkOrgMembershipPayload,
+  type ClerkUserPayload,
+} from "../../src/lib/webhooks/clerk/pure";
 
 export const config = { runtime: "edge" };
+
+const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" };
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
+}
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== "POST") {
@@ -34,114 +55,115 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response("Configuration manquante", { status: 500 });
   }
 
-  // Lire le corps et les headers nécessaires à la vérification svix
-  const payload = await req.text();
-  const headers: Record<string, string> = {
-    "svix-id": req.headers.get("svix-id") ?? "",
-    "svix-timestamp": req.headers.get("svix-timestamp") ?? "",
-    "svix-signature": req.headers.get("svix-signature") ?? "",
-  };
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  if (!supabaseUrl || !serviceKey) {
+    console.error("[Clerk webhook] SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY manquant");
+    return new Response("Configuration manquante", { status: 500 });
+  }
 
-  // Vérification de la signature Clerk (rejette les requêtes non authentifiées)
+  const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false },
+  });
+
+  let rawBody: string;
+  try {
+    rawBody = await req.text();
+  } catch {
+    return jsonResponse({ error: "Body illisible." }, 400);
+  }
+
+  const svixId = req.headers.get("svix-id");
+  const svixTimestamp = req.headers.get("svix-timestamp");
+  const svixSignature = req.headers.get("svix-signature");
+
+  if (!svixId || !svixTimestamp || !svixSignature) {
+    return jsonResponse({ error: "Headers svix manquants." }, 401);
+  }
+
   let event: { type: string; data: Record<string, unknown> };
   try {
     const wh = new Webhook(webhookSecret);
-    event = wh.verify(payload, headers) as typeof event;
-  } catch {
-    return new Response("Signature invalide", { status: 401 });
+    event = wh.verify(rawBody, {
+      "svix-id": svixId,
+      "svix-timestamp": svixTimestamp,
+      "svix-signature": svixSignature,
+    }) as typeof event;
+  } catch (err) {
+    console.error("[Clerk webhook] Signature invalide:", err);
+    return jsonResponse({ error: "Signature invalide." }, 401);
   }
 
   const { type, data } = event;
 
-  try {
-    switch (type) {
-      // ── Utilisateur créé ou mis à jour ─────────────────────────────────────
-      case "user.created":
-      case "user.updated": {
-        const emails = data.email_addresses as { email_address: string }[] | undefined;
-        const email = emails?.[0]?.email_address ?? null;
-        const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ") || null;
+  const { data: existingEvent } = await supabaseAdmin
+    .from("clerk_webhook_events")
+    .select("id")
+    .eq("svix_id", svixId)
+    .maybeSingle();
 
-        await supabaseAdmin.from("profils").upsert(
-          {
-            clerk_user_id: data.id as string,
-            full_name: fullName,
-            // Préserve le user_id Supabase existant si déjà présent
-          },
-          { onConflict: "clerk_user_id", ignoreDuplicates: false }
-        );
-
-        console.log(`[Clerk webhook] ${type} → profil synchronisé`, { clerkId: data.id, email });
-        break;
-      }
-
-      // ── Organisation créée ou mise à jour ──────────────────────────────────
-      case "organization.created":
-      case "organization.updated": {
-        await supabaseAdmin.from("flottes").upsert(
-          {
-            clerk_org_id: data.id as string,
-            name: (data.name as string) ?? null,
-          },
-          { onConflict: "clerk_org_id", ignoreDuplicates: false }
-        );
-
-        console.log(`[Clerk webhook] ${type} → flotte synchronisée`, { clerkOrgId: data.id });
-        break;
-      }
-
-      // ── Adhésion créée ou mise à jour ──────────────────────────────────────
-      case "organizationMembership.created":
-      case "organizationMembership.updated": {
-        const org = data.organization as { id: string } | undefined;
-        const member = data.public_user_data as { user_id: string } | undefined;
-        const clerkRole = data.role as string | undefined;
-
-        if (!org?.id || !member?.user_id) break;
-
-        // Résoudre les IDs locaux depuis les clerk_*_id
-        const [{ data: flotte }, { data: profil }] = await Promise.all([
-          supabaseAdmin.from("flottes").select("id").eq("clerk_org_id", org.id).single(),
-          supabaseAdmin.from("profils").select("user_id").eq("clerk_user_id", member.user_id).single(),
-        ]);
-
-        if (!flotte || !profil) {
-          console.warn("[Clerk webhook] Flotte ou profil introuvable pour l'adhésion", {
-            clerkOrgId: org.id,
-            clerkUserId: member.user_id,
-          });
-          break;
-        }
-
-        // Mapper le rôle Clerk → rôle applicatif
-        const role = clerkRole === "org:admin" ? "manager" : "driver";
-
-        await supabaseAdmin.from("flotte_adhesions").upsert(
-          {
-            fleet_id: flotte.id,
-            user_id: profil.user_id,
-            role,
-            is_active: true,
-          },
-          { onConflict: "fleet_id,user_id", ignoreDuplicates: false }
-        );
-
-        console.log(`[Clerk webhook] ${type} → adhésion synchronisée`, {
-          fleetId: flotte.id,
-          userId: profil.user_id,
-          role,
-        });
-        break;
-      }
-
-      default:
-        // Événement non géré — silencieux (ne pas retourner d'erreur)
-        break;
-    }
-  } catch (err) {
-    console.error(`[Clerk webhook] Erreur lors du traitement de ${type}`, err);
-    return new Response("Erreur interne", { status: 500 });
+  if (existingEvent?.id) {
+    console.log(`[Clerk webhook] ${svixId} déjà traité — ignoré.`);
+    return jsonResponse({ ok: true, skipped: true });
   }
 
-  return new Response("OK", { status: 200 });
+  const { error: insertErr } = await supabaseAdmin.from("clerk_webhook_events").insert({
+    svix_id: svixId,
+    event_type: type,
+    payload: data,
+  });
+
+  if (insertErr) {
+    if (isPostgresUniqueViolation(insertErr)) {
+      console.log(`[Clerk webhook] ${svixId} course idempotence — ignoré.`);
+      return jsonResponse({ ok: true, skipped: true });
+    }
+    console.error("[Clerk webhook] Insert événement:", insertErr);
+    return jsonResponse({ error: "Journalisation webhook impossible." }, 500);
+  }
+
+  try {
+    switch (type) {
+      case "user.created":
+        await handleUserCreated(supabaseAdmin, data as unknown as ClerkUserPayload);
+        break;
+      case "user.updated":
+        await handleUserUpdated(supabaseAdmin, data as unknown as ClerkUserPayload);
+        break;
+      case "user.deleted":
+        await handleUserDeleted(supabaseAdmin, data as unknown as { id: string });
+        break;
+      case "organization.created":
+      case "organization.updated":
+        await handleOrganizationUpsert(supabaseAdmin, {
+          id: data.id as string,
+          name: data.name as string | null | undefined,
+        });
+        break;
+      case "organizationMembership.created":
+      case "organizationMembership.updated":
+        await handleOrgMembershipSync(supabaseAdmin, data as unknown as ClerkOrgMembershipPayload);
+        break;
+      default:
+        console.log(`[Clerk webhook] événement ignoré : ${type}`);
+    }
+
+    await supabaseAdmin
+      .from("clerk_webhook_events")
+      .update({ status: "success", processed_at: new Date().toISOString() })
+      .eq("svix_id", svixId);
+
+    return jsonResponse({ ok: true });
+  } catch (err) {
+    console.error(`[Clerk webhook] Erreur ${type}:`, err);
+    await supabaseAdmin
+      .from("clerk_webhook_events")
+      .update({
+        status: "error",
+        error_message: err instanceof Error ? err.message : String(err),
+        processed_at: new Date().toISOString(),
+      })
+      .eq("svix_id", svixId);
+    return jsonResponse({ error: "Erreur traitement." }, 500);
+  }
 }

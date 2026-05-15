@@ -21,7 +21,6 @@ export function OfflinePendingSyncBridge() {
       }
     }
     void init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // isOnline change → le hook useOfflineQueue gère déjà le flush auto

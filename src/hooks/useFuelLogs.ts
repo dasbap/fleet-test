@@ -53,7 +53,6 @@ export function useFuelAnomalies(threshold100km = 30): Set<string> {
   const { data: entries = [] } = useFuelLogs(200);
   return useMemo(
     () => detectFuelOverconsumption(entries, threshold100km),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [entries, threshold100km],
   );
 }

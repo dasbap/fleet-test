@@ -11,6 +11,35 @@ import App from "./App.tsx";
 
 const ACTIVE_FLEET_STORAGE_KEY = "esamba.active_fleet_id";
 
+/** Délai max pour i18n (fichiers /locales/…) — évite un écran noir infini si le réseau bloque (LAN, VPN, pare-feu). */
+const I18N_READY_TIMEOUT_MS = 35_000;
+
+function escapeHtmlForBootstrap(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => Error): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const id = window.setTimeout(() => {
+      reject(onTimeout());
+    }, ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(id);
+        resolve(value);
+      },
+      (err: unknown) => {
+        window.clearTimeout(id);
+        reject(err);
+      }
+    );
+  });
+}
+
 /** Supprime une ancienne valeur non UUID (ex. slug fleet-esamba-sn) restée dans le stockage. */
 function clearInvalidActiveFleetStorage(): void {
   try {
@@ -59,7 +88,7 @@ const renderBootstrapError = (message: string) => {
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f0f0f;color:#f5f5f5;padding:16px;text-align:center;font-family:Inter,system-ui,sans-serif;">
       <div>
         <p style="margin:0 0 8px 0;font-size:16px;">Une erreur de démarrage est survenue.</p>
-        <p style="margin:0;color:#b8b8b8;font-size:14px;">${message}</p>
+        <p style="margin:0;color:#b8b8b8;font-size:14px;">${escapeHtmlForBootstrap(message)}</p>
         <p style="margin:12px 0 0 0;color:#b8b8b8;font-size:14px;">Essayez de recharger la page.</p>
       </div>
     </div>
@@ -75,14 +104,24 @@ const bootstrap = async () => {
   clearInvalidActiveFleetStorage();
 
   try {
-    await import("./instrument");
-    await i18nReady;
+    // Sentry (`instrument`) est chargé après le 1er rendu : son gros chunk ne doit pas bloquer i18n + React sur réseau lent / LAN.
+    await withTimeout(
+      i18nReady,
+      I18N_READY_TIMEOUT_MS,
+      () =>
+        new Error(
+          "Les traductions (/locales/…) n’ont pas répondu à temps. En accès via l’IP locale (192.168…), vérifiez le pare-feu, la connexion Wi‑Fi et désactivez temporairement le VPN du navigateur (ex. Opera GX). Sinon ouvrez http://localhost:8080 sur la machine qui exécute Vite."
+        )
+    );
     preloadRouteChunksForPath(window.location.pathname);
     createRoot(rootEl).render(
       <Suspense fallback={<RoutePageFallback />}>
         <App />
       </Suspense>
     );
+    void import("./instrument").catch((err) => {
+      console.error("Échec du chargement instrument (Sentry) :", err);
+    });
     reportWebVitals();
 
     // Analytics est différé en production pour préserver le LCP/INP.
