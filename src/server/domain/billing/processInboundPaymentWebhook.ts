@@ -75,6 +75,17 @@ export async function runInboundPaymentWebhook(
   if (updErr) throw new Error(updErr.message);
 
   if (normalized !== "succeeded") {
+    // Billing event pour statuts non-terminaux (failed, processing…)
+    const rawPayload = payment.raw_payload as Record<string, unknown> | null;
+    const fleetId = rawPayload?.fleetId as string | undefined;
+    if (fleetId) {
+      await admin.from("billing_events").insert({
+        fleet_id: fleetId,
+        payment_id: payment.id,
+        event_type: normalized === "failed" ? "payment.failed" : "payment.processing",
+        payload: { normalized_status: normalized, external_ref: externalRef },
+      }).then(() => void 0);
+    }
     return {
       paymentId: payment.id,
       normalizedStatus: normalized,
@@ -83,6 +94,24 @@ export async function runInboundPaymentWebhook(
   }
 
   const activation = await activateSubscriptionForSucceededPayment(admin, payment);
+
+  // Billing event paiement réussi
+  const rawPayload2 = payment.raw_payload as Record<string, unknown> | null;
+  const fleetId2 = rawPayload2?.fleetId as string | undefined;
+  if (fleetId2) {
+    await admin.from("billing_events").insert({
+      fleet_id: fleetId2,
+      payment_id: payment.id,
+      subscription_id: activation.subscriptionId ?? null,
+      event_type: activation.activated ? "subscription.activated" : "payment.successful",
+      payload: {
+        external_ref: externalRef,
+        subscription_activated: activation.activated,
+        subscription_id: activation.subscriptionId,
+      },
+    }).then(() => void 0);
+  }
+
   return {
     paymentId: payment.id,
     normalizedStatus: normalized,
