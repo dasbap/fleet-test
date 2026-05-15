@@ -2,13 +2,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, render, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { syncQueue } from "@/services/syncQueue.service";
 import { OfflinePendingSyncBridge } from "./OfflinePendingSyncBridge";
 
-const toastMock = vi.fn();
+const orchestratorMocks = vi.hoisted(() => ({
+  migrateLegacyIncidentDraftsToQueue: vi.fn().mockResolvedValue(undefined),
+  runOfflineSyncOnce: vi.fn().mockResolvedValue({ processed: 0, succeeded: 0, failed: 0 }),
+}));
 
-vi.mock("@/hooks/use-toast", () => ({
-  toast: (...args: unknown[]) => toastMock(...args),
+vi.mock("@/services/offlineSyncOrchestrator.service", () => ({
+  migrateLegacyIncidentDraftsToQueue: orchestratorMocks.migrateLegacyIncidentDraftsToQueue,
+  runOfflineSyncOnce: orchestratorMocks.runOfflineSyncOnce,
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -37,12 +40,13 @@ describe("OfflinePendingSyncBridge (scénario hors ligne / reconnexion)", () => 
   let queryClient: QueryClient;
 
   beforeEach(() => {
-    toastMock.mockClear();
+    orchestratorMocks.migrateLegacyIncidentDraftsToQueue.mockClear();
+    orchestratorMocks.runOfflineSyncOnce.mockClear();
+    orchestratorMocks.runOfflineSyncOnce.mockResolvedValue({ processed: 0, succeeded: 0, failed: 0 });
     setNavigatorOnLine(true);
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
-    vi.spyOn(queryClient, "invalidateQueries");
   });
 
   afterEach(() => {
@@ -58,24 +62,23 @@ describe("OfflinePendingSyncBridge (scénario hors ligne / reconnexion)", () => 
     );
   }
 
-  it("après offline puis online, exécute la synchro et affiche le toast de succès (file simulée)", async () => {
-    let syncCalls = 0;
-    vi.spyOn(syncQueue, "runPendingOfflineSync").mockImplementation(async () => {
-      syncCalls += 1;
-      if (syncCalls === 1) {
-        return { processed: 0, succeeded: 0, failed: 0 };
-      }
-      if (syncCalls === 2) {
-        return { processed: 1, succeeded: 1, failed: 0 };
-      }
-      return { processed: 0, succeeded: 0, failed: 0 };
-    });
-
+  it("au montage en ligne, migre les brouillons legacy puis tente une synchro", async () => {
     renderBridge();
 
     await waitFor(() => {
-      expect(syncCalls).toBeGreaterThanOrEqual(1);
+      expect(orchestratorMocks.migrateLegacyIncidentDraftsToQueue).toHaveBeenCalled();
     });
+    await waitFor(() => {
+      expect(orchestratorMocks.runOfflineSyncOnce).toHaveBeenCalled();
+    });
+  });
+
+  it("après passage hors ligne puis en ligne, déclenche au moins une synchro supplémentaire", async () => {
+    renderBridge();
+
+    await waitFor(() => expect(orchestratorMocks.runOfflineSyncOnce).toHaveBeenCalled());
+
+    const callsAfterMount = orchestratorMocks.runOfflineSyncOnce.mock.calls.length;
 
     await act(async () => {
       setNavigatorOnLine(false);
@@ -88,37 +91,7 @@ describe("OfflinePendingSyncBridge (scénario hors ligne / reconnexion)", () => 
     });
 
     await waitFor(() => {
-      expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: "Synchronisation",
-          description: "Une saisie hors ligne a été envoyée.",
-        }),
-      );
-    });
-
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["incidents"] });
-  });
-
-  it("l’événement window online déclenche une synchro lorsque l’utilisateur est connecté", async () => {
-    let syncCalls = 0;
-    vi.spyOn(syncQueue, "runPendingOfflineSync").mockImplementation(async () => {
-      syncCalls += 1;
-      if (syncCalls === 1) return { processed: 0, succeeded: 0, failed: 0 };
-      if (syncCalls === 2) return { processed: 1, succeeded: 1, failed: 0 };
-      return { processed: 0, succeeded: 0, failed: 0 };
-    });
-
-    renderBridge();
-
-    await waitFor(() => expect(syncCalls).toBeGreaterThanOrEqual(1));
-
-    await act(async () => {
-      setNavigatorOnLine(true);
-      window.dispatchEvent(new Event("online"));
-    });
-
-    await waitFor(() => {
-      expect(syncCalls).toBeGreaterThanOrEqual(2);
+      expect(orchestratorMocks.runOfflineSyncOnce.mock.calls.length).toBeGreaterThan(callsAfterMount);
     });
   });
 });

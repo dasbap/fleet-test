@@ -44,6 +44,32 @@ const SEVERITY: Record<string, string> = {
 // En dessous → on envoie à OpenAI Vision si snapshot disponible
 const CONFIDENCE_THRESHOLD = 0.75;
 
+/** Ligne prête pour l’insert batch `dashcam_alerts`. */
+interface DashcamAlertInsertRow {
+  dashcam_id: string;
+  fleet_id: string;
+  vehicle_id: string | null;
+  driver_user_id: string | null;
+  alert_type: string;
+  severity: string;
+  confidence: number;
+  snapshot_url: string | null;
+  video_clip_url: string | null;
+  gps_lat: number | null;
+  gps_lon: number | null;
+  speed_kmh: number | null;
+  ai_provider: string;
+  ai_raw_response: unknown;
+}
+
+/** Ligne renvoyée par `.select("id, fleet_id, vehicle_id, severity")` après insert. */
+interface DashcamAlertInsertedRow {
+  id: string;
+  fleet_id: string;
+  vehicle_id: string | null;
+  severity: string;
+}
+
 // Alertes low ne déclenchent PAS OpenAI (économie maximale)
 const SKIP_VISION_SEVERITIES = new Set(["low"]);
 
@@ -125,7 +151,7 @@ serve(async (req) => {
   );
 
   const results: unknown[] = [];
-  const toInsert: Record<string, unknown>[] = [];
+  const toInsert: DashcamAlertInsertRow[] = [];
 
   for (const event of events) {
     const {
@@ -218,15 +244,15 @@ serve(async (req) => {
       });
     }
 
-    insertedIds = (inserted ?? []).map((r: any) => r.id);
+    insertedIds = (inserted ?? []).map((r: DashcamAlertInsertedRow) => r.id);
 
     // Push alerte uniquement pour critical/high (évite spam notifications)
-    const criticalAlerts = (inserted ?? []).filter((r: any) =>
+    const criticalAlerts = (inserted ?? []).filter((r: DashcamAlertInsertedRow) =>
       ["critical", "high"].includes(r.severity)
     );
 
     if (criticalAlerts.length > 0) {
-      const alertInserts = criticalAlerts.map((r: any) => ({
+      const alertInserts = criticalAlerts.map((r: DashcamAlertInsertedRow) => ({
         fleet_id: r.fleet_id,
         vehicle_id: r.vehicle_id ?? null,
         type: "dashcam_ai",
@@ -238,7 +264,7 @@ serve(async (req) => {
       await supabase.from("alertes").insert(alertInserts);
 
       // Update last_seen_at en batch pour toutes les dashcams concernées
-      const dashcamIds = [...new Set(toInsert.map((i: any) => i.dashcam_id))];
+      const dashcamIds = [...new Set(toInsert.map((i: DashcamAlertInsertRow) => i.dashcam_id))];
       await supabase
         .from("dashcams")
         .update({ last_seen_at: new Date().toISOString() })

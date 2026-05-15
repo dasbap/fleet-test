@@ -69,7 +69,7 @@ export class DvirService {
 
   async update(input: DvirUpdateInput): Promise<void> {
     if (!input.id) throw new Error("L'identifiant DVIR est requis");
-    this.validateInput(input);
+    this.validateUpdateInput(input);
 
     const normalizedItems = this.normalizeItems(input.items);
     await this.repository.update(input.id, {
@@ -79,6 +79,13 @@ export class DvirService {
       odometer_km: input.odometerKm ?? null,
       inspection_type: input.inspectionType,
     });
+  }
+
+  private validateUpdateInput(input: DvirUpdateInput): void {
+    if (!input.inspectionType) throw new Error("Le type d'inspection est requis");
+    if (input.odometerKm != null && (input.odometerKm < 0 || input.odometerKm > 9_999_999)) {
+      throw new Error("Kilométrage invalide (0–9 999 999)");
+    }
   }
 
   private validateInput(input: Pick<DvirCreateInput, "fleetId" | "vehicleId" | "inspectedBy" | "inspectionType" | "odometerKm">): void {

@@ -1,11 +1,44 @@
 import { defineConfig, loadEnv } from "vite";
+import type { Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import fs from "node:fs";
+import { createRequire } from "node:module";
 import { imagetools } from "vite-imagetools";
 import { visualizer } from "rollup-plugin-visualizer";
 import viteCompression from "vite-plugin-compression";
 import { VitePWA } from "vite-plugin-pwa";
 import { prerenderSeoPlugin } from "./scripts/vite-plugin-prerender-seo";
+
+const nodeRequire = createRequire(import.meta.url);
+
+/**
+ * Force la résolution des paquets `@radix-ui/*` vers `package.json#main` (souvent `dist/index.js`).
+ * Le second passage Rollup de vite-plugin-pwa utilise des conditions où `exports.import`
+ * pointe parfois vers un fichier `.mjs` absent dans l'archive npm publiée.
+ */
+function radixUiMainEntryPlugin(): Plugin {
+  return {
+    name: "radix-ui-main-entry",
+    enforce: "pre",
+    resolveId(source) {
+      if (!source.startsWith("@radix-ui/")) return null;
+      const sub = source.slice("@radix-ui/".length);
+      if (!sub || sub.includes("/")) return null;
+      try {
+        const pkgPath = nodeRequire.resolve(`${source}/package.json`, {
+          paths: [path.resolve(__dirname)],
+        });
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as { main?: string };
+        const rel =
+          typeof pkg.main === "string" && pkg.main.length > 0 ? pkg.main : "./dist/index.js";
+        return path.resolve(path.dirname(pkgPath), rel.replace(/^\.\//, ""));
+      } catch {
+        return null;
+      }
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -14,6 +47,8 @@ export default defineConfig(({ mode }) => {
   const supabaseAnon = env.VITE_SUPABASE_ANON_KEY ?? "";
   const isProd = mode === "production" || mode === "capacitor";
   const isAnalyze = mode === "analyze" || process.env.ANALYZE === "true";
+  /** Quand `npm run dev:local` lance Vite : pas d’ouverture auto ici (évite `vite --open false` → URL `/false`). */
+  const skipServerOpen = process.env.ESAMBA_MANAGED_OPEN === "1";
 
   return {
   // Build Capacitor : chemins relatifs pour le chargement depuis le WebView.
@@ -89,12 +124,30 @@ export default defineConfig(({ mode }) => {
     host: true,
     port: 8080,
     strictPort: false,
-    open: true,
+    open: !skipServerOpen,
     hmr: {
       overlay: false,
     },
+    // Pré-transforme les entrées critiques au démarrage du serveur (première ouverture plus rapide).
+    warmup: {
+      clientFiles: [
+        "./src/main.tsx",
+        "./src/App.tsx",
+        "./src/i18n/index.ts",
+      ],
+    },
+    proxy:
+      env.VITE_DEV_BFF_PROXY === "true"
+        ? {
+            "/api": {
+              target: "http://127.0.0.1:8787",
+              changeOrigin: true,
+            },
+          }
+        : undefined,
   },
   plugins: [
+    radixUiMainEntryPlugin(),
     react(),
     prerenderSeoPlugin(),
     // Pas de directives globales : sinon chaque .jpg/.webp est transformé et servi via
@@ -108,6 +161,12 @@ export default defineConfig(({ mode }) => {
       registerType: "autoUpdate",
       injectRegister: "auto",
       includeAssets: ["favicon.svg", "robots.txt", "offline.html"],
+      /** Même correctif Radix que le build app : le bundle SW (workbox) utilise un Rollup séparé. */
+      injectManifest: {
+        buildPlugins: {
+          rollup: [radixUiMainEntryPlugin()],
+        },
+      },
       manifest: {
         name: "E-Samba — Gestion de flotte",
         short_name: "E-Samba",
@@ -340,7 +399,14 @@ export default defineConfig(({ mode }) => {
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
   },
   optimizeDeps: {
-    include: ["react", "react-dom"],
+    include: [
+      "react",
+      "react-dom",
+      "i18next",
+      "react-i18next",
+      "i18next-http-backend",
+      "i18next-browser-languagedetector",
+    ],
   },
   worker: {
     format: "es",

@@ -33,7 +33,7 @@ function flattenKeys(value: JsonValue, parent = ""): string[] {
 
 describe("SUPPORTED_LANGS", () => {
   it("contient toutes les langues attendues", () => {
-    expect([...SUPPORTED_LANGS]).toEqual(["fr", "en", "ln", "ar", "wo", "sw", "es"]);
+    expect([...SUPPORTED_LANGS]).toEqual(["fr", "en", "ln", "ar", "wo", "sw", "es", "pt"]);
   });
 });
 

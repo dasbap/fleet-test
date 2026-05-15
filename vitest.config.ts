@@ -1,9 +1,56 @@
+import fs from "node:fs";
+import path from "path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
-import path from "path";
+import type { Plugin } from "vite";
+
+/** Racine du dépôt : `process.cwd()` suffit en `npm test` ; repli sur le dossier du fichier de config. */
+const repoRoot = (() => {
+  try {
+    const fromMeta = path.dirname(fileURLToPath(import.meta.url));
+    if (fs.existsSync(path.join(fromMeta, "package.json"))) return fromMeta;
+  } catch {
+    /* import.meta.url indisponible : ignorer */
+  }
+  return process.cwd();
+})();
+
+/**
+ * Plusieurs paquets @radix-ui déclarent `module` / `exports.import` vers `dist/index.mjs`
+ * alors que seul `dist/index.js` est présent dans node_modules (artefact npm / Windows).
+ * Vitest/Vite échoue alors sur « Cannot find module … index.mjs ».
+ */
+function radixPreferJsWhenMjsMissing(): Plugin {
+  return {
+    name: "radix-prefer-js-when-mjs-missing",
+    enforce: "pre",
+    resolveId(source) {
+      const bareRadix = /^@radix-ui\/react-[-\w]+$/;
+      if (bareRadix.test(source)) {
+        const js = path.join(repoRoot, "node_modules", source, "dist", "index.js");
+        try {
+          if (fs.existsSync(js)) return js;
+        } catch {
+          /* ignore */
+        }
+      }
+      if (!source.includes("@radix-ui") || !source.endsWith("index.mjs")) {
+        return null;
+      }
+      const asJs = source.replace(/\.mjs$/i, ".js");
+      try {
+        if (fs.existsSync(asJs)) return asJs;
+      } catch {
+        /* chemin inaccessible : laisser la résolution par défaut */
+      }
+      return null;
+    },
+  };
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [radixPreferJsWhenMjsMissing(), react()],
   test: {
     environment: "jsdom",
     globals: true,
@@ -21,10 +68,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(repoRoot, "./src"),
       // Évite l’échec de résolution si node_modules incomplet ou analyse transitive vers camera.service
       "@capacitor/camera": path.resolve(
-        __dirname,
+        repoRoot,
         "./src/test/mocks/capacitor-camera.ts"
       ),
     },

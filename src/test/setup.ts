@@ -2,22 +2,26 @@ import "@testing-library/jest-dom";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
-// Thème sombre forcé (ADR 0001) — aligner les tests avec le rendu production
-document.documentElement.classList.add("dark");
+// Thème sombre forcé (ADR 0001) — aligner les tests avec le rendu production (jsdom uniquement)
+if (typeof document !== "undefined") {
+  document.documentElement.classList.add("dark");
+}
 
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: (query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => {},
-  }),
-});
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => {},
+    }),
+  });
+}
 
 // Initialisation i18n minimale pour éviter les warnings react-i18next en test.
 if (!i18n.isInitialized) {

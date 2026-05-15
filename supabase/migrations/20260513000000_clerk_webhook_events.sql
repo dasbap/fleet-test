@@ -26,7 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_clerk_webhook_events_type_status
 ALTER TABLE public.clerk_webhook_events ENABLE ROW LEVEL SECURITY;
 
 -- Aucune policy client : seul le service role peut lire/écrire
--- (la Edge Function clerk-webhook utilise SUPABASE_SERVICE_ROLE_KEY)
+-- (le webhook Clerk sur Vercel `/api/webhooks/clerk` utilise SUPABASE_SERVICE_ROLE_KEY)
 
 COMMENT ON TABLE public.clerk_webhook_events IS
   'Log des événements Clerk reçus via webhook. Utilisé pour l''idempotence (svix-id unique) et l''audit.';
