@@ -6,7 +6,7 @@
  * Prérequis : npx playwright install chromium (une fois après npm install)
  *
  * URLs :
- *   - Par défaut : https://e-samba.com/ et https://www.e-samba.com/
+ *   - Par défaut : https://www.e-samba.com/ (validation prod canonique)
  *   - E_SAMBA_DIAGNOSTIC_URL=https://www.e-samba.com/  (une seule URL)
  *   - E_SAMBA_DIAGNOSTIC_URLS=https://a.com/,https://b.com/  (virgules)
  *
@@ -17,7 +17,7 @@
 
 import { chromium } from "playwright";
 
-const DEFAULT_URLS = ["https://e-samba.com/", "https://www.e-samba.com/"];
+const DEFAULT_URLS = ["https://www.e-samba.com/"];
 
 function resolveTargetUrls() {
   const multi = process.env.E_SAMBA_DIAGNOSTIC_URLS?.trim();

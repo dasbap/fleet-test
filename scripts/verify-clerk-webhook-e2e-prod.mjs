@@ -1,5 +1,6 @@
 /**
  * E2E prod : POST signé Svix → /api/webhooks/clerk → ligne clerk_webhook_events.
+ * URL canonique : https://www.e-samba.com (éviter les URLs *-atipik.vercel.app, souvent protégées).
  * Nécessite CLERK_WEBHOOK_SECRET (identique à Vercel prod), SUPABASE_SERVICE_ROLE_KEY,
  * SUPABASE_URL ou VITE_SUPABASE_URL.
  *
