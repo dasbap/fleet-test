@@ -139,6 +139,18 @@ export default defineConfig(({ mode }) => {
     proxy:
       env.VITE_DEV_BFF_PROXY === "true"
         ? {
+            "/billing": {
+              target: "http://127.0.0.1:8787",
+              changeOrigin: true,
+            },
+            "/webhooks": {
+              target: "http://127.0.0.1:8787",
+              changeOrigin: true,
+            },
+            "/health": {
+              target: "http://127.0.0.1:8787",
+              changeOrigin: true,
+            },
             "/api": {
               target: "http://127.0.0.1:8787",
               changeOrigin: true,

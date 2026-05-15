@@ -1,7 +1,12 @@
 /**
  * Variables d’environnement du process Node (BFF). Aucun préfixe VITE_ : non exposé au bundle.
- * En local, `tsx --env-file=.env.local` peut charger VITE_SUPABASE_* : on les relaie ici pour éviter la duplication de secrets.
+ * En dev, `tsx --env-file=.env.local` peut charger VITE_SUPABASE_* : relais acceptés pour éviter la duplication.
  */
+
+export type PaymentProviderId = "manual" | "cinetpay" | "notch";
+
+const PAYMENT_PROVIDER_VALUES: PaymentProviderId[] = ["manual", "cinetpay", "notch"];
+
 export function getSupabaseUrl(): string {
   const v =
     process.env.SUPABASE_URL?.trim() ||
@@ -31,24 +36,34 @@ export function getSupabaseServiceRoleKey(): string | undefined {
   return v || undefined;
 }
 
+/** Secret webhook mode generic (`PAYMENT_WEBHOOK_SECRET` ou alias historique `PAYMENTS_WEBHOOK_SECRET`). */
 export function getPaymentsWebhookSecret(): string | undefined {
-  const v = process.env.PAYMENTS_WEBHOOK_SECRET?.trim();
+  const v =
+    process.env.PAYMENT_WEBHOOK_SECRET?.trim() ||
+    process.env.PAYMENTS_WEBHOOK_SECRET?.trim();
   return v || undefined;
 }
 
-/** Secret webhook Notch Pay (HMAC du corps brut, voir `webhookProviders.ts`). */
+/** Clé API Notch Pay pour les appels sortants (initiation paiement, vérif statut). */
+export function getNotchApiKey(): string | undefined {
+  const v =
+    process.env.NOTCH_PAY_API_KEY?.trim() ||
+    process.env.NOTCH_API_KEY?.trim();
+  return v || undefined;
+}
+
 export function getNotchWebhookSecret(): string | undefined {
-  const v = process.env.NOTCH_WEBHOOK_SECRET?.trim();
+  const v =
+    process.env.NOTCH_PAY_WEBHOOK_SECRET?.trim() ||
+    process.env.NOTCH_WEBHOOK_SECRET?.trim();
   return v || undefined;
 }
 
-/** Secret webhook CinetPay (HMAC du corps brut). */
 export function getCinetpayWebhookSecret(): string | undefined {
   const v = process.env.CINETPAY_WEBHOOK_SECRET?.trim();
   return v || undefined;
 }
 
-/** Secrets agrégés pour la vérification des webhooks PSP côté BFF. */
 export function getPaymentWebhookSecrets(): {
   paymentsWebhookSecret?: string;
   notchWebhookSecret?: string;
@@ -59,4 +74,28 @@ export function getPaymentWebhookSecrets(): {
     notchWebhookSecret: getNotchWebhookSecret(),
     cinetpayWebhookSecret: getCinetpayWebhookSecret(),
   };
+}
+
+/** Fournisseur PSP par défaut pour les nouveaux paiements (phase 1 : pas d’appel API sortant). */
+export function getPaymentProvider(): PaymentProviderId {
+  const raw = process.env.PAYMENT_PROVIDER?.trim().toLowerCase();
+  if (raw && PAYMENT_PROVIDER_VALUES.includes(raw as PaymentProviderId)) {
+    return raw as PaymentProviderId;
+  }
+  return "manual";
+}
+
+export function getAppUrl(): string {
+  const v = process.env.APP_URL?.trim();
+  return (v || "https://www.e-samba.com").replace(/\/$/, "");
+}
+
+export function getBackendUrl(): string {
+  const v = process.env.BACKEND_URL?.trim();
+  return (v || "https://api.e-samba.com").replace(/\/$/, "");
+}
+
+/** URL publique du webhook paiement (documentation / logs PSP). */
+export function getPaymentWebhookPublicUrl(): string {
+  return `${getBackendUrl()}/webhooks/payment`;
 }

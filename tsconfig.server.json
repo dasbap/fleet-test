@@ -16,6 +16,7 @@
   },
   "include": [
     "src/server/**/*.ts",
+    "src/lib/bff-config.ts",
     "src/lib/billing/**/*.ts",
     "src/types/billing-snapshot.ts",
     "src/types/mobile-money.ts"
