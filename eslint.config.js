@@ -48,4 +48,11 @@ export default tseslint.config(
       "esamba/no-undefined-can-permissions": "error",
     },
   },
+  {
+    files: ["src/server/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
+    },
+  },
 );

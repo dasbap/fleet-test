@@ -50,10 +50,10 @@ const hasFastConnection = () => {
   return networkType === "4g";
 };
 
-const scheduleIdle = (task: () => void) => {
+const scheduleIdle = (task: () => void, idleTimeoutMs = 1200) => {
   if ("requestIdleCallback" in window) {
     (window as Window & { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback(task, {
-      timeout: 1200,
+      timeout: idleTimeoutMs,
     });
     return;
   }
@@ -61,10 +61,13 @@ const scheduleIdle = (task: () => void) => {
 };
 
 export function preloadRouteChunksForPath(pathname: string) {
-  if (!hasFastConnection()) return;
+  const normalizedPath = pathname || "/";
+
+  if (!hasFastConnection()) {
+    return;
+  }
 
   const tasks: Array<() => Promise<unknown>> = [];
-  const normalizedPath = pathname || "/";
 
   if (isDashboardPath(normalizedPath)) {
     tasks.push(() => import("@/components/dashboard/DashboardLayout"));

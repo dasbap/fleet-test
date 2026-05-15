@@ -29,6 +29,7 @@ export default defineConfig({
     reuseExistingServer: !isCI,
     timeout: 120_000,
   },
+  // Chromium (desktop + mobile), Firefox et WebKit (desktop) — aligné sur `playwright:install:browsers`.
   projects: [
     {
       name: "chromium-desktop",
@@ -40,6 +41,18 @@ export default defineConfig({
       name: "chromium-mobile",
       use: {
         ...devices["Pixel 5"],
+      },
+    },
+    {
+      name: "firefox-desktop",
+      use: {
+        ...devices["Desktop Firefox"],
+      },
+    },
+    {
+      name: "webkit-desktop",
+      use: {
+        ...devices["Desktop Safari"],
       },
     },
   ],

@@ -46,10 +46,10 @@ describe("ActivationChecklist", () => {
         {
           id: "first_vehicle",
           icon: "??",
-          label: "Ajouter un premier v�hicule",
+          label: "Ajouter un premier vehicule",
           description: "desc",
           impact: "impact",
-          cta: "Ajouter un v�hicule",
+          cta: "Ajouter un vehicule",
           href: "/dashboard/vehicles",
           completed: false,
         },
@@ -68,7 +68,7 @@ describe("ActivationChecklist", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Ajouter un v�hicule/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Ajouter un vehicule/i }));
     expect(navigateMock).toHaveBeenCalledWith("/dashboard/vehicles");
   });
 });

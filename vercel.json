@@ -90,7 +90,10 @@
     { "source": "/dashboard/transit/", "destination": "/index.html" },
     { "source": "/dashboard/tracking", "destination": "/index.html" },
     { "source": "/dashboard/tracking/", "destination": "/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/((?!api).*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
