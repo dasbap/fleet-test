@@ -18,14 +18,36 @@ Relations utiles :
 - Un **paiement** est rattaché à une **organisation** (`paiements.org_id` → `organisations`).
 - Un **abonnement** est rattaché à une **flotte** (`abonnements.fleet_id` → `flottes`) et référence un **plan** ; le lien org ↔ flotte passe par `flottes.org_id` (voir [MULTITENANT.md](./MULTITENANT.md)).
 
+## Architecture runtime
+
+| Couche | Rôle |
+| --- | --- |
+| **Front** (Vercel `www.e-samba.com`) | React ; appels `fetch` vers le BFF si `VITE_API_BASE_URL` ou proxy dev |
+| **BFF** (`api.e-samba.com`, [src/server/](../../src/server/)) | Secrets PSP, webhooks signés, orchestration post-paiement (service role) |
+| **Supabase** | PostgreSQL, RLS, données métier (`plans`, `paiements`, `abonnements`, `droits_vehicules`) |
+
+Déploiement API : projet Vercel séparé, racine [api-server/](../../api-server/) (voir [api-server/README.md](../../api-server/README.md)).
+
+## Routes BFF (api.e-samba.com)
+
+| Méthode | Chemin | Auth | Rôle |
+| --- | --- | --- | --- |
+| `GET` | `/health` | — | Santé |
+| `GET` | `/billing/subscriptions` | Bearer JWT | Snapshot facturation (abonnement + paiements récents) |
+| `POST` | `/billing/checkout` | Bearer JWT | Quote serveur + insert `paiements` pending (`PAYMENT_PROVIDER`) |
+| `POST` | `/billing/mobile-money/initiate` | Bearer JWT | MoMo manuel + insert `paiements` |
+| `POST` | `/webhooks/payment` | Secret / HMAC PSP | Réconciliation → `abonnements` + `droits_vehicules` |
+
+Alias dépréciés (une release) : `/api/billing/snapshot`, `/api/payments/mobile-money/initiate`, `/api/webhooks/payments/inbound`.
+
 ## Chemin applicatif : snapshot de facturation
 
 Pour l’UI et les gardes (ex. upgrade si abonnement payant expiré) :
 
 1. Hook **[src/hooks/useBilling.ts](../../src/hooks/useBilling.ts)** — clé React Query `["billing-snapshot", orgId, fleetId, …]`, activé seulement si `orgId` et `fleetId` sont définis ; transmet le **jeton Supabase** au service lorsque le BFF est activé.
-2. **[src/services/billing.service.ts](../../src/services/billing.service.ts)** — `getBillingSnapshot` : si `VITE_API_BASE_URL` est défini **et** qu’une session existe, appel `GET {VITE_API_BASE_URL}/api/billing/snapshot` avec `Authorization: Bearer <access_token>` ; sinon même logique qu’auparavant via repository (requêtes Supabase directes avec la clé anon et la RLS).
+2. **[src/services/billing.service.ts](../../src/services/billing.service.ts)** — `getBillingSnapshot` : si le BFF est configuré (`VITE_API_BASE_URL` ou `VITE_DEV_BFF_PROXY`) **et** qu’une session existe, appel `GET {base}/billing/subscriptions` avec `Authorization: Bearer <access_token>` ; sinon repository Supabase direct (RLS).
 3. **[src/repositories/billing.repository.ts](../../src/repositories/billing.repository.ts)** — requêtes Supabase sur `abonnements`, `plans`, `paiements` (chemin « client-only »).
-4. **BFF** — [src/server/http/app.ts](../../src/server/http/app.ts) : route `GET /api/billing/snapshot` ; le serveur recrée un client Supabase **anon + JWT utilisateur** ([src/server/infra/supabaseUserClient.ts](../../src/server/infra/supabaseUserClient.ts)), donc **mêmes politiques RLS** que le navigateur.
+4. **BFF** — client Supabase **anon + JWT** ([src/server/infra/supabaseUserClient.ts](../../src/server/infra/supabaseUserClient.ts)) : mêmes politiques RLS que le navigateur.
 
 ### Première tranche verticale (facturation + MoMo + webhook minimal)
 
@@ -37,8 +59,8 @@ sequenceDiagram
   participant SB as Supabase_Postgres
 
   UI->>Svc: getBillingSnapshot_avec_accessToken
-  alt VITE_API_BASE_URL défini
-    Svc->>BFF: GET_/api/billing/snapshot_Bearer_JWT
+  alt BFF configuré
+    Svc->>BFF: GET_/billing/subscriptions_Bearer_JWT
     BFF->>SB: REST_anon_plus_JWT_RLS
     SB-->>BFF: JSON
     BFF-->>Svc: BillingSnapshot
@@ -47,9 +69,10 @@ sequenceDiagram
   end
 ```
 
-- **Initiation MoMo** : `POST /api/payments/mobile-money/initiate` (même principe JWT + insert `paiements` sous RLS). Côté front : `MobileMoneyService.initiatePayment` avec option `accessToken` (voir [src/hooks/useMoMoPayment.ts](../../src/hooks/useMoMoPayment.ts)). Le `raw_payload` inclut `planCode`, `fleetId`, `vehicleCount`, `durationMonths`, `phoneNumber` et optionnellement `vehicleIds` (UUID) pour cibler les véhicules lors de l’activation webhook.
-- **Webhook entrant** : `POST /api/webhooks/payments/inbound` — corps JSON `{ "external_ref", "status" }` (statut brut normalisé côté serveur, voir ci-dessous). Authentification par **fournisseur** (`x-psp-provider`) :
-  - `generic` (défaut) : en-tête `x-payments-webhook-secret` = `PAYMENTS_WEBHOOK_SECRET`.
+- **Checkout** : `POST /billing/checkout` — montant calculé côté serveur depuis `plans.price_per_vehicle` (anti-fraude) ; pas d’appel PSP sortant en phase 1.
+- **Initiation MoMo** : `POST /billing/mobile-money/initiate` (JWT + insert `paiements` sous RLS). Côté front : `MobileMoneyService.initiatePayment` (voir [src/hooks/useMoMoPayment.ts](../../src/hooks/useMoMoPayment.ts)). Le `raw_payload` inclut `planCode`, `fleetId`, `vehicleCount`, `durationMonths`, `phoneNumber` et optionnellement `vehicleIds`.
+- **Webhook entrant** : `POST /webhooks/payment` — URL publique `https://api.e-samba.com/webhooks/payment`. Corps JSON `{ "external_ref", "status" }`. Authentification (`x-psp-provider`) :
+  - `generic` (défaut) : en-tête `x-payments-webhook-secret` = `PAYMENT_WEBHOOK_SECRET` ou `PAYMENTS_WEBHOOK_SECRET`.
   - `notch` : `NOTCH_WEBHOOK_SECRET` ; signature HMAC-SHA256 hex du corps brut dans `x-notch-signature` (stub prêt pour Notch Pay).
   - `cinetpay` : `CINETPAY_WEBHOOK_SECRET` ; `x-cinetpay-signature` (stub CinetPay).
 - **Effets métier** : si le statut normalisé est **`succeeded`**, le BFF (service role) met à jour `paiements`, puis crée ou prolonge un **`abonnements`** actif (même plan = prolongation de `ends_at` ; autre plan = annulation de l’ancien actif + nouvelle ligne) et upsert les lignes **`droits_vehicules`** pour les véhicules listés dans `vehicleIds` ou les `vehicleCount` premiers véhicules de la flotte. Idempotence : si un abonnement existe déjà avec `payment_id` = ce paiement, aucune duplication.
@@ -70,18 +93,23 @@ Les webhooks peuvent envoyer des synonymes (`paid`, `success`, `declined`, …) 
 
 | Variable | Rôle |
 | --- | --- |
-| `SUPABASE_URL` / `SUPABASE_ANON_KEY` | Préférés en prod pour le process Node ; en dev le code accepte aussi `VITE_SUPABASE_*` si chargés dans l’environnement du process (voir [src/server/env.ts](../../src/server/env.ts)). |
-| `SUPABASE_SERVICE_ROLE_KEY` | Requis pour le webhook inbound (mise à jour `paiements` + orchestration `abonnements` / `droits_vehicules`). |
-| `PAYMENTS_WEBHOOK_SECRET` | Mode `generic` : en-tête `x-payments-webhook-secret`. |
-| `NOTCH_WEBHOOK_SECRET` | Mode `x-psp-provider: notch` : signature `x-notch-signature`. |
-| `CINETPAY_WEBHOOK_SECRET` | Mode `x-psp-provider: cinetpay` : signature `x-cinetpay-signature`. |
-| `BFF_PORT` | Port d’écoute (défaut **8787**). |
+| `DATABASE_URL` | Optionnel sur le BFF (Prisma / tooling) |
+| `SUPABASE_URL` / `SUPABASE_ANON_KEY` | Routes JWT (RLS) ; en dev relais `VITE_SUPABASE_*` possible |
+| `SUPABASE_SERVICE_ROLE_KEY` | Requis pour `POST /webhooks/payment` |
+| `PAYMENT_PROVIDER` | `manual` \| `cinetpay` \| `notch` — provider enregistré sur checkout (phase 1 sans API sortante) |
+| `PAYMENT_WEBHOOK_SECRET` / `PAYMENTS_WEBHOOK_SECRET` | Mode `generic` |
+| `NOTCH_WEBHOOK_SECRET` / `NOTCH_API_KEY` | Webhook HMAC ; clé API réservée phase PSP |
+| `CINETPAY_WEBHOOK_SECRET` / `CINETPAY_API_KEY` / `CINETPAY_SITE_ID` / `CINETPAY_SECRET_KEY` | Webhook HMAC ; clés API réservées phase PSP |
+| `APP_URL` | CORS (défaut `https://www.e-samba.com`) |
+| `BACKEND_URL` | URL publique API (défaut `https://api.e-samba.com`) |
+| `BFF_PORT` | Port local (défaut **8787**) |
+| `VITE_API_BASE_URL` (front www) | Ex. `https://api.e-samba.com` |
 
 ### Développement local
 
-- Terminal 1 : `npm run dev` (Vite, port 8080 par défaut).
-- Terminal 2 : `npm run dev:api` (BFF ; charger les mêmes URL/clés Supabase que `.env.local`, ex. `node --env-file=.env.local` si vous préfixez les variables côté fichier).
-- Activer le proxy : `VITE_DEV_BFF_PROXY=true` dans `.env.local` et `VITE_API_BASE_URL=/api` pour que le navigateur appelle le BFF via le même origine.
+- Terminal 1 : `npm run dev` (Vite).
+- Terminal 2 : `npm run dev:api` (charge `.env.local` via `--env-file`).
+- Proxy : `VITE_DEV_BFF_PROXY=true` — chemins `/billing/*`, `/webhooks/*`, `/health` proxifiés vers `:8787` (pas besoin de `VITE_API_BASE_URL` en dev).
 
 ### Où c’est affiché ou consommé
 
@@ -96,7 +124,7 @@ Certaines actions d’upgrade utilisent la table **`payment_transactions`** (et 
 ## Mobile Money (initiation)
 
 - Service **[src/services/mobile-money.service.ts](../../src/services/mobile-money.service.ts)** : `MobileMoneyService.initiatePayment` insère une ligne dans **`paiements`** avec `idempotency_key` (UUID), `external_ref` généré, `raw_payload` (plan, véhicules, téléphone, flotte), puis retourne les instructions utilisateur.
-- **Mode BFF** : si `VITE_API_BASE_URL` est défini et qu’un `access_token` Supabase est fourni, l’insertion transite par `POST /api/payments/mobile-money/initiate` (RLS inchangée). Sinon insert direct via le client Supabase du navigateur.
+- **Mode BFF** : si le BFF est configuré et qu’un `access_token` est fourni, `POST /billing/mobile-money/initiate`. Sinon insert direct Supabase (RLS).
 - **Confirmation** : la réconciliation automatique passe par le webhook inbound (secret ou signature PSP) ; le front invalide le snapshot facturation après initiation réussie (`useMoMoPayment`).
 - Variables front (marchands / affichage) : `VITE_ORANGE_MONEY_MERCHANT`, `VITE_MTN_MOMO_MERCHANT` (voir [.env.example](../../.env.example)).
 

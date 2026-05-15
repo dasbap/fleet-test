@@ -1,4 +1,4 @@
-import { getBffBaseUrl } from "@/lib/bff-config";
+import { getBffBaseUrl, isBffConfigured } from "@/lib/bff-config";
 import { computeLapsedPaidFromLatestSubscription } from "@/lib/billing/computeLapsedPaidFromLatestSubscription";
 import { BillingRepository } from "@/repositories/billing.repository";
 import type { BillingSnapshot } from "@/types/billing-snapshot";
@@ -28,8 +28,8 @@ export class BillingService {
     }
 
     const bff = getBffBaseUrl();
-    if (bff && options?.accessToken) {
-      const url = `${bff}/api/billing/snapshot?org_id=${encodeURIComponent(orgId.trim())}&fleet_id=${encodeURIComponent(fleetId.trim())}`;
+    if (isBffConfigured() && options?.accessToken) {
+      const url = `${bff ?? ""}/billing/subscriptions?org_id=${encodeURIComponent(orgId.trim())}&fleet_id=${encodeURIComponent(fleetId.trim())}`;
       const res = await fetch(url, {
         method: "GET",
         headers: {

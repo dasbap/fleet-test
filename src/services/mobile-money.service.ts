@@ -1,4 +1,4 @@
-import { getBffBaseUrl } from "@/lib/bff-config";
+import { getBffBaseUrl, isBffConfigured } from "@/lib/bff-config";
 import { supabase } from "@/integrations/supabase/client";
 import {
   PaymentTransactionRepository,
@@ -108,8 +108,8 @@ export class MobileMoneyService {
     options?: MobileMoneyRequestOptions,
   ): Promise<MoMoPaymentResult> {
     const bff = getBffBaseUrl();
-    if (bff && options?.accessToken) {
-      const url = `${bff}/api/payments/mobile-money/initiate`;
+    if (isBffConfigured() && options?.accessToken) {
+      const url = `${bff ?? ""}/billing/mobile-money/initiate`;
       const res = await fetch(url, {
         method: "POST",
         headers: {
