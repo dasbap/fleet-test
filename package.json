@@ -20,7 +20,7 @@
   "scripts": {
     "postinstall": "npx prisma generate --schema packages/db/prisma/schema.prisma && node scripts/install-playwright.mjs",
     "dev": "vite",
-    "dev:api": "tsx watch --tsconfig tsconfig.server.json src/server/index.ts",
+    "dev:api": "tsx watch --env-file=.env.local --tsconfig tsconfig.server.json src/server/index.ts",
     "dev:local": "node scripts/dev-with-open.mjs",
     "open:local": "node scripts/open-local-browser.mjs",
     "open:local:strict": "cross-env SMOKE_STRICT=1 node scripts/open-local-browser.mjs",
