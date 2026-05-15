@@ -1,9 +1,19 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
+// Format générique (usage interne / tests)
 const inboundBodySchema = z.object({
   external_ref: z.string().min(1),
   status: z.string().min(1),
+});
+
+// Format webhook Notch Pay : { event, data: { reference, status, ... } }
+const notchWebhookBodySchema = z.object({
+  event: z.string().optional(),
+  data: z.object({
+    reference: z.string().min(1),
+    status: z.string().min(1),
+  }),
 });
 
 export type PspWebhookProviderId = "generic" | "notch" | "cinetpay";
@@ -65,14 +75,15 @@ export const genericSharedSecretWebhookProvider: PaymentWebhookProvider = {
 };
 
 /**
- * Notch Pay (stub d’intégration) : signature HMAC-SHA256 hex du corps brut dans `x-notch-signature`.
- * Configurer `NOTCH_WEBHOOK_SECRET` côté process BFF.
+ * Notch Pay : signature HMAC-SHA256 hex du corps brut dans `x-notch-signature`.
+ * Le webhook Notch Pay envoie : { event: "payment.complete", data: { reference, status, ... } }
+ * On normalise vers { externalRef, rawStatus } pour le pipeline commun.
  */
 export const notchPayWebhookProvider: PaymentWebhookProvider = {
   id: "notch",
   verify(rawBody, getHeader, secrets) {
     const secret = secrets.notchWebhookSecret?.trim();
-    if (!secret) throw new Error("NOTCH_WEBHOOK_SECRET non configuré");
+    if (!secret) throw new Error("NOTCH_PAY_WEBHOOK_SECRET non configuré");
     const sig = getHeader("x-notch-signature")?.trim();
     if (!sig) throw new Error("Signature Notch manquante (x-notch-signature)");
     const expected = hmacSha256Hex(secret, rawBody);
@@ -80,7 +91,28 @@ export const notchPayWebhookProvider: PaymentWebhookProvider = {
       throw new Error("Signature Notch invalide");
     }
   },
-  parse: parseInboundJson,
+  parse(rawBody) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawBody) as unknown;
+    } catch {
+      throw new Error("Corps JSON invalide");
+    }
+    // Tente d’abord le format natif Notch Pay
+    const notch = notchWebhookBodySchema.safeParse(parsed);
+    if (notch.success) {
+      return {
+        externalRef: notch.data.data.reference,
+        rawStatus: notch.data.data.status,
+      };
+    }
+    // Fallback : format générique (tests / retro-compat)
+    const generic = inboundBodySchema.safeParse(parsed);
+    if (generic.success) {
+      return { externalRef: generic.data.external_ref, rawStatus: generic.data.status };
+    }
+    throw new Error("Format webhook Notch Pay non reconnu (reference + status requis)");
+  },
 };
 
 /**
