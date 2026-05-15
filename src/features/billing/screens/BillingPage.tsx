@@ -300,4 +300,41 @@ export default function BillingPage() {
                   {isCurrent ? "Plan actuel" : plan.cta}
                 </Button>
               </div>
-    
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Modules activés */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Modules activés</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Finances",           enabled: ctx.financeEnabled },
+            { label: "Rapports",           enabled: ctx.reportsEnabled },
+            { label: "Scoring conducteur", enabled: ctx.driverScoringEnabled },
+            { label: "Anomalies IA",       enabled: ctx.anomalyInsightsEnabled },
+            { label: "Géofencing",         enabled: ctx.geofencingEnabled },
+            { label: "Rapports auto",      enabled: ctx.scheduledReportsEnabled },
+            { label: "Offline conducteur", enabled: ctx.offlineDriverEnabled },
+            { label: "IA avancée",         enabled: ctx.aiEnabled },
+          ].map(({ label, enabled }) => (
+            <div
+              key={label}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
+                enabled
+                  ? "border-green-200 bg-green-50 text-green-800"
+                  : "border-border bg-muted/30 text-muted-foreground"
+              }`}
+            >
+              {enabled
+                ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                : <XCircle className="w-4 h-4 text-muted-foreground/50 shrink-0" />}
+              {label}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -97,4 +97,6 @@ export const ROUTE_PATHS = {
   securite: "/securite",
   /** Politique de cookies. */
   cookies: "/cookies",
+  /** Page tarifs publique avec calculateur et checkout Notch Pay. */
+  pricing: "/pricing",
 } as const;

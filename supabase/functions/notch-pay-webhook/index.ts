@@ -174,18 +174,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   if (!payment) {
-    // Paiement introuvable — on enregistre quand même pour audit
+    // Paiement introuvable — on log dans billing_events si une flotte est trouvable via le ref,
+    // sinon on retourne 400 sans écriture (payment_id NOT NULL empêche l'insert dans payment_attempts).
     console.warn(`[notch-webhook] paiement introuvable pour ref : ${providerReference}`);
-    await admin.from("payment_attempts").insert({
-      payment_id: null,
-      provider: "notch",
-      provider_reference: providerReference,
-      status: normalizedStatus,
-      raw_payload: payload,
-      raw_response: data ?? null,
-    });
     return new Response(
-      JSON.stringify({ error: "Paiement introuvable" }),
+      JSON.stringify({ error: "Paiement introuvable", reference: providerReference }),
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
