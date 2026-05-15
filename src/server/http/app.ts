@@ -12,6 +12,7 @@ import {
   registerLegacyBillingSnapshotRoute,
 } from "@/server/http/routes/billingSubscriptions";
 import { registerHealthRoutes } from "@/server/http/routes/health";
+import { registerBillingNotchPayRoutes } from "@/server/http/routes/billingNotchPay";
 import {
   registerLegacyWebhooksPaymentRoutes,
   registerWebhooksPaymentRoutes,
@@ -47,6 +48,7 @@ export function createServerApp() {
   registerBillingCheckoutRoutes(app);
   registerBillingSubscriptionsRoutes(app);
   registerBillingMobileMoneyRoutes(app);
+  registerBillingNotchPayRoutes(app);
   registerWebhooksPaymentRoutes(app);
 
   registerLegacyBillingSnapshotRoute(app);
