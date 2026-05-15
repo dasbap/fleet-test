@@ -1,5 +1,6 @@
 /**
  * Vérification minimale du webhook Clerk en production (sans secret).
+ * URL canonique : https://www.e-samba.com (ne pas valider via *-atipik.vercel.app — protection 401).
  * Attendu : 405 Method Not Allowed + Content-Type text/plain (handler Vercel, pas le HTML SPA).
  *
  * Usage : node scripts/verify-clerk-webhook-prod.mjs
