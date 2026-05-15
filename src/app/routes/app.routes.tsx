@@ -62,6 +62,7 @@ const StatusPage = lazy(() => import('@/pages/Status'));
 const PredictiveMaintenancePage = lazy(
   () => import("@/features/maintenance/screens/PredictiveMaintenancePage")
 );
+const PricingPage = lazy(() => import("@/pages/Pricing"));
 
 /**
  * Arbre de routes racine : pages publiques, redirections, dashboard, 404.
@@ -140,6 +141,7 @@ export const appRoutes = (
         element={<Navigate to={ROUTE_PATHS.dashboardMaintenance} replace />}
       />
       <Route path="/upgrade" element={<Upgrade />} />
+      <Route path="/pricing" element={<PricingPage />} />
       <Route path="/post-login" element={<PostLoginGate />} />
       {dashboardRoutes}
     </Route>

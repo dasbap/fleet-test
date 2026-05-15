@@ -266,4 +266,59 @@ export default function Upgrade() {
                   {plan.key !== "free" && (
                     <Button
                       className="w-full bg-orange-500 hover:bg-orange-600"
-                      variant=
+                      variant="default"
+                      disabled={notchPay.isPending}
+                      onClick={() => {
+                        const pricePerVehicle =
+                          plan.key === "pro"
+                            ? PUBLIC_PRICE_PRO_PER_VEHICLE_XAF
+                            : PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF;
+                        const defaultVehicles = DEFAULT_VEHICLE_COUNTS[plan.key];
+                        setMomoDialog({
+                          planCode: plan.key,
+                          planName: plan.name,
+                          vehicleCount: defaultVehicles,
+                          amountXaf: pricePerVehicle * defaultVehicles,
+                        });
+                      }}
+                    >
+                      <Smartphone className="h-4 w-4 mr-1.5" />
+                      Payer Mobile Money
+                    </Button>
+                  )}
+
+                  {/* Contact support */}
+                  <Button
+                    className="w-full"
+                    variant={plan.key !== "free" ? "outline" : plan.popular ? "default" : "outline"}
+                    asChild
+                  >
+                    <a href={buildRenewalMailto(plan.key, fleetLabel)}>{plan.cta}</a>
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="text-muted-foreground text-center text-xs">
+          Paiements acceptés : Notch Pay (Mobile Money CM/Afrique), Orange Money, MTN MoMo.{" "}
+          {notchAvailable
+            ? "Activation automatique après confirmation webhook."
+            : "Activation sous 24 h après confirmation."}
+        </p>
+      </div>
+
+      {momoDialog && (
+        <MoMoPaymentDialog
+          open={Boolean(momoDialog)}
+          onClose={() => setMomoDialog(null)}
+          planCode={momoDialog.planCode}
+          planName={momoDialog.planName}
+          vehicleCount={momoDialog.vehicleCount}
+          amountXaf={momoDialog.amountXaf}
+        />
+      )}
+    </div>
+  );
+}
