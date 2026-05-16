@@ -1,111 +1,123 @@
 import { useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { ROUTE_PATHS } from "@/navigation/routePaths";
-import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
-import { useAuth } from "@/hooks/useAuth";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  CalendarClock,
+  Car,
+  Check,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  Download,
+  ExternalLink,
+  Info,
+  Loader2,
+  MessageCircle,
+  QrCode,
+  RefreshCw,
+  ShieldAlert,
+  TriangleAlert,
+  X,
+  XCircle,
+  Zap,
+} from "lucide-react";
+import { format, formatDistanceToNow, isPast } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import {
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  CreditCard,
-  Zap,
-  Car,
-  CalendarClock,
-  Clock,
-} from "lucide-react";
-import { formatDistanceToNow, format, isPast } from "date-fns";
-import { fr } from "date-fns/locale";
+  usePaymentHistory,
+  PAYMENT_STATUS_LABELS,
+  PAYMENT_STATUS_COLORS,
+  PROVIDER_LABELS,
+  type PaymentRecord,
+} from "@/hooks/usePaymentHistory";
 import { toast } from "@/hooks/use-toast";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { isBffConfigured } from "@/lib/bff-config";
+import { formatPublicPriceXaf } from "@/lib/public-pricing";
+import { cn } from "@/lib/utils";
 import type { BillingStatus } from "@/types/fleet-billing";
 
-const PLANS = [
-  {
-    code: "free",
-    name: "Gratuit",
-    price: "0 FCFA",
-    per: "30 jours d'essai",
-    maxVehicles: "3 véhicules",
-    features: ["Suivi GPS basique", "Incidents", "Clôtures conducteur"],
-    locked: ["Finances", "Rapports", "Scoring", "Géofencing", "Rapports auto"],
-    cta: "Plan actuel",
-    highlight: false,
-  },
-  {
-    code: "starter",
-    name: "Starter",
-    price: "15 000 FCFA",
-    per: "/ véhicule / mois",
-    maxVehicles: "Selon achat",
-    features: ["Finances & encaissements", "Rapports d'activité", "Scoring conducteur", "Offline conducteur", "Maintenance préventive"],
-    locked: ["Géofencing", "Rapports programmés"],
-    cta: "Choisir Starter",
-    highlight: false,
-  },
-  {
-    code: "pro",
-    name: "Pro",
-    price: "21 000 FCFA",
-    per: "/ véhicule / mois",
-    maxVehicles: "Selon achat",
-    features: ["Tout Starter", "Géofencing illimité", "Rapports auto PDF/Excel", "Alertes avancées", "Anomalies IA"],
-    locked: [],
-    cta: "Choisir Pro",
-    highlight: true,
-  },
-  {
-    code: "enterprise",
-    name: "Entreprise",
-    price: "Sur devis",
-    per: "multi-sites • contrat",
-    maxVehicles: "Illimité",
-    features: ["Tout Pro", "Multi-flottes", "SLA dédié", "Intégrations sur mesure", "Support prioritaire"],
-    locked: [],
-    cta: "Nous contacter",
-    highlight: false,
-  },
-];
+// ─── Config statuts ────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<BillingStatus, { label: string; color: string; icon: React.ElementType }> = {
-  trial:      { label: "Essai gratuit",       color: "bg-blue-100 text-blue-700",    icon: Clock },
-  active:     { label: "Actif",               color: "bg-green-100 text-green-700",  icon: CheckCircle2 },
-  grace:      { label: "Période de grâce",    color: "bg-amber-100 text-amber-700",  icon: AlertTriangle },
-  suspended:  { label: "Suspendu",            color: "bg-red-100 text-red-700",      icon: XCircle },
-  enterprise: { label: "Entreprise",          color: "bg-purple-100 text-purple-700",icon: Zap },
+const STATUS_CONFIG: Record<BillingStatus, {
+  label: string;
+  badgeClass: string;
+  icon: React.ElementType;
+  alertClass?: string;
+  alertTitle?: string;
+  alertDesc?: string;
+}> = {
+  trial: {
+    label: "Essai gratuit",
+    badgeClass: "bg-blue-100 text-blue-700 border-blue-200",
+    icon: Clock,
+    alertClass: "border-blue-200 bg-blue-50 text-blue-800",
+    alertTitle: "Essai gratuit en cours",
+    alertDesc: "Passez à un plan payant pour continuer sans interruption après la fin de l'essai.",
+  },
+  active: {
+    label: "Actif",
+    badgeClass: "bg-green-100 text-green-700 border-green-200",
+    icon: CheckCircle2,
+  },
+  grace: {
+    label: "Période de grâce",
+    badgeClass: "bg-amber-100 text-amber-700 border-amber-200",
+    icon: AlertTriangle,
+    alertClass: "border-amber-200 bg-amber-50 text-amber-800",
+    alertTitle: "Période de grâce — accès maintenu temporairement",
+    alertDesc: "Votre abonnement a expiré. Un accès minimal au terrain est conservé. Renouvelez avant la suspension automatique.",
+  },
+  suspended: {
+    label: "Suspendu",
+    badgeClass: "bg-red-100 text-red-700 border-red-200",
+    icon: ShieldAlert,
+    alertClass: "border-red-200 bg-red-50 text-red-800",
+    alertTitle: "Flotte suspendue — accès coupé",
+    alertDesc: "Vos véhicules sont inactifs et les features premium désactivées. Renouvelez votre abonnement pour les réactiver.",
+  },
+  enterprise: {
+    label: "Entreprise",
+    badgeClass: "bg-purple-100 text-purple-700 border-purple-200",
+    icon: Zap,
+  },
 };
 
-/**
- * Gère le retour depuis Notch Pay (?status=success&ref=ESAMBA-xxx).
- * L'activation réelle est faite par le webhook — on informe simplement l'utilisateur.
- */
+// ─── Hook callback Notch Pay ───────────────────────────────────────────────
+
 function useNotchPayCallback() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     const status = searchParams.get("status");
-    const ref = searchParams.get("ref");
+    const ref    = searchParams.get("ref");
     if (!status) return;
 
     if (status === "success" || status === "complete") {
       toast({
         title: "Paiement reçu",
         description: ref
-          ? `Référence ${ref} — activation en cours via webhook. Rechargez dans quelques instants.`
+          ? `Réf. ${ref} — activation en cours via webhook. Rechargez dans quelques instants.`
           : "Activation en cours via webhook. Rechargez dans quelques instants.",
       });
     } else if (status === "failed" || status === "cancelled") {
       toast({
         title: "Paiement non complété",
-        description: "Le paiement a été annulé ou a échoué. Vous pouvez réessayer depuis /upgrade.",
+        description: "Le paiement a été annulé ou a échoué.",
         variant: "destructive",
       });
     }
 
-    // Nettoie les params sans recharger la page
     const next = new URLSearchParams(searchParams);
     next.delete("status");
     next.delete("ref");
@@ -114,18 +126,44 @@ function useNotchPayCallback() {
   }, []);
 }
 
+// ─── Page principale ────────────────────────────────────────────────────────
+
 export default function BillingPage() {
   const { userFleetId } = useAuth();
-  const navigate = useNavigate();
-  const billing = useFleetBillingContext(userFleetId ?? undefined);
   useNotchPayCallback();
 
+  const billing        = useFleetBillingContext(userFleetId ?? undefined);
+  const paymentHistory = usePaymentHistory();
+
+  // ── Squelette chargement ──
   if (billing.isLoading) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-64 w-full" />
+        <div className="grid grid-cols-3 gap-4">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+        </div>
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  // ── Erreur context billing ──
+  if (billing.isError) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <Alert variant="destructive">
+          <TriangleAlert className="h-4 w-4" />
+          <AlertDescription>
+            Impossible de charger le contexte de facturation.{" "}
+            {billing.error instanceof Error ? billing.error.message : "Erreur PostgREST."}{" "}
+            <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => billing.refetch()}>
+              Réessayer
+            </Button>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -133,13 +171,15 @@ export default function BillingPage() {
   const ctx = billing.data;
   if (!ctx) return null;
 
-  const statusCfg = STATUS_CONFIG[ctx.billingStatus] ?? STATUS_CONFIG.trial;
+  const statusCfg  = STATUS_CONFIG[ctx.billingStatus] ?? STATUS_CONFIG.trial;
   const StatusIcon = statusCfg.icon;
-  const slotUsagePct = Math.min(100, Math.round((ctx.vehicleCount / Math.max(1, ctx.vehicleSlots)) * 100));
+  const slotsPct   = ctx.vehicleSlots >= 999_999
+    ? Math.min(100, Math.round((ctx.vehicleCount / Math.max(1, ctx.maxVehicles ?? 999999)) * 100))
+    : Math.min(100, Math.round((ctx.vehicleCount / Math.max(1, ctx.vehicleSlots)) * 100));
 
   const expiryDate =
-    ctx.billingStatus === "trial" ? ctx.trialEndsAt :
-    ctx.billingStatus === "grace" ? ctx.graceUntil :
+    ctx.billingStatus === "trial"  ? ctx.trialEndsAt         :
+    ctx.billingStatus === "grace"  ? ctx.graceUntil          :
     ctx.subscriptionEndsAt;
 
   const expiryLabel = expiryDate
@@ -148,193 +188,402 @@ export default function BillingPage() {
       : `Expire ${formatDistanceToNow(new Date(expiryDate), { addSuffix: true, locale: fr })}`
     : null;
 
+  const isGraceOrSuspended = ctx.billingStatus === "grace" || ctx.billingStatus === "suspended";
+  const showUpgradeCta     = ctx.billingStatus !== "enterprise" && ctx.billingStatus !== "active";
+  const canPayOnline       = isBffConfigured();
+
+  // Modules actifs
+  const modules = [
+    { label: "Finances & collectes",  enabled: ctx.financeEnabled,          key: "finance"   },
+    { label: "Rapports d'activité",   enabled: ctx.reportsEnabled,          key: "reports"   },
+    { label: "Scoring conducteur",    enabled: ctx.driverScoringEnabled,    key: "scoring"   },
+    { label: "IA Pulse+ (anomalies)", enabled: ctx.anomalyInsightsEnabled,  key: "anomaly"   },
+    { label: "Géofencing",            enabled: ctx.geofencingEnabled,       key: "geo"       },
+    { label: "Rapports auto PDF",     enabled: ctx.scheduledReportsEnabled, key: "scheduled" },
+    { label: "Offline conducteur",    enabled: ctx.offlineDriverEnabled,    key: "offline"   },
+    { label: "IA avancée (Pulse+)",   enabled: ctx.aiEnabled,              key: "ai"        },
+  ];
+
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-8">
 
-      {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* ── En-tête ──────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Abonnement</h1>
-          <p className="text-muted-foreground text-sm">Gérez votre plan et vos licences véhicules</p>
+          <h1 className="text-2xl font-bold tracking-tight">Abonnement & Facturation</h1>
+          <p className="text-sm text-muted-foreground">
+            Gérez votre plan, vos licences véhicules et l'historique de paiements
+          </p>
         </div>
-        <Badge className={`gap-1.5 px-3 py-1 text-sm font-medium ${statusCfg.color}`}>
-          <StatusIcon className="w-4 h-4" />
+        <Badge className={cn("gap-1.5 px-3 py-1.5 text-sm font-medium border", statusCfg.badgeClass)}>
+          <StatusIcon className="h-4 w-4" />
           {statusCfg.label}
         </Badge>
       </div>
 
-      {/* Alertes contextuelles */}
-      {ctx.billingStatus === "suspended" && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
-          <XCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-semibold text-red-800">Flotte suspendue</p>
-            <p className="text-sm text-red-700">Vos véhicules sont inactifs. Renouvelez votre abonnement pour les réactiver.</p>
-          </div>
-        </div>
-      )}
-      {ctx.billingStatus === "grace" && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-semibold text-amber-800">Période de grâce — {expiryLabel}</p>
-            <p className="text-sm text-amber-700">Votre accès est maintenu temporairement. Renouvelez avant la suspension automatique.</p>
-          </div>
-        </div>
-      )}
-      {ctx.billingStatus === "trial" && expiryLabel && (
-        <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4">
-          <Clock className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-semibold text-blue-800">Essai gratuit — {expiryLabel}</p>
-            <p className="text-sm text-blue-700">Passez à un plan payant pour continuer sans interruption.</p>
-          </div>
-        </div>
+      {/* ── Alertes contextuelles ─────────────────────────────────────── */}
+      {statusCfg.alertTitle && (
+        <Alert className={cn("flex items-start gap-3", statusCfg.alertClass)}>
+          <StatusIcon className="mt-0.5 h-4 w-4 shrink-0" />
+          <AlertDescription className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold">{statusCfg.alertTitle}</p>
+              <p className="text-sm opacity-90">
+                {statusCfg.alertDesc}
+                {expiryLabel && ctx.billingStatus !== "active" && (
+                  <span className="ml-1 font-medium">· {expiryLabel}</span>
+                )}
+              </p>
+            </div>
+            {showUpgradeCta && (
+              <Button size="sm" className="shrink-0" asChild>
+                <Link to={canPayOnline ? ROUTE_PATHS.pricing : ROUTE_PATHS.upgrade}>
+                  <ArrowUpRight className="mr-1.5 h-3.5 w-3.5" />
+                  Renouveler
+                </Link>
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
       )}
 
-      {/* KPIs plan actuel */}
+      {/* ── KPIs ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Zap className="w-4 h-4" /> Plan actif
+              <Zap className="h-4 w-4" /> Plan actif
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{ctx.planName}</p>
-            {expiryLabel && <p className="text-xs text-muted-foreground mt-1">{expiryLabel}</p>}
+            <p className="text-2xl font-bold capitalize">{ctx.planName ?? ctx.planCode}</p>
+            {expiryLabel && (
+              <p className="mt-1 text-xs text-muted-foreground">{expiryLabel}</p>
+            )}
+            {ctx.billingStatus === "active" && ctx.subscriptionEndsAt && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Renouvellement le {format(new Date(ctx.subscriptionEndsAt), "d MMM yyyy", { locale: fr })}
+              </p>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Car className="w-4 h-4" /> Licences véhicules
+              <Car className="h-4 w-4" /> Véhicules actifs
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className="text-2xl font-bold">
+            <p className="text-2xl font-bold tabular-nums">
               {ctx.vehicleCount}
               <span className="text-base font-normal text-muted-foreground">
                 {" "}/ {ctx.vehicleSlots >= 999_999 ? "∞" : ctx.vehicleSlots}
               </span>
             </p>
-            <Progress value={slotUsagePct} className="h-1.5" />
-            <p className="text-xs text-muted-foreground">{ctx.activeVehicles} actif{ctx.activeVehicles !== 1 ? "s" : ""}</p>
+            <Progress value={slotsPct} className="h-1.5" />
+            <p className="text-xs text-muted-foreground">
+              {ctx.activeVehicles} actif{ctx.activeVehicles !== 1 ? "s" : ""}
+              {ctx.vehicleSlots < 999_999 && (
+                <span className="ml-1">· {Math.max(0, ctx.vehicleSlots - ctx.vehicleCount)} slot{(ctx.vehicleSlots - ctx.vehicleCount) !== 1 ? "s" : ""} restant{(ctx.vehicleSlots - ctx.vehicleCount) !== 1 ? "s" : ""}</span>
+              )}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <CalendarClock className="w-4 h-4" /> Prochain renouvellement
+              <CalendarClock className="h-4 w-4" /> Prochaine échéance
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
-              {ctx.subscriptionEndsAt
-                ? format(new Date(ctx.subscriptionEndsAt), "d MMM yyyy", { locale: fr })
-                : "—"}
-            </p>
-            {ctx.subscriptionEndsAt && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatDistanceToNow(new Date(ctx.subscriptionEndsAt), { addSuffix: true, locale: fr })}
+            {ctx.subscriptionEndsAt ? (
+              <>
+                <p className="text-2xl font-bold">
+                  {format(new Date(ctx.subscriptionEndsAt), "d MMM yyyy", { locale: fr })}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(ctx.subscriptionEndsAt), { addSuffix: true, locale: fr })}
+                </p>
+              </>
+            ) : (
+              <p className="text-2xl font-bold text-muted-foreground">—</p>
+            )}
+            {ctx.billingStatus === "grace" && ctx.graceUntil && (
+              <p className="mt-1 text-xs text-amber-600 font-medium">
+                Grâce jusqu'au {format(new Date(ctx.graceUntil), "d MMM yyyy", { locale: fr })}
               </p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Grille des plans */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Changer de plan</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {PLANS.map((plan) => {
-            const isCurrent = ctx.planCode === plan.code;
-            return (
-              <div
-                key={plan.code}
-                className={`relative flex flex-col rounded-xl border p-5 gap-4 ${
-                  plan.highlight ? "border-primary shadow-md shadow-primary/10" : "border-border"
-                }`}
-              >
-                {plan.highlight && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground">
-                    Recommandé
-                  </span>
-                )}
-                <div>
-                  <p className="font-bold text-base">{plan.name}</p>
-                  <p className="text-xl font-extrabold mt-1">{plan.price}</p>
-                  <p className="text-xs text-muted-foreground">{plan.per}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{plan.maxVehicles}</p>
-                </div>
-                <ul className="space-y-1.5 flex-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                  {plan.locked.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <XCircle className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  size="sm"
-                  variant={isCurrent ? "outline" : plan.highlight ? "default" : "secondary"}
-                  disabled={isCurrent}
-                  className="w-full"
-                  onClick={() => {
-                    if (plan.code === "enterprise") {
-                      window.open("mailto:contact@e-samba.africa?subject=Devis Entreprise", "_blank");
-                    } else {
-                      void navigate(ROUTE_PATHS.upgrade);
-                    }
-                  }}
-                >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  {isCurrent ? "Plan actuel" : plan.cta}
-                </Button>
-              </div>
-            );
-          })}
+      {/* ── Modules activés (add-ons) ─────────────────────────────────── */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold">Modules & add-ons actifs</h2>
+          {isGraceOrSuspended && (
+            <Badge variant="outline" className="gap-1 text-amber-600 border-amber-200">
+              <AlertTriangle className="h-3 w-3" />
+              Premium désactivé
+            </Badge>
+          )}
         </div>
-      </div>
-
-      {/* Modules activés */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Modules activés</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: "Finances",           enabled: ctx.financeEnabled },
-            { label: "Rapports",           enabled: ctx.reportsEnabled },
-            { label: "Scoring conducteur", enabled: ctx.driverScoringEnabled },
-            { label: "Anomalies IA",       enabled: ctx.anomalyInsightsEnabled },
-            { label: "Géofencing",         enabled: ctx.geofencingEnabled },
-            { label: "Rapports auto",      enabled: ctx.scheduledReportsEnabled },
-            { label: "Offline conducteur", enabled: ctx.offlineDriverEnabled },
-            { label: "IA avancée",         enabled: ctx.aiEnabled },
-          ].map(({ label, enabled }) => (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {modules.map(({ label, enabled, key }) => (
             <div
-              key={label}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
+              key={key}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium",
                 enabled
                   ? "border-green-200 bg-green-50 text-green-800"
-                  : "border-border bg-muted/30 text-muted-foreground"
-              }`}
+                  : "border-border bg-muted/30 text-muted-foreground",
+              )}
             >
               {enabled
-                ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                : <XCircle className="w-4 h-4 text-muted-foreground/50 shrink-0" />}
-              {label}
+                ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                : <X className="h-3.5 w-3.5 shrink-0 opacity-40" />}
+              <span className="truncate">{label}</span>
             </div>
           ))}
         </div>
-      </div>
+        {!modules.some((m) => m.enabled) && ctx.billingStatus !== "trial" && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Aucun module premium actif. Passez à un plan payant pour les débloquer.
+          </p>
+        )}
+      </section>
+
+      {/* ── CTAs ─────────────────────────────────────────────────────── */}
+      <section className="rounded-xl border bg-muted/20 p-4">
+        <h2 className="mb-3 text-base font-semibold">Actions rapides</h2>
+        <div className="flex flex-wrap gap-2">
+          {ctx.billingStatus !== "enterprise" && (
+            <Button asChild size="sm" variant={showUpgradeCta ? "default" : "outline"}>
+              <Link to={canPayOnline ? ROUTE_PATHS.pricing : ROUTE_PATHS.upgrade}>
+                <CreditCard className="mr-1.5 h-4 w-4" />
+                {showUpgradeCta ? "Renouveler / Upgrader" : "Voir les plans"}
+              </Link>
+            </Button>
+          )}
+          {ctx.billingStatus === "enterprise" && (
+            <Button asChild size="sm" variant="outline">
+              <a href="mailto:support@e-samba.com?subject=Renouvellement%20Enterprise">
+                <ArrowUpRight className="mr-1.5 h-4 w-4" />
+                Renouveler (Enterprise)
+              </a>
+            </Button>
+          )}
+          <Button asChild size="sm" variant="outline">
+            <a
+              href="https://wa.me/237600000000?text=Bonjour%2C%20je%20souhaite%20de%20l%27aide%20sur%20mon%20abonnement%20E-Samba"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <MessageCircle className="mr-1.5 h-4 w-4" />
+              WhatsApp support
+            </a>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <a href="mailto:support@e-samba.com?subject=Support%20facturation%20E-Samba">
+              <ExternalLink className="mr-1.5 h-4 w-4" />
+              Email support
+            </a>
+          </Button>
+          {canPayOnline && (
+            <Button asChild size="sm" variant="outline">
+              <Link to={ROUTE_PATHS.pricing}>
+                <QrCode className="mr-1.5 h-4 w-4" />
+                Ajouter licences QR
+              </Link>
+            </Button>
+          )}
+        </div>
+      </section>
+
+      <Separator />
+
+      {/* ── Historique paiements ──────────────────────────────────────── */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold">Historique des paiements</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => paymentHistory.refetch()}
+            disabled={paymentHistory.isLoading}
+          >
+            <RefreshCw className={cn("h-4 w-4", paymentHistory.isLoading && "animate-spin")} />
+          </Button>
+        </div>
+
+        {/* Erreur PostgREST */}
+        {paymentHistory.isError && (
+          <Alert variant="destructive" className="mb-3">
+            <TriangleAlert className="h-4 w-4" />
+            <AlertDescription>
+              {paymentHistory.errorMessage ?? "Impossible de charger l'historique."}
+              <Button
+                variant="link"
+                size="sm"
+                className="ml-2 p-0 h-auto"
+                onClick={() => paymentHistory.refetch()}
+              >
+                Réessayer
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Chargement */}
+        {paymentHistory.isLoading && (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
+          </div>
+        )}
+
+        {/* État vide */}
+        {!paymentHistory.isLoading && !paymentHistory.isError && paymentHistory.payments.length === 0 && (
+          <EmptyState
+            icon={<CreditCard className="h-8 w-8 text-muted-foreground/50" />}
+            title="Aucun paiement enregistré"
+            description="Votre premier paiement apparaîtra ici après confirmation du webhook Notch Pay."
+          />
+        )}
+
+        {/* Liste paiements */}
+        {paymentHistory.payments.length > 0 && (
+          <div className="rounded-xl border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-medium">Date</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Référence</th>
+                  <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">Prestataire</th>
+                  <th className="px-4 py-2.5 text-left font-medium hidden md:table-cell">Détail</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Montant</th>
+                  <th className="px-4 py-2.5 text-center font-medium">Statut</th>
+                  <th className="px-4 py-2.5 text-center font-medium hidden sm:table-cell">Reçu</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {paymentHistory.payments.map((p) => (
+                  <PaymentRow key={p.id} payment={p} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* ── Accès terrain minimal (note info) ─────────────────────────── */}
+      {ctx.billingStatus === "grace" && (
+        <Alert className="border-blue-200 bg-blue-50 text-blue-800">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <AlertDescription className="text-sm">
+            <span className="font-semibold">Accès terrain conservé</span> — Les conducteurs peuvent
+            toujours utiliser les fonctions de base (DVIR, clôture de service, suivi GPS essentiel).
+            Les modules premium (Finance, IA, Rapports) sont suspendus jusqu'au renouvellement.
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   );
+}
+
+// ─── Sous-composants ──────────────────────────────────────────────────────
+
+function PaymentRow({ payment }: { payment: PaymentRecord }) {
+  const statusLabel = PAYMENT_STATUS_LABELS[payment.status] ?? payment.status;
+  const statusClass = PAYMENT_STATUS_COLORS[payment.status] ?? "bg-gray-100 text-gray-600";
+  const providerLabel = PROVIDER_LABELS[payment.provider] ?? payment.provider;
+
+  const detail = payment.planCode
+    ? `${payment.planCode.toUpperCase()}${payment.vehicleCount ? ` · ${payment.vehicleCount} vhcl` : ""}${payment.durationMonths ? ` · ${payment.durationMonths} mois` : ""}`
+    : null;
+
+  return (
+    <tr className="hover:bg-muted/20 transition-colors">
+      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+        {format(new Date(payment.created_at), "d MMM yyyy", { locale: fr })}
+      </td>
+      <td className="px-4 py-3 font-mono text-xs">
+        {payment.external_ref ?? payment.provider_reference?.slice(0, 16) ?? payment.id.slice(0, 8)}
+      </td>
+      <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">
+        {providerLabel}
+      </td>
+      <td className="px-4 py-3 hidden md:table-cell text-muted-foreground text-xs">
+        {detail ?? "—"}
+      </td>
+      <td className="px-4 py-3 text-right font-semibold tabular-nums whitespace-nowrap">
+        {formatPublicPriceXaf(payment.amount)}{" "}
+        <span className="text-xs font-normal text-muted-foreground">{payment.currency}</span>
+      </td>
+      <td className="px-4 py-3 text-center">
+        <Badge className={cn("text-xs", statusClass)}>{statusLabel}</Badge>
+      </td>
+      <td className="px-4 py-3 text-center hidden sm:table-cell">
+        {payment.status === "successful" ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            title="Télécharger le reçu"
+            onClick={() => downloadReceipt(payment)}
+          >
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+        ) : (
+          <span className="text-muted-foreground/40">—</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function EmptyState({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-12 text-center">
+      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-muted/50">
+        {icon}
+      </div>
+      <p className="font-medium">{title}</p>
+      <p className="mt-1 max-w-xs text-sm text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+// ─── Génération reçu minimal (client-side) ────────────────────────────────
+
+function downloadReceipt(p: PaymentRecord) {
+  const lines = [
+    "E-Samba — Reçu de paiement",
+    "═".repeat(40),
+    `Date        : ${format(new Date(p.created_at), "d MMMM yyyy HH:mm", { locale: fr })}`,
+    `Référence   : ${p.external_ref ?? p.provider_reference ?? p.id}`,
+    `Prestataire : ${PROVIDER_LABELS[p.provider] ?? p.provider}`,
+    `Montant     : ${p.amount.toLocaleString("fr-FR")} ${p.currency}`,
+    `Statut      : ${PAYMENT_STATUS_LABELS[p.status] ?? p.status}`,
+    "─".repeat(40),
+    "E-Samba · support@e-samba.com · https://e-samba.com",
+  ].join("\n");
+
+  const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `recu-esamba-${p.external_ref ?? p.id.slice(0, 8)}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
