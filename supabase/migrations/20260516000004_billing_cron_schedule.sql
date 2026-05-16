@@ -57,7 +57,11 @@ BEGIN
     );
 
     -- Enregistre le cron quotidien à 02:00 UTC
-    -- Auth via body.secret (les headers custom sont strippés par le gateway Cloudflare/Supabase)
+    -- Auth via body.secret (les headers custom sont strippés par le gateway Cloudflare/Supabase).
+    -- ⚠️  SÉCURITÉ : remplacer CRON_SECRET_PLACEHOLDER par la vraie valeur AVANT d'exécuter
+    --               cette migration. Ne jamais committer le secret réel dans le dépôt.
+    --               Commande pour récupérer la valeur : `supabase secrets list --project-ref <ref>`
+    --               En production, exécuter directement depuis le Dashboard Supabase SQL Editor.
     PERFORM cron.schedule(
       'billing-lifecycle-daily',          -- nom unique
       '0 2 * * *',                        -- tous les jours à 02h00 UTC
@@ -65,7 +69,7 @@ BEGIN
         SELECT extensions.http_post(
           url     := 'https://zqxjvmejoktwlcqshnwi.supabase.co/functions/v1/billing-lifecycle-cron',
           headers := '{"Content-Type": "application/json"}'::jsonb,
-          body    := '{"secret": "c2d557fe50c5f2d88681afdadfd630b4d5e93c669da7d52f340022c863218f45"}'::jsonb
+          body    := '{"secret": "CRON_SECRET_PLACEHOLDER"}'::jsonb
         );
       $$
     );
