@@ -57,14 +57,15 @@ BEGIN
     );
 
     -- Enregistre le cron quotidien à 02:00 UTC
+    -- Auth via body.secret (les headers custom sont strippés par le gateway Cloudflare/Supabase)
     PERFORM cron.schedule(
       'billing-lifecycle-daily',          -- nom unique
       '0 2 * * *',                        -- tous les jours à 02h00 UTC
       $$
         SELECT extensions.http_post(
           url     := 'https://zqxjvmejoktwlcqshnwi.supabase.co/functions/v1/billing-lifecycle-cron',
-          headers := '{"Authorization": "Bearer c2d557fe50c5f2d88681afdadfd630b4d5e93c669da7d52f340022c863218f45", "Content-Type": "application/json"}'::jsonb,
-          body    := '{}'::jsonb
+          headers := '{"Content-Type": "application/json"}'::jsonb,
+          body    := '{"secret": "c2d557fe50c5f2d88681afdadfd630b4d5e93c669da7d52f340022c863218f45"}'::jsonb
         );
       $$
     );
