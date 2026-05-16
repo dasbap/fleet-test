@@ -51,9 +51,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return new Response("Method Not Allowed", { status: 405 });
   }
 
-  // Auth cron secret
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const token      = authHeader.replace("Bearer ", "").trim();
+  // Auth via body.secret — les headers custom (Authorization, X-Cron-Secret) sont
+  // strippés par le gateway Cloudflare/Supabase avant d'atteindre l'Edge Function.
+  let body: Record<string, unknown> = {};
+  try {
+    const text = await req.text();
+    if (text) body = JSON.parse(text) as Record<string, unknown>;
+  } catch { /* body vide ou non-JSON → token vide → 401 */ }
+
+  const token = (body.secret as string | undefined)?.trim() ?? "";
   if (!CRON_SECRET || token !== CRON_SECRET) {
     console.error("[billing-lifecycle-cron] Unauthorized — bad CRON_SECRET");
     return new Response("Unauthorized", { status: 401 });

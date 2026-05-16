@@ -143,6 +143,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
     auth: { persistSession: false },
   });
 
+  // Sanitise le payload avant stockage : retire les champs PII (téléphone, email,
+  // adresse) du webhook Notch Pay pour respecter les exigences de minimisation RGPD.
+  // On conserve uniquement les champs nécessaires à l'audit technique.
+  function sanitizeWebhookPayload(raw: Record<string, unknown>): Record<string, unknown> {
+    const piiKeys = new Set(["phone", "email", "name", "customer", "address", "ip"]);
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (piiKeys.has(k.toLowerCase())) continue;
+      if (v && typeof v === "object" && !Array.isArray(v)) {
+        result[k] = sanitizeWebhookPayload(v as Record<string, unknown>);
+      } else {
+        result[k] = v;
+      }
+    }
+    return result;
+  }
+
   // 3. Idempotence stricte via payment_attempts.provider_reference (UNIQUE)
   const { data: existingAttempt } = await admin
     .from("payment_attempts")
@@ -196,8 +213,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     provider: "notch",
     provider_reference: providerReference,
     status: normalizedStatus,
-    raw_payload: payload,
-    raw_response: data ?? null,
+    raw_payload: sanitizeWebhookPayload(payload),   // PII retirés
+    raw_response: data ? sanitizeWebhookPayload(data as Record<string, unknown>) : null,
   });
 
   if (attemptErr) {
