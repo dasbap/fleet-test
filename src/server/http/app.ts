@@ -26,11 +26,17 @@ export function createServerApp() {
     "*",
     cors({
       origin: (origin) => {
-        if (!origin) return "*";
-        if (origin === appOrigin || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+        // Requêtes sans origin (curl, Postman, server-to-server) : pas soumises au CORS navigateur.
+        if (!origin) return null;
+        if (
+          origin === appOrigin ||
+          origin.startsWith("http://localhost:") ||
+          origin.startsWith("http://127.0.0.1:")
+        ) {
           return origin;
         }
-        return origin;
+        // Origine non reconnue → refus CORS explicite (null = pas d'en-tête ACAO).
+        return null;
       },
       allowHeaders: [
         "Authorization",

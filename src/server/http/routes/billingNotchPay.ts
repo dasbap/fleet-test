@@ -3,6 +3,7 @@ import { z } from "zod";
 import { initiateNotchPayPayment } from "@/server/domain/notchPayInitiate";
 import { getBearerToken } from "@/server/http/auth";
 import { createSupabaseUserClient } from "@/server/infra/supabaseUserClient";
+import { rateLimit } from "@/server/http/middleware/rateLimitMiddleware";
 
 const notchIntentSchema = z.object({
   orgId: z.string().uuid(),
@@ -40,6 +41,9 @@ async function handleNotchPayInitiate(c: Context) {
   }
 }
 
+// Rate limit : 5 initiations/minute/IP — protection anti-spam Notch Pay
+const billingRateLimit = rateLimit({ maxRequests: 5, windowMs: 60_000 });
+
 export function registerBillingNotchPayRoutes(app: Hono) {
-  app.post("/billing/notch/initiate", handleNotchPayInitiate);
+  app.post("/billing/notch/initiate", billingRateLimit, handleNotchPayInitiate);
 }
