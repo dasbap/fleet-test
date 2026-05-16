@@ -61,9 +61,9 @@ BEGIN
       'billing-lifecycle-daily',          -- nom unique
       '0 2 * * *',                        -- tous les jours à 02h00 UTC
       $$
-        SELECT http_post(
-          url     := 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/billing-lifecycle-cron',
-          headers := '{"Authorization": "Bearer CRON_SECRET_VALUE", "Content-Type": "application/json"}'::jsonb,
+        SELECT extensions.http_post(
+          url     := 'https://zqxjvmejoktwlcqshnwi.supabase.co/functions/v1/billing-lifecycle-cron',
+          headers := '{"Authorization": "Bearer c2d557fe50c5f2d88681afdadfd630b4d5e93c669da7d52f340022c863218f45", "Content-Type": "application/json"}'::jsonb,
           body    := '{}'::jsonb
         );
       $$
