@@ -221,6 +221,7 @@ $$;
 
 -- ─── 7. Fonction cron : passe expired/suspended en masse ────
 -- À appeler quotidiennement (pg_cron ou Edge Function scheduleée).
+-- Clés de retour alignées sur l'interface LifecycleResult de l'Edge Function billing-lifecycle-cron.
 CREATE OR REPLACE FUNCTION public.billing_run_daily_lifecycle()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -228,13 +229,13 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_now            timestamptz := now();
-  v_to_grace       uuid[];
-  v_to_suspend     uuid[];
-  v_to_expire      uuid[];
-  v_sub            record;
+  v_now        timestamptz := now();
+  v_to_grace   uuid[];
+  v_to_suspend uuid[];
+  v_to_expire  uuid[];
+  v_id         uuid;             -- variable scalaire pour FOREACH (pas v_sub.id)
 BEGIN
-  -- Actifs expirés → grace_period
+  -- Actifs/trial expirés → grace_period
   SELECT array_agg(id) INTO v_to_grace
   FROM abonnements
   WHERE status IN ('active', 'trial')
@@ -242,8 +243,8 @@ BEGIN
     AND grace_until IS NULL;
 
   IF v_to_grace IS NOT NULL THEN
-    FOREACH v_sub.id IN ARRAY v_to_grace LOOP
-      PERFORM public.billing_enter_grace_period(v_sub.id, 7);
+    FOREACH v_id IN ARRAY v_to_grace LOOP
+      PERFORM public.billing_enter_grace_period(v_id, 7);
     END LOOP;
   END IF;
 
@@ -255,8 +256,8 @@ BEGIN
     AND grace_until < v_now;
 
   IF v_to_suspend IS NOT NULL THEN
-    FOREACH v_sub.id IN ARRAY v_to_suspend LOOP
-      PERFORM public.billing_suspend_subscription(v_sub.id);
+    FOREACH v_id IN ARRAY v_to_suspend LOOP
+      PERFORM public.billing_suspend_subscription(v_id);
     END LOOP;
   END IF;
 
@@ -267,17 +268,23 @@ BEGIN
     AND ends_at < v_now - interval '90 days';
 
   IF v_to_expire IS NOT NULL THEN
-    UPDATE abonnements SET status = 'expired'
-    WHERE id = ANY(v_to_expire);
+    UPDATE abonnements SET status = 'expired' WHERE id = ANY(v_to_expire);
   END IF;
 
   RETURN jsonb_build_object(
-    'to_grace',   coalesce(array_length(v_to_grace,   1), 0),
-    'to_suspend', coalesce(array_length(v_to_suspend, 1), 0),
-    'to_expire',  coalesce(array_length(v_to_expire,  1), 0)
+    'transitioned_to_grace',     coalesce(array_length(v_to_grace,   1), 0),
+    'transitioned_to_suspended', coalesce(array_length(v_to_suspend, 1), 0),
+    'transitioned_to_expired',   coalesce(array_length(v_to_expire,  1), 0),
+    'timestamp',                 v_now
   );
 END;
 $$;
 
 COMMENT ON FUNCTION public.billing_run_daily_lifecycle() IS
-  'Cron daily : active→grace_period→suspended→expired. Appeler via Edge Function scheduleée ou pg_cron.';
+  'Cron daily : active→grace_period→suspended→expired. Clés alignées sur Edge Function billing-lifecycle-cron.';
+
+GRANT EXECUTE ON FUNCTION public.billing_start_trial TO service_role;
+GRANT EXECUTE ON FUNCTION public.billing_enter_grace_period TO service_role;
+GRANT EXECUTE ON FUNCTION public.billing_suspend_subscription TO service_role;
+GRANT EXECUTE ON FUNCTION public.billing_cancel_subscription TO service_role;
+GRANT EXECUTE ON FUNCTION public.billing_run_daily_lifecycle TO service_role;
