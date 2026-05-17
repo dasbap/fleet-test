@@ -106,7 +106,7 @@
   "crons": [
     {
       "path": "/api/crons/expire-demo-accounts",
-      "schedule": "0 * * * *"
+      "schedule": "0 2 * * *"
     }
   ],
   "headers": [
