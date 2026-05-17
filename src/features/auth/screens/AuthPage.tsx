@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   DEMO_CREDENTIAL_ACCOUNTS,
-  DEMO_SHARED_PASSWORD,
 } from "@/features/auth/data/demoCredentials";
 import {
   DEMO_QUICK_ACCOUNTS,
@@ -59,6 +58,16 @@ import {
  * Redirection « retour » : `?next=` sur `/auth` (voir `getLoginPathPreservingReturn` / garde dashboard),
  * pas `location.state.from`. Après succès : navigation vers `/post-login?next=…` puis décision centralisée.
  */
+// true en production (build Vite) — élimine les blocs démo par tree-shaking
+const IS_PROD = import.meta.env.PROD;
+
+// Mot de passe partagé pour les sessions démo locales/staging.
+// À définir dans .env.development uniquement, JAMAIS committé.
+// Ce bloc est dead-code en production (IS_PROD = true → tree-shaken par Vite).
+const DEMO_DEV_PASSWORD = !IS_PROD
+  ? (import.meta.env.VITE_DEMO_PASSWORD as string | undefined) ?? ""
+  : "";
+
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -96,23 +105,25 @@ const Auth = () => {
     setFormData((prev) => ({
       ...prev,
       email,
-      password: DEMO_SHARED_PASSWORD,
+      password: DEMO_DEV_PASSWORD,
     }));
     setShowDemoCredentials(false);
   };
 
-  /** Connexion démo : même flux que le formulaire (`signIn` → `/post-login?next=`). */
+  /** Connexion démo rapide — uniquement en dev/staging (IS_PROD = false). */
   const handleDemoQuickLogin = async (demoEmail: string) => {
+    // Guard : ne jamais s'exécuter en production (Vite élimine ce bloc)
+    if (IS_PROD) return;
     setIsLoading(true);
     setFormData((prev) => ({
       ...prev,
       email: demoEmail,
-      password: DEMO_SHARED_PASSWORD,
+      password: DEMO_DEV_PASSWORD,
     }));
     try {
       const { error } = await signIn(
         demoEmail,
-        DEMO_SHARED_PASSWORD,
+        DEMO_DEV_PASSWORD,
         isMockAuthEnabled() ? mockLoginRole : undefined,
       );
       if (error) {
@@ -520,7 +531,7 @@ const Auth = () => {
               </div>
             </div>
 
-            {isMockAuthEnabled() && !isSignup && (
+            {!IS_PROD && isMockAuthEnabled() && !isSignup && (
               <div className="space-y-2">
                 <Label htmlFor="mock-role">Rôle (session démo)</Label>
                 <Select
@@ -621,7 +632,8 @@ const Auth = () => {
                 )}
               </p>
 
-              {!isSignup && (
+              {/* Accès démo rapide — uniquement en dev/staging, tree-shaken en production */}
+              {!IS_PROD && !isSignup && (
                 <>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mt-8">
                     <div className="flex-1 h-px bg-border" />
@@ -653,69 +665,67 @@ const Auth = () => {
                       </button>
                     ))}
                   </div>
+                  <div className="mt-4 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowDemoCredentials(true)}
+                      className="text-xs text-muted-foreground hover:text-primary underline"
+                    >
+                      Voir tous les identifiants démo
+                    </button>
+                  </div>
                 </>
               )}
-
-              <div className="mt-4 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setShowDemoCredentials(true)}
-                  className="text-xs text-muted-foreground hover:text-primary underline"
-                >
-                  Voir tous les identifiants démo
-                </button>
-              </div>
             </>
           )}
         </div>
       </div>
 
-      {/* Dialog identifiants démo */}
-      <Dialog open={showDemoCredentials} onOpenChange={setShowDemoCredentials}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Identifiants démo</DialogTitle>
-            <DialogDescription>
-              Comptes de démonstration créés par le script E-Samba. À utiliser uniquement en environnement de test.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm">
-              <span className="font-semibold">Mot de passe (tous les comptes)&nbsp;:</span>{" "}
-              <code className="px-1 py-0.5 rounded bg-muted text-xs">{DEMO_SHARED_PASSWORD}</code>
-            </p>
-            <div className="rounded-md border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium">Rôle</th>
-                    <th className="px-3 py-2 text-left font-medium">Email</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {DEMO_CREDENTIAL_ACCOUNTS.map((account, index) => (
-                    <tr key={account.email} className={index > 0 ? "border-t" : undefined}>
-                      <td className="px-3 py-2">{account.role}</td>
-                      <td className="px-3 py-2 font-mono text-xs">
-                        <button
-                          type="button"
-                          onClick={() => fillDemoCredentials(account.email)}
-                          className="underline underline-offset-2 hover:text-primary"
-                        >
-                          {account.email}
-                        </button>
-                      </td>
+      {/* Dialog identifiants démo — tree-shaken en production */}
+      {!IS_PROD && (
+        <Dialog open={showDemoCredentials} onOpenChange={setShowDemoCredentials}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Identifiants démo</DialogTitle>
+              <DialogDescription>
+                Comptes de démonstration — environnement dev/staging uniquement.
+                Mot de passe via <code className="text-xs">VITE_DEMO_PASSWORD</code> dans <code className="text-xs">.env.development</code>.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="rounded-md border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">Rôle</th>
+                      <th className="px-3 py-2 text-left font-medium">Email</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {DEMO_CREDENTIAL_ACCOUNTS.map((account, index) => (
+                      <tr key={account.email} className={index > 0 ? "border-t" : undefined}>
+                        <td className="px-3 py-2">{account.role}</td>
+                        <td className="px-3 py-2 font-mono text-xs">
+                          <button
+                            type="button"
+                            onClick={() => fillDemoCredentials(account.email)}
+                            className="underline underline-offset-2 hover:text-primary"
+                          >
+                            {account.email}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Ces comptes sont soumis aux restrictions démo (RLS, sessions limitées, billing masqué).
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Ne pas utiliser ces identifiants en production. Ils sont réservés aux démonstrations et environnements de test.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
