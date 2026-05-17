@@ -16,4 +16,28 @@ const HybridAuthPage    = lazy(() => import("@/components/auth/HybridAuthPage"))
 export const authPublicRoutes = (
   <>
     <Route
-      path="/
+      path="/login"
+      element={
+        <RequireGuest>
+          <HybridAuthPage />
+        </RequireGuest>
+      }
+    />
+    <Route
+      path="/login/v1"
+      element={
+        <RequireGuest>
+          <MobileLoginScreen />
+        </RequireGuest>
+      }
+    />
+    <Route
+      path="/auth"
+      element={
+        <RequireGuest>
+          <AuthPage />
+        </RequireGuest>
+      }
+    />
+  </>
+);
