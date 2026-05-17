@@ -117,10 +117,10 @@ export function OtpInput({
               w-11 h-14 text-center text-xl font-bold rounded-xl border-2
               outline-none transition-all caret-transparent select-none
               ${digit
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                : 'border-gray-200 bg-gray-50 text-gray-900'}
-              ${hasError ? 'border-red-400 bg-red-50 text-red-700' : ''}
-              ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:border-gray-300 focus:border-blue-500 focus:bg-white focus:shadow-sm'}
+                ? 'border-primary bg-primary/8 text-primary'
+                : 'border-input bg-muted/50 text-foreground'}
+              ${hasError ? 'border-destructive bg-destructive/8 text-destructive' : ''}
+              ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:border-ring focus:border-primary focus:bg-background focus:shadow-sm'}
             `}
           />
         );
