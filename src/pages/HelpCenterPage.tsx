@@ -1,26 +1,18 @@
-import { HelpFAQ, HelpSearch } from "@/components/shared/HelpCenter";
+/**
+ * Centre d'aide E-Samba — Page complète.
+ *
+ * Architecture :
+ *   - Barre de recherche locale (bag-of-words, 2G-friendly)
+ *   - Tutoriels rapides (accordéons, top 6)
+ *   - Guides par rôle (chauffeur / gestionnaire / mécanicien)
+ *   - FAQ contextuelle (composants existants)
+ *   - Contact WhatsApp support
+ *
+ * UX : mobile-first, chargement immédiat (tout statique), accessible hors ligne.
+ */
 
-const HelpCenterPage = () => {
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
-      <header className="space-y-1">
-        <h1 className="text-xl font-heading font-semibold text-slate-800 dark:text-slate-100">
-          Centre d&apos;aide E-Samba
-        </h1>
-        <p className="text-sm text-slate-400">
-          Recherchez une question ou parcourez les réponses les plus utiles
-          selon la page que vous utilisez.
-        </p>
-      </header>
-
-      <HelpSearch autoFocus />
-
-      <section>
-        <HelpFAQ />
-      </section>
-    </div>
-  );
-};
-
-export default HelpCenterPage;
-
+import { useState } from 'react';
+import { Truck, Wrench, Users, BookOpen, Search, Zap } from 'lucide-react';
+import { HelpSearchBar }       from '@/components/help/HelpSearchBar';
+import { QuickTutorialCard }   from '@/components/help/QuickTutorialCard';
+import { RoleGuideSection }    from '@/component
