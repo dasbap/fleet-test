@@ -2,7 +2,8 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as authActions from "@/lib/auth-actions";
-import { DEMO_CREDENTIAL_ACCOUNTS, DEMO_SHARED_PASSWORD } from "@/features/auth/data/demoCredentials";
+import { DEMO_CREDENTIAL_ACCOUNTS } from "@/features/auth/data/demoCredentials";
+// DEMO_SHARED_PASSWORD supprimé — les mots de passe démo sont gérés via VITE_DEMO_PASSWORD (non commité)
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import AuthPage from "./AuthPage";
 
@@ -143,9 +144,10 @@ describe("AuthPage", () => {
     );
 
     await waitFor(() => {
+      // DEMO_DEV_PASSWORD = VITE_DEMO_PASSWORD ?? "" → "" dans l'env de test (variable non définie)
       expect(authActions.signIn).toHaveBeenCalledWith(
         firstDemo.email,
-        DEMO_SHARED_PASSWORD,
+        "",
         undefined,
       );
     });
