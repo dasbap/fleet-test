@@ -13,6 +13,8 @@
   ],
   "rewrites": [
     { "source": "/auth", "destination": "/index.html" },
+    { "source": "/api/admin/create-prospect",    "destination": "/api/admin/create-prospect" },
+    { "source": "/api/admin/generate-magic-link","destination": "/api/admin/generate-magic-link" },
     { "source": "/auth/", "destination": "/index.html" },
     { "source": "/fuel", "destination": "/index.html" },
     { "source": "/fuel/", "destination": "/index.html" },
