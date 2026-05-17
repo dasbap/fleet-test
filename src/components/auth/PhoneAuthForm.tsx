@@ -10,8 +10,8 @@
  *   <PhoneAuthForm onSuccess={() => navigate('/dashboard')} />
  */
 
-import { useState, useCallback } from 'react';
-import { ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { usePhoneAuth } from '@/hooks/usePhoneAuth';
 import { PhoneInput } from './PhoneInput';
 import { OtpInput } from './OtpInput';
@@ -33,10 +33,10 @@ export function PhoneAuthForm({ onSuccess, className = '' }: PhoneAuthFormProps)
   const [otpValue,      setOtpValue]      = useState('');
   const [activeCountry, setActiveCountry] = useState<AfricanCountry | null>(null);
 
-  // Succès → callback parent
-  if (state.step === 'success' && onSuccess) {
-    onSuccess();
-  }
+  // Succès → callback parent (hors render pour éviter les side effects en rendu)
+  useEffect(() => {
+    if (state.step === 'success') onSuccess?.();
+  }, [state.step, onSuccess]);
 
   // ── Étape 1 : saisie numéro ────────────────────────────────────────────────
 
@@ -72,12 +72,12 @@ export function PhoneAuthForm({ onSuccess, className = '' }: PhoneAuthFormProps)
       <div className={`space-y-6 ${className}`}>
         {/* En-tête */}
         <div className="text-center space-y-1">
-          <p className="text-sm text-gray-500">Code envoyé à</p>
-          <p className="text-base font-semibold text-gray-900">{maskedPhone}</p>
+          <p className="text-sm text-muted-foreground">Code envoyé à</p>
+          <p className="text-base font-semibold text-foreground">{maskedPhone}</p>
           <button
             type="button"
             onClick={() => { changePhone(); setOtpValue(''); }}
-            className="flex items-center gap-1 text-xs text-blue-600 hover:underline mx-auto mt-1"
+            className="flex items-center gap-1 text-xs text-primary hover:underline mx-auto mt-1"
           >
             <ArrowLeft className="h-3 w-3" aria-hidden />
             Changer de numéro
@@ -86,7 +86,7 @@ export function PhoneAuthForm({ onSuccess, className = '' }: PhoneAuthFormProps)
 
         {/* Saisie OTP */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700 text-center">
+          <label className="block text-sm font-medium text-foreground text-center">
             Entrez le code à 6 chiffres
           </label>
           <OtpInput
@@ -97,7 +97,7 @@ export function PhoneAuthForm({ onSuccess, className = '' }: PhoneAuthFormProps)
             hasError={hasError && !!state.errorMessage}
           />
           {attemptsLeft < 3 && attemptsLeft > 0 && (
-            <p className="text-xs text-amber-600 text-center">
+            <p className="text-xs text-warning text-center">
               {attemptsLeft} tentative{attemptsLeft > 1 ? 's' : ''} restante{attemptsLeft > 1 ? 's' : ''}
             </p>
           )}
@@ -105,9 +105,9 @@ export function PhoneAuthForm({ onSuccess, className = '' }: PhoneAuthFormProps)
 
         {/* Erreur */}
         {state.errorMessage && (
-          <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
-            <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" aria-hidden />
-            <p className="text-sm text-red-700">{state.errorMessage}</p>
+          <div className="flex items-start gap-2 rounded-lg bg-destructive/8 border border-destructive/30 px-3 py-2.5">
+            <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" aria-hidden />
+            <p className="text-sm text-destructive">{state.errorMessage}</p>
           </div>
         )}
 
@@ -116,7 +116,7 @@ export function PhoneAuthForm({ onSuccess, className = '' }: PhoneAuthFormProps)
           <button
             type="button"
             onClick={() => handleOtpComplete(otpValue)}
-            className="w-full h-11 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:scale-[0.98] transition-all"
+            className="w-full h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all"
           >
             Valider
           </button>
@@ -144,9 +144,9 @@ export function PhoneAuthForm({ onSuccess, className = '' }: PhoneAuthFormProps)
 
       {/* Erreur envoi */}
       {state.step === 'error' && state.errorMessage && (
-        <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
-          <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" aria-hidden />
-          <p className="text-sm text-red-700">{state.errorMessage}</p>
+        <div className="flex items-start gap-2 rounded-lg bg-destructive/8 border border-destructive/30 px-3 py-2.5">
+          <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" aria-hidden />
+          <p className="text-sm text-destructive">{state.errorMessage}</p>
         </div>
       )}
     </div>

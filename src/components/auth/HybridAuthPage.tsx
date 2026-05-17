@@ -130,19 +130,20 @@ export default function HybridAuthPage() {
           </p>
 
           {/* Onglets */}
-          <div className="mt-6 flex rounded-xl border border-border bg-muted/40 p-1">
+          <div role="tablist" aria-label="Méthode de connexion" className="mt-6 flex rounded-xl border border-border bg-muted/40 p-1">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setMethod(tab.id)}
+                role="tab"
+                aria-selected={method === tab.id}
                 className={`
                   flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all
                   ${method === tab.id
-                    ? 'bg-white shadow-sm text-foreground'
+                    ? 'bg-background shadow-sm text-foreground'
                     : 'text-muted-foreground hover:text-foreground'}
                 `}
-                aria-selected={method === tab.id}
               >
                 {tab.icon}
                 {tab.label}
