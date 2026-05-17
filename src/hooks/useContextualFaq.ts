@@ -14,6 +14,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { faqRegistry, ROUTE_PATTERN_MAP } from '@/data/faq/registry';
+import { resolveFaqItems } from '@/data/faq/locales';
 import type { FaqContext, FaqLocale, FaqRoute, FaqItem } from '@/types/faq';
 
 // ─── Locale ───────────────────────────────────────────────────────────────────
@@ -79,15 +80,8 @@ export function useContextualFaq(): FaqContext {
     setQuery('');
   }, [route]);
 
-  const items = useMemo((): FaqItem[] => {
-    const byLocale = faqRegistry[route];
-    if (!byLocale) {
-      // Fallback générique
-      return faqRegistry['generic']?.[locale] ?? faqRegistry['generic']?.['fr'] ?? [];
-    }
-
-    return byLocale[locale] ?? byLocale['fr'] ?? [];
-  }, [route, locale]);
+  // Utilise le résolveur avec fallback FR par item
+  const items = useMemo((): FaqItem[] => resolveFaqItems(route, locale), [route, locale]);
 
   const filteredItems = useMemo(
     () => filterItems(items, query),
