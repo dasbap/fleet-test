@@ -1,11 +1,21 @@
 /**
- * Recherche universelle : agrégation véhicules (RPC), entretiens, alertes.
+ * Recherche universelle : agrégation véhicules (RPC), entretiens, alertes
+ * + contenu statique (pages, actions, paramètres, FAQ, guides).
  * Dépendances injectables pour les tests.
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { FULL_SEARCH_INDEX } from "@/data/search/searchIndex";
 
-export type UniversalSearchResultKind = "vehicle" | "maintenance" | "alert";
+export type UniversalSearchResultKind =
+  | "vehicle"
+  | "maintenance"
+  | "alert"
+  | "page"
+  | "action"
+  | "setting"
+  | "faq"
+  | "guide";
 
 export interface UniversalSearchResult {
   id: string;
@@ -15,6 +25,8 @@ export interface UniversalSearchResult {
   badge?: string;
   badgeColor?: "green" | "yellow" | "red";
   href: string;
+  /** Poids statique (1–10) — présent pour les items non-Supabase. */
+  weight?: number;
 }
 
 export type UniversalSearchFilterState = {
@@ -103,3 +115,44 @@ function createDefaultUniversalSearchDeps(): UniversalSearchDeps {
 
 /** Dépendances réelles (Supabase + RPC flotte). */
 export const defaultUniversalSearchDeps = createDefaultUniversalSearchDeps();
+
+// ── Recherche statique (index local, 2G-friendly) ─────────────────────────────
+
+function normalizeStr(s: string): string {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+/**
+ * Recherche dans l'index statique (pages, actions, paramètres, FAQ, guides).
+ * Instantané, zéro réseau.
+ */
+export function searchStaticIndex(query: string): UniversalSearchResult[] {
+  const q = normalizeStr(query.trim());
+  if (q.length < 2) return [];
+
+  const results: UniversalSearchResult[] = [];
+
+  for (const item of FULL_SEARCH_INDEX) {
+    const titleN    = normalizeStr(item.title);
+    const subtitleN = normalizeStr(item.subtitle);
+    const tagsN     = item.tags.map(normalizeStr);
+
+    const matches =
+      titleN.includes(q) ||
+      subtitleN.includes(q) ||
+      tagsN.some((t) => t.includes(q));
+
+    if (matches) {
+      results.push({
+        id:       item.id,
+        kind:     item.type as UniversalSearchResultKind,
+        title:    item.title,
+        subtitle: item.subtitle,
+        href:     item.route ?? "/help",
+        weight:   item.weight,
+      });
+    }
+  }
+
+  return results;
+}
