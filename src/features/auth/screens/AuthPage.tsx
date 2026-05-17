@@ -34,13 +34,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DEMO_CREDENTIAL_ACCOUNTS,
-} from "@/features/auth/data/demoCredentials";
-import {
-  DEMO_QUICK_ACCOUNTS,
-  DEMO_QUICK_ROLE_COLORS,
-} from "@/features/auth/data/demoQuickAccess";
+// Import de type uniquement — les données sont chargées dynamiquement (hors bundle prod)
+import type { DemoCredentialAccount } from "@/features/auth/data/demoCredentials";
 import { buildAuthHref, isAuthSignupMode } from "@/navigation/authEntryUrl";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import {
@@ -61,10 +56,15 @@ import {
 // true en production (build Vite) — élimine les blocs démo par tree-shaking
 const IS_PROD = import.meta.env.PROD;
 
+// Double guard : VITE_ENABLE_DEMO_UI doit être explicitement "true" pour activer les raccourcis démo.
+// Défensif : protège si IS_PROD est mal évalué (preview deployment, config Vercel incorrecte, etc.)
+// À définir uniquement dans .env.development — jamais en production.
+const DEMO_UI_ENABLED = !IS_PROD && import.meta.env.VITE_ENABLE_DEMO_UI === "true";
+
 // Mot de passe partagé pour les sessions démo locales/staging.
 // À définir dans .env.development uniquement, JAMAIS committé.
-// Ce bloc est dead-code en production (IS_PROD = true → tree-shaken par Vite).
-const DEMO_DEV_PASSWORD = !IS_PROD
+// Ce bloc est dead-code en production (DEMO_UI_ENABLED = false → tree-shaken par Vite).
+const DEMO_DEV_PASSWORD = DEMO_UI_ENABLED
   ? (import.meta.env.VITE_DEMO_PASSWORD as string | undefined) ?? ""
   : "";
 
@@ -94,6 +94,11 @@ const Auth = () => {
   const [showDemoCredentials, setShowDemoCredentials] = useState(false);
   const [mockLoginRole, setMockLoginRole] = useState<MobileAppRole>("FLEET_MANAGER");
 
+  // Données démo chargées dynamiquement — absentes du bundle production
+  const [demoAccounts,      setDemoAccounts]      = useState<DemoCredentialAccount[]>([]);
+  const [demoQuickAccounts, setDemoQuickAccounts]  = useState<DemoCredentialAccount[]>([]);
+  const [demoRoleColors,    setDemoRoleColors]     = useState<ReadonlyArray<string>>([]);
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -112,8 +117,8 @@ const Auth = () => {
 
   /** Connexion démo rapide — uniquement en dev/staging (IS_PROD = false). */
   const handleDemoQuickLogin = async (demoEmail: string) => {
-    // Guard : ne jamais s'exécuter en production (Vite élimine ce bloc)
-    if (IS_PROD) return;
+    // Guard : ne jamais s'exécuter en production
+    if (!DEMO_UI_ENABLED) return;
     setIsLoading(true);
     setFormData((prev) => ({
       ...prev,
@@ -160,6 +165,18 @@ const Auth = () => {
     if (hash && hash.includes("type=recovery")) {
       setIsRecovery(true);
     }
+  }, []);
+
+  // Chargement dynamique des données démo — chunk séparé, jamais dans le bundle prod
+  useEffect(() => {
+    if (!DEMO_UI_ENABLED) return;
+    void (async () => {
+      const { DEMO_CREDENTIAL_ACCOUNTS } = await import("@/features/auth/data/demoCredentials");
+      const { DEMO_QUICK_ACCOUNTS, DEMO_QUICK_ROLE_COLORS } = await import("@/features/auth/data/demoQuickAccess");
+      setDemoAccounts(DEMO_CREDENTIAL_ACCOUNTS);
+      setDemoQuickAccounts(DEMO_QUICK_ACCOUNTS);
+      setDemoRoleColors(DEMO_QUICK_ROLE_COLORS);
+    })();
   }, []);
 
   const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
@@ -531,7 +548,7 @@ const Auth = () => {
               </div>
             </div>
 
-            {!IS_PROD && isMockAuthEnabled() && !isSignup && (
+            {DEMO_UI_ENABLED && isMockAuthEnabled() && !isSignup && (
               <div className="space-y-2">
                 <Label htmlFor="mock-role">Rôle (session démo)</Label>
                 <Select
@@ -632,8 +649,8 @@ const Auth = () => {
                 )}
               </p>
 
-              {/* Accès démo rapide — uniquement en dev/staging, tree-shaken en production */}
-              {!IS_PROD && !isSignup && (
+              {/* Accès démo rapide — uniquement si DEMO_UI_ENABLED (dev/staging explicite) */}
+              {DEMO_UI_ENABLED && !isSignup && (
                 <>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mt-8">
                     <div className="flex-1 h-px bg-border" />
@@ -641,7 +658,7 @@ const Auth = () => {
                     <div className="flex-1 h-px bg-border" />
                   </div>
                   <div className="space-y-2 mt-4">
-                    {DEMO_QUICK_ACCOUNTS.map((account, index) => (
+                    {demoQuickAccounts.map((account, index) => (
                       <button
                         key={account.email}
                         type="button"
@@ -655,7 +672,7 @@ const Auth = () => {
                       >
                         <span className="font-medium">
                           Démo{" "}
-                          <span className={DEMO_QUICK_ROLE_COLORS[index] ?? "text-muted-foreground"}>
+                          <span className={demoRoleColors[index] ?? "text-muted-foreground"}>
                             {account.role}
                           </span>
                         </span>
@@ -681,8 +698,8 @@ const Auth = () => {
         </div>
       </div>
 
-      {/* Dialog identifiants démo — tree-shaken en production */}
-      {!IS_PROD && (
+      {/* Dialog identifiants démo — visible uniquement si DEMO_UI_ENABLED */}
+      {DEMO_UI_ENABLED && (
         <Dialog open={showDemoCredentials} onOpenChange={setShowDemoCredentials}>
           <DialogContent>
             <DialogHeader>
@@ -702,7 +719,7 @@ const Auth = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {DEMO_CREDENTIAL_ACCOUNTS.map((account, index) => (
+                    {demoAccounts.map((account, index) => (
                       <tr key={account.email} className={index > 0 ? "border-t" : undefined}>
                         <td className="px-3 py-2">{account.role}</td>
                         <td className="px-3 py-2 font-mono text-xs">
