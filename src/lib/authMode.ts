@@ -15,6 +15,14 @@ export function isMockAuthEnabled(): boolean {
 }
 
 export function enableDemoAuthFallback(): void {
+  if (import.meta.env.PROD) {
+    // Blocage PROD : tentative d'activation du mode mock en production → log sécurité
+    console.error(
+      "[SECURITY] enableDemoAuthFallback() appelé en production — opération refusée.",
+      "Si vous voyez cette erreur, signalez-la immédiatement à l'équipe sécurité.",
+    );
+    return;
+  }
   if (typeof window === "undefined") return;
   window.localStorage.setItem(DEMO_FALLBACK_STORAGE_KEY, "true");
   window.dispatchEvent(new CustomEvent(AUTH_MODE_CHANGED_EVENT));
