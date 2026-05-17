@@ -289,10 +289,10 @@ BEGIN
 
     -- Adhésion à la flotte démo
     IF v_fleet_id IS NOT NULL THEN
-      INSERT INTO public.flotte_adhesions (user_id, fleet_id, role, statut, rejoint_le)
-      VALUES (p_user_id, v_fleet_id, 'driver', 'actif', now())
-      ON CONFLICT (user_id, fleet_id) DO UPDATE
-        SET role = 'driver', statut = 'actif', rejoint_le = now();
+      INSERT INTO public.flotte_adhesions (user_id, fleet_id, role, is_active)
+      VALUES (p_user_id, v_fleet_id, 'driver', true)
+      ON CONFLICT (fleet_id, user_id, role) DO UPDATE
+        SET is_active = true;
     END IF;
 
   ELSIF v_row.universe = 'internal' THEN
@@ -558,7 +558,7 @@ SELECT
   ac.last_used_at,
   ac.created_at,
   u.email                       AS created_by_email,
-  f.nom                         AS fleet_name
+  f.name                        AS fleet_name
 FROM public.access_codes ac
 LEFT JOIN auth.users u ON u.id = ac.created_by
 LEFT JOIN public.flottes f ON f.id = ac.fleet_id;
