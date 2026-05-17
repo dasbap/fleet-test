@@ -95,6 +95,7 @@ const DashcamPage = lazy(
   () => import("@/features/dashcam/screens/DashcamPage")
 );
 const Scan = lazy(() => import("@/pages/Scan"));
+const DemoAdminPage = lazy(() => import("@/pages/admin/DemoAdminPage"));
 const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
 const ProtectedRoute = lazy(() =>
   import("@/components/layout/ProtectedRoute").then((m) => ({ default: m.ProtectedRoute })),
@@ -256,6 +257,7 @@ export const dashboardRoutes = (
           </RoleGuard>
         }
       />
+      <Route path="admin/demo" element={<DemoAdminPage />} />
       <Route path="*" element={<DashboardNotFound />} />
     </Route>
   </Route>

@@ -63,6 +63,10 @@ const PredictiveMaintenancePage = lazy(
   () => import("@/features/maintenance/screens/PredictiveMaintenancePage")
 );
 const PricingPage = lazy(() => import("@/pages/Pricing"));
+const DemoMagicLinkPage = lazy(() => import("@/pages/DemoMagicLinkPage"));
+const ProspectOnboarding = lazy(() =>
+  import("@/features/demo/ProspectOnboarding").then((m) => ({ default: m.ProspectOnboarding }))
+);
 
 /**
  * Arbre de routes racine : pages publiques, redirections, dashboard, 404.
@@ -143,6 +147,9 @@ export const appRoutes = (
       <Route path="/upgrade" element={<Upgrade />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/post-login" element={<PostLoginGate />} />
+      {/* Flux commercial démo — pas de ProtectedRoute (auth via magic link) */}
+      <Route path="/demo/access"     element={<DemoMagicLinkPage />} />
+      <Route path="/demo/onboarding" element={<ProspectOnboarding />} />
       {dashboardRoutes}
     </Route>
     <Route path="*" element={<NotFound />} />
