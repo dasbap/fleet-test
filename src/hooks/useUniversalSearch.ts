@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   defaultUniversalSearchDeps,
   searchAll,
+  searchStaticIndex,
   type UniversalSearchResult,
   type UniversalSearchResultKind,
 } from "@/services/universalSearch.service";
@@ -44,11 +45,18 @@ const MAX_PER_TYPE = 5;
 const MIN_QUERY_LEN = 2;
 const CACHE_MAX = 30;
 
-const GROUP_ORDER: SearchResultType[] = ["vehicle", "maintenance", "alert"];
+const GROUP_ORDER: SearchResultType[] = [
+  "action", "vehicle", "page", "setting", "faq", "maintenance", "alert", "guide",
+];
 const GROUP_LABELS: Record<SearchResultType, string> = {
-  vehicle: "Véhicules",
+  vehicle:     "Véhicules",
   maintenance: "Entretiens",
-  alert: "Alertes",
+  alert:       "Alertes",
+  action:      "Actions rapides",
+  page:        "Pages",
+  setting:     "Paramètres",
+  faq:         "Questions fréquentes",
+  guide:       "Guides",
 };
 
 const cache = new Map<string, SearchGroup[]>();
@@ -80,11 +88,13 @@ function scoreResult(result: UniversalSearchResult, normalizedQuery: string): nu
   const inTitle = title.includes(normalizedQuery);
   const inSubtitle = subtitle.includes(normalizedQuery);
   const severityBoost = result.kind === "alert" && result.badge === "critical" ? 2 : 0;
+  // Boost léger par weight statique (centré sur 5, contribution ±0.6 max)
+  const weightBoost = result.weight !== undefined ? (result.weight - 5) * 0.15 : 0;
 
-  if (startsWith) return 10 + severityBoost;
-  if (inTitle) return 8 + severityBoost;
-  if (inSubtitle) return 6 + severityBoost;
-  return 5 + severityBoost;
+  if (startsWith) return 10 + severityBoost + weightBoost;
+  if (inTitle)    return  8 + severityBoost + weightBoost;
+  if (inSubtitle) return  6 + severityBoost + weightBoost;
+  return 5 + severityBoost + weightBoost;
 }
 
 function groupResults(
@@ -123,30 +133,32 @@ function groupResults(
 
 async function executeSearch(
   query: string,
-  fleetId: string,
+  fleetId: string | null,
   signal: AbortSignal,
 ): Promise<SearchGroup[]> {
-  const cacheKey = `${fleetId}:${query.toLowerCase().trim()}`;
+  const normalizedQuery = query.toLowerCase().trim();
+  const cacheKey = `${fleetId ?? "static"}:${normalizedQuery}`;
   const cached = cache.get(cacheKey);
-  if (cached) {
-    return cached;
+  if (cached) return cached;
+  if (signal.aborted) return [];
+
+  // Recherche statique — instantanée, zéro réseau
+  const staticResults = searchStaticIndex(normalizedQuery);
+
+  // Recherche Supabase — uniquement si flotte connue
+  let fleetResults: UniversalSearchResult[] = [];
+  if (fleetId) {
+    fleetResults = await searchAll(
+      query,
+      { kind: "all" },
+      fleetId,
+      defaultUniversalSearchDeps,
+    );
   }
 
-  if (signal.aborted) {
-    return [];
-  }
+  if (signal.aborted) return [];
 
-  const results = await searchAll(
-    query,
-    { kind: "all" },
-    fleetId,
-    defaultUniversalSearchDeps,
-  );
-  if (signal.aborted) {
-    return [];
-  }
-
-  const grouped = groupResults(results, query.toLowerCase().trim());
+  const grouped = groupResults([...fleetResults, ...staticResults], normalizedQuery);
   cacheSet(cacheKey, grouped);
   return grouped;
 }
@@ -162,12 +174,6 @@ export function useUniversalSearch(fleetId: string | null): UseUniversalSearchRe
 
   const runSearch = useCallback(
     async (searchQuery: string) => {
-      if (!fleetId) {
-        setGroups([]);
-        setStatus("idle");
-        return;
-      }
-
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -194,7 +200,7 @@ export function useUniversalSearch(fleetId: string | null): UseUniversalSearchRe
     (nextQuery: string) => {
       setQueryRaw(nextQuery);
       const trimmed = nextQuery.trim();
-      if (!fleetId || trimmed.length < MIN_QUERY_LEN) {
+      if (trimmed.length < MIN_QUERY_LEN) {
         abortRef.current?.abort();
         if (debounceRef.current) {
           clearTimeout(debounceRef.current);
