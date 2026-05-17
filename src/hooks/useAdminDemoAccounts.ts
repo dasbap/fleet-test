@@ -5,12 +5,16 @@
  *   - sessions      : liste complète enrichie (email, rôle, flotte, expiration, activité)
  *   - isLoading
  *   - reload()
- *   - createAccess(payload)      → crée prospect + magic link
+ *   - createAccess(payload)      → crée prospect + magic link (via BFF)
  *   - suspendAccount(userId)     → désactive le compte
  *   - reactivateAccount(userId)  → réactive le compte
  *   - resetFleet(fleetId)        → remet à zéro la flotte démo
- *   - generateMagicLink(userId)  → génère un nouveau lien d'accès
+ *   - generateMagicLink(userId)  → génère un nouveau lien d'accès (via BFF)
  *   - demoFleets                 → flottes is_demo disponibles
+ *
+ * Sécurité : ADMIN_SECRET n'est JAMAIS exposé côté client.
+ * Les appels sensibles passent par les routes BFF Vercel (/api/admin/*)
+ * qui portent le secret côté serveur et vérifient le JWT admin.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -50,31 +54,32 @@ export interface DemoFleet {
 }
 
 export interface CreateDemoPayload {
-  email:        string;
+  email:         string;
   company_name?: string;
   account_type:  DemoAccountType;
-  fleet_id?:    string;
-  trial_days:   number;
-  label?:       string;
-  send_email:   boolean;
+  fleet_id?:     string;
+  trial_days:    number;
+  label?:        string;
+  send_email:    boolean;
 }
 
 export interface UseAdminDemoAccountsReturn {
-  sessions:       DemoSession[];
-  demoFleets:     DemoFleet[];
-  isLoading:      boolean;
-  reload:         () => Promise<void>;
-  createAccess:   (payload: CreateDemoPayload) => Promise<{ ok: boolean; magic_url?: string; error?: string }>;
-  suspendAccount: (userId: string) => Promise<boolean>;
+  sessions:          DemoSession[];
+  demoFleets:        DemoFleet[];
+  isLoading:         boolean;
+  reload:            () => Promise<void>;
+  createAccess:      (payload: CreateDemoPayload) => Promise<{ ok: boolean; magic_url?: string; error?: string }>;
+  suspendAccount:    (userId: string) => Promise<boolean>;
   reactivateAccount: (userId: string, extendHours?: number) => Promise<boolean>;
-  resetFleet:     (fleetId: string) => Promise<boolean>;
+  resetFleet:        (fleetId: string) => Promise<boolean>;
   generateMagicLink: (userId: string, email: string, fleetId: string, label?: string) => Promise<string | null>;
 }
 
-// ─── Constantes ────────────────────────────────────────────────────────────────
+// ─── BFF routes (Vercel serverless) ───────────────────────────────────────────
+// ADMIN_SECRET reste côté serveur — jamais dans le bundle navigateur.
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET as string | undefined;
+const BFF_CREATE_PROSPECT     = "/api/admin/create-prospect";
+const BFF_GENERATE_MAGIC_LINK = "/api/admin/generate-magic-link";
 
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -84,10 +89,11 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
   const [isLoading,  setLoading]    = useState(true);
   const { toast } = useToast();
 
+  // ── Chargement ──────────────────────────────────────────────────────────────
+
   const load = useCallback(async () => {
     setLoading(true);
 
-    // Sessions
     const { data: sessData, error: sessErr } = await supabase.rpc("admin_list_demo_sessions", {
       p_active_only: false,
     });
@@ -98,7 +104,6 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
       setSessions((sessData as DemoSession[]) ?? []);
     }
 
-    // Flottes démo disponibles
     const { data: fleetData } = await supabase
       .from("flottes")
       .select("id, name")
@@ -111,19 +116,27 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
 
   useEffect(() => { void load(); }, [load]);
 
-  // ── createAccess ────────────────────────────────────────────────────────────
+  // ── Helper : JWT de l'admin connecté ────────────────────────────────────────
+
+  const getAdminToken = useCallback(async (): Promise<string | null> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  }, []);
+
+  // ── createAccess ─────────────────────────────────────────────────────────────
+  // Route BFF : POST /api/admin/create-prospect
+  // Le BFF vérifie le JWT admin + is_platform_admin() avant d'appeler l'Edge Function.
 
   const createAccess = useCallback(async (payload: CreateDemoPayload) => {
-    if (!SUPABASE_URL) return { ok: false, error: "SUPABASE_URL manquant" };
-    if (!ADMIN_SECRET) return { ok: false, error: "VITE_ADMIN_SECRET non configuré" };
+    const token = await getAdminToken();
+    if (!token) return { ok: false, error: "session_expirée" };
 
     try {
-      // 1. Créer le compte prospect via Edge Function
-      const prospectRes = await fetch(`${SUPABASE_URL}/functions/v1/create-prospect-account`, {
+      const prospectRes = await fetch(BFF_CREATE_PROSPECT, {
         method:  "POST",
         headers: {
           "Content-Type":  "application/json",
-          "Authorization": `Bearer ${ADMIN_SECRET}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           email:        payload.email,
@@ -133,6 +146,10 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
           send_email:   payload.send_email,
         }),
       });
+
+      if (prospectRes.status === 429) {
+        return { ok: false, error: "Limite de créations atteinte (10/heure). Réessaie dans une heure." };
+      }
 
       const prospectData = await prospectRes.json() as {
         ok: boolean;
@@ -145,15 +162,13 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
         return { ok: false, error: prospectData.error ?? "creation_echouee" };
       }
 
-      // 2. Générer le magic link via Edge Function
-      const linkRes = await fetch(`${SUPABASE_URL}/functions/v1/demo-magic-link`, {
+      const linkRes = await fetch(BFF_GENERATE_MAGIC_LINK, {
         method:  "POST",
         headers: {
           "Content-Type":  "application/json",
-          "Authorization": `Bearer ${ADMIN_SECRET}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
-          action:   "create",
           user_id:  prospectData.user_id,
           fleet_id: prospectData.fleet_id ?? payload.fleet_id,
           email:    payload.email,
@@ -168,18 +183,14 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
       };
 
       await load();
-
-      return {
-        ok:        true,
-        magic_url: linkData.magic_url,
-      };
+      return { ok: true, magic_url: linkData.magic_url };
 
     } catch (err) {
       return { ok: false, error: String(err) };
     }
-  }, [load]);
+  }, [load, getAdminToken]);
 
-  // ── suspendAccount ──────────────────────────────────────────────────────────
+  // ── suspendAccount ───────────────────────────────────────────────────────────
 
   const suspendAccount = useCallback(async (userId: string): Promise<boolean> => {
     const { data: meData } = await supabase.auth.getUser();
@@ -201,7 +212,7 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
     return true;
   }, [load, toast]);
 
-  // ── reactivateAccount ───────────────────────────────────────────────────────
+  // ── reactivateAccount ────────────────────────────────────────────────────────
 
   const reactivateAccount = useCallback(async (userId: string, extendHours?: number): Promise<boolean> => {
     const { data: meData } = await supabase.auth.getUser();
@@ -223,7 +234,7 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
     return true;
   }, [load, toast]);
 
-  // ── resetFleet ──────────────────────────────────────────────────────────────
+  // ── resetFleet ───────────────────────────────────────────────────────────────
 
   const resetFleet = useCallback(async (fleetId: string): Promise<boolean> => {
     const { data, error } = await supabase.rpc("admin_reset_demo_fleet", {
@@ -241,7 +252,8 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
     return true;
   }, [load, toast]);
 
-  // ── generateMagicLink ───────────────────────────────────────────────────────
+  // ── generateMagicLink ────────────────────────────────────────────────────────
+  // Route BFF : POST /api/admin/generate-magic-link
 
   const generateMagicLink = useCallback(async (
     userId: string,
@@ -249,17 +261,20 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
     fleetId: string,
     label?: string,
   ): Promise<string | null> => {
-    if (!SUPABASE_URL || !ADMIN_SECRET) return null;
+    const token = await getAdminToken();
+    if (!token) return null;
 
     try {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/demo-magic-link`, {
+      const res = await fetch(BFF_GENERATE_MAGIC_LINK, {
         method:  "POST",
         headers: {
           "Content-Type":  "application/json",
-          "Authorization": `Bearer ${ADMIN_SECRET}`,
+          "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ action: "create", user_id: userId, fleet_id: fleetId, email, label }),
+        body: JSON.stringify({ user_id: userId, fleet_id: fleetId, email, label }),
       });
+
+      if (res.status === 429) return null;
 
       const data = await res.json() as { ok: boolean; magic_url?: string };
       if (!data.ok) return null;
@@ -269,7 +284,7 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
     } catch {
       return null;
     }
-  }, [load]);
+  }, [load, getAdminToken]);
 
   return {
     sessions,

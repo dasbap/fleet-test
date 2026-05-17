@@ -96,6 +96,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
+  // ── Rate-limit : 10 créations/heure par token admin ──────────────────────
+  const adminEarly = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+  const tokenHash = token.slice(0, 8);
+  const { data: rlData } = await adminEarly.rpc("demo_check_rate_limit", {
+    p_key:       `create_prospect:${tokenHash}`,
+    p_max_count: 10,
+  });
+  const rl = rlData as { ok: boolean; error?: string; reset_at?: string } | null;
+  if (!rl?.ok) {
+    console.warn(`[create-prospect-account] Rate limit exceeded`);
+    return Response.json(
+      { ok: false, error: "rate_limit_exceeded", reset_at: rl?.reset_at },
+      { status: 429 },
+    );
+  }
+
   // ── Validation ────────────────────────────────────────────────────────────
   const { email, company_name, invited_by, fleet_id, trial_days = 7, send_email = false } = body;
 
