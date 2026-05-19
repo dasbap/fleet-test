@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { createSupabaseServiceClient } from "@/server/infra/supabaseServiceClient";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -97,17 +97,8 @@ function useDemoProfiles() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const supabase = createSupabaseServiceClient();
-    if (!supabase) {
-      toast({ title: "Client Supabase non disponible", variant: "destructive" });
-      setLoading(false);
-      return;
-    }
 
-    const { data, error } = await supabase
-      .from("demo_profiles")
-      .select("user_id, email, account_type, is_active, expires_at, notified_at, deactivated_at, created_at")
-      .order("created_at", { ascending: false });
+    const { data, error } = await supabase.rpc("list_demo_profiles");
 
     if (error) {
       toast({ title: "Erreur chargement", description: error.message, variant: "destructive" });
@@ -135,8 +126,6 @@ export function DemoAccountsPanel({ currentAdminId }: DemoAccountsPanelProps) {
 
   async function reactivate(userId: string, extendHours?: number) {
     setActionInProgress(userId);
-    const supabase = createSupabaseServiceClient();
-    if (!supabase) { setActionInProgress(null); return; }
 
     const { data, error } = await supabase.rpc("reactivate_demo_account", {
       p_user_id:        userId,
@@ -165,8 +154,6 @@ export function DemoAccountsPanel({ currentAdminId }: DemoAccountsPanelProps) {
 
   async function deactivate(userId: string) {
     setActionInProgress(userId);
-    const supabase = createSupabaseServiceClient();
-    if (!supabase) { setActionInProgress(null); return; }
 
     const { data, error } = await supabase.rpc("deactivate_demo_account", {
       p_user_id:        userId,
