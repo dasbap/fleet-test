@@ -15,6 +15,7 @@ import { Link } from "react-router-dom";
 import { signOut } from "@/lib/auth-actions";
 import type { AppRole } from "@/hooks/useAuth";
 import { useAuth } from "@/hooks/useAuth";
+import { useAlerts } from "@/hooks/useAlerts";
 import { UniversalSearch } from "@/components/shared/UniversalSearch";
 import { AdaptiveNetworkQualityBadge, OfflineSyncIndicator } from "@/components/shared/OfflineBanner";
 import {
@@ -40,6 +41,8 @@ const roleLabels = {
 
 const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderProps) => {
   const { userFleetId, tenantOptions, setActiveFleetId } = useAuth();
+  const { data: alertes } = useAlerts(userFleetId ?? undefined);
+  const alertesCount = alertes?.length ?? 0;
 
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
@@ -69,11 +72,15 @@ const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderPro
           <AdaptiveNetworkQualityBadge />
           <OfflineSyncIndicator />
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
-              3
-            </span>
+          <Button variant="ghost" size="icon" className="relative" asChild>
+            <Link to="/dashboard/alerts" aria-label={`${alertesCount} alerte${alertesCount !== 1 ? "s" : ""} non résolue${alertesCount !== 1 ? "s" : ""}`}>
+              <Bell className="w-5 h-5" />
+              {alertesCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
+                  {alertesCount > 99 ? "99+" : alertesCount}
+                </span>
+              )}
+            </Link>
           </Button>
 
           {/* User Menu */}
