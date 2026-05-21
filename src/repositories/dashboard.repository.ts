@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { FleetMetrics } from '@/hooks/dashboard/useFleetMetrics';
 
 export interface DashboardStats {
   activeVehicles: number;
@@ -182,6 +183,18 @@ export class DashboardRepository {
     return activities.sort((a, b) => b.time.getTime() - a.time.getTime()).slice(0, 10);
   }
 
+  /**
+   * Métriques 30j depuis la RPC cachée (1h TTL côté Supabase).
+   * À préférer à getStats() pour le widget KPI principal — 1 requête au lieu de 6.
+   */
+  async getMetricsCached(fleetId: string): Promise<FleetMetrics> {
+    const { data, error } = await supabase.rpc('get_fleet_dashboard_metrics', {
+      p_fleet_id: fleetId,
+    });
+    if (error) throw new Error(error.message);
+    return data as FleetMetrics;
+  }
+
   async getFleetVehiclesOverview(fleetId: string): Promise<FleetVehicleOverviewItem[]> {
     const { data, error } = await supabase
       .from('vehicules')
@@ -196,19 +209,4 @@ export class DashboardRepository {
     if (error) throw new Error(error.message);
 
     return (data || []).map((v: Record<string, unknown>) => {
-      const assignments = v.assignments as Array<{ is_active: boolean }> | undefined;
-      const activeAssignment = assignments?.find((a) => a.is_active);
-      return {
-        id: v.id,
-        registration: v.registration,
-        brand: v.brand,
-        model: v.model,
-        current_km: v.current_km,
-        status: v.status,
-        blocked_reason: v.blocked_reason,
-        driver: activeAssignment ? 'Conducteur' : null,
-        hasActiveAssignment: !!activeAssignment,
-      };
-    }) as FleetVehicleOverviewItem[];
-  }
-}
+      const assignments = v.a

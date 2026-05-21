@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import type { OnboardingData } from '@/types/onboarding';
 import { toast } from '@/hooks/use-toast';
 import { useTrackFunnelEvent } from '@/hooks/useFunnelTelemetry';
+import { formatPostgrestError, mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
 
 type StepNumber = 1 | 2 | 3 | 4;
 type StepKey = keyof OnboardingData;
@@ -119,10 +120,11 @@ export function OnboardingWizard() {
         context: { source: 'wizard' },
       });
       navigate('/dashboard', { replace: true });
-    } catch {
+    } catch (error) {
+      const detail = mapSupabaseErrorToFrench(formatPostgrestError(error));
       toast({
         title: 'Erreur',
-        description: "Impossible de finaliser l'onboarding pour le moment.",
+        description: detail || "Impossible de finaliser l'onboarding pour le moment.",
         variant: 'destructive',
       });
     }
@@ -144,10 +146,15 @@ export function OnboardingWizard() {
 
       await complete();
       navigate('/dashboard', { replace: true });
-    } catch {
+    } catch (error) {
+      const detail = mapSupabaseErrorToFrench(formatPostgrestError(error));
+      const fallback =
+        stepNum < maxStep
+          ? "Impossible d'enregistrer cette étape pour le moment."
+          : "Impossible de finaliser l'onboarding pour le moment.";
       toast({
         title: 'Erreur',
-        description: "Impossible de finaliser l'onboarding pour le moment.",
+        description: detail || fallback,
         variant: 'destructive',
       });
     }
