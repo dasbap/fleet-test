@@ -199,26 +199,29 @@ export class InvitationRepository implements IRepository<FleetInvitation, Invita
     return { data, error: error ? { message: error.message } : null };
   }
 
+  /**
+   * Valide un code d'invitation via RPC SECURITY DEFINER — fonctionne en contexte anon (signup).
+   * Évite les problèmes RLS pre-auth sur flotte_invitations + join flottes.
+   */
   async findValidationByCode(code: string): Promise<InvitationValidationRow | null> {
-    const { data, error } = await supabase
-      .from('flotte_invitations')
-      .select(`
-        id,
-        fleet_id,
-        expires_at,
-        max_uses,
-        current_uses,
-        fleet:flottes(name)
-      `)
-      .eq('code', code)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc('valider_code_invitation', { p_code: code });
 
     if (error) {
-      console.error('Error validating invitation by code:', error);
+      console.error('Error validating invitation by code (rpc):', error);
       throw new Error(error.message);
     }
 
-    return (data as InvitationValidationRow | null) ?? null;
+    const result = data as { valid: boolean; fleet_id?: string; fleet_name?: string; invitation_id?: string; reason?: string } | null;
+    if (!result?.valid) return null;
+
+    return {
+      id:           result.invitation_id!,
+      fleet_id:     result.fleet_id!,
+      expires_at:   null, // déjà validé côté DB
+      max_uses:     null, // idem
+      current_uses: 0,
+      fleet:        result.fleet_name ? { name: result.fleet_name } : null,
+    };
   }
 
   /**
