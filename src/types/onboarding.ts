@@ -44,4 +44,5 @@ export interface OnboardingProgress {
   completed: boolean;
   steps_data: OnboardingData;
   created_at?: string;
-  updated_at?: string
+  updated_at?: string;
+}

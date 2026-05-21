@@ -89,4 +89,6 @@ export class OnboardingService {
     }
     if (data.km < 0) {
       throw new Error('Le kilométrage ne peut pas être négatif.');
-   
+    }
+  }
+}
