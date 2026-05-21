@@ -90,8 +90,6 @@ export default defineConfig(({ mode }) => {
           if (n.includes("@tanstack")) return "vendor-query";
           if (n.includes("@sentry")) return "vendor-observability";
           if (n.includes("posthog-js")) return "vendor-analytics";
-          // firebase/* : chargé dynamiquement via push-notifications-client.service — ne pas forcer
-          // en modulepreload. Rollup crée automatiquement un chunk lazy.
           if (n.includes("firebase")) return "vendor-firebase";
           if (n.includes("/i18next/") || n.includes("/react-i18next/")) return "vendor-i18n";
           if (n.includes("/recharts/") || n.includes("/victory-vendor/")) return "vendor-charts";
