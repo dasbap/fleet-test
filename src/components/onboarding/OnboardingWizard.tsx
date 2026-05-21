@@ -209,4 +209,4 @@ export function OnboardingWizard() {
   );
 }
 
-export default OnboardingWiz
+export default OnboardingWizard;

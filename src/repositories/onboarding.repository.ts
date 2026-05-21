@@ -128,4 +128,5 @@ export class OnboardingRepository {
     }
 
     return data;
-  
+  }
+}
