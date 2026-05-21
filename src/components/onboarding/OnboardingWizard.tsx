@@ -197,7 +197,7 @@ export function OnboardingWizard() {
 
         {currentStep.render({
           orgId,
-          initial: progress?.data?.[currentStep.key],
+          initial: progress?.steps_data?.[currentStep.key],
           onNext: data => handleNext(currentStep.num, currentStep.key, data),
           onBack: currentIndex > 0 ? goBack : undefined,
           onSkip: () => handleSkip(currentStep.num),
@@ -209,4 +209,4 @@ export function OnboardingWizard() {
   );
 }
 
-export default OnboardingWizard;
+export default OnboardingWiz
