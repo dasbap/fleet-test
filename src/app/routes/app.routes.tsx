@@ -70,6 +70,9 @@ const ProspectOnboarding = lazy(() =>
 const UpdatePasswordPage = lazy(() =>
   import("@/features/auth/screens/UpdatePasswordPage")
 );
+const AuthCallbackPage = lazy(() =>
+  import("@/features/auth/screens/AuthCallbackPage")
+);
 
 /**
  * Arbre de routes racine : pages publiques, redirections, dashboard, 404.
@@ -155,6 +158,8 @@ export const appRoutes = (
       <Route path="/demo/onboarding" element={<ProspectOnboarding />} />
       {/* Flux reset password — session temporaire PASSWORD_RECOVERY, sans RequireGuest */}
       <Route path="/auth/update-password" element={<UpdatePasswordPage />} />
+      {/* Callback Supabase PKCE — magic link, confirmation email */}
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
       {dashboardRoutes}
     </Route>
     <Route path="*" element={<NotFound />} />
