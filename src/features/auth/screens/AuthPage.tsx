@@ -193,22 +193,37 @@ const Auth = () => {
         email,
         getAuthRedirectUrl(ROUTE_PATHS.updatePassword)
       );
+      // Rate limit : seul cas où on remonte une erreur visible (anti-énumération).
       if (error) {
-        toast({
-          title: "Erreur",
-          description: error.message === "Email not confirmed" ? "Cet email n'est pas encore confirmé." : error.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
+        const msg = error.message?.toLowerCase() ?? "";
+        const isNetworkError = msg.includes("failed to fetch") || msg.includes("networkerror") || msg.includes("load failed");
+        if (isNetworkError) {
+          toast({ title: "Erreur réseau", description: "Vérifie ta connexion et réessaie.", variant: "destructive" });
+          setIsLoading(false);
+          return;
+        }
+        const isRateLimit = msg.includes("rate") || (error as { status?: number }).status === 429;
+        if (isRateLimit) {
+          toast({ title: "Trop de tentatives", description: "Réessaie dans quelques minutes.", variant: "destructive" });
+          setIsLoading(false);
+          return;
+        }
+        // Toute autre erreur Supabase → on affiche quand même "succès" (anti-énumération).
+        // L'erreur est loggée en dev uniquement.
+        if (import.meta.env.DEV) {
+          console.warn("[AuthPage] resetPasswordForEmail error:", error.message);
+        }
       }
       toast({
         title: "Email envoyé",
         description: "Si un compte existe pour cet email, vous recevrez un lien pour réinitialiser votre mot de passe. Vérifiez aussi les spams.",
       });
       setIsForgotPassword(false);
-    } catch {
-      toast({ title: "Erreur", description: "Impossible d'envoyer l'email.", variant: "destructive" });
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.error("[AuthPage] handleForgotPasswordSubmit unexpected:", err);
+      }
+      toast({ title: "Erreur réseau", description: "Vérifie ta connexion et réessaie.", variant: "destructive" });
     }
     setIsLoading(false);
   };
