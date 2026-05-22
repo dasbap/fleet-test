@@ -99,4 +99,6 @@ export const ROUTE_PATHS = {
   cookies: "/cookies",
   /** Page tarifs publique avec calculateur et checkout Notch Pay. */
   pricing: "/pricing",
+  /** Formulaire de définition du nouveau mot de passe (flux PASSWORD_RECOVERY Supabase). */
+  updatePassword: "/auth/update-password",
 } as const;
