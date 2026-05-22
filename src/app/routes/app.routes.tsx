@@ -67,6 +67,9 @@ const DemoMagicLinkPage = lazy(() => import("@/pages/DemoMagicLinkPage"));
 const ProspectOnboarding = lazy(() =>
   import("@/features/demo/ProspectOnboarding").then((m) => ({ default: m.ProspectOnboarding }))
 );
+const UpdatePasswordPage = lazy(() =>
+  import("@/features/auth/screens/UpdatePasswordPage")
+);
 
 /**
  * Arbre de routes racine : pages publiques, redirections, dashboard, 404.
@@ -150,6 +153,8 @@ export const appRoutes = (
       {/* Flux commercial démo — pas de ProtectedRoute (auth via magic link) */}
       <Route path="/demo/access"     element={<DemoMagicLinkPage />} />
       <Route path="/demo/onboarding" element={<ProspectOnboarding />} />
+      {/* Flux reset password — session temporaire PASSWORD_RECOVERY, sans RequireGuest */}
+      <Route path="/auth/update-password" element={<UpdatePasswordPage />} />
       {dashboardRoutes}
     </Route>
     <Route path="*" element={<NotFound />} />

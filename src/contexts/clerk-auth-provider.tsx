@@ -278,6 +278,8 @@ export function ClerkAuthProvider({ children }: { children: ReactNode }) {
       tenantOptions,
       isLoading,
       isTenantOrgLoading,
+      // Clerk ne gère pas le flux PASSWORD_RECOVERY de Supabase.
+      isPasswordRecovery: false,
       setActiveFleetId,
       refreshMemberships,
       refreshUser,
