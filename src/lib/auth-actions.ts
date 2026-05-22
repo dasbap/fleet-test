@@ -141,3 +141,15 @@ export async function requestPasswordReset(email: string, redirectTo: string) {
 export async function updateCurrentUserPassword(password: string) {
   return supabase.auth.updateUser({ password });
 }
+
+/**
+ * Envoi d'un lien magique (connexion sans mot de passe).
+ * redirectTo doit pointer vers /auth/callback pour l'échange PKCE.
+ */
+export async function sendMagicLink(email: string, redirectTo: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  return supabase.auth.signInWithOtp({
+    email: normalizedEmail,
+    options: { emailRedirectTo: redirectTo },
+  });
+}

@@ -101,4 +101,10 @@ export const ROUTE_PATHS = {
   pricing: "/pricing",
   /** Formulaire de définition du nouveau mot de passe (flux PASSWORD_RECOVERY Supabase). */
   updatePassword: "/auth/update-password",
+  /** Page standalone mot de passe oublié (envoi du lien). */
+  forgotPassword: "/auth/forgot-password",
+  /** Connexion sans mot de passe via lien magique. */
+  magicLink: "/auth/magic-link",
+  /** Callback Supabase — échange code PKCE (magic link, confirmation email). */
+  authCallback: "/auth/callback",
 } as const;

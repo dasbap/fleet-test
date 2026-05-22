@@ -38,6 +38,7 @@ import {
 import type { DemoCredentialAccount } from "@/features/auth/data/demoCredentials";
 import { buildAuthHref, isAuthSignupMode } from "@/navigation/authEntryUrl";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { getAuthRedirectUrl } from "@/features/auth/utils/authRedirects";
 import {
   getSafePostLoginPath,
   LEGACY_POST_LOGIN_REDIRECT_PARAM,
@@ -190,7 +191,7 @@ const Auth = () => {
     try {
       const { error } = await requestPasswordReset(
         email,
-        `${window.location.origin}/auth`
+        getAuthRedirectUrl(ROUTE_PATHS.updatePassword)
       );
       if (error) {
         toast({
