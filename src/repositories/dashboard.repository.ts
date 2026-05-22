@@ -209,4 +209,19 @@ export class DashboardRepository {
     if (error) throw new Error(error.message);
 
     return (data || []).map((v: Record<string, unknown>) => {
-      const assignments = v.a
+      const assignments = v.assignments as Array<{ is_active: boolean }> | undefined;
+      const activeAssignment = assignments?.find((a) => a.is_active);
+      return {
+        id: v.id,
+        registration: v.registration,
+        brand: v.brand,
+        model: v.model,
+        current_km: v.current_km,
+        status: v.status,
+        blocked_reason: v.blocked_reason,
+        driver: activeAssignment ? 'Conducteur' : null,
+        hasActiveAssignment: !!activeAssignment,
+      };
+    }) as FleetVehicleOverviewItem[];
+  }
+}
