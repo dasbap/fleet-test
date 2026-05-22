@@ -74,6 +74,8 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   >([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isTenantOrgLoading, setIsTenantOrgLoading] = useState<boolean>(false);
+  // Vrai si Supabase a émis PASSWORD_RECOVERY (clic lien email reset) — bloque l'aiguillage normal.
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(false);
 
   const processPendingInvitation = async (sessionUser: User): Promise<void> => {
     const pendingCode = await checkPendingInvitation(sessionUser);
@@ -228,6 +230,23 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       if (event === "INITIAL_SESSION") {
         return;
       }
+
+      // ── Flux reset-password : session temporaire de récupération ──────────────
+      // Ne pas charger les memberships ni appliquer l'aiguillage dashboard.
+      // Le flag isPasswordRecovery redirige le guard vers /auth/update-password.
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true);
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        setIsLoading(false);
+        return;
+      }
+
+      // Après mise à jour du mot de passe, l'event USER_UPDATED signale la fin du flux recovery.
+      if (event === "USER_UPDATED") {
+        setIsPasswordRecovery(false);
+      }
+
       // Après connexion (SIGNED_IN), éviter un rendu avec user défini mais memberships encore vides :
       // PostLoginGate interpréterait à tort l'absence d'adhésion et redirigerait vers /start.
       if (event === "SIGNED_IN" && nextSession?.user) {
@@ -447,6 +466,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       tenantOptions,
       isLoading,
       isTenantOrgLoading,
+      isPasswordRecovery,
       refreshMemberships,
       refreshUser,
       setActiveFleetId,
@@ -462,6 +482,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       tenantOptions,
       isLoading,
       isTenantOrgLoading,
+      isPasswordRecovery,
       refreshMemberships,
       refreshUser,
       setActiveFleetId,
@@ -541,6 +562,7 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
       tenantOptions: [],
       isLoading: false,
       isTenantOrgLoading: false,
+      isPasswordRecovery: false,
       setActiveFleetId: () => {
         // En mode mock, le changement de flotte est géré par la configuration mock.
       },
