@@ -29,7 +29,7 @@ export default function ConditionsPage() {
         <p>
           E-mail : <a href="mailto:contact@e-samba.com" className="text-primary hover:underline">contact@e-samba.com</a>
           {" — "}
-          Tél. : <a href="tel:+237641461148" className="text-primary hover:underline">+237 6 41 46 11 48</a>
+          Tél. : <a href="tel:+237641341857" className="text-primary hover:underline">+237 6 41 34 18 57</a>
         </p>
       </LegalSection>
 

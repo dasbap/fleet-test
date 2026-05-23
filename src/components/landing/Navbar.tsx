@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Zap } from "lucide-react";
+import { getMarketingUrl } from "@/lib/marketing-url";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,6 +11,7 @@ const Navbar = () => {
     { name: "Fonctionnalités", href: "#features" },
     { name: "Modules", href: "#modules" },
     { name: "Tarifs", href: "#pricing" },
+    { name: "Guides", href: getMarketingUrl("/guides"), external: true },
     { name: "FAQ", href: "#faq" },
     { name: "Contact", href: "#contact" },
   ];
@@ -35,6 +37,9 @@ const Navbar = () => {
                 key={link.name}
                 href={link.href}
                 className="text-muted-foreground hover:text-primary transition-colors font-medium"
+                {...("external" in link && link.external
+                  ? { rel: "noopener noreferrer" }
+                  : {})}
               >
                 {link.name}
               </a>
@@ -73,6 +78,9 @@ const Navbar = () => {
                   href={link.href}
                   className="text-muted-foreground hover:text-primary transition-colors font-medium py-2"
                   onClick={() => setIsOpen(false)}
+                  {...("external" in link && link.external
+                    ? { rel: "noopener noreferrer" }
+                    : {})}
                 >
                   {link.name}
                 </a>

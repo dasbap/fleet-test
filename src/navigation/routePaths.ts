@@ -99,6 +99,9 @@ export const ROUTE_PATHS = {
   cookies: "/cookies",
   /** Page tarifs publique avec calculateur et checkout Notch Pay. */
   pricing: "/pricing",
+  /** Hub des cas d’usage marketing (SEO programmatique). */
+  useCaseHub: "/use-case",
+  useCaseDetail: (slug: string) => `/use-case/${slug}` as const,
   /** Formulaire de définition du nouveau mot de passe (flux PASSWORD_RECOVERY Supabase). */
   updatePassword: "/auth/update-password",
   /** Page standalone mot de passe oublié (envoi du lien). */

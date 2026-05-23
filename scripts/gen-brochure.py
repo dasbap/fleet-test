@@ -2,7 +2,7 @@
 Génère la brochure commerciale E-Samba en PDF (A4 paysage).
 Données harmonisées avec le site www.e-samba.com :
   - Tarifs : Gratuit 0 FCFA / Starter 15 000 FCFA / Pro 21 000 FCFA / Enterprise Sur devis
-  - Contact : +237 6 41 46 11 48 | contact@e-samba.com | www.e-samba.com
+  - Contact : +237 6 41 34 18 57 | contact@e-samba.com | www.e-samba.com
 """
 
 from reportlab.lib.pagesizes import A4, landscape
@@ -205,11 +205,11 @@ def draw_page(c):
     cy = ty - 114
     rr(c, M, cy - 28, IW, 34, r=8, fill=GREEN_DARK)
     txt(c, "Demandez une démo gratuite — réponse sous 24 h", PW/2, cy - 8, size=11, bold=True, align="C")
-    txt(c, "WhatsApp : +237 6 41 46 11 48   ·   contact@e-samba.com   ·   www.e-samba.com", PW/2, cy - 22, size=8.5, color=GREEN_LIGHT, align="C")
+    txt(c, "WhatsApp : +237 6 41 34 18 57   ·   contact@e-samba.com   ·   www.e-samba.com", PW/2, cy - 22, size=8.5, color=GREEN_LIGHT, align="C")
 
     # ── FOOTER ───────────────────────────────────────────────────────────────
     rr(c, 0, 0, PW, 16, fill=SURFACE)
-    txt(c, "contact@e-samba.com   ·   WhatsApp +237 6 41 46 11 48   ·   www.e-samba.com   ·   © 2026 E-Samba",
+    txt(c, "contact@e-samba.com   ·   WhatsApp +237 6 41 34 18 57   ·   www.e-samba.com   ·   © 2026 E-Samba",
         PW/2, 5, size=7, color=MUTED, align="C")
 
 

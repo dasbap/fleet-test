@@ -5,7 +5,7 @@
 
 import { MessageCircle } from 'lucide-react';
 
-const WHATSAPP_NUMBER = '237641461148';
+const WHATSAPP_NUMBER = '237641341857';
 const SUPPORT_HOURS   = 'Lun–Sam 7h–19h (WAT)';
 
 interface WhatsAppSupportButtonProps {

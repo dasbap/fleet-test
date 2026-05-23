@@ -54,6 +54,11 @@ const ConfidentialitePage = lazy(() => import('@/pages/Confidentialite'));
 const ConditionsPage = lazy(() => import('@/pages/Conditions'));
 const AproposPage = lazy(() => import('@/pages/Apropos'));
 const BlogPage = lazy(() => import('@/pages/Blog'));
+const ResourcesIndexPage = lazy(() => import('@/pages/resources/ResourcesIndexPage'));
+const SeoIaHubPage = lazy(() => import('@/pages/resources/SeoIaHubPage'));
+const SeoIaArticlePage = lazy(() => import('@/pages/resources/SeoIaArticlePage'));
+const UseCaseHubPage = lazy(() => import('@/pages/UseCaseHub'));
+const UseCaseDetailPage = lazy(() => import('@/pages/UseCaseDetail'));
 const CarrieresPage = lazy(() => import('@/pages/Carrieres'));
 const PartenairesPage = lazy(() => import('@/pages/Partenaires'));
 const DocumentationPage = lazy(() => import('@/pages/Documentation'));
@@ -107,6 +112,11 @@ export const appRoutes = (
     <Route path="/conditions" element={<AccesRestreint><ConditionsPage /></AccesRestreint>} />
     <Route path="/apropos" element={<AproposPage />} />
     <Route path="/blog" element={<BlogPage />} />
+    <Route path="/ressources" element={<ResourcesIndexPage />} />
+    <Route path="/ressources/seo-ia" element={<SeoIaHubPage />} />
+    <Route path="/ressources/seo-ia/*" element={<SeoIaArticlePage />} />
+    <Route path="/use-case" element={<UseCaseHubPage />} />
+    <Route path="/use-case/:slug" element={<UseCaseDetailPage />} />
     <Route path="/carrieres" element={<CarrieresPage />} />
     <Route path="/partenaires" element={<PartenairesPage />} />
     <Route path="/documentation" element={<AccesRestreint><DocumentationPage /></AccesRestreint>} />
