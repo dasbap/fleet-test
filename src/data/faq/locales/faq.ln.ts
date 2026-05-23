@@ -37,7 +37,7 @@ export const faqLn: FaqRegistry = {
         id: 'bill-plans',
         question: 'Abonnements nini ezali ?',
         answer:
-          'E-Samba ezali na formules misato : Starter (tii na biloko 5), Standard (tii na biloko 20) mpe Pro (biloko oyo ezali koleka). Formule nyonso ezali na essai ya mikolo 7 ofele.',
+          'E-Samba ezali na formules minei : Gratuit (tii na biloko 3), Starter (tii na biloko 25), Pro (tii na biloko 75) mpe Enterprise (biloko oyo ezali koleka). Plan ya koboya ezali na essai ya mikolo 7 ofele.',
         tags: ['abonnement', 'tarif', 'plan'],
       },
       {

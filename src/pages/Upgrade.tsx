@@ -83,7 +83,7 @@ const upgradePlans: Array<{
     priceXAF: PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF,
     popular: false,
     features: [
-      "Jusqu'à 5 véhicules",
+      "Jusqu'à 25 véhicules",
       "1 rôle Gestionnaire",
       "Samba-Fleet et Samba-Cash essentiel",
       "Support par e-mail",
@@ -98,7 +98,7 @@ const upgradePlans: Array<{
     priceXAF: PUBLIC_PRICE_PRO_PER_VEHICLE_XAF,
     popular: true,
     features: [
-      "Jusqu'à 25 véhicules",
+      "Jusqu'à 75 véhicules",
       "Jusqu'à 3 rôles Gestionnaire",
       "Suite complète et scoring",
       "Alertes intelligentes",

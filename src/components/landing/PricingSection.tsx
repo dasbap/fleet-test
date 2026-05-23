@@ -48,7 +48,7 @@ const plans: PricingPlan[] = [
     currency: PUBLIC_CURRENCY_LABEL,
     period: PUBLIC_BILLING_PERIOD_LABEL,
     features: [
-      "Jusqu'à 5 véhicules",
+      "Jusqu'à 25 véhicules",
       "1 rôle Gestionnaire",
       "Samba-Fleet",
       "Samba-Cash (fonctions essentielles)",
@@ -64,7 +64,7 @@ const plans: PricingPlan[] = [
     currency: PUBLIC_CURRENCY_LABEL,
     period: PUBLIC_BILLING_PERIOD_LABEL,
     features: [
-      "Jusqu'à 25 véhicules",
+      "Jusqu'à 75 véhicules",
       "Jusqu'à 3 rôles Gestionnaire",
       "Samba-Fleet à Samba-Check (suite complète)",
       "Scoring & KPIs",

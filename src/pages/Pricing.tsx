@@ -79,9 +79,9 @@ const PLANS: PlanConfig[] = [
     name: "Starter",
     tagline: "Flottes PME en croissance",
     pricePerVehicle: PRICE_STARTER_PER_VEHICLE,
-    maxVehicles: 5,
+    maxVehicles: 25,
     features: [
-      "Jusqu'à 5 véhicules",
+      "Jusqu'à 25 véhicules",
       "Tout le plan Free",
       "Module Finance & collectes",
       "Exports PDF / Excel",
@@ -102,9 +102,9 @@ const PLANS: PlanConfig[] = [
     name: "Pro",
     tagline: "Flottes opérationnelles & terrain",
     pricePerVehicle: PRICE_PRO_PER_VEHICLE,
-    maxVehicles: 25,
+    maxVehicles: 75,
     features: [
-      "Jusqu'à 25 véhicules",
+      "Jusqu'à 75 véhicules",
       "Tout le plan Starter",
       "IA Pulse+ inclus",
       "QR codes d'activation Premium",
