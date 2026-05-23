@@ -92,7 +92,29 @@ Attendre la propagation DNS et le certificat SSL (géré par Vercel).
 
 ---
 
-## 5. Vérification rapide
+## 5. Erreur `404 DEPLOYMENT_NOT_FOUND` (Vercel)
+
+**Symptôme** : page Vercel avec le texte *Deployment not found*, code `DEPLOYMENT_NOT_FOUND`, identifiant du type `cdg1::…`.
+
+**Ce n’est pas** une 404 de l’application React : Vercel ne trouve **aucun déploiement** pour l’URL demandée (preview supprimée, lien expiré, ou déploiement jamais terminé).
+
+**À faire** :
+
+1. **Production** : ouvrir uniquement **`https://www.e-samba.com`** (ou le domaine indiqué dans Vercel → Domains), pas un ancien lien `*.vercel.app` copié depuis un commentaire PR ou un e-mail.
+2. **Dashboard Vercel** → projet `smart-fleet-africa` → **Deployments** : vérifier que le dernier déploiement **Production** est **Ready** (vert). Si **Error** ou **Canceled**, ouvrir les logs de build, corriger, puis **Redeploy**.
+3. **Branche de production** : **Settings** → **Git** → *Production Branch* doit correspondre à la branche que vous poussez (souvent `main`). Un push sur une autre branche ne met à jour que les **Preview**.
+4. **Redéploiement manuel** (si le CLI est lié au bon compte/équipe) :
+   ```bash
+   npm run build
+   npx vercel deploy --prebuilt --prod
+   ```
+5. **Preview** : chaque URL `…-git-…-….vercel.app` est liée à **un** déploiement ; après suppression ou expiration, elle affiche `DEPLOYMENT_NOT_FOUND` → utiliser le lien **Visit** du déploiement le plus récent dans le dashboard, ou merger sur la branche de prod.
+
+**Vérification locale** : `npm run build` puis `npx vite preview` → `http://localhost:4173/ressources/seo-ia`.
+
+---
+
+## 6. Vérification rapide
 
 1. `https://www.e-samba.com/` charge le shell HTML (titre E-Samba).
 2. Pas d’erreur de démarrage liée à `VITE_SUPABASE_*` (voir [`src/integrations/supabase/client.ts`](../src/integrations/supabase/client.ts)).
@@ -102,7 +124,7 @@ Attendre la propagation DNS et le certificat SSL (géré par Vercel).
 
 ---
 
-## 6. Webhook Clerk — un seul endpoint actif
+## 7. Webhook Clerk — un seul endpoint actif
 
 Deux implémentations existent dans le dépôt ; **le dashboard Clerk ne doit en appeler qu’une** à la fois pour la production (éviter double logique, retries parallèles et bruit opérationnel).
 
@@ -117,6 +139,6 @@ Deux implémentations existent dans le dépôt ; **le dashboard Clerk ne doit en
 
 ---
 
-## 7. Rollout production combiné (web + stores)
+## 8. Rollout production combiné (web + stores)
 
 Pour une procédure incluant déploiement progressif sur les stores, surveillance 24 h et montée en charge : [`rollout-production-web-mobile.md`](./rollout-production-web-mobile.md).

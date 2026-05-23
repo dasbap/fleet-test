@@ -13,4 +13,5 @@ Allow: /
 User-agent: *
 Allow: /
 
+Sitemap: https://www.e-samba.com/sitemap-index.xml
 Sitemap: https://www.e-samba.com/sitemap.xml

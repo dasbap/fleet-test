@@ -1,0 +1,47 @@
+---
+import { MARKETING_SITE_URL } from "@/lib/site";
+
+export interface Crumb {
+  label: string;
+  href?: string;
+}
+
+interface Props {
+  items: Crumb[];
+}
+
+const { items } = Astro.props;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: items.map((item, index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    name: item.label,
+    ...(item.href
+      ? { item: new URL(item.href, MARKETING_SITE_URL).href }
+      : {}),
+  })),
+};
+---
+
+<nav aria-label="Fil d'Ariane" class="mb-6 text-sm text-muted-foreground">
+  <ol class="flex flex-wrap items-center gap-2">
+    {
+      items.map((item, i) => (
+        <li class="flex items-center gap-2">
+          {i > 0 && <span aria-hidden="true">/</span>}
+          {item.href ? (
+            <a href={item.href} class="hover:text-primary transition-colors">
+              {item.label}
+            </a>
+          ) : (
+            <span class="text-foreground">{item.label}</span>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+<script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />

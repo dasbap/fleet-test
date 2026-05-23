@@ -1,0 +1,35 @@
+---
+import { APP_SITE_URL, MARKETING_SITE_URL } from "@/lib/site";
+
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-border bg-card mt-20">
+  <div class="container mx-auto px-4 py-12 grid gap-8 md:grid-cols-4">
+    <div class="md:col-span-2">
+      <p class="font-heading font-bold text-lg mb-2">E-Samba</p>
+      <p class="text-sm text-muted-foreground max-w-sm">
+        Gestion de flotte intelligente pour l'Afrique centrale — guides, bonnes pratiques CEMAC et ressources produit.
+      </p>
+    </div>
+    <div>
+      <p class="font-semibold mb-3 text-sm">Ressources</p>
+      <ul class="space-y-2 text-sm text-muted-foreground">
+        <li><a href="/guides" class="hover:text-primary">Guides</a></li>
+        <li><a href="/solutions" class="hover:text-primary">Solutions</a></li>
+        <li><a href="/fonctionnalites" class="hover:text-primary">Fonctionnalités</a></li>
+      </ul>
+    </div>
+    <div>
+      <p class="font-semibold mb-3 text-sm">Produit</p>
+      <ul class="space-y-2 text-sm text-muted-foreground">
+        <li><a href={APP_SITE_URL} class="hover:text-primary">Accueil</a></li>
+        <li><a href={`${APP_SITE_URL}/pricing`} class="hover:text-primary">Tarifs</a></li>
+        <li><a href={`${APP_SITE_URL}/apropos`} class="hover:text-primary">À propos</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="border-t border-border py-6 text-center text-xs text-muted-foreground">
+    © {year} E-Samba — <a href={MARKETING_SITE_URL} class="hover:text-primary">Ressources</a>
+  </div>
+</footer>

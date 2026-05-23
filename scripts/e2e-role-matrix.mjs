@@ -39,6 +39,7 @@ const GUARDED_ROUTES = [
   { path: "/dashboard/teams", allowed: ["organizer", "manager"] },
   { path: "/dashboard/analytics/retention", allowed: ["organizer"] },
   { path: "/dashboard/roles", allowed: ["organizer", "manager"] },
+  // Chauffeur / mécanicien : accès refusé au hub rôles (RoleGuard)
   { path: "/dashboard/history", allowed: ["organizer", "manager", "mechanic"] },
   { path: "/dashboard/operations", allowed: ["organizer", "manager", "driver", "mechanic"] },
   {

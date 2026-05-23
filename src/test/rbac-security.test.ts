@@ -152,6 +152,11 @@ describe("Matrice de permissions", () => {
       });
     }
 
+    it("ne peut pas gérer le rôle organizer via canManageRole", () => {
+      expect(canManageRole("manager", "organizer")).toBe(false);
+      expect(canManageRole("manager", "driver")).toBe(true);
+    });
+
     it("peut voir et créer des véhicules", () => {
       expect(hasPermission("manager", "vehicle.view")).toBe(true);
       expect(hasPermission("manager", "vehicle.create")).toBe(true);
