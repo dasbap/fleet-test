@@ -9,6 +9,7 @@
  *  - Sanitisation raw_payload (pas de secrets dans les erreurs)
  */
 
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 // ─── 1. Aucune clé Notch Pay dans les variables VITE_ ────────────────────────
@@ -39,8 +40,6 @@ describe("Sécurité — variables d'environnement frontend", () => {
 // ─── 2. Signature webhook HMAC-SHA256 ────────────────────────────────────────
 
 describe("Sécurité — webhook signature HMAC-SHA256", () => {
-  const { timingSafeEqual, createHmac } = await import("node:crypto");
-
   function hmacHex(secret: string, payload: string): string {
     return createHmac("sha256", secret).update(payload, "utf8").digest("hex");
   }
@@ -144,9 +143,13 @@ describe("Sécurité — rate limit middleware", () => {
     let lastResponse: { body: unknown; status: number } | undefined;
     const next = async () => {};
 
+    type RateLimitCtx = Parameters<typeof middleware>[0];
+    type RateLimitNext = Parameters<typeof middleware>[1];
+
     for (let i = 0; i < maxRequests + 2; i++) {
-      // deno-lint-ignore no-explicit-any
-      lastResponse = await middleware(makeCtx() as any, next) as any;
+      lastResponse = (await middleware(makeCtx() as RateLimitCtx, next as RateLimitNext)) as
+        | { body: unknown; status: number }
+        | undefined;
     }
 
     // La dernière requête (au-delà du quota) doit être 429
@@ -171,15 +174,19 @@ describe("Sécurité — rate limit middleware", () => {
     const next = async () => {};
 
     // IP A : 3 requêtes (dépasse)
+    type RateLimitCtx = Parameters<typeof middleware>[0];
+    type RateLimitNext = Parameters<typeof middleware>[1];
+
     let resA: { status: number } | undefined;
     for (let i = 0; i < 3; i++) {
-      // deno-lint-ignore no-explicit-any
-      resA = await middleware(makeCtx("10.0.0.1") as any, next) as any;
+      resA = (await middleware(makeCtx("10.0.0.1") as RateLimitCtx, next as RateLimitNext)) as
+        | { status: number }
+        | undefined;
     }
 
-    // IP B : 1 requête (sous quota)
-    // deno-lint-ignore no-explicit-any
-    const resB = await middleware(makeCtx("10.0.0.2") as any, next) as any;
+    const resB = (await middleware(makeCtx("10.0.0.2") as RateLimitCtx, next as RateLimitNext)) as
+      | { status: number }
+      | undefined;
 
     expect(resA?.status).toBe(429); // A épuisée
     expect(resB?.status).toBeUndefined(); // B non limitée (next() appelé, pas de return)

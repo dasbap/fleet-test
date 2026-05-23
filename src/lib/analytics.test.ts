@@ -37,7 +37,11 @@ describe("analytics PostHog", () => {
     const analyticsModule = await import("@/lib/analytics");
 
     analyticsModule.initAnalytics();
-    analyticsModule.track("search_performed", { result_count: 3 });
+    await vi.waitFor(async () => {
+      await Promise.resolve();
+      analyticsModule.track("search_performed", { result_count: 3 });
+      expect(captureMock).toHaveBeenCalled();
+    });
 
     expect(captureMock).toHaveBeenCalledWith(
       "search_performed",
@@ -56,7 +60,11 @@ describe("analytics PostHog", () => {
     } as Window & typeof globalThis);
 
     analyticsModule.initAnalytics();
-    analyticsModule.capturePageview();
+    await vi.waitFor(async () => {
+      await Promise.resolve();
+      analyticsModule.capturePageview();
+      expect(captureMock).toHaveBeenCalled();
+    });
 
     expect(captureMock).toHaveBeenCalledWith(
       "$pageview",

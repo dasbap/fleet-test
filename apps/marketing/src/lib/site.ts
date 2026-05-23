@@ -12,7 +12,7 @@ export const AUTH_URL = `${APP_SITE_URL}/auth`;
 export const OG_IMAGE = `${MARKETING_SITE_URL}/og-image.svg`;
 
 export const PILLAR_LABELS = {
-  ia: "Pilotage flotte avec l'IA",
+  ia: "Pilotage et analyses flotte",
   operations: "Guides opérationnels",
   performance: "Performance et conformité",
 } as const;

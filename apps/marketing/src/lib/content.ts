@@ -55,7 +55,7 @@ export async function getRelatedByPillar(
 
 export function getHubForPillar(pillar: PillarKey) {
   const hubs: Record<PillarKey, string> = {
-    ia: "pilotage-flotte-ia",
+    ia: "pilotage-flotte",
     operations: "operations-transport",
     performance: "performance-conformite-flotte",
   };

@@ -18,7 +18,7 @@ npm run build
 
 | Zone | Exemple |
 |------|---------|
-| Guides | `/guides`, `/guides/pilotage-flotte-ia` |
+| Guides | `/guides`, `/guides/pilotage-flotte` |
 | Solutions | `/solutions/pme-logistique` |
 | Fonctionnalités | `/fonctionnalites/carburant` |
 

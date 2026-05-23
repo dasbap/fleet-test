@@ -101,7 +101,8 @@ export const ROUTE_PATHS = {
   pricing: "/pricing",
   /** Hub des cas d’usage marketing (SEO programmatique). */
   useCaseHub: "/use-case",
-  useCaseDetail: (slug: string) => `/use-case/${slug}` as const,
+  /** Chemin détail cas d'usage (évite le préfixe `use` pour les règles React hooks). */
+  caseDetailPath: (slug: string) => `/use-case/${slug}` as const,
   /** Formulaire de définition du nouveau mot de passe (flux PASSWORD_RECOVERY Supabase). */
   updatePassword: "/auth/update-password",
   /** Page standalone mot de passe oublié (envoi du lien). */

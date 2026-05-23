@@ -104,6 +104,16 @@ function createMockAdmin(): SupabaseClient {
           }),
         };
       }
+      if (table === "billing_events") {
+        return {
+          insert: () => ({
+            then: (fn: (v: { error: null }) => void) => {
+              fn({ error: null });
+              return Promise.resolve({ error: null });
+            },
+          }),
+        };
+      }
       throw new Error(`table inattendue: ${table}`);
     },
   } as unknown as SupabaseClient;
