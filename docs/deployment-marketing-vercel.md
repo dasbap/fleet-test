@@ -82,7 +82,7 @@ Objectif : une seule autorité de domaine pour le contenu indexable.
 ### Vérification crawlers
 
 ```bash
-curl -A Googlebot -I https://www.e-samba.com/guides/pilotage-flotte-ia
+curl -A Googlebot -I https://www.e-samba.com/guides/pilotage-flotte
 ```
 
 Le HTML doit contenir le `<title>` et le corps article (pas seulement `div#root`).

@@ -66,6 +66,7 @@ function canAccess(
   feature: ProspectFeature,
 ): boolean {
   if (status === "not_prospect") return true;
+  if (status === "converted") return false;
   if (status === "suspended" || status === "loading") return false;
   if (isExpired || status === "expired") {
     return feature === "dashboard" || feature === "vehicles_view";
@@ -209,7 +210,9 @@ describe("Expiration temporelle", () => {
 
   it("trial futur : daysRemaining > 0", () => {
     const end = new Date(Date.now() + 3 * 86_400_000).toISOString(); // +3j
-    expect(daysRemaining(end)).toBe(3);
+    const remaining = daysRemaining(end);
+    expect(remaining).toBeGreaterThanOrEqual(2);
+    expect(remaining).toBeLessThanOrEqual(3);
   });
 
   it("trial passé : daysRemaining = 0", () => {

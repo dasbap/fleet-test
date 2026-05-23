@@ -17,12 +17,6 @@ import { CreateDemoForm }    from "@/components/admin/CreateDemoForm";
 
 export default function DemoAdminPage() {
   const { isAdmin, rbac } = useRoleAccess();
-
-  // Redirection si non admin
-  if (!rbac.isLoading && !isAdmin) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   const {
     sessions,
     demoFleets,
@@ -34,6 +28,14 @@ export default function DemoAdminPage() {
     resetFleet,
     generateMagicLink,
   } = useAdminDemoAccounts();
+
+  if (rbac.isLoading) {
+    return null;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 space-y-6">

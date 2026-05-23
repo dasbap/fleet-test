@@ -1,5 +1,6 @@
 import { Car, Wrench, BadgeDollarSign, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getMarketingUrl } from "@/lib/marketing-url";
 
 const modules = [
   {
@@ -15,6 +16,7 @@ const modules = [
       "Gestion des gestionnaires",
     ],
     gradient: "from-primary to-primary/60",
+    guidePath: "/guides/kpi-gestionnaire-multi-flottes",
   },
   {
     icon: ShieldCheck,
@@ -29,6 +31,7 @@ const modules = [
       "Sanctions & récompenses",
     ],
     gradient: "from-accent to-accent/60",
+    guidePath: "/solutions/gestionnaires-flotte",
   },
   {
     icon: BadgeDollarSign,
@@ -43,6 +46,7 @@ const modules = [
       "Score discipline visible",
     ],
     gradient: "from-info to-info/60",
+    guidePath: "/guides/donnees-terrain-tableau-de-bord",
   },
   {
     icon: Wrench,
@@ -57,6 +61,7 @@ const modules = [
       "Score qualité & récurrence",
     ],
     gradient: "from-destructive to-destructive/60",
+    guidePath: "/guides/brief-maintenance-preventive",
   },
 ];
 
@@ -81,12 +86,14 @@ const ModulesSection = () => {
 
         {/* Modules Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {modules.map((module, index) => (
-            <div
+          {modules.map((module) => (
+            <a
               key={module.name}
+              href={getMarketingUrl(module.guidePath)}
               className={cn(
-                "relative group rounded-2xl p-8 bg-card border border-border overflow-hidden",
-                "hover:border-primary/30 transition-all duration-500"
+                "relative group block rounded-2xl p-8 bg-card border border-border overflow-hidden",
+                "hover:border-primary/30 transition-all duration-500 cursor-pointer",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               )}
             >
               {/* Gradient accent */}
@@ -137,7 +144,7 @@ const ModulesSection = () => {
                   ))}
                 </ul>
               </div>
-            </div>
+            </a>
           ))}
         </div>
       </div>

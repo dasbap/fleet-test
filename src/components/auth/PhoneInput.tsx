@@ -32,7 +32,7 @@ export function PhoneInput({ onSubmit, isLoading = false, className = '' }: Phon
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     // Accepter chiffres, espaces et tirets uniquement
-    const val = e.target.value.replace(/[^\d\s\-]/g, '');
+    const val = e.target.value.replace(/[^\d\s-]/g, '');
     setRawValue(val);
     setError(null);
   }, []);

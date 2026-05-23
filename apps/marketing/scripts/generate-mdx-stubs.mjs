@@ -9,26 +9,26 @@ const root = join(fileURLToPath(import.meta.url), "..", "..", "src", "content");
 
 const guides = [
   {
-    slug: "pilotage-flotte-ia",
+    slug: "pilotage-flotte",
     kind: "hub",
     pillar: "ia",
-    title: "Pilotage flotte avec l'IA",
+    title: "Pilotage et analyses flotte",
     description:
-      "Hub : intelligence artificielle appliquée au carburant, aux rapports et à la discipline conducteur.",
+      "Hub : carburant, rapports consolidés et discipline conducteur pour piloter votre parc.",
   },
   {
-    slug: "analyser-donnees-carburant-ia",
+    slug: "analyser-donnees-carburant",
     pillar: "ia",
-    title: "Comment analyser les données carburant avec l'IA",
+    title: "Comment analyser les données carburant",
     description:
       "Détecter les anomalies de consommation et réduire le poste carburant de votre flotte.",
     relatedSolution: "transporteurs-cemac",
     relatedFeature: "carburant",
   },
   {
-    slug: "rapports-flotte-enrichis-ia",
+    slug: "rapports-flotte-consolides",
     pillar: "ia",
-    title: "Rapports flotte enrichis par l'IA",
+    title: "Rapports flotte consolidés",
     description:
       "Consolider multi-flottes et prioriser les alertes grâce à des synthèses automatisées.",
     relatedSolution: "equipes-operations",

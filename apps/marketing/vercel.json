@@ -9,6 +9,21 @@
       "has": [{ "type": "host", "value": "e-samba.com" }],
       "destination": "https://marketing.e-samba.com/:path*",
       "permanent": true
+    },
+    {
+      "source": "/guides/pilotage-flotte-ia",
+      "destination": "/guides/pilotage-flotte",
+      "permanent": true
+    },
+    {
+      "source": "/guides/analyser-donnees-carburant-ia",
+      "destination": "/guides/analyser-donnees-carburant",
+      "permanent": true
+    },
+    {
+      "source": "/guides/rapports-flotte-enrichis-ia",
+      "destination": "/guides/rapports-flotte-consolides",
+      "permanent": true
     }
   ],
   "headers": [

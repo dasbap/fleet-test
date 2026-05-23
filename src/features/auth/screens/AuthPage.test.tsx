@@ -1,11 +1,11 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ComponentType } from "react";
 import * as authActions from "@/lib/auth-actions";
-import { DEMO_CREDENTIAL_ACCOUNTS } from "@/features/auth/data/demoCredentials";
-// DEMO_SHARED_PASSWORD supprimé — les mots de passe démo sont gérés via VITE_DEMO_PASSWORD (non commité)
 import { ROUTE_PATHS } from "@/navigation/routePaths";
-import AuthPage from "./AuthPage";
+
+let AuthPage: ComponentType;
 
 const toastMock = vi.fn();
 
@@ -47,6 +47,13 @@ function renderAuth(initialPath = "/auth") {
 }
 
 describe("AuthPage", () => {
+  beforeAll(async () => {
+    vi.stubEnv("VITE_ENABLE_DEMO_UI", "true");
+    vi.stubEnv("VITE_DEMO_PASSWORD", "demo-test-password");
+    const mod = await import("./AuthPage");
+    AuthPage = mod.default;
+  });
+
   beforeEach(() => {
     toastMock.mockReset();
     navigateMock.mockReset();
@@ -134,20 +141,28 @@ describe("AuthPage", () => {
   });
 
   it("accès démo rapide : signIn avec le compte sélectionné puis navigation post-login", async () => {
-    const firstDemo = DEMO_CREDENTIAL_ACCOUNTS[0];
+    const { DEMO_QUICK_ACCOUNTS } = await import("@/features/auth/data/demoQuickAccess");
+    const firstDemo = DEMO_QUICK_ACCOUNTS[0]!;
     renderAuth("/auth");
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", {
+          name: new RegExp(`Démo.*${firstDemo.role}`, "i"),
+        }),
+      ).toBeInTheDocument();
+    });
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: new RegExp(firstDemo.email.split("@")[0]!.replace(".", "\\.")),
+        name: new RegExp(`Démo.*${firstDemo.role}`, "i"),
       }),
     );
 
     await waitFor(() => {
-      // DEMO_DEV_PASSWORD = VITE_DEMO_PASSWORD ?? "" → "" dans l'env de test (variable non définie)
       expect(authActions.signIn).toHaveBeenCalledWith(
         firstDemo.email,
-        "",
+        "demo-test-password",
         undefined,
       );
     });
