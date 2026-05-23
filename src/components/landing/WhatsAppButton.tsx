@@ -3,7 +3,7 @@
  * Masqué sur mobile en mode app (hash #app).
  */
 export function WhatsAppButton() {
-  const number = import.meta.env.VITE_WHATSAPP_NUMBER || "237641461148";
+  const number = import.meta.env.VITE_WHATSAPP_NUMBER || "237641341857";
   const message = encodeURIComponent("Bonjour, je souhaite en savoir plus sur E-Samba.");
   const url = `https://wa.me/${number}?text=${message}`;
 

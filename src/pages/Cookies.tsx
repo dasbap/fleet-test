@@ -185,10 +185,10 @@ export default function CookiesPage() {
               </a>{" "}
               ou appelez le{" "}
               <a
-                href="tel:+237641461148"
+                href="tel:+237641341857"
                 className="text-primary hover:underline"
               >
-                +237 6 41 46 11 48
+                +237 6 41 34 18 57
               </a>
               .
             </p>

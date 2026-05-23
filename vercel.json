@@ -9,6 +9,16 @@
       "has": [{ "type": "host", "value": "e-samba.com" }],
       "destination": "https://www.e-samba.com/:path*",
       "permanent": false
+    },
+    {
+      "source": "/blog",
+      "destination": "https://marketing.e-samba.com/guides",
+      "permanent": true
+    },
+    {
+      "source": "/blog/",
+      "destination": "https://marketing.e-samba.com/guides",
+      "permanent": true
     }
   ],
   "rewrites": [
@@ -92,6 +102,10 @@
     { "source": "/demo/access/", "destination": "/index.html" },
     { "source": "/demo/onboarding", "destination": "/index.html" },
     { "source": "/demo/onboarding/", "destination": "/index.html" },
+    { "source": "/ressources/seo-ia/modeles/:path*", "destination": "/ressources/seo-ia/modeles/:path*/index.html" },
+    { "source": "/ressources/seo-ia/:slug", "destination": "/ressources/seo-ia/:slug/index.html" },
+    { "source": "/ressources/seo-ia", "destination": "/ressources/seo-ia/index.html" },
+    { "source": "/ressources", "destination": "/ressources/index.html" },
     { "source": "/dashboard/analytics/retention", "destination": "/index.html" },
     { "source": "/dashboard/analytics/retention/", "destination": "/index.html" },
     { "source": "/dashboard/transit", "destination": "/index.html" },

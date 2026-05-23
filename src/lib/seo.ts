@@ -29,6 +29,8 @@ export const SEO_ROUTE_KEYS = {
   operations: "operations",
   /** Renouvellement / choix d’offre (abonnement). */
   upgrade: "upgrade",
+  /** Hub des cas d’usage marketing. */
+  useCaseHub: "useCaseHub",
   notFound: "notFound",
 } as const;
 
@@ -106,6 +108,12 @@ export const SEO_BY_ROUTE_KEY: Record<SeoRouteKey, SeoRouteConfig> = {
       "Renouvellement d'abonnement et choix d'offre Starter, Pro ou Gratuit pour votre flotte E-Samba.",
     canonicalPath: "/upgrade",
   },
+  useCaseHub: {
+    title: "Cas d'usage E-Samba | Gestion de flotte",
+    description:
+      "Parcours par outil, profil metier et probleme operationnel : maintenance, DVIR, transit CEMAC, alertes et rapports.",
+    canonicalPath: "/use-case",
+  },
   notFound: {
     title: "E-Samba",
     description:
@@ -138,6 +146,7 @@ const PATH_TO_ROUTE_KEY: Record<string, SeoRouteKey> = {
   "/dashboard/history": SEO_ROUTE_KEYS.history,
   "/dashboard/operations": SEO_ROUTE_KEYS.operations,
   "/upgrade": SEO_ROUTE_KEYS.upgrade,
+  "/use-case": SEO_ROUTE_KEYS.useCaseHub,
 };
 
 export function getCanonicalUrlFromPath(path: string): string {

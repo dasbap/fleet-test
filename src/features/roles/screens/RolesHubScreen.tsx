@@ -41,9 +41,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useFleetMembers, type MemberRow } from "../hooks/useFleetMembers";
+import { useFleetMembersHub, type MemberRow } from "@/hooks/useFleetMembers";
 import { useRoleAuditLog, AUDIT_ACTION_LABELS } from "../hooks/useRoleAuditLog";
+import { useInvitations } from "@/hooks/useInvitations";
+import { CreateInvitationDialog } from "@/components/invitations/CreateInvitationDialog";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { ROLE_PERMISSIONS } from "@/lib/rbac/permissions";
@@ -118,12 +119,21 @@ function MemberInitials({ name }: { name: string | null }) {
 function MembersTab() {
   const { user, userFleetId } = useAuth();
   const { can } = useRoleAccess();
-  const { members, isLoading, isError, refetch, changeRole, deactivateMember, reactivateMember } = useFleetMembers();
+  const {
+    members,
+    isLoading,
+    isError,
+    refetch,
+    changeRole,
+    deactivateMember,
+    reactivateMember,
+    offboardMember,
+    fleetId,
+  } = useFleetMembersHub();
   const { toast } = useToast();
 
   const [showInactive, setShowInactive]         = useState(false);
   const [confirmAction, setConfirmAction]        = useState<{ type: "deactivate" | "offboard"; member: MemberRow } | null>(null);
-  const [offboardLoading, setOffboardLoading]    = useState<string | null>(null);
 
   const canManage = can("member.update_role");
   const canRemove = can("member.remove");
@@ -133,9 +143,14 @@ function MembersTab() {
   const inactiveCount = members.filter((m) => !m.is_active).length;
 
   const handleRoleChange = async (member: MemberRow, newRole: RoleType) => {
-    if (newRole === member.role) return;
+    if (newRole === member.role || !fleetId) return;
     try {
-      await changeRole.mutateAsync({ userId: member.user_id, newRole });
+      await changeRole.mutateAsync({
+        membershipId: member.id,
+        fleetId,
+        userId: member.user_id,
+        newRole,
+      });
       toast({ title: "Rôle mis à jour", description: `${member.full_name ?? "Membre"} → ${ROLE_LABELS[newRole]}` });
     } catch (err) {
       toast({ title: "Erreur", description: (err as Error).message, variant: "destructive" });
@@ -143,8 +158,14 @@ function MembersTab() {
   };
 
   const handleDeactivate = async (member: MemberRow) => {
+    if (!fleetId) return;
     try {
-      await deactivateMember.mutateAsync({ memberId: member.id, userId: member.user_id, role: member.role });
+      await deactivateMember.mutateAsync({
+        memberId: member.id,
+        fleetId,
+        userId: member.user_id,
+        role: member.role,
+      });
       toast({ title: "Accès désactivé", description: `${member.full_name ?? "Membre"} n'a plus accès à la flotte.` });
     } catch (err) {
       toast({ title: "Erreur", description: (err as Error).message, variant: "destructive" });
@@ -153,26 +174,20 @@ function MembersTab() {
   };
 
   const handleOffboard = async (member: MemberRow) => {
-    if (!userFleetId) return;
-    setOffboardLoading(member.user_id);
+    if (!fleetId) return;
     try {
-      const { error } = await supabase.rpc("offboard_member", {
-        p_user_id:  member.user_id,
-        p_fleet_id: userFleetId,
-      });
-      if (error) throw new Error(error.message);
-      void refetch();
+      await offboardMember.mutateAsync({ userId: member.user_id, fleetId });
       toast({ title: "Membre retiré", description: `${member.full_name ?? "Membre"} a été complètement retiré de la flotte.` });
     } catch (err) {
       toast({ title: "Erreur", description: (err as Error).message, variant: "destructive" });
     }
-    setOffboardLoading(null);
     setConfirmAction(null);
   };
 
   const handleReactivate = async (member: MemberRow) => {
+    if (!fleetId) return;
     try {
-      await reactivateMember.mutateAsync({ userId: member.user_id, role: member.role });
+      await reactivateMember.mutateAsync({ userId: member.user_id, role: member.role, fleetId });
       toast({ title: "Accès réactivé", description: `${member.full_name ?? "Membre"} a de nouveau accès.` });
     } catch (err) {
       toast({ title: "Erreur", description: (err as Error).message, variant: "destructive" });
@@ -228,7 +243,11 @@ function MembersTab() {
 
         {displayed.map((member) => {
           const isSelf    = member.user_id === user?.id;
-          const isPending = changeRole.isPending || deactivateMember.isPending || reactivateMember.isPending || offboardLoading === member.user_id;
+          const isPending =
+            changeRole.isPending
+            || deactivateMember.isPending
+            || reactivateMember.isPending
+            || offboardMember.isPending;
 
           return (
             <div key={member.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${member.is_active ? "bg-card" : "bg-muted/40 opacity-60"}`}>
@@ -411,6 +430,12 @@ function HistoriqueTab() {
     "member.reactivated":  "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
     "member.offboarded":   "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
     "member.updated":      "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300",
+    "member.invited":      "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+    "vehicle.created":     "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+    "vehicle.deleted":     "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    "closure.validated":   "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+    "maintenance.validated":"bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+    "org.settings_changed":"bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300",
   };
 
   return (
@@ -466,6 +491,8 @@ function HistoriqueTab() {
 function InvitationsTab() {
   const { userFleetId } = useAuth();
   const { toast } = useToast();
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const { data: invitations, isLoading, refetch } = useInvitations(userFleetId ?? undefined);
 
   const inviteLink = userFleetId ? `${window.location.origin}/join/${userFleetId}` : null;
 
@@ -476,8 +503,60 @@ function InvitationsTab() {
     });
   };
 
+  const copyCode = (code: string) => {
+    void navigator.clipboard.writeText(code).then(() => {
+      toast({ title: "Code copié", description: "Le code d'invitation a été copié." });
+    });
+  };
+
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        {userFleetId && (
+          <>
+            <Button size="sm" onClick={() => setInviteDialogOpen(true)}>
+              Créer un code
+            </Button>
+            <CreateInvitationDialog
+              open={inviteDialogOpen}
+              onOpenChange={setInviteDialogOpen}
+              fleetId={userFleetId}
+              onSuccess={() => void refetch()}
+            />
+          </>
+        )}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Link2 className="h-4 w-4" /> Codes d'invitation actifs
+          </CardTitle>
+          <CardDescription>
+            Créez un code à usage limité ou partagez le lien d'invitation flotte.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {isLoading && (
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Chargement…
+            </p>
+          )}
+          {!isLoading && (!invitations || invitations.length === 0) && (
+            <p className="text-sm text-muted-foreground">Aucun code actif. Créez une invitation ci-dessus.</p>
+          )}
+          {invitations?.map((inv) => (
+            <div key={inv.id} className="flex items-center gap-2 p-2 rounded-lg border bg-card">
+              <span className="font-mono text-sm flex-1 truncate">{inv.code}</span>
+              <span className="text-xs text-muted-foreground shrink-0">
+                {inv.current_uses}{inv.max_uses != null ? `/${inv.max_uses}` : ""} utilisations
+              </span>
+              <Button size="sm" variant="outline" onClick={() => copyCode(inv.code)}>Copier</Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -500,15 +579,6 @@ function InvitationsTab() {
           )}
         </CardContent>
       </Card>
-
-      <Card className="border-dashed">
-        <CardHeader>
-          <CardTitle className="text-base text-muted-foreground">Invitations par email</CardTitle>
-          <CardDescription>
-            L'envoi d'invitations directes par email depuis le tableau de bord sera disponible prochainement.
-          </CardDescription>
-        </CardHeader>
-      </Card>
     </div>
   );
 }
@@ -517,7 +587,7 @@ function InvitationsTab() {
 
 export default function RolesHubScreen() {
   const { can } = useRoleAccess();
-  const { members, isLoading } = useFleetMembers();
+  const { members, isLoading } = useFleetMembersHub();
   const activeCount = members.filter((m) => m.is_active).length;
 
   return (

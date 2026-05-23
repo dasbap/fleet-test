@@ -1,0 +1,18 @@
+---
+import { SIGNUP_URL } from "@/lib/site";
+
+interface Props {
+  label?: string;
+  variant?: "primary" | "outline";
+}
+
+const { label = "Démarrer gratuitement", variant = "primary" } = Astro.props;
+const classes =
+  variant === "primary"
+    ? "inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+    : "inline-flex items-center justify-center rounded-lg border border-border px-6 py-3 text-sm font-semibold text-foreground hover:border-primary/50 transition-colors";
+---
+
+<a href={SIGNUP_URL} class={classes}>
+  {label}
+</a>

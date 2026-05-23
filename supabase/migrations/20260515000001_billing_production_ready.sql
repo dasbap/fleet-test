@@ -108,7 +108,7 @@ ALTER TABLE public.billing_events ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS billing_events_select_manager ON public.billing_events;
 CREATE POLICY billing_events_select_manager ON public.billing_events
   FOR SELECT USING (
-    public.has_role(fleet_id, 'manager') OR public.has_role(fleet_id, 'organizer')
+    public.has_role(fleet_id, 'manager'::public.role_type) OR public.has_role(fleet_id, 'organizer'::public.role_type)
   );
 
 DROP POLICY IF EXISTS billing_events_insert_service ON public.billing_events;
