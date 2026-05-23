@@ -336,8 +336,9 @@ function addCalendarMonthsUtc(base: Date, months: number): Date {
   return d;
 }
 
-// deno-lint-ignore no-explicit-any
-type AdminClient = any;
+type AdminClient = {
+  from: (table: string) => unknown;
+};
 
 async function activateSubscription(admin: AdminClient, payment: PaymentRecord): Promise<ActivationResult> {
   // Idempotence : abonnement déjà lié à ce paiement

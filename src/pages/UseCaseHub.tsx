@@ -117,7 +117,7 @@ export default function UseCaseHubPage() {
                   </h2>
                   <p className="text-sm text-muted-foreground flex-1 mb-4">{item.intro}</p>
                   <Link
-                    to={ROUTE_PATHS.useCaseDetail(item.slug)}
+                    to={ROUTE_PATHS.caseDetailPath(item.slug)}
                     className="inline-flex items-center gap-1 text-sm text-primary font-medium hover:gap-2 transition-all"
                   >
                     Lire le guide <ArrowRight className="w-3 h-3" />

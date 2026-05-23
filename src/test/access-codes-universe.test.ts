@@ -230,7 +230,8 @@ describe("Validation format des codes d'accès", () => {
   });
 
   it("rejette un code mal formaté", () => {
-    expect(validateCodeFormat("samba-inv-abc-0042")).not.toBeNull(); // minuscules
+    // Les minuscules sont normalisées en majuscules avant validation
+    expect(validateCodeFormat("samba-inv-abc-0042")).toBeNull();
     expect(validateCodeFormat("SAMBA_INV_ABC_0042")).not.toBeNull(); // underscores
     expect(validateCodeFormat("INVALID")).not.toBeNull();
   });
