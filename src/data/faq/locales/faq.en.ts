@@ -51,7 +51,7 @@ export const faqEn: FaqRegistry = {
         id: 'bill-plans',
         question: 'What subscription plans are available?',
         answer:
-          'E-Samba offers three plans: Starter (up to 5 vehicles), Standard (up to 20 vehicles), and Pro (unlimited fleet). Each plan includes a 7-day free trial.',
+          'E-Samba offers four plans: Free (up to 3 vehicles), Starter (up to 25 vehicles), Pro (up to 75 vehicles), and Enterprise (unlimited fleet). Each paid plan includes a 7-day free trial.',
         tags: ['subscription', 'pricing', 'plan'],
       },
       {

@@ -26,7 +26,7 @@ BEGIN;
 INSERT INTO public.plans (code, name, price_per_vehicle, min_commitment_days, is_active, max_vehicles, enables_finance, enables_ai, enables_reports, enables_driver_scoring, enables_anomaly_insights)
 VALUES
   ('starter','Starter (démo)',5000,60,true,25,true,true,true,true,true),
-  ('pro','Pro (démo)',10000,60,true,200,true,true,true,true,true),
+  ('pro','Pro (démo)',10000,60,true,75,true,true,true,true,true),
   ('organizer','Organisateur (démo)',15000,60,true,999999,true,true,true,true,true)
 ON CONFLICT (code) DO UPDATE SET
   name=EXCLUDED.name, price_per_vehicle=EXCLUDED.price_per_vehicle,
