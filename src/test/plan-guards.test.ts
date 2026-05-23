@@ -38,11 +38,11 @@ function makeCtx(overrides: Partial<FleetBillingContext> = {}): FleetBillingCont
 }
 
 const FREE_CTX    = makeCtx();
-const STARTER_CTX = makeCtx({ planCode: "starter", isPaid: true, billingStatus: "active", maxVehicles: 5, financeEnabled: true, reportsEnabled: true, driverScoringEnabled: true });
-const PRO_CTX     = makeCtx({ planCode: "pro",     isPaid: true, billingStatus: "active", maxVehicles: 25, financeEnabled: true, reportsEnabled: true, driverScoringEnabled: true, aiEnabled: true, anomalyInsightsEnabled: true });
+const STARTER_CTX = makeCtx({ planCode: "starter", isPaid: true, billingStatus: "active", maxVehicles: 25, financeEnabled: true, reportsEnabled: true, driverScoringEnabled: true });
+const PRO_CTX     = makeCtx({ planCode: "pro",     isPaid: true, billingStatus: "active", maxVehicles: 75, financeEnabled: true, reportsEnabled: true, driverScoringEnabled: true, aiEnabled: true, anomalyInsightsEnabled: true });
 const ENTERPRISE  = makeCtx({ planCode: "enterprise", isPaid: true, billingStatus: "enterprise" as ReturnType<typeof makeCtx>["billingStatus"], maxVehicles: Infinity, financeEnabled: true, reportsEnabled: true, driverScoringEnabled: true, aiEnabled: true });
 const SUSPENDED   = makeCtx({ billingStatus: "suspended" });
-const GRACE       = makeCtx({ planCode: "starter", billingStatus: "grace_period", isPaid: true, maxVehicles: 5 });
+const GRACE       = makeCtx({ planCode: "starter", billingStatus: "grace_period", isPaid: true, maxVehicles: 25 });
 
 // ─── canCreateVehicle ──────────────────────────────────────────────────────
 
@@ -65,12 +65,12 @@ describe("canCreateVehicle", () => {
   });
 
   it("permet sur Pro avec beaucoup de véhicules", () => {
-    const result = canCreateVehicle(makeCtx({ ...PRO_CTX, vehicleCount: 10, maxVehicles: 25 }));
+    const result = canCreateVehicle(makeCtx({ ...PRO_CTX, vehicleCount: 10, maxVehicles: 75 }));
     expect(result.allowed).toBe(true);
   });
 
-  it("bloque sur Pro à la limite de 25", () => {
-    const result = canCreateVehicle(makeCtx({ ...PRO_CTX, vehicleCount: 25, maxVehicles: 25 }));
+  it("bloque sur Pro à la limite de 75", () => {
+    const result = canCreateVehicle(makeCtx({ ...PRO_CTX, vehicleCount: 75, maxVehicles: 75 }));
     expect(result.allowed).toBe(false);
   });
 
@@ -80,7 +80,7 @@ describe("canCreateVehicle", () => {
   });
 
   it("permet en grace_period si sous la limite", () => {
-    const result = canCreateVehicle(makeCtx({ ...GRACE, vehicleCount: 3, maxVehicles: 5 }));
+    const result = canCreateVehicle(makeCtx({ ...GRACE, vehicleCount: 3, maxVehicles: 25 }));
     expect(result.allowed).toBe(true);
   });
 });

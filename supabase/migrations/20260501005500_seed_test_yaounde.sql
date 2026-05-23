@@ -20,7 +20,7 @@ INSERT INTO public.plans (
 )
 VALUES
   ('free', 'Free Test', 0, 3, true, false, false, false, false, false),
-  ('pro', 'Pro Test', 8000, 100, true, true, true, true, true, true)
+  ('pro', 'Pro Test', 8000, 75, true, true, true, true, true, true)
 ON CONFLICT (code) DO UPDATE SET
   max_vehicles = EXCLUDED.max_vehicles,
   is_active = EXCLUDED.is_active;
