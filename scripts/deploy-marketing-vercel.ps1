@@ -1,30 +1,26 @@
-# Déploiement automatisé du hub marketing (Vercel CLI requis + vercel login).
+# Déploiement automatisé du hub marketing + SPA (Vercel CLI + vercel login).
 # Usage : powershell -ExecutionPolicy Bypass -File scripts/deploy-marketing-vercel.ps1
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 
-$marketing = Join-Path $root "apps/marketing"
-$spa = $root
+$marketingProjectId = "prj_LkwpisIC6ISuxdDDxoIKa8NOu4An"
+$marketingOrgId = "team_xcfiNTxKb1iiEGATx6edNZPh"
 
 Write-Host ">> Projet marketing (esamba-marketing)..."
-Push-Location $marketing
-if (-not (Test-Path ".vercel/project.json")) {
-  vercel link -p esamba-marketing -y
-}
-vercel env add PUBLIC_SITE_URL production --value "https://marketing.e-samba.com" --yes 2>$null
-vercel env add PUBLIC_APP_URL production --value "https://www.e-samba.com" --yes 2>$null
+Push-Location $root
+$env:VERCEL_ORG_ID = $marketingOrgId
+$env:VERCEL_PROJECT_ID = $marketingProjectId
 vercel deploy --prod --yes
-vercel domains add marketing.e-samba.com 2>$null
-vercel alias set esamba-marketing.vercel.app marketing.e-samba.com 2>$null
+Remove-Item Env:VERCEL_PROJECT_ID -ErrorAction SilentlyContinue
+Remove-Item Env:VERCEL_ORG_ID -ErrorAction SilentlyContinue
 Pop-Location
 
-Write-Host ">> SPA (smart-fleet-africa) — VITE_MARKETING_URL..."
-Push-Location $spa
+Write-Host ">> SPA (smart-fleet-africa)..."
+Push-Location $root
 if (-not (Test-Path ".vercel/project.json")) {
   vercel link -p smart-fleet-africa -y
 }
-vercel env add VITE_MARKETING_URL production --value "https://marketing.e-samba.com" --yes 2>$null
 vercel deploy --prod --yes
 Pop-Location
 
