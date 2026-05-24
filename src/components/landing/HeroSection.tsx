@@ -10,9 +10,6 @@ import heroBg1280Webp from "@/assets/hero-bg-1280.webp";
 import heroBg1920Webp from "@/assets/hero-bg-1920.webp";
 
 const HeroSection = () => {
-  const demoVideoUrl =
-    import.meta.env.VITE_DEMO_VIDEO_URL || "https://youtu.be/7vl79App-Fs";
-
   const highlights = [
     "Gestion multi-flottes",
     "Suivi temps réel",
@@ -99,14 +96,12 @@ const HeroSection = () => {
             </Button>
             <Button size="lg" variant="outline" className="group" asChild>
               <a
-                href={demoVideoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Parcours demo E-Samba - Voir la demo video YouTube"
-                aria-label="Parcours demo E-Samba. Ouvrir la video de demonstration YouTube."
+                href="#demo-video"
+                title="Écouter la démo audio E-Samba"
+                aria-label="Écouter la présentation audio de E-Samba — gestion de flotte"
               >
                 <Play className="mr-2 w-5 h-5 group-hover:text-primary transition-colors" />
-                Voir la démo
+                Écouter la démo
               </a>
             </Button>
           </div>
