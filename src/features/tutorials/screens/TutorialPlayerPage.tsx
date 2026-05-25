@@ -20,6 +20,7 @@ import {
   useSaveTutorialProgress,
 } from "@/hooks/useTutorialProgress";
 import { useToggleTutorialFavorite } from "@/hooks/useTutorialFavorites";
+import { TUTORIAL_COMPLETION_RATIO } from "@/domain/constants/tutorialCategories";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { tutorialOfflineService } from "@/services/tutorial-offline.service";
 import { toast } from "@/hooks/use-toast";
@@ -168,7 +169,7 @@ export default function TutorialPlayerPage() {
     const rounded = Math.floor(positionSec);
     if (Math.abs(rounded - lastProgressRef.current) < 5) return;
     lastProgressRef.current = rounded;
-    const completed = positionSec / durationSec >= 0.8;
+    const completed = positionSec / durationSec >= TUTORIAL_COMPLETION_RATIO;
     saveProgress.mutate({
       tutorialId: data.id,
       positionSec: rounded,
