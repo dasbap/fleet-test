@@ -134,11 +134,11 @@ export default function TutorialPlayerPage() {
   const canPlayVideo =
     Boolean(localVideoUrl) ||
     (videoAvailable === true && !forcePending) ||
-    (data.provider !== "storage");
+    (data?.provider !== "storage");
 
   const showVideoPending =
     !localVideoUrl &&
-    data.provider === "storage" &&
+    data?.provider === "storage" &&
     (forcePending || videoAvailable === false) &&
     !isCheckingVideo;
 
