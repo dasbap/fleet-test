@@ -7,8 +7,9 @@ import type {
   IncidentFilters,
   IncidentSeverity,
 } from '@/repositories/incident.repository';
-import { INCIDENT_CATEGORY_VALUES } from '@/types/incident-declaration';
-import type { IncidentCategory } from '@/types/incident-declaration';
+import { isIncidentCategory } from '@/domain/constants/incidentCategories';
+import { incidentCreateSchema } from '@/domain/schemas/incident.schema';
+import { parseSchemaOrThrow } from '@/domain/lib/parseSchema';
 
 /**
  * Service pour la logique métier des incidents
@@ -21,8 +22,8 @@ export class IncidentService {
 
   private validateIncidentCategory(category: string | null | undefined): void {
     if (category == null || category === '') return;
-    if (!INCIDENT_CATEGORY_VALUES.includes(category as IncidentCategory)) {
-      throw new Error('Catégorie d\'incident invalide');
+    if (!isIncidentCategory(category)) {
+      throw new Error("Catégorie d'incident invalide");
     }
   }
 
@@ -90,43 +91,13 @@ export class IncidentService {
    * Crée un nouvel incident avec validation métier
    */
   async createIncident(data: IncidentInsert): Promise<Incident> {
-    // Validation métier
-    if (!data.vehicle_id) {
-      throw new Error('L\'ID du véhicule est requis');
-    }
-
-    if (!data.driver_user_id) {
-      throw new Error('L\'ID du conducteur est requis');
-    }
-
-    if (!data.description || data.description.trim() === '') {
-      throw new Error('La description de l\'incident est requise');
-    }
-
-    // Validation de la sévérité
-    const validSeverities: IncidentSeverity[] = ['low', 'medium', 'high', 'critical'];
-    if (data.severity && !validSeverities.includes(data.severity)) {
-      throw new Error('Sévérité invalide');
-    }
-
-    if (
-      (data.latitude != null && data.longitude == null) ||
-      (data.longitude != null && data.latitude == null)
-    ) {
-      throw new Error('Latitude et longitude doivent être fournies ensemble');
-    }
-
-    if (data.latitude != null && data.longitude != null) {
-      if (data.latitude < -90 || data.latitude > 90 || data.longitude < -180 || data.longitude > 180) {
-        throw new Error('Coordonnées géographiques invalides');
-      }
-    }
+    const parsed = parseSchemaOrThrow(incidentCreateSchema, data);
+    this.validateIncidentCategory(parsed.incident_category ?? null);
 
     return this.repository.create({
-      ...data,
-      description: data.description.trim(),
-      severity: data.severity || 'medium',
-      incident_category: data.incident_category ?? null,
+      ...parsed,
+      severity: (parsed.severity ?? 'medium') as IncidentSeverity,
+      incident_category: parsed.incident_category ?? null,
     });
   }
 

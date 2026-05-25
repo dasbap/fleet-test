@@ -85,10 +85,12 @@ Les secrets Edge Functions, BFF (`SUPABASE_SERVICE_ROLE_KEY`, `PAYMENTS_WEBHOOK_
 ## Documentation associée
 
 - Couches Repository / Service / hooks : [docs/ARCHITECTURE.md](../ARCHITECTURE.md)
+- Règles métier client (Zod, constantes) : [BUSINESS_RULES.md](./BUSINESS_RULES.md)
 - Navigation et parcours utilisateur : [docs/flux-navigation.md](../flux-navigation.md)
 - Flux d’auth détaillé (post-login) : [docs/auth-flow.md](../auth-flow.md)
 - Setup Supabase : [docs/SUPABASE-SETUP.md](../SUPABASE-SETUP.md)
 - Cible d’évolution documentée (sans engagement implicite de migration) : [TARGET_ARCHITECTURE.md](./TARGET_ARCHITECTURE.md)
+- Règles métier client (web + Capacitor) : [BUSINESS_RULES.md](./BUSINESS_RULES.md)
 
 ## Note sur `CLAUDE.md` à la racine
 

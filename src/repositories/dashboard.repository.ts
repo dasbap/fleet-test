@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { FleetMetrics } from '@/hooks/dashboard/useFleetMetrics';
+import type { FleetMetrics } from '@/types/fleet-metrics';
 
 export interface DashboardStats {
   activeVehicles: number;
@@ -193,6 +193,13 @@ export class DashboardRepository {
     });
     if (error) throw new Error(error.message);
     return data as FleetMetrics;
+  }
+
+  async invalidateMetricsCache(fleetId: string): Promise<void> {
+    const { error } = await supabase.rpc('invalidate_fleet_metrics_cache', {
+      p_fleet_id: fleetId,
+    });
+    if (error) throw new Error(error.message);
   }
 
   async getFleetVehiclesOverview(fleetId: string): Promise<FleetVehicleOverviewItem[]> {

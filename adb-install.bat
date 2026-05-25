@@ -1,14 +1,20 @@
 @echo off
-set ADB=C:\Users\cnoah\AppData\Local\Android\Sdk\platform-tools\adb.exe
-set APK=C:\Users\cnoah\Documents\GitHub\smart-fleet-africa\android\app\build\outputs\apk\debug\app-debug.apk
+setlocal EnableExtensions
 
-echo === ADB DEVICES ===
-%ADB% devices
+set "ROOT=%~dp0"
+set "APK=%ROOT%android\app\build\outputs\apk\debug\app-debug.apk"
+
+call "%ROOT%scripts\adb-env.bat" check-device
+if errorlevel 1 (
+  pause
+  exit /b 1
+)
 
 echo === INSTALL ===
-%ADB% install -r "%APK%"
+"%ADB%" install -r "%APK%"
 
 echo === LAUNCH ===
-%ADB% shell am start -n com.esamba.flotte/com.esamba.flotte.MainActivity
+"%ADB%" shell am start -n com.esamba.flotte/com.esamba.flotte.MainActivity
 
 echo EXIT_CODE=%ERRORLEVEL%
+pause
