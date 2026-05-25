@@ -19,6 +19,13 @@ if (typeof SUPABASE_ANON_KEY !== 'string' || !SUPABASE_ANON_KEY) {
   );
 }
 
+// Détecte si on tourne dans un WebView Capacitor (Android / iOS).
+// Capacitor injecte window.Capacitor avant le chargement du bundle JS.
+const estEnvCapacitor: boolean =
+  typeof window !== 'undefined' &&
+  !!(window as Window & { Capacitor?: { isNativePlatform?: () => boolean } })
+    .Capacitor?.isNativePlatform?.();
+
 export const supabase: SupabaseClient = createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
@@ -29,9 +36,11 @@ export const supabase: SupabaseClient = createClient(
       storageKey: "sfa_auth_token",
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true,
-      // PKCE : protection contre l'interception du code OAuth (RFC 7636)
-      flowType: "pkce",
+      // En Capacitor (WebView https://localhost) : désactiver la détection de session
+      // par URL — le verifier PKCE ne survit pas au cycle redirect dans le WebView Android.
+      // Sur le web : conserver PKCE + détection URL pour la sécurité OAuth (RFC 7636).
+      detectSessionInUrl: !estEnvCapacitor,
+      flowType: estEnvCapacitor ? "implicit" : "pkce",
     },
     db: {
       schema: 'public',

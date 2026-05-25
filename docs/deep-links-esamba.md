@@ -14,8 +14,13 @@
 | `esamba://operations/:id?kind=intervention` ou `?type=intervention` (ou `ticket`) | Ticket d’intervention |
 | `esamba://operations/mission:id` | Idem mission (préfixe dans le segment) |
 | `esamba://operations/intervention:id` ou `ticket:id` | Idem intervention |
+| `esamba://auth/callback?code=…` | `/auth/callback` (PKCE Supabase) |
+| `esamba://auth/update-password?…` | `/auth/update-password` |
+| `https://www.e-samba.com/dashboard/...` | Chemin SPA équivalent (App Links / Universal Links) |
 
 Un UUID seul dans `esamba://operations/:id` **sans** `?kind=` / `?type=` ni préfixe `mission:` est **refusé** (ambiguïté mission vs ticket). Pour les notifications push, préférer `buildEsambaDeepLinkUrl` (chemins explicites) ou `buildEsambaOperationsDeepLink(id, kind)`.
+
+Fichiers domaine : [`public/.well-known/assetlinks.json`](../public/.well-known/assetlinks.json) (Android), [`public/.well-known/apple-app-site-association`](../public/.well-known/apple-app-site-association) (iOS — remplacer `TEAMID` par l’équipe Apple).
 
 ## Implémentation
 

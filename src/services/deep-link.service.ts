@@ -9,7 +9,7 @@ import {
 import {
   deepLinkToInternalPath,
   dispatchDeepLinkUrlForNavigation,
-  navigateFromDeepLinkUrl,
+  navigateFromAppUrl,
   type NavigateFromDeepLinkResult,
 } from "@/lib/deepLinks/deepLinkNavigation";
 import { deepLinkLogDebug } from "@/lib/deepLinks/deepLinkLogger";
@@ -42,7 +42,7 @@ export class DeepLinkService {
   }
 
   navigate(rawUrl: string, navigate: NavigateFunction, options?: { replace?: boolean }): NavigateFromDeepLinkResult {
-    return navigateFromDeepLinkUrl(rawUrl, navigate, options);
+    return navigateFromAppUrl(rawUrl, navigate, options);
   }
 
   /** URL stable pour données FCM/APNs (sans ambiguïté mission / intervention). */
