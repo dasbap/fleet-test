@@ -11,6 +11,7 @@ describe("TutorialService", () => {
     const items = await service.getTutorials();
     expect(items.length).toBe(TUTORIAL_CATALOG_SEEDS.length);
     expect(items[0]?.title).toBe("Ouvrir un créneau");
+    expect(items[0]?.thumbUrl).toContain("tuto-01.svg");
   });
 
   it("rejette un id vide", async () => {

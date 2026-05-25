@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import { TutorialPlayer } from "@/features/tutorials/components/TutorialPlayer";
 import { TutorialErrorBoundary } from "@/features/tutorials/components/TutorialErrorBoundary";
-import { useTutorial, tutorialProgressService } from "@/hooks/useTutorials";
+import {
+  useTutorial,
+  useTutorialVideoAvailability,
+  tutorialProgressService,
+} from "@/hooks/useTutorials";
+import { TutorialVideoPending } from "@/features/tutorials/components/TutorialVideoPending";
+import { invalidateVideoAvailabilityCache } from "@/features/tutorials/lib/tutorialMediaAvailability";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useRecordTutorialView,
@@ -25,6 +31,17 @@ export default function TutorialPlayerPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data, isLoading, error } = useTutorial(tutorialId);
+  const {
+    data: videoAvailable,
+    isLoading: isCheckingVideo,
+    refetch: refetchVideoAvailability,
+    isFetching: isRefetchingVideo,
+  } = useTutorialVideoAvailability(
+    tutorialId,
+    data?.videoUrl,
+    Boolean(data?.id && data.provider === "storage"),
+  );
+  const [forcePending, setForcePending] = useState(false);
   const [initialPositionSec, setInitialPositionSec] = useState(0);
   const saveProgress = useSaveTutorialProgress();
   const recordView = useRecordTutorialView();
@@ -112,6 +129,26 @@ export default function TutorialPlayerPage() {
   );
 
   const playbackSource = localVideoUrl ? "offline" : "online";
+
+  const canPlayVideo =
+    Boolean(localVideoUrl) ||
+    (videoAvailable === true && !forcePending) ||
+    (data.provider !== "storage");
+
+  const showVideoPending =
+    !localVideoUrl &&
+    data.provider === "storage" &&
+    (forcePending || videoAvailable === false) &&
+    !isCheckingVideo;
+
+  const canDownloadOffline =
+    isOfflineSupported && canPlayVideo && !isOfflineAvailable;
+
+  const handleRetryVideoCheck = () => {
+    invalidateVideoAvailabilityCache(tutorialId);
+    setForcePending(false);
+    void refetchVideoAvailability();
+  };
 
   const handlePlay = () => {
     if (!data) return;
@@ -262,7 +299,7 @@ export default function TutorialPlayerPage() {
                     )}
                     Supprimer la copie hors ligne
                   </Button>
-                ) : (
+                ) : canDownloadOffline ? (
                   <Button
                     type="button"
                     size="sm"
@@ -277,27 +314,46 @@ export default function TutorialPlayerPage() {
                     )}
                     Télécharger hors ligne
                   </Button>
-                )}
-                <p className="w-full text-xs text-muted-foreground">
-                  {isOfflineAvailable
-                    ? "Lecture locale active."
-                    : "Version en ligne uniquement pour le moment."}
-                </p>
+                ) : null}
+                {isOfflineAvailable ? (
+                  <p className="w-full text-xs text-muted-foreground">
+                    Lecture locale active.
+                  </p>
+                ) : null}
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
                 Le mode hors ligne des tutoriels est disponible sur mobile natif.
               </p>
             )}
-            <TutorialPlayer
-              tutorial={data}
-              videoSrc={videoSrc}
-              playbackSource={playbackSource}
-              initialPositionSec={initialPositionSec}
-              onPlay={handlePlay}
-              onProgress={handleProgress}
-              onCompleted={handleCompleted}
-            />
+            {isCheckingVideo && !localVideoUrl ? (
+              <div className="flex aspect-video items-center justify-center rounded-md bg-muted/40">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : showVideoPending ? (
+              <TutorialVideoPending
+                title={data.title}
+                onRetry={handleRetryVideoCheck}
+                isRetrying={isRefetchingVideo}
+              />
+            ) : canPlayVideo ? (
+              <TutorialPlayer
+                tutorial={data}
+                videoSrc={videoSrc}
+                playbackSource={playbackSource}
+                initialPositionSec={initialPositionSec}
+                onPlay={handlePlay}
+                onProgress={handleProgress}
+                onCompleted={handleCompleted}
+                onVideoUnavailable={() => setForcePending(true)}
+              />
+            ) : (
+              <TutorialVideoPending
+                title={data.title}
+                onRetry={handleRetryVideoCheck}
+                isRetrying={isRefetchingVideo}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

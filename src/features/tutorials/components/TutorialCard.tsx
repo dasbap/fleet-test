@@ -1,11 +1,23 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Clock3, Play, Star, WifiOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { thumbPathCandidates } from "@/features/tutorials/lib/tutorialStorageAssets";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import type { TutorialWithUserState } from "@/services/tutorial.service";
 import { formatTutorialDuration } from "@/features/tutorials/lib/tutorialVideo";
+
+function buildThumbUrls(slug: string, primaryUrl: string): string[] {
+  const paths = thumbPathCandidates(slug);
+  const urls = paths.map(
+    (p) => supabase.storage.from("tutorials").getPublicUrl(p).data.publicUrl,
+  );
+  if (!urls.includes(primaryUrl)) urls.unshift(primaryUrl);
+  return urls;
+}
 
 export interface TutorialCardProps {
   tutorial: TutorialWithUserState;
@@ -19,6 +31,16 @@ export function TutorialCard({
   className,
 }: TutorialCardProps) {
   const detailPath = ROUTE_PATHS.dashboardTutorialDetail(tutorial.id);
+  const thumbCandidates = buildThumbUrls(tutorial.slug, tutorial.thumbUrl);
+  const [thumbIndex, setThumbIndex] = useState(0);
+  const thumbSrc = thumbCandidates[thumbIndex] ?? tutorial.thumbUrl;
+
+  const handleThumbError = () => {
+    setThumbIndex((i) => {
+      if (i + 1 < thumbCandidates.length) return i + 1;
+      return i;
+    });
+  };
 
   return (
     <li className={cn("list-none", className)}>
@@ -31,13 +53,11 @@ export function TutorialCard({
           <CardContent className="space-y-3 p-0">
             <div className="relative aspect-video w-full overflow-hidden bg-muted">
               <img
-                src={tutorial.thumbUrl}
+                src={thumbSrc}
                 alt=""
                 className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
                 loading="lazy"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
+                onError={handleThumbError}
               />
               <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
                 <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">

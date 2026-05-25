@@ -16,6 +16,7 @@ export interface TutorialPlayerProps {
   onPlay?: () => void;
   onProgress?: (positionSec: number, durationSec: number) => void;
   onCompleted?: () => void;
+  onVideoUnavailable?: () => void;
   className?: string;
 }
 
@@ -27,6 +28,7 @@ export function TutorialPlayer({
   onPlay,
   onProgress,
   onCompleted,
+  onVideoUnavailable,
   className,
 }: TutorialPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -221,6 +223,7 @@ export function TutorialPlayer({
         onError={() => {
           setIsLoading(false);
           setHasError(true);
+          onVideoUnavailable?.();
         }}
       />
       <div className="absolute bottom-2 right-2 z-20">
