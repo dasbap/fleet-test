@@ -31,14 +31,20 @@ Références : [deep-links-esamba.md](./deep-links-esamba.md), [auth-flow.md](./
 
 - [ ] `esamba://alerts` → liste alertes
 - [ ] `esamba://fleet` → liste véhicules
+- [ ] `esamba://tutorials` → liste guides (`/dashboard/tutorials`)
+- [ ] `esamba://tutorials/tuto-03` → lecteur tutoriel (session connectée recommandée)
 - [ ] Notification push avec `esambaUrl` dans le payload
 - [ ] (Après App Links) `https://www.e-samba.com/dashboard/...` ouvre l’app installée
+
+Workflow Windows (rebuild + install + tests) : `rebuild-and-install.bat --qa` ou suite complète `rebuild-and-install.bat --qa-full` — voir [deep-links-esamba.md](./deep-links-esamba.md) § QA Android.
 
 Commandes ADB (Android) :
 
 ```bash
 adb shell am start -a android.intent.action.VIEW -d "esamba://alerts" -n com.esamba.flotte/.MainActivity
 adb shell am start -a android.intent.action.VIEW -d "esamba://fleet" -n com.esamba.flotte/.MainActivity
+adb shell am start -a android.intent.action.VIEW -d "esamba://tutorials" -n com.esamba.flotte/.MainActivity
+adb shell am start -a android.intent.action.VIEW -d "esamba://tutorials/tuto-03" -n com.esamba.flotte/.MainActivity
 adb shell am start -a android.intent.action.VIEW -d "esamba://auth/callback?code=test" -n com.esamba.flotte/.MainActivity
 ```
 
@@ -50,6 +56,7 @@ adb shell am start -a android.intent.action.VIEW -d "esamba://auth/callback?code
 
 ## Tutoriels vidéo (onglet Guides)
 
+- [ ] Deep links ADB ci-dessus ou `adb-qa-tutorials.bat` après `rebuild-and-install.bat`
 - [ ] `npm run upload:tutorial-thumbs` puis `npm run verify:tutorials-storage` → **10/10 SVG OK**
 - [ ] Liste `/dashboard/tutorials` : 10 cartes, vignettes **SVG** visibles, titres métier FR
 - [ ] Tap carte → lecteur `/dashboard/tutorials/tuto-XX`

@@ -7,6 +7,8 @@ import type {
   ShiftClosureInsert,
   ShiftClosureUpdate,
 } from '@/repositories/driver-shift.repository';
+import { shiftClosureInsertSchema, shiftStartSchema } from '@/domain/schemas/driver-shift.schema';
+import { parseSchemaOrThrow } from '@/domain/lib/parseSchema';
 import type { OfflineShiftClosePayload, OfflineShiftStartPayload } from '@/types/offline-queue';
 
 /**
@@ -55,45 +57,17 @@ export class DriverShiftService {
    * Démarre un nouveau créneau avec validation métier
    */
   async startShift(data: ShiftInsert): Promise<DriverShift> {
-    // Validation métier
-    if (!data.assignment_id) {
-      throw new Error('L\'ID de l\'affectation est requis');
-    }
-
-    if (data.km_start < 0) {
-      throw new Error('Le kilométrage de départ ne peut pas être négatif');
-    }
-
-    return this.repository.create(data);
+    const parsed = parseSchemaOrThrow(shiftStartSchema, data);
+    return this.repository.create(parsed);
   }
 
   /**
    * Ferme un créneau avec validation métier et calculs
    */
   async closeShift(closure: ShiftClosureInsert): Promise<void> {
-    // Validation métier
-    if (!closure.shift_id) {
-      throw new Error('L\'ID du créneau est requis');
-    }
+    const parsed = parseSchemaOrThrow(shiftClosureInsertSchema, closure);
 
-    if (!closure.km_end || closure.km_end < 0) {
-      throw new Error('Le kilométrage de fin doit être valide et positif');
-    }
-
-    if (closure.revenue_declared < 0) {
-      throw new Error('La recette déclarée ne peut pas être négative');
-    }
-
-    if (!closure.collection_mode || !['cash', 'momo', 'mix'].includes(closure.collection_mode)) {
-      throw new Error('Le mode de collecte doit être cash, momo ou mix');
-    }
-
-    if (!closure.proof_type || !closure.proof_value) {
-      throw new Error('Le type et la valeur de preuve sont requis');
-    }
-
-    // Récupérer le créneau pour validation
-    const shift = await this.repository.findById(closure.shift_id);
+    const shift = await this.repository.findById(parsed.shift_id);
     if (!shift) {
       throw new Error('Créneau introuvable');
     }
@@ -103,20 +77,17 @@ export class DriverShiftService {
     }
 
     // Validation du kilométrage
-    if (closure.km_end < shift.km_start) {
+    if (parsed.km_end < shift.km_start) {
       throw new Error('Le kilométrage de fin ne peut pas être inférieur au kilométrage de départ');
     }
 
-    // Fermer le créneau via RPC
-    await this.repository.closeShift(closure);
+    await this.repository.closeShift(parsed);
 
-    // Calculer la recette attendue
-    await this.repository.calculateExpectedRevenue(closure.shift_id);
+    await this.repository.calculateExpectedRevenue(parsed.shift_id);
 
-    // Mettre à jour le kilométrage du véhicule
-    const vehicleId = await this.repository.getVehicleIdByShiftId(closure.shift_id);
+    const vehicleId = await this.repository.getVehicleIdByShiftId(parsed.shift_id);
     if (vehicleId) {
-      await this.vehicleRepository.updateKilometerage(vehicleId, closure.km_end);
+      await this.vehicleRepository.updateKilometerage(vehicleId, parsed.km_end);
     }
   }
 
