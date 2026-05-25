@@ -114,7 +114,9 @@ type EventName =
   | "tutorial_offline_removed"
   | "tutorial_offline_played"
   | "tutorial_offline_checksum_failed"
-  | "tutorial_offline_purged";
+  | "tutorial_offline_purged"
+  | "tutorial_viewed"
+  | "tutorial_completed";
 
 type EventProps = Record<string, string | number | boolean | null>;
 
@@ -199,4 +201,18 @@ export const analytics = {
 
   tutorialOfflinePurged: (tutorialId: string, reason: "quota") =>
     track("tutorial_offline_purged", { tutorial_id: tutorialId, reason }),
+
+  tutorialViewed: (
+    tutorialId: string,
+    source: "online" | "offline",
+    watchedSec: number,
+  ) =>
+    track("tutorial_viewed", {
+      tutorial_id: tutorialId,
+      source,
+      watched_sec: watchedSec,
+    }),
+
+  tutorialCompleted: (tutorialId: string) =>
+    track("tutorial_completed", { tutorial_id: tutorialId }),
 };

@@ -117,6 +117,10 @@ Checklist : prévisualisations 401, variables `VITE_*`, auth Supabase, DNS et do
 - `npm run test:integration:supabase:linked` — suite SQL Supabase forcée en linked (CI/projet lié)
 - `npm run build:capacitor` — build web avec chemins relatifs (`base: './'`) pour Capacitor
 - `npm run cap:doctor` — diagnostic Node/Capacitor (explique pourquoi `npx cap sync` peut échouer)
+- `npm run verify:capacitor-config` — vérifie l’alignement `capacitor.config.ts` / Android / iOS / deep links (sans émulateur)
+- `npm run android` — `mobile:prepare` puis ouverture Android Studio
+- `npm run ios` — `mobile:prepare` puis ouverture Xcode (macOS)
+- Checklist QA appareil : [`docs/mobile-qa-checklist.md`](docs/mobile-qa-checklist.md)
 - `npm run cap:sync` — synchronise Capacitor (Android/iOS) avec un runtime Node 22 isolé
 - `npm run mobile:prepare` — `build:capacitor` puis `cap:sync` (met à jour `android/` et `ios/`)
 - `npm run cap:assets` — régénère icônes et splash natifs à partir de `assets/logo.svg` (@capacitor/assets)

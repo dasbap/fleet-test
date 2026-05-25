@@ -205,7 +205,8 @@ export class TutorialOfflineService {
     return isNativePlatform();
   }
 
-  async getLocalVideoUrl(tutorialId: string): Promise<string | null> {
+  /** Résout l’URL locale sans effet de bord (analytics). */
+  async resolveLocalVideoUrl(tutorialId: string): Promise<string | null> {
     if (!isNativePlatform()) return null;
     const meta = getMetaMap()[tutorialId];
     if (!meta) return null;
@@ -214,15 +215,30 @@ export class TutorialOfflineService {
         path: `${TUTORIALS_DIR}/${meta.fileName}`,
         directory: Directory.Data,
       });
-      analytics.tutorialOfflinePlayed(tutorialId, "offline");
       return toNativeFileUrl(fileUri.uri);
     } catch {
       return null;
     }
   }
 
+  /** @deprecated Préférer resolveLocalVideoUrl */
+  async getLocalVideoUrl(tutorialId: string): Promise<string | null> {
+    return this.resolveLocalVideoUrl(tutorialId);
+  }
+
   async isDownloaded(tutorialId: string): Promise<boolean> {
-    return (await this.getLocalVideoUrl(tutorialId)) !== null;
+    if (!isNativePlatform()) return false;
+    const meta = getMetaMap()[tutorialId];
+    if (!meta) return false;
+    try {
+      const fileUri = await Filesystem.getUri({
+        path: `${TUTORIALS_DIR}/${meta.fileName}`,
+        directory: Directory.Data,
+      });
+      return Boolean(fileUri.uri);
+    } catch {
+      return false;
+    }
   }
 
   async downloadTutorial(tutorial: TutorialItem): Promise<void> {

@@ -103,11 +103,17 @@ Attendre la propagation DNS et le certificat SSL (géré par Vercel).
 1. **Production** : ouvrir uniquement **`https://www.e-samba.com`** (ou le domaine indiqué dans Vercel → Domains), pas un ancien lien `*.vercel.app` copié depuis un commentaire PR ou un e-mail.
 2. **Dashboard Vercel** → projet `smart-fleet-africa` → **Deployments** : vérifier que le dernier déploiement **Production** est **Ready** (vert). Si **Error** ou **Canceled**, ouvrir les logs de build, corriger, puis **Redeploy**.
 3. **Branche de production** : **Settings** → **Git** → *Production Branch* doit correspondre à la branche que vous poussez (souvent `main`). Un push sur une autre branche ne met à jour que les **Preview**.
-4. **Redéploiement manuel** (si le CLI est lié au bon compte/équipe) :
+4. **Redéploiement prebuilt** (recommandé si `vercel build` échoue avec `spawn cmd.exe ENOENT` sous Windows) :
    ```bash
    npm run build
+   npm run vercel:package-prebuilt
    npx vercel deploy --prebuilt --prod
    ```
+   Raccourci : `npm run deploy:prebuilt`
+
+   Sous **PowerShell / CMD Windows**, `npx vercel build --prod` peut fonctionner ; sinon utiliser le script ci-dessus (équivalent Build Output API v3 à partir de `dist/`).
+
+   **Limite** : ce flux prebuilt statique ne recompile pas les fonctions `api/` ; pour un changement webhook/API, préférer `npx vercel deploy --prod` (build distant) ou `vercel build` réussi en local.
 5. **Preview** : chaque URL `…-git-…-….vercel.app` est liée à **un** déploiement ; après suppression ou expiration, elle affiche `DEPLOYMENT_NOT_FOUND` → utiliser le lien **Visit** du déploiement le plus récent dans le dashboard, ou merger sur la branche de prod.
 
 **Vérification locale** : `npm run build` puis `npx vite preview` → `http://localhost:4173/ressources/seo-ia`.
