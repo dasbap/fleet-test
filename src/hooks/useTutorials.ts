@@ -60,4 +60,18 @@ export function useTutorial(tutorialId: string) {
   });
 }
 
+/** Probe Storage : la vidéo MP4 est-elle disponible ? (page lecteur uniquement) */
+export function useTutorialVideoAvailability(
+  tutorialId: string,
+  videoUrl: string | undefined,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ["tutorials", tutorialId, "video-available", videoUrl],
+    queryFn: () => getCachedVideoAvailability(tutorialId, videoUrl ?? "", false),
+    enabled: enabled && tutorialId.trim().length > 0 && Boolean(videoUrl?.trim()),
+    staleTime: 1000 * 60 * 10,
+  });
+}
+
 export { tutorialService, tutorialProgressService };

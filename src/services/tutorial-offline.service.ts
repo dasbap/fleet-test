@@ -130,7 +130,9 @@ async function listTutorialFiles(): Promise<ReaddirResult["files"]> {
 async function fetchAsBase64(url: string): Promise<string> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error("Téléchargement du tutoriel impossible.");
+    throw new Error(
+      "Vidéo non disponible sur le serveur. Elle sera ajoutée prochainement.",
+    );
   }
   const blob = await response.blob();
   const buffer = await blob.arrayBuffer();

@@ -34,6 +34,8 @@ Règles :
 
 ## Tutoriels vidéo
 
+- **Storage** : vignettes `thumbs/tuto-NN.svg` (requis) ; vidéos `videos/tuto-NN.mp4` (optionnel, probe avant lecture)
 - Liste : grille `grid-cols-1 sm:grid-cols-2`
-- Lecteur : `aspect-video`, `playsInline` sur `<video>`
-- États : skeleton (`TutorialsListSkeleton`), erreur (`TutorialErrorBoundary`), retry sur le lecteur
+- Lecteur : `aspect-video`, `playsInline` sur `<video>` ; sinon `TutorialVideoPending`
+- États : skeleton (`TutorialsListSkeleton`), erreur (`TutorialErrorBoundary`), retry / actualiser
+- Ops : `npm run upload:tutorial-thumbs`, `npm run verify:tutorials-storage`
