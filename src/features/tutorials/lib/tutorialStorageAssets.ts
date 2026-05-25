@@ -1,5 +1,7 @@
 /**
  * Chemins et résolution des assets Storage pour les tutoriels.
+ * Convention : seed `catalog.seed.ts` utilise `thumbs/{slug}.svg` ;
+ * l’UI tente svg puis jpg (checklist QA mobile / assets legacy bucket).
  */
 
 const BUCKET = "tutorials";

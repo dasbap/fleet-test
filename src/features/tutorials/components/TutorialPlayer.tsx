@@ -3,6 +3,7 @@ import { ExternalLink, Loader2, Maximize2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { TutorialItem } from "@/repositories/tutorial.repository";
+import { TUTORIAL_COMPLETION_RATIO } from "@/domain/constants/tutorialCategories";
 import {
   resolveVideoSource,
   type ParsedVideoSource,
@@ -80,7 +81,7 @@ export function TutorialPlayer({
     const el = videoRef.current;
     if (!el || !el.duration || Number.isNaN(el.duration)) return;
     onProgress?.(el.currentTime, el.duration);
-    if (!completedRef.current && el.currentTime / el.duration >= 0.8) {
+    if (!completedRef.current && el.currentTime / el.duration >= TUTORIAL_COMPLETION_RATIO) {
       completedRef.current = true;
       onCompleted?.();
     }
