@@ -14,6 +14,8 @@ function parsedToPath(parsed: Extract<ParsedDeepLink, { ok: true }>): string {
       return ROUTE_PATHS.dashboardAlerts;
     case "fleet_list":
       return ROUTE_PATHS.dashboardVehicles;
+    case "tutorials_list":
+      return ROUTE_PATHS.dashboardTutorials;
     case "alert":
       return ROUTE_PATHS.dashboardAlertDetail(parsed.alertId);
     case "vehicle":
@@ -22,6 +24,8 @@ function parsedToPath(parsed: Extract<ParsedDeepLink, { ok: true }>): string {
       return ROUTE_PATHS.dashboardMissionDetail(parsed.missionId);
     case "intervention":
       return ROUTE_PATHS.dashboardInterventionDetail(parsed.ticketId);
+    case "tutorial":
+      return ROUTE_PATHS.dashboardTutorialDetail(parsed.tutorialId);
     default: {
       const _exhaustive: never = parsed;
       return _exhaustive;
