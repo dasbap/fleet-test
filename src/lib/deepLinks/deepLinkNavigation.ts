@@ -6,6 +6,7 @@ import {
   type EsambaDeepLinkEventDetail,
 } from "@/lib/deepLinks/deepLinkConfig";
 import { parseDeepLink, type ParsedDeepLink } from "@/lib/deepLinks/parseDeepLink";
+import { resolveIncomingAppUrl } from "@/lib/deepLinks/resolveAppUrl";
 
 function parsedToPath(parsed: Extract<ParsedDeepLink, { ok: true }>): string {
   switch (parsed.kind) {
@@ -29,8 +30,8 @@ function parsedToPath(parsed: Extract<ParsedDeepLink, { ok: true }>): string {
 }
 
 export type NavigateFromDeepLinkResult =
-  | { success: true; path: string; parsed: Extract<ParsedDeepLink, { ok: true }> }
-  | { success: false; parsed: ParsedDeepLink };
+  | { success: true; path: string; parsed?: Extract<ParsedDeepLink, { ok: true }> }
+  | { success: false; parsed?: ParsedDeepLink; reason?: string };
 
 /**
  * Convertit un lien parsé en chemin React Router interne.
@@ -40,7 +41,7 @@ export function deepLinkToInternalPath(parsed: Extract<ParsedDeepLink, { ok: tru
 }
 
 /**
- * Navigation React à partir d’une URL esamba://…
+ * Navigation React à partir d’une URL esamba://… (deep links métier uniquement).
  */
 export function navigateFromDeepLinkUrl(
   rawUrl: string,
@@ -50,12 +51,36 @@ export function navigateFromDeepLinkUrl(
   const parsed = parseDeepLink(rawUrl);
   if (!parsed.ok) {
     deepLinkLogInfo("Lien non routé", { rawUrl, reason: parsed.reason });
-    return { success: false, parsed };
+    return { success: false, parsed, reason: parsed.reason };
   }
   const path = parsedToPath(parsed);
   navigate(path, { replace: options?.replace ?? true });
   deepLinkLogDebug("Navigation appliquée", { rawUrl, path, kind: parsed.kind });
   return { success: true, path, parsed };
+}
+
+/**
+ * Navigation depuis toute URL d’ouverture app : esamba://, https://www.e-samba.com, auth.
+ */
+export function navigateFromAppUrl(
+  rawUrl: string,
+  navigate: NavigateFunction,
+  options?: { replace?: boolean },
+): NavigateFromDeepLinkResult {
+  const resolved = resolveIncomingAppUrl(rawUrl);
+
+  if (resolved.kind === "spa") {
+    navigate(resolved.path, { replace: options?.replace ?? true });
+    deepLinkLogDebug("Navigation SPA (auth / App Link)", { rawUrl, path: resolved.path });
+    return { success: true, path: resolved.path };
+  }
+
+  if (resolved.kind === "esamba_deep_link") {
+    return navigateFromDeepLinkUrl(resolved.url, navigate, options);
+  }
+
+  deepLinkLogInfo("Lien non routé", { rawUrl, reason: resolved.reason });
+  return { success: false, reason: resolved.reason };
 }
 
 /**

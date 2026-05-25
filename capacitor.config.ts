@@ -9,6 +9,7 @@ const config: CapacitorConfig = {
   appId: "com.esamba.flotte",
   appName: "Flotte E-Samba",
   webDir: "dist",
+  /** Fond WebView / transition native — vert marque (#00C853, aligné index.css et cap:assets). */
   backgroundColor: "#00C853",
   server: {
     androidScheme: "https",
@@ -29,7 +30,11 @@ const config: CapacitorConfig = {
     /** Préférences clé-valeur (@capacitor/preferences) — options par défaut suffisent en V1. */
     Preferences: {},
     /**
-     * Écran de lancement natif (@capacitor/splash-screen) : masquage après chargement WebView.
+     * Écran de lancement plugin (@capacitor/splash-screen).
+     * Couleurs volontairement distinctes :
+     * - racine / android.backgroundColor (#00C853) : marque + splash système Android 12+ (icône centrée)
+     * - backgroundColor ici (#0f0f0f) : même fond que l’UI web sombre (index.html, manifest PWA)
+     * Ne pas passer en #00C853 sans revoir l’enchaînement visuel au cold start.
      */
     SplashScreen: {
       launchShowDuration: 2000,

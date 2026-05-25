@@ -147,11 +147,26 @@ max_indexes = 5
 enabled = true
 # URL de base de votre site web. Utilisée comme liste d’autorisation pour les redirections
 # et pour construire les URLs utilisées dans les emails.
-site_url = "http://127.0.0.1:3000"
-# Liste des URLs *exactes* vers lesquelles les fournisseurs d’auth peuvent rediriger après authentification.
-# Inclut /auth pour mot de passe oublié (réinitialisation). En production hébergée, ajouter
-# les mêmes URLs dans Dashboard → Authentication → URL Configuration → Redirect URLs.
-additional_redirect_urls = ["https://127.0.0.1:3000", "http://localhost:8080/auth"]
+site_url = "https://www.e-samba.com"
+# Liste des URLs autorisées pour les redirections auth (web + mobile Capacitor).
+# Poussée vers le projet lié : npm run supabase:push-auth-config (scripts/apply-mobile-store-setup.mjs).
+additional_redirect_urls = [
+  "esamba://auth/callback",
+  "esamba://auth/update-password",
+  "http://127.0.0.1:5173",
+  "http://localhost:5173",
+  "http://localhost:8080/**",
+  "http://localhost:8080/auth",
+  "http://smart-fleet-africa.vercel.app/**",
+  "https://127.0.0.1:3000",
+  "https://app.e-samba.com/**",
+  "https://e-samba.com/**",
+  "https://www.e-samba.com/**",
+  "https://www.e-samba.com/auth/callback",
+  "https://www.e-samba.com/auth/callback/**",
+  "https://www.e-samba.com/auth/update-password",
+  "https://www.e-samba.com/auth/update-password/**",
+]
 # Durée de validité des tokens, en secondes. Par défaut 3600 (1 heure), maximum 604800 (1 semaine).
 jwt_expiry = 3600
 # URL émettrice JWT. Si non définie, prend l’URL API locale par défaut (http://127.0.0.1:<port>/auth/v1).

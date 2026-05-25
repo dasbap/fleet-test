@@ -12,7 +12,10 @@
  */
 
 import { useState } from 'react';
-import { Truck, Wrench, Users, BookOpen, Search, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Truck, Wrench, Users, BookOpen, Search, Zap, Video } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ROUTE_PATHS } from '@/navigation/routePaths';
 import { HelpSearchBar }       from '@/components/help/HelpSearchBar';
 import { QuickTutorialCard }   from '@/components/help/QuickTutorialCard';
 import { RoleGuideSection }    from '@/components/help/RoleGuideSection';
@@ -151,7 +154,21 @@ export default function HelpCenterPage() {
 
           {/* ── Onglet Tutoriels ── */}
           {activeTab === 'tutoriels' && (
-            <section aria-label="Tutoriels rapides">
+            <section aria-label="Tutoriels rapides" className="space-y-4">
+              <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-2">
+                  <Video className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Tutoriels vidéo</p>
+                    <p className="text-xs text-muted-foreground">
+                      10 guides vidéo pour les opérations terrain et le dashboard.
+                    </p>
+                  </div>
+                </div>
+                <Button asChild size="sm" className="shrink-0">
+                  <Link to={ROUTE_PATHS.dashboardTutorials}>Voir les vidéos</Link>
+                </Button>
+              </div>
               <div className="space-y-2">
                 {topTutorials.map((t) => (
                   <QuickTutorialCard key={t.id} tutorial={t} />
