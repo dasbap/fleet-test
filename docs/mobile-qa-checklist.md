@@ -50,16 +50,17 @@ adb shell am start -a android.intent.action.VIEW -d "esamba://auth/callback?code
 
 ## Tutoriels vidéo (onglet Guides)
 
-- [ ] Liste `/dashboard/tutorials` : 10 cartes, vignettes `.jpg`, titres métier FR
+- [ ] `npm run upload:tutorial-thumbs` puis `npm run verify:tutorials-storage` → **10/10 SVG OK**
+- [ ] Liste `/dashboard/tutorials` : 10 cartes, vignettes **SVG** visibles, titres métier FR
 - [ ] Tap carte → lecteur `/dashboard/tutorials/tuto-XX`
-- [ ] Lecture MP4 en ligne (Wi‑Fi / 4G) après interaction utilisateur
-- [ ] iOS : lecture inline (`playsInline`), pas d’écran noir silencieux
-- [ ] Erreur réseau : message FR + bouton « Réessayer »
-- [ ] Téléchargement hors ligne (natif) puis lecture en mode avion
-- [ ] Favori + progression persistés après redémarrage (compte connecté)
+- [ ] Sans MP4 : écran « vidéo bientôt disponible » (pas d’écran noir)
+- [ ] Avec MP4 uploadés : lecture en ligne (Wi‑Fi / 4G) après interaction utilisateur
+- [ ] iOS : lecture inline (`playsInline`) quand la vidéo est disponible
+- [ ] Erreur réseau : message FR + bouton « Actualiser »
+- [ ] Téléchargement hors ligne (natif) uniquement si la vidéo est en ligne sur Storage
+- [ ] Favori persisté après redémarrage (compte connecté)
 - [ ] Bouton retour Android depuis le lecteur → liste tutoriels
 - [ ] Deep link `https://www.e-samba.com/dashboard/tutorials/tuto-03` (App Links)
-- [ ] `npm run verify:tutorials-storage` OK en prod (assets bucket `tutorials`)
 
 ## Offline minimal
 

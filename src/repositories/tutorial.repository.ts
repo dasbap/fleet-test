@@ -3,6 +3,7 @@ import {
   TUTORIAL_CATALOG_SEEDS,
   type TutorialCatalogSeed,
 } from "@/data/tutorials/catalog.seed";
+import { resolveThumbPath } from "@/features/tutorials/lib/tutorialStorageAssets";
 
 export type TutorialProvider = "storage" | "youtube" | "vimeo";
 
@@ -73,7 +74,7 @@ function mapSeedToItem(seed: TutorialCatalogSeed): TutorialItem {
       seed.provider === "storage"
         ? storagePublicUrl(seed.videoPath)
         : seed.externalUrl ?? storagePublicUrl(seed.videoPath),
-    thumbUrl: storagePublicUrl(seed.thumbPath),
+    thumbUrl: storagePublicUrl(resolveThumbPath(seed.slug, seed.thumbPath)),
     videoPath: seed.videoPath,
     externalUrl: seed.externalUrl,
     tags: seed.tags,
@@ -87,7 +88,7 @@ function mapRowToItem(row: TutorialRow): TutorialItem {
   const categorySlug = row.tutorial_categories?.slug ?? "parametres";
   const categoryLabel = row.tutorial_categories?.label_fr ?? "Paramètres";
   const videoPath = row.video_path;
-  const thumbPath = row.thumb_path ?? `thumbs/${row.slug}.jpg`;
+  const thumbPath = resolveThumbPath(row.slug, row.thumb_path);
   const provider = row.provider ?? "storage";
 
   const videoUrl =
