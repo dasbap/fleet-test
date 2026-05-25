@@ -1,13 +1,12 @@
 /**
  * Catalogue métier des tutoriels vidéo (source seed DB + fallback hors ligne).
+ * Vignettes : chemin canonique `.svg` dans le seed ; à l’affichage, `thumbPathCandidates`
+ * tente aussi `.jpg` (QA mobile Capacitor — voir docs/architecture/BUSINESS_RULES.md).
  */
 
-export type TutorialCategorySlug =
-  | "creneau"
-  | "incident"
-  | "maintenance"
-  | "rapports"
-  | "parametres";
+import type { TutorialCategorySlug } from '@/domain/constants/tutorialCategories';
+
+export type { TutorialCategorySlug };
 
 export type TutorialProvider = "storage" | "youtube" | "vimeo";
 

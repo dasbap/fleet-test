@@ -2,7 +2,7 @@
 
 À exécuter après `npm run mobile:prepare` (ou `npm run android` / `npm run ios`) sur **appareil réel** ou émulateur, avec `.env.local` contenant les `VITE_SUPABASE_*` utilisés au build.
 
-Références : [deep-links-esamba.md](./deep-links-esamba.md), [auth-flow.md](./auth-flow.md), [publication-stores.md](./publication-stores.md), [offline-test-matrix-web-mobile.md](./offline-test-matrix-web-mobile.md).
+Références : [deep-links-esamba.md](./deep-links-esamba.md), [auth-flow.md](./auth-flow.md), [publication-stores.md](./publication-stores.md), [offline-test-matrix-web-mobile.md](./offline-test-matrix-web-mobile.md), [règles métier partagées](./architecture/BUSINESS_RULES.md) (seuils validation, tutoriels 80 %, modes collecte).
 
 ## Préparation
 
@@ -58,6 +58,7 @@ adb shell am start -a android.intent.action.VIEW -d "esamba://auth/callback?code
 - [ ] iOS : lecture inline (`playsInline`) quand la vidéo est disponible
 - [ ] Erreur réseau : message FR + bouton « Actualiser »
 - [ ] Téléchargement hors ligne (natif) uniquement si la vidéo est en ligne sur Storage
+- [ ] Progression / complétion à 80 % de la vidéo (voir [BUSINESS_RULES.md](./architecture/BUSINESS_RULES.md) § Tutoriels)
 - [ ] Favori persisté après redémarrage (compte connecté)
 - [ ] Bouton retour Android depuis le lecteur → liste tutoriels
 - [ ] Deep link `https://www.e-samba.com/dashboard/tutorials/tuto-03` (App Links)
