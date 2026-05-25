@@ -1,6 +1,8 @@
 import { VehicleRepository } from '@/repositories/vehicle.repository';
 import { planValueMessages } from '@/lib/plan-value-messages';
 import type { FleetBillingService } from '@/services/fleet-billing.service';
+import { vehicleInsertSchema } from '@/domain/schemas/vehicle.schema';
+import { parseSchemaOrThrow } from '@/domain/lib/parseSchema';
 import type { VehicleDto, VehicleInsertDto, VehicleStatusDto } from '@/types/dto/vehicle.dto';
 import type {
   VehicleFilters,
@@ -83,20 +85,12 @@ export class VehicleService {
    * Crée un nouveau véhicule avec validation métier
    */
   async createVehicle(data: VehicleInsertDto): Promise<VehicleDto> {
-    // Validation métier
-    if (!data.registration || data.registration.trim() === '') {
-      throw new Error('Le numéro d\'immatriculation est requis');
-    }
+    const parsed = parseSchemaOrThrow(vehicleInsertSchema, data);
 
-    if (!data.fleet_id) {
-      throw new Error('L\'ID de la flotte est requis');
-    }
-
-    // Normalisation des données
     const normalizedData: VehicleInsertDto = {
-      ...data,
-      registration: data.registration.trim().toUpperCase(),
-      current_km: data.current_km || 0,
+      ...parsed,
+      registration: parsed.registration.trim().toUpperCase(),
+      current_km: parsed.current_km ?? 0,
     };
 
     if (this.fleetBilling) {

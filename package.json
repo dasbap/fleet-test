@@ -55,6 +55,8 @@
     "cap:sync": "npm run cap:doctor && npm run cap:cli -- sync",
     "cap:copy": "npm run cap:doctor && npm run cap:cli -- copy",
     "mobile:prepare": "npm run build:capacitor && npm run cap:sync",
+    "mobile:android:debug-install": "npm run mobile:prepare && cd android && gradlew.bat assembleDebug",
+    "mobile:qa:tutorials-adb": "echo Sur Windows: adb-qa-tutorials.bat ou rebuild-and-install.bat --qa",
     "android:assemble-release": "node scripts/android-assemble-release.mjs",
     "mobile:sync-version": "node scripts/sync-mobile-version.mjs",
     "setup:android-keystore": "powershell -ExecutionPolicy Bypass -File scripts/setup-android-keystore.ps1",

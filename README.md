@@ -121,6 +121,7 @@ Checklist : prévisualisations 401, variables `VITE_*`, auth Supabase, DNS et do
 - `npm run android` — `mobile:prepare` puis ouverture Android Studio
 - `npm run ios` — `mobile:prepare` puis ouverture Xcode (macOS)
 - Checklist QA appareil : [`docs/mobile-qa-checklist.md`](docs/mobile-qa-checklist.md)
+- QA rapide Android (Windows) : `rebuild-and-install.bat --qa` — build Capacitor, install APK debug, deep links `esamba://tutorials` (voir [`docs/deep-links-esamba.md`](docs/deep-links-esamba.md))
 - `npm run cap:sync` — synchronise Capacitor (Android/iOS) avec un runtime Node 22 isolé
 - `npm run mobile:prepare` — `build:capacitor` puis `cap:sync` (met à jour `android/` et `ios/`)
 - `npm run cap:assets` — régénère icônes et splash natifs à partir de `assets/logo.svg` (@capacitor/assets)
@@ -162,6 +163,7 @@ Si `npx cap sync` échoue avec `The Capacitor CLI requires NodeJS >=22.0.0`, lan
 
 - **Parcours métier à valider** : connexion → liste véhicules / flotte mobile → formulaire de déclaration d’incident (`/dashboard/incidents/declare`). Vérifier le `.env` utilisé au `build:capacitor` (backend Supabase embarqué).
 - **Installation USB** : `adb install -r chemin/vers/app-release.apk` (plusieurs appareils : `adb -s <serial> install -r …`). La commande `adb` se trouve dans `platform-tools` du SDK Android — ajoutez ce dossier au `PATH` si besoin. Sur **Xiaomi / Redmi**, activer si besoin l’installation via USB dans les options développeur.
+- **Rebuild debug + deep links tutoriels** : `rebuild-and-install.bat` (ou `--qa` / `--qa-full`) — utilise `npm run build:capacitor` et [`scripts/adb-env.bat`](scripts/adb-env.bat) pour résoudre `adb`.
 - **Mémoire** : Android Studio → **View → Tool Windows → Profiler** sur le processus `com.esamba.flotte` (l’ancien *Device Monitor* n’est plus supporté). Pour la WebView : navigateur Chrome sur le PC → `chrome://inspect#devices` → inspecter la WebView Capacitor.
 - **Réseau type 3G** : avec débogage USB, inspecter la WebView → onglet **Network** → profil **Slow 3G** (ou tester la PWA dans Chrome desktop avec throttling pour comparaison).
 

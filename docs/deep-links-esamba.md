@@ -6,6 +6,8 @@
 |------|-----------|
 | `esamba://alerts` | `/dashboard/alerts` (liste) |
 | `esamba://fleet` | `/dashboard/vehicles` (liste) |
+| `esamba://tutorials` | `/dashboard/tutorials` (liste guides) |
+| `esamba://tutorials/:id` | `/dashboard/tutorials/:id` (lecteur, ex. `tuto-03`) |
 | `esamba://alerts/:id` | `/dashboard/alerts/:id` |
 | `esamba://fleet/:id` | `/dashboard/vehicles/:id` |
 | `esamba://operations/mission/:id` | `/dashboard/operations/mission/:id` |
@@ -35,9 +37,22 @@ Fichiers domaine : [`public/.well-known/assetlinks.json`](../public/.well-known/
 
 ## Notifications push (préparation)
 
-- `deepLinkService.dispatchFromPushPayload({ esambaUrl })`, `{ internalPath: '/dashboard/...' }` ou `{ deepLinkTarget: { screen: 'alert', id: '…' } }` (ou `{ screen: 'alerts_list' }` / `{ screen: 'fleet_list' }` pour les listes) déclenchent la même navigation que l’ouverture depuis un lien natif.
-- Helpers : `deepLinkService.buildPushUrl({ screen, id })` (ou sans `id` pour `alerts_list` / `fleet_list`), `deepLinkService.buildOperationsPushUrl(id, 'mission' | 'intervention')`.
+- `deepLinkService.dispatchFromPushPayload({ esambaUrl })`, `{ internalPath: '/dashboard/...' }` ou `{ deepLinkTarget: { screen: 'alert', id: '…' } }` (ou `{ screen: 'alerts_list' }` / `{ screen: 'fleet_list' }` / `{ screen: 'tutorials_list' }` pour les listes) déclenchent la même navigation que l’ouverture depuis un lien natif.
+- Helpers : `deepLinkService.buildPushUrl({ screen, id })` (ou sans `id` pour `alerts_list` / `fleet_list` / `tutorials_list`), `buildEsambaDeepLinkUrl({ screen: 'tutorial', id: 'tuto-03' })`, `deepLinkService.buildOperationsPushUrl(id, 'mission' | 'intervention')`.
 - File d’attente optionnelle : `queuePendingDeepLink` / `consumePendingDeepLink` (`src/lib/deepLinks/pendingDeepLink.ts`) si le plugin livre le payload avant le montage du routeur.
+
+## QA Android (ADB, Windows)
+
+Scripts à la racine du dépôt (résolution `adb` via [`scripts/adb-env.bat`](../scripts/adb-env.bat)) :
+
+| Script | Usage |
+|--------|--------|
+| `rebuild-and-install.bat` | `build:capacitor` + `cap sync` + APK debug + install |
+| `rebuild-and-install.bat --qa` | Idem puis ouvre `esamba://tutorials` et `esamba://tutorials/tuto-03` |
+| `rebuild-and-install.bat --qa-full` | Idem puis `adb-qa-tutorials.bat` (non-régression alerts/fleet) |
+| `adb-qa-tutorials.bat` | Suite deep links tutoriels + logcat filtré |
+
+Push Git optionnel : `rebuild-and-install.bat push` ou `set ESAMBA_PUSH=1`.
 
 ## Après modification native
 
