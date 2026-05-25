@@ -53,7 +53,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.get_current_user_role(uuid) IS
-  'Retourne le rôle effectif de l'utilisateur courant dans une organisation. '
+  'Retourne le rôle effectif de l''utilisateur courant dans une organisation. '
   'Retourne ''admin'' si admin plateforme, NULL si aucun membership actif.';
 
 -- ─── 2. get_current_user_permissions ─────────────────────────────────────────
@@ -145,7 +145,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.get_current_user_permissions(uuid) IS
-  'Retourne la liste des permissions effectives de l'utilisateur courant dans une organisation. '
+  'Retourne la liste des permissions effectives de l''utilisateur courant dans une organisation. '
   'Miroir SQL de src/lib/rbac/permissions.ts — maintenir les deux en synchronisation.';
 
 -- ─── Grants ──────────────────────────────────────────────────────────────────
