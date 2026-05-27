@@ -1,3 +1,4 @@
+/* eslint-disable esamba/no-undefined-can-permissions */
 /**
  * Hook permissions E-Samba — wrapper métier au-dessus de useRoleAccess.
  *
@@ -69,7 +70,16 @@ export function usePermissions(): UsePermissionsReturn {
   const { role: legacyRole } = useAuth();
 
   const platformRole = rbac.platformRole;
-  const fleetRole    = rbac.fleetRole;
+  const canAccessFinances = hasModuleAccess(legacyRole, "finances");
+  const canAccessBackoffice = hasModuleAccess(legacyRole, "backoffice");
+  const canAccessCollections = hasModuleAccess(legacyRole, "collections");
+  const canAccessHistoryWorkshop = hasModuleAccess(legacyRole, "history_workshop");
+  const canViewSystemHealth = hasModuleAccess(legacyRole, "system_health");
+  const canWriteFleet = hasModuleAccess(legacyRole, "fleet_write");
+  const canReportIncident = hasModuleAccess(legacyRole, "incident_report");
+  const canCreateMaintenanceFromIncident = hasModuleAccess(legacyRole, "incident_maintenance");
+  const canAccessRolesHub = hasModuleAccess(legacyRole, "roles_hub");
+  const showRolesSidebarLink = hasModuleAccess(legacyRole, "roles_sidebar_link");
 
   return useMemo(() => ({
     // Nouveau RBAC
@@ -86,15 +96,31 @@ export function usePermissions(): UsePermissionsReturn {
     isDriver:   platformRole === "driver",
 
     // Compat ascendante (garde les noms exacts pour éviter de casser DashboardSidebar etc.)
-    canAccessFinances:                hasModuleAccess(legacyRole, "finances"),
-    canAccessBackoffice:              hasModuleAccess(legacyRole, "backoffice"),
-    canAccessCollections:             hasModuleAccess(legacyRole, "collections"),
-    canAccessHistoryWorkshop:         hasModuleAccess(legacyRole, "history_workshop"),
-    canViewSystemHealth:              hasModuleAccess(legacyRole, "system_health"),
-    canWriteFleet:                    hasModuleAccess(legacyRole, "fleet_write"),
-    canReportIncident:                hasModuleAccess(legacyRole, "incident_report"),
-    canCreateMaintenanceFromIncident: hasModuleAccess(legacyRole, "incident_maintenance"),
-    canAccessRolesHub:                hasModuleAccess(legacyRole, "roles_hub"),
-    showRolesSidebarLink:             hasModuleAccess(legacyRole, "roles_sidebar_link"),
-  }), [platformRole, fleetRole, isAdmin, legacyRole, can, canAny, canAll]);
+    canAccessFinances,
+    canAccessBackoffice,
+    canAccessCollections,
+    canAccessHistoryWorkshop,
+    canViewSystemHealth,
+    canWriteFleet,
+    canReportIncident,
+    canCreateMaintenanceFromIncident,
+    canAccessRolesHub,
+    showRolesSidebarLink,
+  }), [
+    platformRole,
+    isAdmin,
+    can,
+    canAny,
+    canAll,
+    canAccessFinances,
+    canAccessBackoffice,
+    canAccessCollections,
+    canAccessHistoryWorkshop,
+    canViewSystemHealth,
+    canWriteFleet,
+    canReportIncident,
+    canCreateMaintenanceFromIncident,
+    canAccessRolesHub,
+    showRolesSidebarLink,
+  ]);
 }

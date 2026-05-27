@@ -74,7 +74,6 @@ import { useSearchUsers, type SearchedUser } from "@/hooks/useSearchUsers";
 import { toast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,20 +83,10 @@ import {
 import { cn } from "@/lib/utils";
 import { useActivation } from "@/hooks/useActivation";
 import { isValidCameroonMobileInput, normalizeCameroonPhoneE164 } from "@/lib/cameroonPhone";
-
-const addMemberSchema = z.object({
-  email: z.string().email("Email invalide"),
-  role: z.enum(["organizer", "manager", "driver", "mechanic"]),
-  phone: z
-    .string()
-    .optional()
-    .refine(
-      (val) => !val || val.trim() === "" || isValidCameroonMobileInput(val.trim()),
-      { message: "Numéro mobile Cameroun invalide (ex. 6XX XXX XXX ou +237…)" },
-    ),
-});
-
-type AddMemberFormValues = z.infer<typeof addMemberSchema>;
+import {
+  addMemberSchema,
+  type AddMemberFormValues,
+} from "@/features/teams/components/fleetTeamManagement.constants";
 
 export type FleetTeamManagementPanelProps = {
   layout: "page" | "embedded";
