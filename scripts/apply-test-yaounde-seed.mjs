@@ -61,7 +61,7 @@ async function main() {
         code: 'pro',
         name: 'Pro Test',
         price_per_vehicle: 8000,
-        max_vehicles: 100,
+        max_vehicles: 75,
         is_active: true,
         enables_finance: true,
         enables_ai: true,

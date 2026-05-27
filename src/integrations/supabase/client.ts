@@ -19,16 +19,27 @@ if (typeof SUPABASE_ANON_KEY !== 'string' || !SUPABASE_ANON_KEY) {
   );
 }
 
-// Configuration minimaliste et robuste du client Supabase
+// Détecte si on tourne dans un WebView Capacitor (Android / iOS).
+// Capacitor injecte window.Capacitor avant le chargement du bundle JS.
+const estEnvCapacitor: boolean =
+  typeof window !== 'undefined' &&
+  !!(window as Window & { Capacitor?: { isNativePlatform?: () => boolean } })
+    .Capacitor?.isNativePlatform?.();
+
 export const supabase: SupabaseClient = createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
   {
     auth: {
       storage: localStorage,
+      // Clé namespaced — évite les collisions si plusieurs apps sur le même domaine
+      storageKey: "sfa_auth_token",
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true,
+      // Capacitor + web utilisent PKCE. En natif, on garde detectSessionInUrl=false
+      // car la session est réinjectée via deep link, pas via parsing d'URL webview.
+      detectSessionInUrl: !estEnvCapacitor,
+      flowType: "pkce",
     },
     db: {
       schema: 'public',
@@ -40,4 +51,3 @@ export const supabase: SupabaseClient = createClient(
     },
   }
 );
-

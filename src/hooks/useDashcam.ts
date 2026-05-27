@@ -7,6 +7,8 @@ export interface Dashcam {
   vehicle_id: string | null;
   name: string;
   brand: string;
+  /** Canal vidéo (fournisseurs / firmware ; optionnel côté schéma). */
+  channel?: number | null;
   stream_url: string | null;
   is_active: boolean;
   last_seen_at: string | null;

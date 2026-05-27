@@ -32,10 +32,10 @@ import {
   POST_LOGIN_NEXT_PARAM,
 } from "@/navigation/postLoginRedirect";
 import { cn } from "@/lib/utils";
-import {
-  DEMO_CREDENTIAL_ACCOUNTS,
-  DEMO_SHARED_PASSWORD,
-} from "@/features/auth/data/demoCredentials";
+import { DEMO_CREDENTIAL_ACCOUNTS } from "@/features/auth/data/demoCredentials";
+
+// Éliminé au build par Vite tree-shaking : aucun code mock ne survit en PROD.
+const IS_PROD = import.meta.env.PROD;
 
 const loginSchema = z.object({
   identifier: z
@@ -63,15 +63,17 @@ const ROLE_LABELS: Record<AppRole, string> = {
 };
 
 /**
- * Connexion mobile-first — session mockée (VITE_USE_MOCK_AUTH).
- * Prêt pour branchement OTP / backend réel.
+ * Connexion mobile-first — session mockée (VITE_USE_MOCK_AUTH) en dev uniquement.
+ * En PROD : IS_PROD = true → aucune UI mock n'est rendue, aucun code mock ne s'exécute.
  */
-const mockAuth = isMockAuthEnabled();
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+
+  // Jamais vrai en PROD : IS_PROD court-circuite isMockAuthEnabled() avant même de lire le localStorage.
+  const mockAuth = !IS_PROD && isMockAuthEnabled();
   const postLoginTarget = useMemo(
     () =>
       getSafePostLoginPath(searchParams.get(POST_LOGIN_NEXT_PARAM)) ??
@@ -110,9 +112,11 @@ export default function LoginPage() {
     navigate(postLoginTarget, { replace: true });
   }
 
+  // Disponible uniquement en dev (mockAuth = false en PROD).
   function fillDemoCredentials(email: string): void {
     form.setValue("identifier", email, { shouldValidate: true, shouldDirty: true });
-    form.setValue("password", DEMO_SHARED_PASSWORD, { shouldValidate: true, shouldDirty: true });
+    // Les mots de passe démo ne sont jamais stockés dans le code (voir demoCredentials.ts).
+    // L'équipe commerciale les communique via canal sécurisé.
   }
 
   return (
@@ -200,7 +204,7 @@ export default function LoginPage() {
                 )}
               />
 
-              {mockAuth && (
+              {!IS_PROD && mockAuth && (
                 <FormField
                   control={form.control}
                   name="testRole"
@@ -239,11 +243,10 @@ export default function LoginPage() {
                 {form.formState.isSubmitting ? "Connexion…" : "Se connecter"}
               </Button>
 
-              {mockAuth && (
+              {!IS_PROD && mockAuth && (
                 <div className="rounded-md border p-3">
                   <p className="text-xs text-muted-foreground">
-                    Identifiants démo rapides (mot de passe commun :{" "}
-                    <code className="rounded bg-muted px-1 py-0.5">{DEMO_SHARED_PASSWORD}</code>)
+                    Comptes démo rapides — saisit l'email, entre le mot de passe reçu par l'équipe.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {DEMO_CREDENTIAL_ACCOUNTS.map((account) => (

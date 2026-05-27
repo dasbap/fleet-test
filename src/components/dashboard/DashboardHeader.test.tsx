@@ -16,6 +16,10 @@ vi.mock("@/hooks/useAuth", () => ({
   })),
 }));
 
+vi.mock("@/hooks/useAlerts", () => ({
+  useAlerts: vi.fn(() => ({ data: [] })),
+}));
+
 vi.mock("@/lib/auth-actions", () => ({
   signOut: vi.fn(() => Promise.resolve()),
 }));

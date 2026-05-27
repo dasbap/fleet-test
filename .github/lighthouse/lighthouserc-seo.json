@@ -1,7 +1,10 @@
 {
   "ci": {
     "collect": {
-      "url": ["http://localhost:4173/"],
+      "url": [
+        "http://localhost:4173/",
+        "http://localhost:4173/ressources/seo-ia"
+      ],
       "numberOfRuns": 2,
       "settings": {
         "chromeFlags": "--no-sandbox --headless --disable-gpu --disable-dev-shm-usage",

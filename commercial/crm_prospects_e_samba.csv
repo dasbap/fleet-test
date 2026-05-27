@@ -1,0 +1,13 @@
+ID,Segment,Prenom,Nom,Telephone,WhatsApp,Ville,Quartier,Nb_Vehicules,Source,Statut,Date_Contact,Date_Demo,Date_Pilote,Date_Closing,MRR_Potentiel_FCFA,Objection_Principale,Relance_J1,Relance_J3,Relance_J7,Notes_Terrain,Commercial
+P001,Taxi 1-5,Jean,Mbarga,+237690000001,+237690000001,Yaounde,Mvog-Mbi,3,Terrain,Prospect chaud,2026-05-18,,,, 45000,Prix trop cher,Oui,Non,Non,Vu au parking Mvog-Mbi a 8h,Fondateur
+P002,Taxi 1-5,Marie,Essomba,+237691000002,+237691000002,Yaounde,Melen,2,WhatsApp,Demo planifiee,2026-05-18,2026-05-20,,,30000,Ne comprend pas la techno,Oui,Non,Non,Proprietaire 2 Toyota Corolla,Fondateur
+P003,Flotte 5-20,Paul,Nganou,+237692000003,+237692000003,Yaounde,Centre,8,Syndicat,Pilote en cours,2026-05-10,2026-05-12,2026-05-15,,120000,Veut voir resultats avant paiement,Oui,Oui,Non,Gerant agence transport inter-urbain,Commercial1
+P004,Syndicat,Andre,Fouda,+237693000004,+237693000004,Yaounde,Essos,50,Evenement,Negociation,2026-05-05,2026-05-08,,,625000,Doit consulter les membres,Oui,Oui,Oui,President Syndicat Express Yaounde,Fondateur
+P005,Assurance,Helene,Ngo Biyong,+237694000005,+237694000005,Douala,Bonanjo,200,LinkedIn,Premier contact,2026-05-17,,,,3000000,Pas encore qualifie,Oui,Non,Non,DRH Activa Cameroun,Fondateur
+P006,PME Logistique,Thomas,Kamga,+237695000006,+237695000006,Yaounde,Bastos,12,Reference client,Demo planifiee,2026-05-16,2026-05-21,,,180000,A deja un prestataire GPS,Oui,Non,Non,Gerant societe import-export 12 camionnettes,Commercial1
+P007,Taxi 1-5,Berthe,Atangana,+237696000007,+237696000007,Yaounde,Nkol-Eton,4,Terrain,Closing imminent,2026-05-15,2026-05-16,2026-05-17,,60000,Attend validation mari,Oui,Oui,Non,Veut payer MTN MoMo immediatement si accord,Commercial1
+P008,Grande Flotte,Simon,Nlend,+237697000008,+237697000008,Douala,Bali,25,Presse,Prospect froid,2026-05-18,,,,375000,Pas de budget cette annee,Non,Non,Non,Directeur transport PME BTP - relancer M+1,Fondateur
+P009,Microfinance,Claire,Ongono,+237698000009,+237698000009,Yaounde,Obili,80,Reseau,Reunion prevue,2026-05-18,2026-05-22,,,,Pas encore qualifie,Oui,Non,Non,Directrice agence MC2 Obili,Fondateur
+P010,Banque,Georges,Mvondo,+237699000010,+237699000010,Yaounde,Hippodrome,300,Evenement,Premier contact,2026-05-17,,,,4500000,Processus de decision long,Oui,Non,Non,Responsable PME UBA Cameroun,Fondateur
+P011,Taxi 1-5,Roger,Eto,+237670000011,+237670000011,Yaounde,Biyem-Assi,5,Parrainage,Demo planifiee,2026-05-19,2026-05-21,,,75000,Veut essai gratuit,Oui,Non,Non,Refere par client P007,Commercial1
+P012,Entreprise service,Martine,Bello,+237671000012,+237671000012,Yaounde,Mvan,6,Terrain,Prospect tiede,2026-05-18,,,,90000,Pas prioritaire maintenant,Oui,Non,Non,DAF entreprise BTP - 6 vehicules de service,Commercial1

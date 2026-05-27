@@ -26,7 +26,7 @@ export class OnboardingService {
     const userId = await this.repository.getAuthenticatedUserId();
     const current = await this.repository.findByOrgId(orgId);
     const nextData: OnboardingData = {
-      ...(current?.data ?? {}),
+      ...(current?.steps_data ?? {}),
       ...patch,
     };
 
@@ -35,7 +35,7 @@ export class OnboardingService {
       user_id: userId,
       step,
       completed,
-      data: nextData,
+      steps_data: nextData,
       updated_at: new Date().toISOString(),
     });
   }

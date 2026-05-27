@@ -1,62 +1,47 @@
+import { getBffBaseUrl, isBffConfigured } from "@/lib/bff-config";
+import { computeLapsedPaidFromLatestSubscription } from "@/lib/billing/computeLapsedPaidFromLatestSubscription";
 import { BillingRepository } from "@/repositories/billing.repository";
+import type { BillingSnapshot } from "@/types/billing-snapshot";
 
-export interface BillingSnapshot {
-  /** True si un abonnement payant (non-free) existe mais n’est plus dans la fenêtre active. */
-  lapsedPaid: boolean;
-  subscription: {
-    id: string;
-    status: string;
-    startsAt: string;
-    endsAt: string;
-    plan: {
-      id: string;
-      code: string;
-      name: string;
-      pricePerVehicle: number;
-    } | null;
-  } | null;
-  recentPayments: Array<{
-    id: string;
-    provider: string;
-    amount: number;
-    currency: string;
-    status: string;
-    createdAt: string;
-  }>;
-}
+export type { BillingSnapshot } from "@/types/billing-snapshot";
 
-/**
- * Dernière ligne d’abonnement : plan payant non actif (statut ou dates hors fenêtre).
- */
-export function computeLapsedPaidFromLatestSubscription(
-  latest: {
-    status: string;
-    starts_at: string;
-    ends_at: string;
-    plans: { code: string } | null;
-  } | null,
-  now: Date,
-): boolean {
-  if (!latest) return false;
-  const code = latest.plans?.code ?? "free";
-  if (code === "free") return false;
-  const ends = new Date(latest.ends_at);
-  const starts = new Date(latest.starts_at);
-  if (latest.status !== "active") return true;
-  if (ends < now) return true;
-  if (starts > now) return true;
-  return false;
+export { computeLapsedPaidFromLatestSubscription } from "@/lib/billing/computeLapsedPaidFromLatestSubscription";
+
+export interface BillingSnapshotRequestOptions {
+  /** Jeton Supabase utilisateur ; requis si `VITE_API_BASE_URL` pointe vers le BFF. */
+  accessToken?: string | null;
 }
 
 export class BillingService {
   constructor(private repository: BillingRepository) {}
 
-  async getBillingSnapshot(orgId: string, fleetId: string): Promise<BillingSnapshot> {
+  async getBillingSnapshot(
+    orgId: string,
+    fleetId: string,
+    options?: BillingSnapshotRequestOptions,
+  ): Promise<BillingSnapshot> {
     if (!orgId?.trim()) {
       throw new Error("L'identifiant de l'organisation est requis.");
     }
     if (!fleetId?.trim()) {
       throw new Error("L'identifiant de la flotte est requis.");
+    }
+
+    const bff = getBffBaseUrl();
+    if (isBffConfigured() && options?.accessToken) {
+      const url = `${bff ?? ""}/billing/subscriptions?org_id=${encodeURIComponent(orgId.trim())}&fleet_id=${encodeURIComponent(fleetId.trim())}`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${options.accessToken}`,
+        },
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `Erreur API facturation (${res.status})`);
+      }
+      return (await res.json()) as BillingSnapshot;
     }
 
     try {

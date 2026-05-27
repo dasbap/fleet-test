@@ -7,6 +7,10 @@
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https: wss:; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com;"
+    />
 
     <style>
       /* Thème sombre dès le premier paint (évite FOUC / CLS) */
@@ -14,8 +18,7 @@
       html:not(.dark) { background-color: #fafafa; color: hsl(0, 0%, 6%); }
       body { font-family: "Poppins", ui-sans-serif, system-ui, sans-serif; }
     </style>
-    <link rel="preload" as="image" href="/src/assets/hero-bg-768.avif" type="image/avif" media="(max-width: 768px)" fetchpriority="high" />
-    <link rel="preload" as="image" href="/src/assets/hero-bg-1280.avif" type="image/avif" media="(min-width: 769px)" fetchpriority="high" />
+    <!-- Pas de preload hero ici : en dev / réseau lent, il concurrence le téléchargement de /src/main.tsx et retarde le bootstrap. -->
 
     <title>E-Samba | Gestion intelligente de flotte en Afrique Centrale</title>
 
@@ -50,13 +53,76 @@
         Garantit un First Contentful Paint rapide (Lighthouse/Web Vitals)
         meme si le bundle met plusieurs secondes a s'initialiser.
       -->
-      <div id="app-loader" aria-hidden="true" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;text-align:center;color:inherit;font-family:inherit">
+      <div id="app-loader" aria-hidden="true" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;text-align:center;color:inherit;font-family:inherit">
         <p style="margin:0;font-size:1rem;letter-spacing:0.02em;opacity:0.9">E-Samba — chargement de l'application...</p>
       </div>
+    <script>
+      (function () {
+        try {
+          var h = location.hostname || "";
+          if (
+            /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(h)
+          ) {
+            var el = document.getElementById("app-loader");
+            if (!el) return;
+            var hint = document.createElement("p");
+            hint.setAttribute("role", "status");
+            hint.style.cssText =
+              "margin:14px 0 0 0;font-size:0.8rem;opacity:0.72;max-width:26rem;line-height:1.4;color:inherit";
+            hint.textContent =
+              "Réseau local : si l’écran reste figé, désactivez le VPN du navigateur (ex. Opera GX) ou ouvrez http://localhost:" +
+              (location.port || "8080") +
+              "/ sur le PC qui lance Vite (même port que dans le terminal).";
+            el.appendChild(hint);
+          }
+        } catch (e) {}
+      })();
+    </script>
     </div>
     <noscript>
       <p>E-Samba – Gestion intelligente de flotte en Afrique Centrale. Suivi des véhicules, entretiens, alertes et supervision des opérations.</p>
     </noscript>
+    <!-- Si le bundle JS ne remplace pas l’écran (réseau lent, VPN, IP LAN), message après maxMs -->
+    <script>
+      (function () {
+        var maxMs = 90000;
+        var sec = Math.round(maxMs / 1000);
+        var start = Date.now();
+        var id = window.setInterval(function () {
+          var loader = document.getElementById("app-loader");
+          if (!loader) {
+            window.clearInterval(id);
+            return;
+          }
+          if (Date.now() - start < maxMs) return;
+          window.clearInterval(id);
+          var port = location.port || "8080";
+          var host = location.hostname || "";
+          var lan =
+            /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(host) &&
+            host !== "127.0.0.1" &&
+            host !== "localhost";
+          var hint = lan
+            ? "<p style=\"margin:12px 0 0 0;color:#888;font-size:14px;line-height:1.45\">Accès par IP locale : désactivez le <strong>VPN du navigateur</strong> (ex. Opera GX), vérifiez le pare-feu, ou ouvrez <strong>http://localhost:" +
+              port +
+              "/</strong> sur le PC qui lance Vite.</p>"
+            : "";
+          loader.innerHTML =
+            "<p style=\"margin:0 0 8px 0;font-size:16px\">Le chargement dépasse " +
+              sec +
+              "&nbsp;s (premier chargement ou connexion lente).</p>" +
+            "<p style=\"margin:0;color:#bbb;font-size:14px;line-height:1.45\">Rechargez (Ctrl+R) ou ouvrez F12 → Réseau pour voir une requête bloquée (souvent <code>/src/main.tsx</code> ou <code>/locales/</code>).</p>" +
+            hint +
+            "<p style=\"margin:14px 0 0 0\"><a href=\"#\" id=\"esamba-retry-load\" style=\"color:#6ee7b7\">Réessayer</a></p>";
+          var a = document.getElementById("esamba-retry-load");
+          if (a)
+            a.addEventListener("click", function (e) {
+              e.preventDefault();
+              location.reload();
+            });
+        }, 500);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

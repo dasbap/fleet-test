@@ -8,6 +8,7 @@ import {
   Users,
   BarChart3,
 } from "lucide-react";
+import { getMarketingUrl } from "@/lib/marketing-url";
 
 const features = [
   {
@@ -16,6 +17,7 @@ const features = [
     description:
       "Gestion complète de vos véhicules : immatriculation, affectations, historique et statuts en temps réel.",
     color: "primary",
+    guidePath: "/guides/gestion-flotte-pme-cemac",
   },
   {
     icon: Fuel,
@@ -23,6 +25,7 @@ const features = [
     description:
       "Planification et suivi des entretiens. Alertes automatiques pour ne jamais manquer une maintenance.",
     color: "accent",
+    guidePath: "/fonctionnalites/carburant",
   },
   {
     icon: Wrench,
@@ -30,6 +33,7 @@ const features = [
     description:
       "Gestion atelier avec photos obligatoires, checklists et suivi qualité des interventions.",
     color: "primary",
+    guidePath: "/fonctionnalites/maintenance",
   },
   {
     icon: DollarSign,
@@ -37,6 +41,7 @@ const features = [
     description:
       "Encaissements journaliers, Mobile Money intégré, clôture obligatoire et écarts visibles.",
     color: "accent",
+    guidePath: "/guides/reduire-ecarts-encaissements",
   },
   {
     icon: ShieldCheck,
@@ -44,6 +49,7 @@ const features = [
     description:
       "Gestion des rôles et permissions. Chaque utilisateur voit uniquement ce qui le concerne.",
     color: "primary",
+    guidePath: "/solutions/gestionnaires-flotte",
   },
   {
     icon: Bell,
@@ -51,6 +57,7 @@ const features = [
     description:
       "Notifications push, email et SMS pour les seuils critiques et rappels importants.",
     color: "accent",
+    guidePath: "/fonctionnalites/alertes",
   },
   {
     icon: Users,
@@ -58,6 +65,7 @@ const features = [
     description:
       "Architecture multi-organisations avec flottes isolées et données sécurisées.",
     color: "primary",
+    guidePath: "/guides/kpi-gestionnaire-multi-flottes",
   },
   {
     icon: BarChart3,
@@ -65,6 +73,7 @@ const features = [
     description:
       "Système de scoring chauffeurs et mécaniciens avec incitations et sanctions automatiques.",
     color: "accent",
+    guidePath: "/fonctionnalites/score-conducteur",
   },
 ];
 
@@ -90,9 +99,10 @@ const FeaturesSection = () => {
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map((feature, index) => (
-            <div
+            <a
               key={feature.title}
-              className="group p-6 rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5"
+              href={getMarketingUrl(feature.guidePath)}
+              className="group block p-6 rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               <div
@@ -110,7 +120,7 @@ const FeaturesSection = () => {
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {feature.description}
               </p>
-            </div>
+            </a>
           ))}
         </div>
       </div>

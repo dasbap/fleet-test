@@ -20,7 +20,7 @@ INSERT INTO public.plans (
 )
 VALUES
   ('free', 'Free Test Fleet Africa', 0, 3, true, false, false, false, false, false),
-  ('pro', 'Pro Test Fleet Africa', 8000, 120, true, true, true, true, true, true)
+  ('pro', 'Pro Test Fleet Africa', 8000, 75, true, true, true, true, true, true)
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   max_vehicles = EXCLUDED.max_vehicles,

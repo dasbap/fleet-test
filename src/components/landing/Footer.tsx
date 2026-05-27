@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Zap, Mail, Phone, MapPin } from "lucide-react";
+import { getMarketingUrl } from "@/lib/marketing-url";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -29,11 +30,11 @@ const Footer = () => {
                 contact@e-samba.com
               </a>
               <a
-                href="tel:+237641461148"
+                href="tel:+237641341857"
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                +237 6 41 46 11 48
+                +237 6 41 34 18 57
               </a>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="w-4 h-4" />
@@ -70,17 +71,32 @@ const Footer = () => {
             <ul className="space-y-2">
               {[
                 { name: "À propos", to: "/apropos" },
-                { name: "Blog", to: "/blog" },
+                {
+                  name: "Guides & ressources",
+                  to: getMarketingUrl("/guides"),
+                  external: true as const,
+                },
+                { name: "Cas d'usage", to: "/use-case" },
                 { name: "Carrières", to: "/carrieres" },
                 { name: "Partenaires", to: "/partenaires" },
               ].map((link) => (
                 <li key={link.name}>
-                  <Link
-                    to={link.to}
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {link.name}
-                  </Link>
+                  {"external" in link && link.external ? (
+                    <a
+                      href={link.to}
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                      rel="noopener noreferrer"
+                    >
+                      {link.name}
+                    </a>
+                  ) : (
+                    <Link
+                      to={link.to}
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      {link.name}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -133,7 +149,7 @@ const Footer = () => {
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            © {currentYear} E-Samba SARL — RC/DLA/2024/B/XXXX. Tous droits réservés.
+            © {currentYear} E-Samba — Tous droits réservés.
           </p>
           <p className="text-sm text-muted-foreground">
             Made with ❤️ for Africa

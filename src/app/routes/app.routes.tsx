@@ -7,6 +7,7 @@ import { authPublicRoutes } from "@/features/auth/routes";
 import { RoleGuard } from "@/navigation/guards/RequireRole";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { LegacyAideVideoRedirect } from "@/app/routes/LegacyAideVideoRedirect";
+import { AccesRestreint } from "@/components/layout/AccesRestreint";
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -53,6 +54,11 @@ const ConfidentialitePage = lazy(() => import('@/pages/Confidentialite'));
 const ConditionsPage = lazy(() => import('@/pages/Conditions'));
 const AproposPage = lazy(() => import('@/pages/Apropos'));
 const BlogPage = lazy(() => import('@/pages/Blog'));
+const ResourcesIndexPage = lazy(() => import('@/pages/resources/ResourcesIndexPage'));
+const SeoIaHubPage = lazy(() => import('@/pages/resources/SeoIaHubPage'));
+const SeoIaArticlePage = lazy(() => import('@/pages/resources/SeoIaArticlePage'));
+const UseCaseHubPage = lazy(() => import('@/pages/UseCaseHub'));
+const UseCaseDetailPage = lazy(() => import('@/pages/UseCaseDetail'));
 const CarrieresPage = lazy(() => import('@/pages/Carrieres'));
 const PartenairesPage = lazy(() => import('@/pages/Partenaires'));
 const DocumentationPage = lazy(() => import('@/pages/Documentation'));
@@ -60,6 +66,17 @@ const ApiDocsPage = lazy(() => import('@/pages/ApiDocs'));
 const StatusPage = lazy(() => import('@/pages/Status'));
 const PredictiveMaintenancePage = lazy(
   () => import("@/features/maintenance/screens/PredictiveMaintenancePage")
+);
+const PricingPage = lazy(() => import("@/pages/Pricing"));
+const DemoMagicLinkPage = lazy(() => import("@/pages/DemoMagicLinkPage"));
+const ProspectOnboarding = lazy(() =>
+  import("@/features/demo/ProspectOnboarding").then((m) => ({ default: m.ProspectOnboarding }))
+);
+const UpdatePasswordPage = lazy(() =>
+  import("@/features/auth/screens/UpdatePasswordPage")
+);
+const AuthCallbackPage = lazy(() =>
+  import("@/features/auth/screens/AuthCallbackPage")
 );
 
 /**
@@ -69,7 +86,7 @@ const PredictiveMaintenancePage = lazy(
 export const appRoutes = (
   <Route element={<RootLayout />}>
     <Route path="/" element={<Index />} />
-    <Route path="/aide" element={<AidePage />} />
+    <Route path="/aide" element={<AccesRestreint><AidePage /></AccesRestreint>} />
     <Route path="/fuel" element={<FuelMonitoringPage />} />
     <Route path="/inspections/nouveau" element={<DvirChecklistPage />} />
     <Route path="/inspections/:dvirId/modifier" element={<DvirChecklistPage />} />
@@ -91,14 +108,19 @@ export const appRoutes = (
     />
     <Route path="/securite" element={<SecuritePage />} />
     <Route path="/cookies" element={<CookiesPage />} />
-    <Route path="/confidentialite" element={<ConfidentialitePage />} />
-    <Route path="/conditions" element={<ConditionsPage />} />
+    <Route path="/confidentialite" element={<AccesRestreint><ConfidentialitePage /></AccesRestreint>} />
+    <Route path="/conditions" element={<AccesRestreint><ConditionsPage /></AccesRestreint>} />
     <Route path="/apropos" element={<AproposPage />} />
     <Route path="/blog" element={<BlogPage />} />
+    <Route path="/ressources" element={<ResourcesIndexPage />} />
+    <Route path="/ressources/seo-ia" element={<SeoIaHubPage />} />
+    <Route path="/ressources/seo-ia/*" element={<SeoIaArticlePage />} />
+    <Route path="/use-case" element={<UseCaseHubPage />} />
+    <Route path="/use-case/:slug" element={<UseCaseDetailPage />} />
     <Route path="/carrieres" element={<CarrieresPage />} />
     <Route path="/partenaires" element={<PartenairesPage />} />
-    <Route path="/documentation" element={<DocumentationPage />} />
-    <Route path="/api" element={<ApiDocsPage />} />
+    <Route path="/documentation" element={<AccesRestreint><DocumentationPage /></AccesRestreint>} />
+    <Route path="/api" element={<AccesRestreint><ApiDocsPage /></AccesRestreint>} />
     <Route path="/status" element={<StatusPage />} />
     <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
     <Route
@@ -139,7 +161,15 @@ export const appRoutes = (
         element={<Navigate to={ROUTE_PATHS.dashboardMaintenance} replace />}
       />
       <Route path="/upgrade" element={<Upgrade />} />
+      <Route path="/pricing" element={<PricingPage />} />
       <Route path="/post-login" element={<PostLoginGate />} />
+      {/* Flux commercial démo — pas de ProtectedRoute (auth via magic link) */}
+      <Route path="/demo/access"     element={<DemoMagicLinkPage />} />
+      <Route path="/demo/onboarding" element={<ProspectOnboarding />} />
+      {/* Flux reset password — session temporaire PASSWORD_RECOVERY, sans RequireGuest */}
+      <Route path="/auth/update-password" element={<UpdatePasswordPage />} />
+      {/* Callback Supabase PKCE — magic link, confirmation email */}
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
       {dashboardRoutes}
     </Route>
     <Route path="*" element={<NotFound />} />

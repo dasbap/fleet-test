@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { FleetMetrics } from '@/types/fleet-metrics';
 
 export interface DashboardStats {
   activeVehicles: number;
@@ -180,6 +181,25 @@ export class DashboardRepository {
     });
 
     return activities.sort((a, b) => b.time.getTime() - a.time.getTime()).slice(0, 10);
+  }
+
+  /**
+   * Métriques 30j depuis la RPC cachée (1h TTL côté Supabase).
+   * À préférer à getStats() pour le widget KPI principal — 1 requête au lieu de 6.
+   */
+  async getMetricsCached(fleetId: string): Promise<FleetMetrics> {
+    const { data, error } = await supabase.rpc('get_fleet_dashboard_metrics', {
+      p_fleet_id: fleetId,
+    });
+    if (error) throw new Error(error.message);
+    return data as FleetMetrics;
+  }
+
+  async invalidateMetricsCache(fleetId: string): Promise<void> {
+    const { error } = await supabase.rpc('invalidate_fleet_metrics_cache', {
+      p_fleet_id: fleetId,
+    });
+    if (error) throw new Error(error.message);
   }
 
   async getFleetVehiclesOverview(fleetId: string): Promise<FleetVehicleOverviewItem[]> {

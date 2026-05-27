@@ -15,6 +15,10 @@ export type ParsedDeepLink =
     }
   | {
       ok: true;
+      kind: "tutorials_list";
+    }
+  | {
+      ok: true;
       kind: "alert";
       alertId: string;
     }
@@ -22,6 +26,11 @@ export type ParsedDeepLink =
       ok: true;
       kind: "vehicle";
       vehicleId: string;
+    }
+  | {
+      ok: true;
+      kind: "tutorial";
+      tutorialId: string;
     }
   | {
       ok: true;
@@ -136,9 +145,12 @@ export function parseDeepLink(rawUrl: string): ParsedDeepLink {
     if (only === "fleet") {
       return { ok: true, kind: "fleet_list" };
     }
+    if (only === "tutorials") {
+      return { ok: true, kind: "tutorials_list" };
+    }
     return {
       ok: false,
-      reason: `Segment unique non reconnu : ${only} (attendu alerts ou fleet pour les listes)`,
+      reason: `Segment unique non reconnu : ${only} (attendu alerts, fleet ou tutorials pour les listes)`,
     };
   }
 
@@ -158,6 +170,13 @@ export function parseDeepLink(rawUrl: string): ParsedDeepLink {
         return { ok: false, reason: "Format fleet attendu : esamba://fleet/:id" };
       }
       return { ok: true, kind: "vehicle", vehicleId };
+    }
+    case "tutorials": {
+      const tutorialId = a;
+      if (!tutorialId || segments.length > 2) {
+        return { ok: false, reason: "Format tutorials attendu : esamba://tutorials/:id" };
+      }
+      return { ok: true, kind: "tutorial", tutorialId };
     }
     case "operations": {
       if (segments.length === 2) {
@@ -198,10 +217,12 @@ export function parseDeepLink(rawUrl: string): ParsedDeepLink {
 export type EsambaDeepLinkBuildTarget =
   | { screen: "alerts_list" }
   | { screen: "fleet_list" }
+  | { screen: "tutorials_list" }
   | { screen: "alert"; id: string }
   | { screen: "vehicle"; id: string }
   | { screen: "mission"; id: string }
-  | { screen: "intervention"; id: string };
+  | { screen: "intervention"; id: string }
+  | { screen: "tutorial"; id: string };
 
 /**
  * Construit une URL deep link sans ambiguïté (formes préférées pour FCM/APNs).
@@ -213,6 +234,8 @@ export function buildEsambaDeepLinkUrl(target: EsambaDeepLinkBuildTarget): strin
       return `${ESAMBA_DEEP_LINK_PREFIX}alerts`;
     case "fleet_list":
       return `${ESAMBA_DEEP_LINK_PREFIX}fleet`;
+    case "tutorials_list":
+      return `${ESAMBA_DEEP_LINK_PREFIX}tutorials`;
     case "alert":
       return `${ESAMBA_DEEP_LINK_PREFIX}alerts/${enc(target.id)}`;
     case "vehicle":
@@ -221,6 +244,8 @@ export function buildEsambaDeepLinkUrl(target: EsambaDeepLinkBuildTarget): strin
       return `${ESAMBA_DEEP_LINK_PREFIX}operations/mission/${enc(target.id)}`;
     case "intervention":
       return `${ESAMBA_DEEP_LINK_PREFIX}operations/intervention/${enc(target.id)}`;
+    case "tutorial":
+      return `${ESAMBA_DEEP_LINK_PREFIX}tutorials/${enc(target.id)}`;
   }
 }
 

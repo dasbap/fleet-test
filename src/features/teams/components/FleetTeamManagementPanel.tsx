@@ -61,6 +61,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import {
   useFleetMembers,
   useAddFleetMember,
@@ -73,7 +74,6 @@ import { useSearchUsers, type SearchedUser } from "@/hooks/useSearchUsers";
 import { toast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,20 +83,10 @@ import {
 import { cn } from "@/lib/utils";
 import { useActivation } from "@/hooks/useActivation";
 import { isValidCameroonMobileInput, normalizeCameroonPhoneE164 } from "@/lib/cameroonPhone";
-
-const addMemberSchema = z.object({
-  email: z.string().email("Email invalide"),
-  role: z.enum(["organizer", "manager", "driver", "mechanic"]),
-  phone: z
-    .string()
-    .optional()
-    .refine(
-      (val) => !val || val.trim() === "" || isValidCameroonMobileInput(val.trim()),
-      { message: "Numéro mobile Cameroun invalide (ex. 6XX XXX XXX ou +237…)" },
-    ),
-});
-
-type AddMemberFormValues = z.infer<typeof addMemberSchema>;
+import {
+  addMemberSchema,
+  type AddMemberFormValues,
+} from "@/features/teams/components/fleetTeamManagement.constants";
 
 export type FleetTeamManagementPanelProps = {
   layout: "page" | "embedded";
@@ -116,10 +106,13 @@ export function FleetTeamManagementPanel({
 }: FleetTeamManagementPanelProps) {
   const { user, userFleetId } = useAuth();
   const { canAccessBackoffice } = usePermissions();
+  const { can } = useRoleAccess();
   const navigate = useNavigate();
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false);
   const [removeConfirm, setRemoveConfirm] = useState<{
     membershipId: string;
+    userId: string;
+    role: FleetMember["role"];
     displayName: string;
   } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -226,9 +219,19 @@ export function FleetTeamManagementPanel({
     }
   };
 
-  const handleRemoveMember = (membershipId: string, displayName?: string) => {
+  const handleRemoveMember = (
+    membershipId: string,
+    userId: string,
+    role: FleetMember["role"],
+    displayName?: string,
+  ) => {
     if (!userFleetId) return;
-    setRemoveConfirm({ membershipId, displayName: displayName ?? "ce membre" });
+    setRemoveConfirm({
+      membershipId,
+      userId,
+      role,
+      displayName: displayName ?? "ce membre",
+    });
   };
 
   const handleConfirmRemoveMember = async () => {
@@ -237,6 +240,8 @@ export function FleetTeamManagementPanel({
       await removeMemberMutation.mutateAsync({
         membershipId: removeConfirm.membershipId,
         fleetId: userFleetId,
+        userId: removeConfirm.userId,
+        role: removeConfirm.role,
       });
       setRemoveConfirm(null);
     } catch {
@@ -289,7 +294,9 @@ export function FleetTeamManagementPanel({
     }
   };
 
-  const canManageTeam = canAccessBackoffice;
+  const canManageTeam = canAccessBackoffice && can("member.invite");
+  const canUpdateRoles = can("member.update_role");
+  const canRemoveMembers = can("member.remove");
   const isPage = layout === "page";
 
   if (!userFleetId) {
@@ -459,7 +466,7 @@ export function FleetTeamManagementPanel({
                       </div>
                     </div>
                   </div>
-                  {canManageTeam && member.user_id !== user?.id && (
+                  {(canUpdateRoles || canRemoveMembers) && member.user_id !== user?.id && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" type="button">
@@ -467,6 +474,8 @@ export function FleetTeamManagementPanel({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {canUpdateRoles && (
+                          <>
                         <DropdownMenuItem
                           type="button"
                           onClick={() => void handleUpdateRole(member, "organizer")}
@@ -499,15 +508,24 @@ export function FleetTeamManagementPanel({
                           <Wrench className="mr-2 h-4 w-4" />
                           Définir comme Mécanicien
                         </DropdownMenuItem>
+                          </>
+                        )}
+                        {canRemoveMembers && (
                         <DropdownMenuItem
                           type="button"
                           onClick={() =>
-                            handleRemoveMember(member.id, member.profile?.full_name ?? undefined)
+                            handleRemoveMember(
+                              member.id,
+                              member.user_id,
+                              member.role,
+                              member.profile?.full_name ?? undefined,
+                            )
                           }
                           className="text-destructive"
                         >
                           Retirer de l&apos;équipe
                         </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}

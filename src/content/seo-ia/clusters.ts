@@ -1,0 +1,375 @@
+import { buildSeoIaCtaUrl } from "../../lib/seo-utm";
+import type { SeoIaArticle } from "./types";
+
+/** Articles cluster (P1, P2 et compléments du cocon). */
+export const SEO_IA_CLUSTERS: SeoIaArticle[] = [
+  {
+    slug: "brief-seo-automatise-redaction-ia",
+    kind: "cluster",
+    pillarSlug: "injecter-donnees-seo-prompt-ia",
+    primaryKeyword: "brief SEO automatisé pour rédaction IA",
+    title: "Brief SEO automatisé pour rédaction IA | E-Samba Ressources",
+    description: "Template Notion/Markdown + JSON pour alimenter ChatGPT, Claude ou Cursor avec des signaux SEO structurés.",
+    h1: "Brief SEO automatisé pour rédaction IA",
+    dateModified: "2026-05-23",
+    readingMinutes: 9,
+    relatedSlugs: ["injecter-donnees-seo-prompt-ia", "pipeline-contenu-seo-chatgpt", "modeles/brief-agence"],
+    ctaPrimary: {
+      label: "Modèle brief agence",
+      href: "/ressources/seo-ia/modeles/brief-agence",
+    },
+    leadMagnet: {
+      title: "Brief JSON type",
+      body: '{"primary_keyword":"","intent":"","entities":[],"paa":[],"outline_h2":[],"cta":""}',
+    },
+    sections: [
+      {
+        id: "contenu",
+        heading: "Qu'est-ce qu'un brief SEO automatisé ?",
+        paragraphs: [
+          "C'est un fichier structuré (JSON ou YAML) généré à partir de la SERP et validé par un humain, puis injecté dans le prompt de rédaction. Il remplace les consignes floues du type « écris un article SEO sur X ».",
+        ],
+      },
+      {
+        id: "champs",
+        heading: "Champs obligatoires du brief",
+        bullets: [
+          "Requête principale et secondaires (3 à 7).",
+          "Intention et persona.",
+          "Plan H2/H3 avec angle par section.",
+          "Entités et cooccurrences à couvrir.",
+          "Liens internes cibles avec ancres.",
+          "Ton, longueur cible, interdits.",
+        ],
+        paragraphs: [],
+      },
+    ],
+    faq: [
+      {
+        id: "c-brief-1",
+        question: "Peut-on générer le brief entièrement par IA ?",
+        answer: "Oui en première passe, avec validation SEO obligatoire avant rédaction.",
+      },
+    ],
+  },
+  {
+    slug: "score-seo-contenu-genere-ia",
+    kind: "cluster",
+    pillarSlug: "optimisation-contenu-ia-seo",
+    primaryKeyword: "score SEO contenu généré automatiquement",
+    title: "Score SEO d'un contenu généré par IA | E-Samba",
+    description: "Grille critères : couverture sémantique, structure, lisibilité, duplication et E-E-A-T.",
+    h1: "Score SEO d'un contenu généré automatiquement",
+    dateModified: "2026-05-23",
+    readingMinutes: 8,
+    relatedSlugs: ["optimisation-contenu-ia-seo", "contenu-ia-optimise-google-2025", "ameliorer-classement-google-contenu-ia"],
+    sections: [
+      {
+        id: "grille",
+        heading: "Grille de score sur 100 points",
+        bullets: [
+          "Couverture sémantique /25 (entités, PAA).",
+          "Structure Hn /15.",
+          "Lisibilité et paragraphes /15.",
+          "Maillage interne /15.",
+          "Originalité et exemples /15.",
+          "E-E-A-T et métadonnées /15.",
+        ],
+        paragraphs: [
+          "Seuil de publication recommandé : 70/100 avec relecture humaine si score E-E-A-T < 10/15.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        id: "c-score-1",
+        question: "Un score élevé garantit-il le top 3 ?",
+        answer: "Non. Le score est un contrôle qualité interne ; le classement dépend aussi de l'autorité du domaine et des backlinks.",
+      },
+    ],
+  },
+  {
+    slug: "contenu-ia-optimise-google-2025",
+    kind: "cluster",
+    pillarSlug: "optimisation-contenu-ia-seo",
+    primaryKeyword: "contenu IA optimisé Google 2025",
+    title: "Contenu IA optimisé pour Google en 2025 | E-Samba",
+    description: "Helpful content, AI Overviews et citations : pratiques pour le contenu assisté par IA.",
+    h1: "Contenu IA optimisé pour Google en 2025",
+    dateModified: "2026-05-23",
+    readingMinutes: 10,
+    relatedSlugs: ["optimisation-contenu-ia-seo", "ameliorer-classement-google-contenu-ia", "score-seo-contenu-genere-ia"],
+    sections: [
+      {
+        id: "helpful",
+        heading: "Helpful content et IA",
+        paragraphs: [
+          "Google évalue l'utilité pour l'utilisateur. Un contenu IA peut être « helpful » s'il répond précisément, cite des sources et est maintenu à jour.",
+        ],
+      },
+      {
+        id: "aio",
+        heading: "AI Overviews et visibilité",
+        paragraphs: [
+          "Structurez les réponses en blocs de 40 à 80 mots après chaque H2, utilisez des listes et des FAQ schema.org pour augmenter les chances de citation dans les synthèses IA.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        id: "c-g25-1",
+        question: "Faut-il bloquer les crawlers IA ?",
+        answer: "Stratégie au cas par cas. Pour un hub éducatif, autoriser l'indexation peut amplifier la notoriété.",
+      },
+    ],
+  },
+  {
+    slug: "pipeline-contenu-seo-chatgpt",
+    kind: "cluster",
+    pillarSlug: "production-contenu-seo-ia-echelle",
+    primaryKeyword: "pipeline de contenu SEO avec ChatGPT",
+    title: "Pipeline de contenu SEO avec ChatGPT | E-Samba",
+    description: "Étapes, human-in-the-loop et intégration Cursor pour publier sans thin content.",
+    h1: "Pipeline de contenu SEO avec ChatGPT",
+    dateModified: "2026-05-23",
+    readingMinutes: 9,
+    relatedSlugs: ["production-contenu-seo-ia-echelle", "injecter-donnees-seo-prompt-ia", "brief-seo-automatise-redaction-ia"],
+    sections: [
+      {
+        id: "flux",
+        heading: "Flux en 6 étapes",
+        bullets: [
+          "Export SERP + PAA (manuel ou API).",
+          "Génération brief JSON (ChatGPT).",
+          "Plan H2 validé par humain.",
+          "Rédaction brouillon.",
+          "Enrichissement sémantique + score.",
+          "Intégration CMS via Cursor / PR.",
+        ],
+        paragraphs: [],
+      },
+    ],
+    faq: [
+      {
+        id: "c-pipe-1",
+        question: "ChatGPT ou Claude pour le SEO ?",
+        answer: "Claude pour les longs briefs ; ChatGPT pour itérations rapides. Testez les deux sur un même brief.",
+      },
+    ],
+  },
+  {
+    slug: "analyser-intention-recherche-ia",
+    kind: "cluster",
+    pillarSlug: "optimisation-contenu-ia-seo",
+    primaryKeyword: "analyser intention de recherche avec IA",
+    title: "Analyser l'intention de recherche avec l'IA | E-Samba",
+    description: "Framework JTBD + signaux SERP pour classer informationnel, commercial et transactionnel.",
+    h1: "Analyser l'intention de recherche avec l'IA",
+    dateModified: "2026-05-23",
+    readingMinutes: 8,
+    relatedSlugs: ["enrichissement-semantique-contenu-ia", "generer-mots-cles-longue-traine-automatiquement", "optimisation-contenu-ia-seo"],
+    sections: [
+      {
+        id: "methode",
+        heading: "Méthode en 4 signaux",
+        bullets: [
+          "Types de pages dans le top 10 (blog, produit, comparatif).",
+          "Présence de prix, avis, tutoriels.",
+          "Formulation des titres SERP.",
+          "Questions PAA et recherches associées.",
+        ],
+        paragraphs: [
+          "Demandez au LLM : « Classe l'intention dominante et justifie avec 3 preuves SERP » en joignant une capture ou un export texte.",
+        ],
+      },
+    ],
+    faq: [],
+  },
+  {
+    slug: "generer-mots-cles-longue-traine-automatiquement",
+    kind: "cluster",
+    pillarSlug: "injecter-donnees-seo-prompt-ia",
+    primaryKeyword: "générer des mots-clés longue traîne automatiquement",
+    title: "Générer des mots-clés longue traîne automatiquement | E-Samba",
+    description: "Prompts et validation volume pour une liste priorisée sans cannibalisation.",
+    h1: "Générer des mots-clés longue traîne automatiquement",
+    dateModified: "2026-05-23",
+    readingMinutes: 8,
+    relatedSlugs: ["mots-cles-longue-traine-b2b-saas", "analyser-intention-recherche-ia", "injecter-donnees-seo-prompt-ia"],
+    sections: [
+      {
+        id: "prompt",
+        heading: "Prompt de génération longue traîne",
+        paragraphs: [
+          "« À partir du mot-clé racine {seed}, produis 30 variantes longue traîne B2B en français, groupées par intention. Format tableau : requête, intention, priorité supposée. »",
+          "Validez ensuite le volume avec Semrush, Ahrefs ou Search Console.",
+        ],
+      },
+    ],
+    faq: [],
+  },
+  {
+    slug: "outil-seo-contenu-genere-ia",
+    kind: "cluster",
+    pillarSlug: "optimisation-contenu-ia-seo",
+    primaryKeyword: "outil SEO pour contenu généré par intelligence artificielle",
+    title: "Outils SEO pour contenu généré par IA (panorama) | E-Samba",
+    description: "Catégories d'outils : brief, score, SERP, CMS — sans présenter E-Samba comme outil SEO.",
+    h1: "Outils SEO pour contenu généré par IA",
+    dateModified: "2026-05-23",
+    readingMinutes: 7,
+    relatedSlugs: ["score-seo-contenu-genere-ia", "analyse-serp-automatique-agence", "outil-seo-freelance-redacteur-ia"],
+    sections: [
+      {
+        id: "categories",
+        heading: "Catégories d'outils",
+        bullets: [
+          "Recherche de mots-clés et SERP.",
+          "Brief et workflow éditorial.",
+          "Scoring qualité et détection duplication.",
+          "Publication et maillage (CMS, scripts).",
+        ],
+        paragraphs: [
+          "E-Samba n'appartient pas à cette catégorie : c'est un SaaS de gestion de flotte. Choisissez vos outils SEO selon votre stack agence ou produit.",
+        ],
+      },
+    ],
+    faq: [],
+  },
+  {
+    slug: "mots-cles-longue-traine-b2b-saas",
+    kind: "cluster",
+    pillarSlug: "production-contenu-seo-ia-echelle",
+    primaryKeyword: "mots-clés longue traîne B2B SaaS",
+    title: "Mots-clés longue traîne B2B SaaS | E-Samba",
+    description: "Méthode et exemples, dont la logistique et la gestion de flotte en Afrique centrale.",
+    h1: "Mots-clés longue traîne B2B SaaS",
+    dateModified: "2026-05-23",
+    readingMinutes: 9,
+    relatedSlugs: ["generer-mots-cles-longue-traine-automatiquement", "production-contenu-seo-ia-echelle", "optimisation-contenu-ia-seo"],
+    ctaPrimary: {
+      label: "Voir la gestion de flotte E-Samba",
+      href: buildSeoIaCtaUrl("/", "mots-cles-longue-traine-b2b-saas"),
+    },
+    sections: [
+      {
+        id: "exemples",
+        heading: "Exemples de longue traîne B2B",
+        bullets: [
+          "logiciel gestion flotte cameroun prix",
+          "suivi maintenance véhicules transport CEMAC",
+          "tableau de bord flotte PME afrique centrale",
+        ],
+        paragraphs: [
+          "Croisez problèmes métier (JTBD) et formulations naturelles des acheteurs, pas uniquement le jargon marketing.",
+        ],
+      },
+    ],
+    faq: [],
+  },
+  {
+    slug: "enrichissement-semantique-contenu-ia",
+    kind: "cluster",
+    pillarSlug: "optimisation-contenu-ia-seo",
+    primaryKeyword: "enrichissement sémantique contenu IA",
+    title: "Enrichissement sémantique d'un contenu IA | E-Samba",
+    description: "Entités, cooccurrences et NER pour compléter un brouillon sans sur-optimisation.",
+    h1: "Enrichissement sémantique d'un contenu IA",
+    dateModified: "2026-05-23",
+    readingMinutes: 8,
+    relatedSlugs: ["analyser-intention-recherche-ia", "score-seo-contenu-genere-ia", "optimisation-contenu-ia-seo"],
+    sections: [
+      {
+        id: "technique",
+        heading: "Techniques d'enrichissement",
+        paragraphs: [
+          "Comparez le brouillon aux entités extraites du top 5 SERP. Ajoutez les lacunes en paragraphes dédiés, pas en listes de mots-clés.",
+        ],
+      },
+    ],
+    faq: [],
+  },
+  {
+    slug: "analyse-serp-automatique-agence",
+    kind: "cluster",
+    pillarSlug: "production-contenu-seo-ia-echelle",
+    primaryKeyword: "analyse SERP automatique pour agence SEO",
+    title: "Analyse SERP automatique pour agence SEO | E-Samba",
+    description: "Stack no-code, exports et intégration au brief IA.",
+    h1: "Analyse SERP automatique pour agence SEO",
+    dateModified: "2026-05-23",
+    readingMinutes: 7,
+    relatedSlugs: ["pipeline-contenu-seo-chatgpt", "outil-seo-contenu-genere-ia", "production-contenu-seo-ia-echelle"],
+    sections: [
+      {
+        id: "stack",
+        heading: "Stack type agence",
+        bullets: [
+          "Scraper SERP ou API tierce (respect des CGU).",
+          "Normalisation en CSV/JSON.",
+          "Script d'injection dans brief (Cursor ou Zapier).",
+          "Revue stratégique hebdomadaire.",
+        ],
+        paragraphs: [],
+      },
+    ],
+    faq: [],
+  },
+  {
+    slug: "outil-seo-freelance-redacteur-ia",
+    kind: "cluster",
+    pillarSlug: "optimisation-contenu-ia-seo",
+    primaryKeyword: "outil SEO pour freelance rédacteur IA",
+    title: "Outils SEO pour freelance rédacteur IA | E-Samba",
+    description: "Critères de choix et checklist livraison client.",
+    h1: "Outils SEO pour freelance rédacteur IA",
+    dateModified: "2026-05-23",
+    readingMinutes: 7,
+    relatedSlugs: ["brief-seo-automatise-redaction-ia", "modeles/brief-freelance", "score-seo-contenu-genere-ia"],
+    ctaPrimary: {
+      label: "Modèle brief freelance",
+      href: "/ressources/seo-ia/modeles/brief-freelance",
+    },
+    sections: [
+      {
+        id: "criteres",
+        heading: "Critères de sélection",
+        bullets: [
+          "Export brief et versioning.",
+          "Détection similarité / plagiat.",
+          "Intégration Google Docs ou Notion.",
+          "Tarification adaptée au volume.",
+        ],
+        paragraphs: [],
+      },
+    ],
+    faq: [],
+  },
+  {
+    slug: "ameliorer-classement-google-contenu-ia",
+    kind: "cluster",
+    pillarSlug: "optimisation-contenu-ia-seo",
+    primaryKeyword: "comment améliorer le classement Google d'un contenu IA",
+    title: "Améliorer le classement Google d'un contenu IA | E-Samba",
+    description: "Checklist post-publication : indexation, maillage, signaux fraîcheur et CWV.",
+    h1: "Comment améliorer le classement Google d'un contenu IA",
+    dateModified: "2026-05-23",
+    readingMinutes: 9,
+    relatedSlugs: ["contenu-ia-optimise-google-2025", "score-seo-contenu-genere-ia", "optimisation-contenu-ia-seo"],
+    sections: [
+      {
+        id: "post",
+        heading: "Checklist post-publication",
+        bullets: [
+          "Demander l'indexation dans GSC.",
+          "Ajouter 3 à 5 liens internes depuis pages à autorité.",
+          "Mettre à jour la date si le contenu évolue.",
+          "Surveiller CTR et requêtes dans 28 jours.",
+          "Renforcer E-E-A-T (auteur, sources).",
+        ],
+        paragraphs: [],
+      },
+    ],
+    faq: [],
+  },
+];

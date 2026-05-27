@@ -13,8 +13,10 @@ vi.mock("@/hooks/useDvir", () => ({
       overall_status: "ok",
       inspected_at: new Date().toISOString(),
       notes: "Aucun défaut",
+      items: { klaxon: { status: "ok" } },
     },
     isLoading: false,
+    isError: false,
   }),
 }));
 

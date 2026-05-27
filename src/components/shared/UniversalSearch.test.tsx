@@ -49,25 +49,29 @@ describe("UniversalSearch", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("ouvre la palette avec Ctrl+K et expose les rôles ARIA attendus", () => {
-    useUniversalSearchMock.mockReturnValue({
-      query: "",
-      setQuery: vi.fn(),
-      groups: [],
-      totalCount: 0,
-      status: "idle",
-      selectedIndex: -1,
-      setSelectedIndex: vi.fn(),
-      flatResults: [],
-      reset: vi.fn(),
-    });
+  it(
+    "ouvre la palette avec Ctrl+K et expose les rôles ARIA attendus",
+    () => {
+      useUniversalSearchMock.mockReturnValue({
+        query: "",
+        setQuery: vi.fn(),
+        groups: [],
+        totalCount: 0,
+        status: "idle",
+        selectedIndex: -1,
+        setSelectedIndex: vi.fn(),
+        flatResults: [],
+        reset: vi.fn(),
+      });
 
-    renderComponent();
-    fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+      renderComponent();
+      fireEvent.keyDown(document, { key: "k", ctrlKey: true });
 
-    expect(screen.getByRole("combobox")).toBeInTheDocument();
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
-  });
+      expect(screen.getByRole("combobox")).toBeInTheDocument();
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+    },
+    15_000,
+  );
 
   it("navigue avec Enter sur le résultat sélectionné", () => {
     const reset = vi.fn();

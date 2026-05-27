@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { OfflineQueueService } from "@/services/offlineQueue.service";
@@ -8,6 +8,19 @@ import { FuelService, type FuelEntryInput } from "@/services/fuel.service";
 const offlineQueueService = new OfflineQueueService();
 const fuelRepository = new FuelRepository();
 const fuelService = new FuelService(fuelRepository);
+
+export function useFuelLogsByVehicle(vehicleId: string | undefined) {
+  const { userFleetId } = useAuth();
+  return useQuery({
+    queryKey: ["fuel-entries", "vehicle", vehicleId, userFleetId],
+    enabled: !!vehicleId && !!userFleetId,
+    networkMode: "offlineFirst",
+    queryFn: async () => {
+      if (!vehicleId || !userFleetId) return [];
+      return fuelRepository.findByVehicle(userFleetId, vehicleId);
+    },
+  });
+}
 
 export function useCreateFuelEntry() {
   const queryClient = useQueryClient();

@@ -35,6 +35,7 @@ import { useMaintenanceJobs, useUpdateJobStatus, type JobStatus, type Maintenanc
 import { MaintenanceFormDialog } from "@/components/maintenance/MaintenanceFormDialog";
 import { MaintenanceDetailDialog } from "@/components/maintenance/MaintenanceDetailDialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useFeedbackPrompt } from "@/hooks/useFeedbackPrompt";
 import { FeedbackWidget } from "@/components/shared/FeedbackWidget";
 import { format } from "date-fns";
@@ -56,6 +57,7 @@ const priorityConfig: Record<string, { label: string; variant: "default" | "seco
 
 export default function Maintenance() {
   const { role, userFleetId, user } = useAuth();
+  const { can } = useRoleAccess();
   const maintenanceFeedback = useFeedbackPrompt({
     userId: user?.id ?? "",
     fleetId: userFleetId,
@@ -207,10 +209,12 @@ export default function Maintenance() {
                     Gérez les interventions de maintenance sur vos véhicules
                   </p>
                 </div>
-                <Button onClick={() => setCreateDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nouvelle intervention
-                </Button>
+                {can("maintenance.create") && (
+                  <Button onClick={() => setCreateDialogOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nouvelle intervention
+                  </Button>
+                )}
               </div>
 
               {/* Stats Cards */}

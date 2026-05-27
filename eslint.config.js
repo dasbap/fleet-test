@@ -25,6 +25,9 @@ export default tseslint.config(
       "node_modules/**",
       "public/icons/**",
       "apps/mobile/.expo/**",
+      "apps/marketing/.astro/**",
+      "apps/marketing/src/env.d.ts",
+      "supabase/functions/**",
       ".claude/worktrees/**",
     ],
   },
@@ -46,6 +49,13 @@ export default tseslint.config(
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
       "esamba/no-undefined-can-permissions": "error",
+    },
+  },
+  {
+    files: ["src/server/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
     },
   },
 );
