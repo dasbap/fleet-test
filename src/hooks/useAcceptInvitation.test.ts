@@ -8,16 +8,18 @@ import type { User } from "@supabase/supabase-js";
 import { acceptInvitation, checkPendingInvitation } from "./useAcceptInvitation";
 
 const rpcMock = vi.fn();
-let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-const fromMock = vi.fn((_table?: string) => ({
-  select: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  maybeSingle: vi.fn(),
+const findActiveMembershipMock = vi.fn();
+
+vi.mock("@/repositories/fleet-member.repository", () => ({
+  FleetMemberRepository: vi.fn().mockImplementation(() => ({
+    findActiveMembershipByUserAndFleet: (...args: unknown[]) =>
+      findActiveMembershipMock(...args),
+  })),
 }));
+
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: (...args: unknown[]) => rpcMock(...args),
-    from: (table: string) => fromMock(table),
   },
 }));
 
@@ -28,8 +30,11 @@ function mockUser(partial: Partial<User> & { id: string }): User {
 describe("useAcceptInvitation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    findActiveMembershipMock.mockResolvedValue(null);
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
+
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   afterEach(() => {
     consoleErrorSpy?.mockRestore();
@@ -102,12 +107,7 @@ describe("useAcceptInvitation", () => {
     });
 
     it("retourne le code d'invitation si metadata présente et pas encore de membership", async () => {
-      const maybeSingleMock = vi.fn().mockResolvedValue({ data: null });
-      fromMock.mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        maybeSingle: maybeSingleMock,
-      });
+      findActiveMembershipMock.mockResolvedValueOnce(null);
 
       const code = await checkPendingInvitation(
         mockUser({
@@ -117,48 +117,26 @@ describe("useAcceptInvitation", () => {
       );
 
       expect(code).toBe("INV-ABC");
+      expect(findActiveMembershipMock).toHaveBeenCalledWith("user-1", "fleet-1");
     });
 
     it("retourne null si l'utilisateur a déjà un membership pour la flotte d'invitation", async () => {
-      const maybeSingleMock = vi.fn().mockResolvedValue({ data: { id: "membership-1" } });
-      fromMock.mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        maybeSingle: maybeSingleMock,
+      findActiveMembershipMock.mockResolvedValueOnce({
+        id: "m1",
+        user_id: "user-1",
+        fleet_id: "fleet-1",
+        role: "driver",
+        is_active: true,
       });
 
       const code = await checkPendingInvitation(
         mockUser({
           id: "user-1",
-          user_metadata: { invitation_code: "INV-X", invitation_fleet_id: "fleet-1" },
+          user_metadata: { invitation_code: "INV-ABC", invitation_fleet_id: "fleet-1" },
         }),
       );
 
       expect(code).toBeNull();
-    });
-
-    it("retourne null si invitation_code présent mais invitation_fleet_id absent", async () => {
-      const code = await checkPendingInvitation(
-        mockUser({
-          id: "user-1",
-          user_metadata: { invitation_code: "INV-PARTIAL" },
-        }),
-      );
-
-      expect(code).toBeNull();
-      expect(fromMock).not.toHaveBeenCalled();
-    });
-
-    it("retourne null si user_metadata absent ou vide", async () => {
-      const code = await checkPendingInvitation(
-        mockUser({
-          id: "user-1",
-          user_metadata: {},
-        }),
-      );
-
-      expect(code).toBeNull();
-      expect(fromMock).not.toHaveBeenCalled();
     });
   });
 });

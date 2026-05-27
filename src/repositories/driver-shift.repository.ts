@@ -1,7 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 
+import type { CollectionMode } from '@/domain/constants/collectionMode';
+
+export type { CollectionMode };
 export type ShiftStatus = 'open' | 'closed';
-export type CollectionMode = 'cash' | 'momo' | 'mix';
 
 export interface DriverShift {
   id: string;

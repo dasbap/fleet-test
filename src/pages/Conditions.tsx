@@ -22,14 +22,14 @@ export default function ConditionsPage() {
           <strong className="text-foreground">E-Samba</strong>, société à
           responsabilité limitée (SARL) de droit camerounais au capital de
           1 000 000 FCFA, enregistrée au RCCM de Douala sous le
-          numéro <strong className="text-foreground">RC/DLA/2024/B/XXXX</strong>,
+          numéro <strong className="text-foreground">RC/Y/2024/P/107816791685</strong>,
           Numéro Contribuable : <strong className="text-foreground">P000000000000X</strong>,
           dont le siège social est situé à Douala, Cameroun.
         </p>
         <p>
           E-mail : <a href="mailto:contact@e-samba.com" className="text-primary hover:underline">contact@e-samba.com</a>
           {" — "}
-          Tél. : <a href="tel:+237641461148" className="text-primary hover:underline">+237 6 41 46 11 48</a>
+          Tél. : <a href="tel:+237641341857" className="text-primary hover:underline">+237 6 41 34 18 57</a>
         </p>
       </LegalSection>
 

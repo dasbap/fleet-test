@@ -1,3 +1,5 @@
+import type { CollectionMode } from '@/domain/constants/collectionMode';
+
 export type OfflineJobStatus = "pending" | "syncing" | "succeeded" | "failed";
 
 export type OfflineJobType = "incident:create" | "shift:start" | "shift:close" | "fuel:create" | "dvir:create";
@@ -39,7 +41,7 @@ export interface OfflineShiftClosePayload {
   shiftId: string;
   kmEnd: number;
   revenueDeclared: number;
-  collectionMode: "cash" | "momo" | "mix";
+  collectionMode: CollectionMode;
   proofType: string;
   proofValue: string;
 }

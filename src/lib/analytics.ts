@@ -1,22 +1,25 @@
 /**
- * PostHog — suivi produit (opt-in via VITE_POSTHOG_KEY). Pas d’autocapture ; pas de PII dans identify.
+ * PostHog — suivi produit (opt-in via VITE_POSTHOG_KEY). Pas d'autocapture ; pas de PII dans identify.
+ * posthog-js est chargé dynamiquement pour ne pas alourdir le bundle initial (~130 KB).
  */
-import posthog from "posthog-js";
+import type PosthogType from "posthog-js";
 import i18n from "@/i18n";
 import { isNativePlatform } from "@/lib/platform";
 
 const PH_KEY = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
-/** Hôte API PostHog (variable d’environnement, repli UE si absent). */
+/** Hôte API PostHog (variable d'environnement, repli UE si absent). */
 const PH_HOST =
   (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ||
   "https://eu.posthog.com";
 
 let didInit = false;
 let analyticsEnabled = false;
+// Instance chargée dynamiquement — null tant que posthog n'est pas initialisé.
+let _ph: typeof PosthogType | null = null;
 
 /** Propriétés globales PostHog (super properties) — pas de PII. */
 function registerPosthogSuperProps(): void {
-  posthog.register({
+  _ph?.register({
     app_version: import.meta.env.VITE_APP_VERSION ?? "dev",
     lang: i18n.language,
   });
@@ -32,45 +35,49 @@ export function initAnalytics(): void {
     return;
   }
   const native = isNativePlatform();
-  try {
-    posthog.init(PH_KEY, {
-      api_host: PH_HOST,
-      persistence: "localStorage",
-      autocapture: false,
-      capture_pageview: false,
-      capture_pageleave: false,
-      /** WebView natif : session replay souvent fragile ou coûteux ; le web garde le masquage champs sensibles. */
-      disable_session_recording: native,
-      ...(!native
-        ? {
-            session_recording: {
-              maskAllInputs: true,
-              maskInputOptions: { password: true, email: true },
-            },
-          }
-        : {}),
-      sanitize_properties: (properties) => {
-        delete properties["$email"];
-        delete properties["phone"];
-        return properties;
-      },
-    });
-    analyticsEnabled = true;
-    registerPosthogSuperProps();
-  } catch (e) {
-    analyticsEnabled = false;
-    if (import.meta.env.DEV) {
-      console.warn("[Analytics] Échec init PostHog — désactivé", e);
+  // Import dynamique : posthog-js ne bloque pas le rendu initial.
+  void import("posthog-js").then(({ default: posthog }) => {
+    try {
+      posthog.init(PH_KEY!, {
+        api_host: PH_HOST,
+        persistence: "localStorage",
+        autocapture: false,
+        capture_pageview: false,
+        capture_pageleave: false,
+        /** WebView natif : session replay souvent fragile ou coûteux ; le web garde le masquage champs sensibles. */
+        disable_session_recording: native,
+        ...(!native
+          ? {
+              session_recording: {
+                maskAllInputs: true,
+                maskInputOptions: { password: true, email: true },
+              },
+            }
+          : {}),
+        sanitize_properties: (properties) => {
+          delete properties["$email"];
+          delete properties["phone"];
+          return properties;
+        },
+      });
+      _ph = posthog;
+      analyticsEnabled = true;
+      registerPosthogSuperProps();
+    } catch (e) {
+      analyticsEnabled = false;
+      if (import.meta.env.DEV) {
+        console.warn("[Analytics] Échec init PostHog — désactivé", e);
+      }
     }
-  }
+  });
 }
 
 export function identifyAnalyticsUser(userId: string | undefined): void {
-  if (!analyticsEnabled) return;
+  if (!analyticsEnabled || !_ph) return;
   if (userId) {
-    posthog.identify(userId);
+    _ph.identify(userId);
   } else {
-    posthog.reset();
+    _ph.reset();
     registerPosthogSuperProps();
   }
 }
@@ -82,8 +89,8 @@ export function syncAnalyticsLanguage(): void {
 }
 
 export function capturePageview(): void {
-  if (!analyticsEnabled) return;
-  posthog.capture("$pageview", {
+  if (!analyticsEnabled || !_ph) return;
+  _ph.capture("$pageview", {
     $current_url: window.location.href,
     lang: i18n.language,
   });
@@ -107,13 +114,15 @@ type EventName =
   | "tutorial_offline_removed"
   | "tutorial_offline_played"
   | "tutorial_offline_checksum_failed"
-  | "tutorial_offline_purged";
+  | "tutorial_offline_purged"
+  | "tutorial_viewed"
+  | "tutorial_completed";
 
 type EventProps = Record<string, string | number | boolean | null>;
 
 export function track(event: EventName, props?: EventProps): void {
-  if (!analyticsEnabled) return;
-  posthog.capture(event, {
+  if (!analyticsEnabled || !_ph) return;
+  _ph.capture(event, {
     ...props,
     lang: i18n.language,
     $time: new Date().toISOString(),
@@ -192,4 +201,18 @@ export const analytics = {
 
   tutorialOfflinePurged: (tutorialId: string, reason: "quota") =>
     track("tutorial_offline_purged", { tutorial_id: tutorialId, reason }),
+
+  tutorialViewed: (
+    tutorialId: string,
+    source: "online" | "offline",
+    watchedSec: number,
+  ) =>
+    track("tutorial_viewed", {
+      tutorial_id: tutorialId,
+      source,
+      watched_sec: watchedSec,
+    }),
+
+  tutorialCompleted: (tutorialId: string) =>
+    track("tutorial_completed", { tutorial_id: tutorialId }),
 };

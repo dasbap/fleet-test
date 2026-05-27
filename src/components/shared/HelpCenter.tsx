@@ -444,7 +444,7 @@ function HelpPanelInternal() {
             className="w-full gap-2 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
             onClick={() => {
               window.open(
-                "https://wa.me/237XXXXXXXXX?text=Bonjour E-Samba, j'ai besoin d'aide",
+                "https://wa.me/237641341857?text=Bonjour E-Samba, j'ai besoin d'aide",
                 "_blank",
               );
             }}

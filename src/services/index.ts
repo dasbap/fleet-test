@@ -38,6 +38,8 @@ export * from "./billing.service";
 export * from "./whatsapp-monitoring.service";
 export * from "./haptics.service";
 export * from "./tutorial-offline.service";
+export * from "./tutorial.service";
+export * from "./tutorial-progress.service";
 
 // Réexporter les types pour compatibilité
 export type { VehicleDto, VehicleInsertDto, VehicleStatusDto } from '@/types/dto/vehicle.dto';

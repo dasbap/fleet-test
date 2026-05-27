@@ -4,7 +4,7 @@ create table public.onboarding_progress (
   user_id uuid not null references auth.users (id),
   step integer not null default 1,
   completed boolean not null default false,
-  data jsonb not null default '{}',
+  steps_data jsonb not null default '{}',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

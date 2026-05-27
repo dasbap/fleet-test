@@ -20,78 +20,13 @@ import { computeOverallDvirStatus, isDvirItemDefect } from "@/lib/dvir-status";
 import { cn } from "@/lib/utils";
 import type { DvirChecklistConfigItem, DvirInspectionType, DvirItemStatus } from "@/repositories/dvir.repository";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
-
-const INSPECTION_TYPE_OPTIONS: { value: DvirInspectionType; label: string }[] = [
-  { value: "pre_trip", label: "Avant départ" },
-  { value: "post_trip", label: "Après arrivée" },
-  { value: "interim", label: "En cours de trajet" },
-  { value: "weekly", label: "Hebdomadaire" },
-  { value: "periodic", label: "Périodique" },
-];
-
-const ITEM_STATUS_LABELS: Record<DvirItemStatus, { label: string; short: string }> = {
-  ok: { label: "Conforme", short: "OK" },
-  defaut: { label: "Défaut", short: "Déf." },
-  defect: { label: "Défaut", short: "Déf." },
-  na: { label: "N/A", short: "N/A" },
-};
-
-/** Icônes par slug (le RPC ne fournit pas d'icône). */
-const DVIR_ITEM_ICONS: Record<string, string> = {
-  freins_service: "⏹",
-  frein_main: "⛓",
-  direction: "◎",
-  pneus: "◎",
-  eclairage_avant: "◉",
-  eclairage_arriere: "◉",
-  essuie_glaces: "〰",
-  klaxon: "📢",
-  niveaux: "💧",
-  carrosserie: "⬚",
-  ceintures: "⛓",
-  extincteur: "🔥",
-  triangles: "▲",
-  documents: "📄",
-  proprete: "✨",
-};
-
-const STATUS_BANNER: Record<
-  ReturnType<typeof computeOverallDvirStatus>,
-  { label: string; message: string; pulse: boolean; tone: "success" | "warning" | "destructive" }
-> = {
-  ok: {
-    label: "Véhicule opérationnel",
-    message: "Aucun défaut signalé sur la checklist actuelle.",
-    pulse: false,
-    tone: "success",
-  },
-  minor_issues: {
-    label: "Défauts mineurs",
-    message: "Le véhicule peut circuler ; des corrections sont recommandées.",
-    pulse: false,
-    tone: "warning",
-  },
-  unsafe: {
-    label: "Immobilisation recommandée",
-    message: "Un élément critique signale un défaut : ne pas mettre le véhicule sur la route.",
-    pulse: true,
-    tone: "destructive",
-  },
-  defects_noted: {
-    label: "Défauts notés",
-    message: "Vérifiez les items avant départ.",
-    pulse: false,
-    tone: "warning",
-  },
-};
-
-function defaultItemsState(config: DvirChecklistConfigItem[]): Record<string, { status: DvirItemStatus; note: string }> {
-  const s: Record<string, { status: DvirItemStatus; note: string }> = {};
-  for (const c of config) {
-    s[c.slug] = { status: "ok", note: "" };
-  }
-  return s;
-}
+import {
+  defaultItemsState,
+  DVIR_ITEM_ICONS,
+  INSPECTION_TYPE_OPTIONS,
+  ITEM_STATUS_LABELS,
+  STATUS_BANNER,
+} from "./dvirChecklist.constants";
 
 function mergeWithDetail(
   config: DvirChecklistConfigItem[],

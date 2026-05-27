@@ -1,0 +1,114 @@
+---
+import { getCollection, render } from "astro:content";
+import ArticleLayout from "@/layouts/ArticleLayout.astro";
+import LandingLayout from "@/layouts/LandingLayout.astro";
+import {
+  guidePath,
+  getRelatedByPillar,
+  getHubForPillar,
+  solutionPath,
+  featurePath,
+} from "@/lib/content";
+import type { PillarKey } from "@/lib/site";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("guides", ({ data }) => !data.draft);
+  return entries.map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const slug = entry.slug;
+const path = guidePath(slug);
+const isHub = entry.data.kind === "hub";
+const pillar = entry.data.pillar as PillarKey | undefined;
+const hub = pillar ? getHubForPillar(pillar) : null;
+
+let hubArticles: Awaited<ReturnType<typeof getCollection>> = [];
+let relatedLinks: { href: string; label: string }[] = [];
+
+if (isHub && pillar) {
+  hubArticles = (await getCollection("guides")).filter(
+    (g) =>
+      !g.data.draft && g.data.kind === "article" && g.data.pillar === pillar
+  );
+} else if (!isHub) {
+  const related = pillar ? await getRelatedByPillar(pillar, slug, 3) : [];
+  relatedLinks = [
+    ...(hub ? [{ href: hub.href, label: `Hub : ${hub.label}` }] : []),
+    ...related.map((r) => ({
+      href: guidePath(r.slug),
+      label: r.data.title,
+    })),
+    ...(entry.data.relatedSolution
+      ? [
+          {
+            href: solutionPath(entry.data.relatedSolution),
+            label: "Solution métier associée",
+          },
+        ]
+      : []),
+    ...(entry.data.relatedFeature
+      ? [
+          {
+            href: featurePath(entry.data.relatedFeature),
+            label: "Fonctionnalité E-Samba",
+          },
+        ]
+      : []),
+  ];
+}
+---
+
+{
+  isHub ? (
+    <LandingLayout
+      title={entry.data.title}
+      description={entry.data.description}
+      canonicalPath={path}
+      heroLabel="Hub guide"
+      breadcrumbs={[
+        { label: "Guides", href: "/guides" },
+        { label: entry.data.title },
+      ]}
+    >
+      <p>
+        Explorez les articles de ce pilier pour structurer vos décisions terrain
+        et vos indicateurs flotte.
+      </p>
+      <ul class="not-prose grid gap-4 mt-8">
+        {hubArticles.map((a) => (
+          <li>
+            <a
+              href={guidePath(a.slug)}
+              class="block rounded-lg border border-border p-4 hover:border-primary/40"
+            >
+              <strong>{a.data.title}</strong>
+              <p class="text-sm text-muted-foreground mt-1">
+                {a.data.description}
+              </p>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </LandingLayout>
+  ) : (
+    <ArticleLayout
+      title={entry.data.title}
+      description={entry.data.description}
+      canonicalPath={path}
+      pubDate={entry.data.pubDate}
+      breadcrumbs={[
+        { label: "Guides", href: "/guides" },
+        ...(hub ? [{ label: hub.label, href: hub.href }] : []),
+        { label: entry.data.title },
+      ]}
+      relatedLinks={relatedLinks}
+    >
+      <Content />
+    </ArticleLayout>
+  )
+}

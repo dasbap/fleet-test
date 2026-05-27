@@ -42,7 +42,7 @@ export interface OnboardingProgress {
   user_id: string;
   step: 1 | 2 | 3 | 4;
   completed: boolean;
-  data: OnboardingData;
+  steps_data: OnboardingData;
   created_at?: string;
   updated_at?: string;
 }

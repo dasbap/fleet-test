@@ -3,6 +3,7 @@ import HeroSection from "@/components/landing/HeroSection";
 import FeaturesSection from "@/components/landing/FeaturesSection";
 import ModulesSection from "@/components/landing/ModulesSection";
 import PricingSection from "@/components/landing/PricingSection";
+import { DemoVideoSection } from "@/components/landing/DemoVideoSection";
 import { DemoRequestSection } from "@/components/landing/DemoRequestSection";
 import { FaqSection } from "@/components/landing/FaqSection";
 import { WhatsAppButton } from "@/components/landing/WhatsAppButton";
@@ -16,6 +17,7 @@ const Index = () => {
         <HeroSection />
         <FeaturesSection />
         <ModulesSection />
+        <DemoVideoSection />
         <PricingSection />
         <DemoRequestSection />
         <FaqSection />

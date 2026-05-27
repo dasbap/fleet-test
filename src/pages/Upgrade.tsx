@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { AlertTriangle, Check, Smartphone, Zap } from "lucide-react";
+import { AlertTriangle, Check, ExternalLink, Loader2, Smartphone, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import { useAuth } from "@/hooks/useAuth";
 import { useBilling } from "@/hooks/useBilling";
+import { useNotchPayPayment } from "@/hooks/useNotchPayPayment";
 import {
   PUBLIC_BILLING_PERIOD_LABEL,
   PUBLIC_CURRENCY_LABEL,
@@ -17,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { MoMoPaymentDialog } from "@/components/billing/MoMoPaymentDialog";
+import { isBffConfigured } from "@/lib/bff-config";
 
 const SUPPORT_EMAIL = "support@e-samba.com";
 
@@ -39,12 +41,15 @@ function buildRenewalMailto(plan: PlanKey, fleetLabel: string): string {
     .filter(Boolean)
     .join("\n");
 
-  const params = new URLSearchParams({
-    subject: subjects[plan],
-    body,
-  });
+  const params = new URLSearchParams({ subject: subjects[plan], body });
   return `mailto:${SUPPORT_EMAIL}?${params.toString()}`;
 }
+
+const DEFAULT_VEHICLE_COUNTS: Record<PlanKey, number> = {
+  free: 2,
+  starter: 3,
+  pro: 5,
+};
 
 const upgradePlans: Array<{
   key: PlanKey;
@@ -78,7 +83,7 @@ const upgradePlans: Array<{
     priceXAF: PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF,
     popular: false,
     features: [
-      "Jusqu'à 5 véhicules",
+      "Jusqu'à 25 véhicules",
       "1 rôle Gestionnaire",
       "Samba-Fleet et Samba-Cash essentiel",
       "Support par e-mail",
@@ -93,7 +98,7 @@ const upgradePlans: Array<{
     priceXAF: PUBLIC_PRICE_PRO_PER_VEHICLE_XAF,
     popular: true,
     features: [
-      "Jusqu'à 25 véhicules",
+      "Jusqu'à 75 véhicules",
       "Jusqu'à 3 rôles Gestionnaire",
       "Suite complète et scoring",
       "Alertes intelligentes",
@@ -104,14 +109,10 @@ const upgradePlans: Array<{
 ];
 
 /**
- * Offres et renouvellement : affichage lorsque le plan payant est expiré (`lapsedPaid`)
+ * Offres et renouvellement : affiché lorsque le plan payant est expiré (`lapsedPaid`)
  * ou accès direct à `/upgrade`.
  */
 export default function Upgrade() {
-  const merchantCodes = {
-    orange: import.meta.env.VITE_ORANGE_MONEY_MERCHANT as string | undefined,
-    mtn: import.meta.env.VITE_MTN_MOMO_MERCHANT as string | undefined,
-  };
   const {
     user,
     orgId,
@@ -134,36 +135,43 @@ export default function Upgrade() {
     amountXaf: number;
   } | null>(null);
 
-  if (authLoading) {
-    return <PageLoader />;
-  }
+  const notchPay = useNotchPayPayment();
+  // Quelle carte est en cours de paiement Notch Pay
+  const [notchPendingKey, setNotchPendingKey] = useState<PlanKey | null>(null);
 
-  if (!user) {
-    return <Navigate to={ROUTE_PATHS.auth} replace />;
-  }
+  const notchAvailable = isBffConfigured();
 
-  if (isTenantOrgLoading) {
-    return <PageLoader />;
-  }
-
-  if (!canQueryBilling) {
-    return <Navigate to={ROUTE_PATHS.tenantBootstrap} replace />;
-  }
-
-  if (billingLoading) {
-    return <PageLoader />;
-  }
+  if (authLoading) return <PageLoader />;
+  if (!user) return <Navigate to={ROUTE_PATHS.auth} replace />;
+  if (isTenantOrgLoading) return <PageLoader />;
+  if (!canQueryBilling) return <Navigate to={ROUTE_PATHS.tenantBootstrap} replace />;
+  if (billingLoading) return <PageLoader />;
 
   const fleetLabel = [orgId, fleetId].filter(Boolean).join(" / ");
+
+  function handleNotchPay(plan: typeof upgradePlans[number]) {
+    if (plan.key === "free" || notchPay.isPending) return;
+    const vehicleCount = DEFAULT_VEHICLE_COUNTS[plan.key];
+    setNotchPendingKey(plan.key);
+    notchPay.mutate(
+      {
+        planCode: plan.key,
+        planName: plan.name,
+        vehicleCount,
+        durationMonths: 1,
+      },
+      {
+        onSettled: () => setNotchPendingKey(null),
+      },
+    );
+  }
 
   return (
     <div className="bg-muted/30 min-h-screen py-10 md:py-16">
       <div className="container mx-auto max-w-6xl space-y-8 px-4">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-primary text-sm font-medium uppercase tracking-wider">
-              E-Samba
-            </p>
+            <p className="text-primary text-sm font-medium uppercase tracking-wider">E-Samba</p>
             <h1 className="font-heading mt-2 text-3xl font-bold md:text-4xl">
               Abonnement et offres
             </h1>
@@ -181,90 +189,123 @@ export default function Upgrade() {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Abonnement expiré</AlertTitle>
             <AlertDescription>
-              Votre abonnement payant n’est plus actif. Renouvelez un plan ou contactez-nous
-              pour adapter votre formule afin de retrouver l’accès complet aux fonctionnalités
+              Votre abonnement payant n'est plus actif. Renouvelez un plan ou contactez-nous
+              pour adapter votre formule afin de retrouver l'accès complet aux fonctionnalités
               concernées.
             </AlertDescription>
           </Alert>
         )}
 
         <div className="grid gap-6 md:grid-cols-3">
-          {upgradePlans.map((plan) => (
-            <div
-              key={plan.key}
-              className={cn(
-                "relative rounded-2xl border bg-card p-8 transition-all duration-300",
-                plan.popular
-                  ? "border-primary shadow-glow scale-[1.02] md:scale-105"
-                  : "border-border hover:border-primary/30",
-              )}
-            >
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <div className="bg-primary text-primary-foreground flex items-center gap-1 rounded-full px-4 py-1.5 text-sm font-medium">
-                    <Zap className="h-4 w-4" />
-                    <span>Populaire</span>
-                  </div>
-                </div>
-              )}
+          {upgradePlans.map((plan) => {
+            const isPendingThis = notchPendingKey === plan.key;
 
-              <div className="mb-8 text-center">
-                <h2 className="font-heading mb-2 text-xl font-bold">{plan.name}</h2>
-                <p className="text-muted-foreground mb-4 text-sm">{plan.description}</p>
-                <div className="flex items-baseline justify-center gap-1">
-                  <span className="font-heading text-4xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground text-lg">{PUBLIC_CURRENCY_LABEL}</span>
-                </div>
-                <span className="text-muted-foreground text-sm">{PUBLIC_BILLING_PERIOD_LABEL}</span>
-              </div>
-
-              <ul className="mb-8 space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <div className="bg-primary/10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
-                      <Check className="text-primary h-3 w-3" />
-                    </div>
-                    <span className="text-foreground/80 text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="flex flex-col gap-2">
-                {plan.key !== "free" && (
-                  <Button
-                    className="w-full bg-orange-500 hover:bg-orange-600"
-                    onClick={() => {
-                      const pricePerVehicle =
-                        plan.key === "pro"
-                          ? PUBLIC_PRICE_PRO_PER_VEHICLE_XAF
-                          : PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF;
-                      const defaultVehicles = plan.key === "pro" ? 5 : 3;
-                      setMomoDialog({
-                        planCode: plan.key,
-                        planName: plan.name,
-                        vehicleCount: defaultVehicles,
-                        amountXaf: pricePerVehicle * defaultVehicles,
-                      });
-                    }}
-                  >
-                    <Smartphone className="h-4 w-4 mr-1.5" />
-                    Payer Mobile Money
-                  </Button>
+            return (
+              <div
+                key={plan.key}
+                className={cn(
+                  "relative rounded-2xl border bg-card p-8 transition-all duration-300",
+                  plan.popular
+                    ? "border-primary shadow-glow scale-[1.02] md:scale-105"
+                    : "border-border hover:border-primary/30",
                 )}
-                <Button
-                  className="w-full"
-                  variant={plan.key !== "free" ? "outline" : plan.popular ? "default" : "outline"}
-                  asChild
-                >
-                  <a href={buildRenewalMailto(plan.key, fleetLabel)}>{plan.cta}</a>
-                </Button>
+              >
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <div className="bg-primary text-primary-foreground flex items-center gap-1 rounded-full px-4 py-1.5 text-sm font-medium">
+                      <Zap className="h-4 w-4" />
+                      <span>Populaire</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mb-8 text-center">
+                  <h2 className="font-heading mb-2 text-xl font-bold">{plan.name}</h2>
+                  <p className="text-muted-foreground mb-4 text-sm">{plan.description}</p>
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="font-heading text-4xl font-bold">{plan.price}</span>
+                    <span className="text-muted-foreground text-lg">{PUBLIC_CURRENCY_LABEL}</span>
+                  </div>
+                  <span className="text-muted-foreground text-sm">{PUBLIC_BILLING_PERIOD_LABEL}</span>
+                </div>
+
+                <ul className="mb-8 space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2">
+                      <div className="bg-primary/10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
+                        <Check className="text-primary h-3 w-3" />
+                      </div>
+                      <span className="text-foreground/80 text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="flex flex-col gap-2">
+                  {/* Bouton Notch Pay — paiement automatisé (webhook) */}
+                  {plan.key !== "free" && notchAvailable && (
+                    <Button
+                      className="w-full"
+                      onClick={() => handleNotchPay(plan)}
+                      disabled={notchPay.isPending}
+                    >
+                      {isPendingThis ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                          Redirection…
+                        </>
+                      ) : (
+                        <>
+                          <ExternalLink className="h-4 w-4 mr-1.5" />
+                          Payer avec Notch Pay
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                  {/* Bouton Mobile Money manuel (Orange / MTN) */}
+                  {plan.key !== "free" && (
+                    <Button
+                      className="w-full bg-orange-500 hover:bg-orange-600"
+                      variant="default"
+                      disabled={notchPay.isPending}
+                      onClick={() => {
+                        const pricePerVehicle =
+                          plan.key === "pro"
+                            ? PUBLIC_PRICE_PRO_PER_VEHICLE_XAF
+                            : PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF;
+                        const defaultVehicles = DEFAULT_VEHICLE_COUNTS[plan.key];
+                        setMomoDialog({
+                          planCode: plan.key,
+                          planName: plan.name,
+                          vehicleCount: defaultVehicles,
+                          amountXaf: pricePerVehicle * defaultVehicles,
+                        });
+                      }}
+                    >
+                      <Smartphone className="h-4 w-4 mr-1.5" />
+                      Payer Mobile Money
+                    </Button>
+                  )}
+
+                  {/* Contact support */}
+                  <Button
+                    className="w-full"
+                    variant={plan.key !== "free" ? "outline" : plan.popular ? "default" : "outline"}
+                    asChild
+                  >
+                    <a href={buildRenewalMailto(plan.key, fleetLabel)}>{plan.cta}</a>
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <p className="text-muted-foreground text-center text-xs">
-          Paiements acceptés : Orange Money, MTN MoMo. Activation sous 24 h après confirmation.
+          Paiements acceptés : Notch Pay (Mobile Money CM/Afrique), Orange Money, MTN MoMo.{" "}
+          {notchAvailable
+            ? "Activation automatique après confirmation webhook."
+            : "Activation sous 24 h après confirmation."}
         </p>
       </div>
 

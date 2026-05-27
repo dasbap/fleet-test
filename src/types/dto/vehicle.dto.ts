@@ -3,7 +3,10 @@
  * Le modèle domaine camelCase est dans `@/types/vehicle`.
  */
 
-export type VehicleStatusDto = "ok" | "blocked";
+import type { VehicleStatus } from '@/domain/constants/vehicleStatus';
+
+/** Aligné sur `vehicules.status` — alias DTO pour la couche persistance. */
+export type VehicleStatusDto = VehicleStatus;
 
 export interface VehicleActiveAssignmentDto {
   id: string;

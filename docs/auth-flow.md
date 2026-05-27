@@ -62,8 +62,34 @@ Ce comportement est cohérent entre:
 - `useRouteAccess` (état de garde des routes)
 - `ProtectedRoute` et `OnboardingRoute` (couche présentation/navigation)
 
+## Mobile Capacitor (Supabase Auth)
+
+Sous l’app native, [`getAuthRedirectUrl`](../src/features/auth/utils/authRedirects.ts) utilise par défaut le schéma **`esamba://`** (ex. `esamba://auth/callback`, `esamba://auth/update-password`). [`DeepLinkListener`](../src/components/navigation/DeepLinkListener.tsx) et [`resolveAppUrl`](../src/lib/deepLinks/resolveAppUrl.ts) transforment ces URLs en routes SPA (`/auth/callback`, etc.).
+
+**Supabase Dashboard → Authentication → URL Configuration**
+
+- Site URL : `https://www.e-samba.com`
+- Redirect URLs (ajouter selon le flux) :
+  - `esamba://auth/callback`
+  - `esamba://auth/update-password`
+  - `https://www.e-samba.com/auth/callback`
+  - `https://www.e-samba.com/auth/callback/**`
+  - `https://www.e-samba.com/auth/update-password`
+  - `https://www.e-samba.com/auth/update-password/**`
+
+**Build mobile** (`.env.local` avant `npm run build:capacitor`) :
+
+- `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (obligatoires)
+- `VITE_APP_URL=https://www.e-samba.com` recommandé si vous préférez les liens email en HTTPS (App Links)
+- `VITE_AUTH_MOBILE_USE_WEB_REDIRECTS=true` pour forcer les redirects HTTPS même dans l’app native
+
+Checklist complète : [mobile-qa-checklist.md](./mobile-qa-checklist.md).
+
+**Application automatique** (empreintes Android + push Supabase) : `npm run supabase:push-auth-config` (voir `scripts/apply-mobile-store-setup.mjs`). Définir `APPLE_TEAM_ID` dans `.env.local` pour mettre à jour `apple-app-site-association`.
+
 ## Tests
 
 - Tests de la logique pure : [`src/lib/auth-flow.test.ts`](../src/lib/auth-flow.test.ts)
 - Smoke test de redirection gate : [`src/pages/PostLoginGate.test.tsx`](../src/pages/PostLoginGate.test.tsx)
+- Deep links / App Links : [`src/test/resolveAppUrl.test.ts`](../src/test/resolveAppUrl.test.ts)
 

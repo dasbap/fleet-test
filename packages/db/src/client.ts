@@ -7,10 +7,7 @@ import { PrismaClient } from '@prisma/client'
 // En production (Vercel serverless), chaque invocation a son propre
 // contexte — le singleton n'existe que le temps de la warm instance.
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __prisma: PrismaClient | undefined
-}
+const globalForPrisma = globalThis as unknown as { __prisma?: PrismaClient }
 
 function createPrismaClient(): PrismaClient {
   return new PrismaClient({
@@ -29,8 +26,8 @@ function createPrismaClient(): PrismaClient {
 }
 
 export const prisma: PrismaClient =
-  globalThis.__prisma ?? createPrismaClient()
+  globalForPrisma.__prisma ?? createPrismaClient()
 
 if (process.env.NODE_ENV !== 'production') {
-  globalThis.__prisma = prisma
+  globalForPrisma.__prisma = prisma
 }

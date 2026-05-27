@@ -106,6 +106,10 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
       .order("created_at", { ascending: false });
 
     if (error) {
+      // AbortError pendant une transition auth (signInWithPassword) — non bloquant
+      if (error.message?.includes("AbortError") || error.code === "20") {
+        return [];
+      }
       console.error("Error fetching fleet adhesions (minimal):", error);
       throw new Error(error.message);
     }
@@ -267,29 +271,95 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
   }
 
   /**
-   * Vérifie si l'utilisateur a une adhésion active pour la flotte (pour checkPendingInvitation).
-   */
-  async findActiveMembershipByUserAndFleet(userId: string, fleetId: string): Promise<{ id: string } | null> {
-    const { data, error } = await supabase
-      .from('flotte_adhesions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('fleet_id', fleetId)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error finding membership:', error);
-      throw new Error(error.message);
-    }
-    return data as { id: string } | null;
-  }
-
-  /**
    * Désactive un membre (le retire de l'équipe)
    */
   async deactivateMember(membershipId: string): Promise<void> {
     await this.update(membershipId, { is_active: false });
+  }
+
+  /**
+   * Liste les membres via RPC sécurisée (profils inclus).
+   */
+  async findAllViaRpc(fleetId: string): Promise<FleetMember[]> {
+    const { data, error } = await supabase.rpc('get_fleet_members', {
+      p_fleet_id: fleetId,
+    });
+
+    if (error) {
+      console.error('Error fetching fleet members via RPC:', error);
+      throw new Error(error.message);
+    }
+
+    return ((data as Array<Record<string, unknown>>) ?? []).map((row) => ({
+      id: row.id as string,
+      user_id: row.user_id as string,
+      fleet_id: row.fleet_id as string,
+      role: row.role as RoleType,
+      is_active: row.is_active as boolean,
+      created_at: row.created_at as string,
+      profile: {
+        full_name: (row.full_name as string | null) ?? null,
+        phone: (row.phone as string | null) ?? null,
+      },
+      email: null,
+    }));
+  }
+
+  /**
+   * Met à jour le rôle via RPC (organizer uniquement côté serveur).
+   */
+  async updateRoleViaRpc(adhesionId: string, role: RoleType): Promise<string> {
+    const { data, error } = await supabase.rpc('update_fleet_member_role', {
+      p_adhesion_id: adhesionId,
+      p_role: role,
+    });
+
+    if (error || !data) {
+      console.error('Error updating member role via RPC:', error);
+      throw new Error(error?.message ?? 'Impossible de modifier le rôle.');
+    }
+
+    return data as string;
+  }
+
+  /**
+   * Retire complètement un membre de la flotte (tous rôles désactivés).
+   */
+  async offboardMember(userId: string, fleetId: string): Promise<void> {
+    const { error } = await supabase.rpc('offboard_member', {
+      p_user_id: userId,
+      p_fleet_id: fleetId,
+    });
+
+    if (error) {
+      console.error('Error offboarding member:', error);
+      throw new Error(error.message);
+    }
+  }
+
+  /**
+   * Adhésion active pour un couple user/flotte (checkPendingInvitation, RBAC).
+   */
+  async findActiveMembershipByUserAndFleet(
+    userId: string,
+    fleetId: string,
+  ): Promise<Pick<FleetMember, 'id' | 'user_id' | 'fleet_id' | 'role' | 'is_active'> | null> {
+    const { data, error } = await supabase
+      .from('flotte_adhesions')
+      .select('id, user_id, fleet_id, role, is_active')
+      .eq('user_id', userId)
+      .eq('fleet_id', fleetId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error finding active membership:', error);
+      throw new Error(error.message);
+    }
+
+    return data as Pick<FleetMember, 'id' | 'user_id' | 'fleet_id' | 'role' | 'is_active'> | null;
   }
 
   /**

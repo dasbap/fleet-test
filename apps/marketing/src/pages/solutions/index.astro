@@ -1,0 +1,43 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getPublishedSolutions, solutionPath } from "@/lib/content";
+
+const solutions = await getPublishedSolutions();
+---
+
+<BaseLayout
+  title="Solutions par métier"
+  description="E-Samba pour transporteurs CEMAC, gestionnaires de flotte, PME logistique et équipes opérations."
+  canonicalPath="/solutions"
+>
+  <div class="container mx-auto px-4 max-w-4xl">
+    <header class="mb-12 text-center">
+      <h1 class="font-heading text-4xl font-bold mb-4">Solutions</h1>
+      <p class="text-muted-foreground text-lg">
+        Une offre adaptée à votre rôle et à la taille de votre parc.
+      </p>
+    </header>
+    <ul class="grid gap-6 md:grid-cols-2">
+      {
+        solutions.map((s) => (
+          <li>
+            <a
+              href={solutionPath(s.slug)}
+              class="block h-full rounded-2xl border border-border bg-card p-6 hover:border-primary/40 transition-colors"
+            >
+              {s.data.audience && (
+                <span class="text-xs font-semibold text-primary uppercase tracking-wider">
+                  {s.data.audience}
+                </span>
+              )}
+              <h2 class="font-heading text-xl font-bold mt-2 mb-2">
+                {s.data.title}
+              </h2>
+              <p class="text-sm text-muted-foreground">{s.data.description}</p>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</BaseLayout>

@@ -34,21 +34,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DEMO_CREDENTIAL_ACCOUNTS,
-  DEMO_SHARED_PASSWORD,
-} from "@/features/auth/data/demoCredentials";
-import {
-  DEMO_QUICK_ACCOUNTS,
-  DEMO_QUICK_ROLE_COLORS,
-} from "@/features/auth/data/demoQuickAccess";
+// Import de type uniquement — les données sont chargées dynamiquement (hors bundle prod)
+import type { DemoCredentialAccount } from "@/features/auth/data/demoCredentials";
 import { buildAuthHref, isAuthSignupMode } from "@/navigation/authEntryUrl";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { getAuthRedirectUrl } from "@/features/auth/utils/authRedirects";
 import {
   getSafePostLoginPath,
   LEGACY_POST_LOGIN_REDIRECT_PARAM,
   POST_LOGIN_NEXT_PARAM,
 } from "@/navigation/postLoginRedirect";
+import {
+  DEMO_DEV_PASSWORD,
+  DEMO_UI_ENABLED,
+  IS_PROD,
+  loadDemoAuthUiData,
+} from "@/features/auth/lib/demoAuthUi";
 
 /**
  * Page d’authentification E-Samba (connexion, inscription, réinitialisation).
@@ -85,6 +86,11 @@ const Auth = () => {
   const [showDemoCredentials, setShowDemoCredentials] = useState(false);
   const [mockLoginRole, setMockLoginRole] = useState<MobileAppRole>("FLEET_MANAGER");
 
+  // Données démo chargées dynamiquement — absentes du bundle production
+  const [demoAccounts,      setDemoAccounts]      = useState<DemoCredentialAccount[]>([]);
+  const [demoQuickAccounts, setDemoQuickAccounts]  = useState<DemoCredentialAccount[]>([]);
+  const [demoRoleColors,    setDemoRoleColors]     = useState<ReadonlyArray<string>>([]);
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -96,23 +102,25 @@ const Auth = () => {
     setFormData((prev) => ({
       ...prev,
       email,
-      password: DEMO_SHARED_PASSWORD,
+      password: DEMO_DEV_PASSWORD,
     }));
     setShowDemoCredentials(false);
   };
 
-  /** Connexion démo : même flux que le formulaire (`signIn` → `/post-login?next=`). */
+  /** Connexion démo rapide — uniquement en dev/staging (IS_PROD = false). */
   const handleDemoQuickLogin = async (demoEmail: string) => {
+    // Guard : ne jamais s'exécuter en production
+    if (!DEMO_UI_ENABLED) return;
     setIsLoading(true);
     setFormData((prev) => ({
       ...prev,
       email: demoEmail,
-      password: DEMO_SHARED_PASSWORD,
+      password: DEMO_DEV_PASSWORD,
     }));
     try {
       const { error } = await signIn(
         demoEmail,
-        DEMO_SHARED_PASSWORD,
+        DEMO_DEV_PASSWORD,
         isMockAuthEnabled() ? mockLoginRole : undefined,
       );
       if (error) {
@@ -151,6 +159,17 @@ const Auth = () => {
     }
   }, []);
 
+  // Chargement dynamique des données démo — chunk séparé, jamais dans le bundle prod
+  useEffect(() => {
+    if (!DEMO_UI_ENABLED) return;
+    void (async () => {
+      const { demoAccounts, demoQuickAccounts, demoRoleColors } = await loadDemoAuthUiData();
+      setDemoAccounts(demoAccounts);
+      setDemoQuickAccounts(demoQuickAccounts);
+      setDemoRoleColors(demoRoleColors);
+    })();
+  }, []);
+
   const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const email = formData.email.trim();
@@ -162,24 +181,39 @@ const Auth = () => {
     try {
       const { error } = await requestPasswordReset(
         email,
-        `${window.location.origin}/auth`
+        getAuthRedirectUrl(ROUTE_PATHS.updatePassword)
       );
+      // Rate limit : seul cas où on remonte une erreur visible (anti-énumération).
       if (error) {
-        toast({
-          title: "Erreur",
-          description: error.message === "Email not confirmed" ? "Cet email n'est pas encore confirmé." : error.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
+        const msg = error.message?.toLowerCase() ?? "";
+        const isNetworkError = msg.includes("failed to fetch") || msg.includes("networkerror") || msg.includes("load failed");
+        if (isNetworkError) {
+          toast({ title: "Erreur réseau", description: "Vérifie ta connexion et réessaie.", variant: "destructive" });
+          setIsLoading(false);
+          return;
+        }
+        const isRateLimit = msg.includes("rate") || (error as { status?: number }).status === 429;
+        if (isRateLimit) {
+          toast({ title: "Trop de tentatives", description: "Réessaie dans quelques minutes.", variant: "destructive" });
+          setIsLoading(false);
+          return;
+        }
+        // Toute autre erreur Supabase → on affiche quand même "succès" (anti-énumération).
+        // L'erreur est loggée en dev uniquement.
+        if (import.meta.env.DEV) {
+          console.warn("[AuthPage] resetPasswordForEmail error:", error.message);
+        }
       }
       toast({
         title: "Email envoyé",
         description: "Si un compte existe pour cet email, vous recevrez un lien pour réinitialiser votre mot de passe. Vérifiez aussi les spams.",
       });
       setIsForgotPassword(false);
-    } catch {
-      toast({ title: "Erreur", description: "Impossible d'envoyer l'email.", variant: "destructive" });
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.error("[AuthPage] handleForgotPasswordSubmit unexpected:", err);
+      }
+      toast({ title: "Erreur réseau", description: "Vérifie ta connexion et réessaie.", variant: "destructive" });
     }
     setIsLoading(false);
   };
@@ -520,7 +554,7 @@ const Auth = () => {
               </div>
             </div>
 
-            {isMockAuthEnabled() && !isSignup && (
+            {DEMO_UI_ENABLED && isMockAuthEnabled() && !isSignup && (
               <div className="space-y-2">
                 <Label htmlFor="mock-role">Rôle (session démo)</Label>
                 <Select
@@ -621,7 +655,8 @@ const Auth = () => {
                 )}
               </p>
 
-              {!isSignup && (
+              {/* Accès démo rapide — uniquement si DEMO_UI_ENABLED (dev/staging explicite) */}
+              {DEMO_UI_ENABLED && !isSignup && (
                 <>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mt-8">
                     <div className="flex-1 h-px bg-border" />
@@ -629,7 +664,7 @@ const Auth = () => {
                     <div className="flex-1 h-px bg-border" />
                   </div>
                   <div className="space-y-2 mt-4">
-                    {DEMO_QUICK_ACCOUNTS.map((account, index) => (
+                    {demoQuickAccounts.map((account, index) => (
                       <button
                         key={account.email}
                         type="button"
@@ -643,7 +678,7 @@ const Auth = () => {
                       >
                         <span className="font-medium">
                           Démo{" "}
-                          <span className={DEMO_QUICK_ROLE_COLORS[index] ?? "text-muted-foreground"}>
+                          <span className={demoRoleColors[index] ?? "text-muted-foreground"}>
                             {account.role}
                           </span>
                         </span>
@@ -653,69 +688,67 @@ const Auth = () => {
                       </button>
                     ))}
                   </div>
+                  <div className="mt-4 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowDemoCredentials(true)}
+                      className="text-xs text-muted-foreground hover:text-primary underline"
+                    >
+                      Voir tous les identifiants démo
+                    </button>
+                  </div>
                 </>
               )}
-
-              <div className="mt-4 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setShowDemoCredentials(true)}
-                  className="text-xs text-muted-foreground hover:text-primary underline"
-                >
-                  Voir tous les identifiants démo
-                </button>
-              </div>
             </>
           )}
         </div>
       </div>
 
-      {/* Dialog identifiants démo */}
-      <Dialog open={showDemoCredentials} onOpenChange={setShowDemoCredentials}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Identifiants démo</DialogTitle>
-            <DialogDescription>
-              Comptes de démonstration créés par le script E-Samba. À utiliser uniquement en environnement de test.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm">
-              <span className="font-semibold">Mot de passe (tous les comptes)&nbsp;:</span>{" "}
-              <code className="px-1 py-0.5 rounded bg-muted text-xs">{DEMO_SHARED_PASSWORD}</code>
-            </p>
-            <div className="rounded-md border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium">Rôle</th>
-                    <th className="px-3 py-2 text-left font-medium">Email</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {DEMO_CREDENTIAL_ACCOUNTS.map((account, index) => (
-                    <tr key={account.email} className={index > 0 ? "border-t" : undefined}>
-                      <td className="px-3 py-2">{account.role}</td>
-                      <td className="px-3 py-2 font-mono text-xs">
-                        <button
-                          type="button"
-                          onClick={() => fillDemoCredentials(account.email)}
-                          className="underline underline-offset-2 hover:text-primary"
-                        >
-                          {account.email}
-                        </button>
-                      </td>
+      {/* Dialog identifiants démo — visible uniquement si DEMO_UI_ENABLED */}
+      {DEMO_UI_ENABLED && (
+        <Dialog open={showDemoCredentials} onOpenChange={setShowDemoCredentials}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Identifiants démo</DialogTitle>
+              <DialogDescription>
+                Comptes de démonstration — environnement dev/staging uniquement.
+                Mot de passe via <code className="text-xs">VITE_DEMO_PASSWORD</code> dans <code className="text-xs">.env.development</code>.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="rounded-md border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">Rôle</th>
+                      <th className="px-3 py-2 text-left font-medium">Email</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {demoAccounts.map((account, index) => (
+                      <tr key={account.email} className={index > 0 ? "border-t" : undefined}>
+                        <td className="px-3 py-2">{account.role}</td>
+                        <td className="px-3 py-2 font-mono text-xs">
+                          <button
+                            type="button"
+                            onClick={() => fillDemoCredentials(account.email)}
+                            className="underline underline-offset-2 hover:text-primary"
+                          >
+                            {account.email}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Ces comptes sont soumis aux restrictions démo (RLS, sessions limitées, billing masqué).
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Ne pas utiliser ces identifiants en production. Ils sont réservés aux démonstrations et environnements de test.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

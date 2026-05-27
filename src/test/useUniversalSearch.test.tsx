@@ -7,10 +7,14 @@ const { searchAllMock } = vi.hoisted(() => ({
   searchAllMock: vi.fn(),
 }));
 
-vi.mock("@/services/universalSearch.service", () => ({
-  searchAll: searchAllMock,
-  defaultUniversalSearchDeps: {},
-}));
+vi.mock("@/services/universalSearch.service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/universalSearch.service")>();
+  return {
+    ...actual,
+    searchAll: searchAllMock,
+    searchStaticIndex: vi.fn(() => []),
+  };
+});
 
 function makeResult(
   overrides: Partial<UniversalSearchResult>,

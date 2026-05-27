@@ -1,10 +1,19 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+// Import dynamique : clerk-auth-provider (et @clerk/clerk-react) ne chargent
+// que si VITE_AUTH_PROVIDER=clerk — évite un crash au module-init sinon.
+const ClerkAuthProvider = lazy(() =>
+  import("@/contexts/clerk-auth-provider").then((m) => ({
+    default: m.ClerkAuthProvider,
+  }))
+);
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { AUTH_MODE_CHANGED_EVENT, isMockAuthEnabled } from "@/lib/authMode";
@@ -25,33 +34,17 @@ import {
 import type { AppRole, AuthUser, FleetMembership } from "@/types/auth";
 import { AuthContext, type AuthContextValue } from "@/contexts/auth-context";
 import { isValidUuid } from "@/lib/isUuid";
+import {
+  devLog,
+  devWarn,
+  mapSupabaseUserToAuthUser,
+} from "@/features/auth/lib/authProviderUtils";
 
 const fleetMemberRepository = new FleetMemberRepository();
 const fleetMemberService = new FleetMemberService(fleetMemberRepository);
 const fleetRepository = new FleetRepository();
 const fleetService = new FleetService(fleetRepository);
 const ACTIVE_FLEET_STORAGE_KEY = "esamba.active_fleet_id";
-
-const isDev =
-  typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
-const devLog = (...args: unknown[]) => {
-  if (isDev) console.log(...args);
-};
-const devWarn = (...args: unknown[]) => {
-  if (isDev) console.warn(...args);
-};
-
-function mapSupabaseUserToAuthUser(user: User | null): AuthUser | null {
-  if (!user) return null;
-  return {
-    id: user.id,
-    email: user.email ?? undefined,
-    phone: user.phone ?? undefined,
-    created_at: user.created_at,
-    user_metadata: user.user_metadata as Record<string, unknown>,
-    app_metadata: user.app_metadata as Record<string, unknown>,
-  };
-}
 
 function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -65,6 +58,8 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   >([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isTenantOrgLoading, setIsTenantOrgLoading] = useState<boolean>(false);
+  // Vrai si Supabase a émis PASSWORD_RECOVERY (clic lien email reset) — bloque l'aiguillage normal.
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(false);
 
   const processPendingInvitation = async (sessionUser: User): Promise<void> => {
     const pendingCode = await checkPendingInvitation(sessionUser);
@@ -215,10 +210,27 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === "INITIAL_SESSION") {
         return;
       }
+
+      // ── Flux reset-password : session temporaire de récupération ──────────────
+      // Ne pas charger les memberships ni appliquer l'aiguillage dashboard.
+      // Le flag isPasswordRecovery redirige le guard vers /auth/update-password.
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true);
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        setIsLoading(false);
+        return;
+      }
+
+      // Après mise à jour du mot de passe, l'event USER_UPDATED signale la fin du flux recovery.
+      if (event === "USER_UPDATED") {
+        setIsPasswordRecovery(false);
+      }
+
       // Après connexion (SIGNED_IN), éviter un rendu avec user défini mais memberships encore vides :
       // PostLoginGate interpréterait à tort l'absence d'adhésion et redirigerait vers /start.
       if (event === "SIGNED_IN" && nextSession?.user) {
@@ -226,28 +238,26 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       }
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
-      try {
+
+      // Déférer fetchMemberships hors du callback Supabase Auth pour éviter l'AbortError :
+      // signInWithPassword avorte les fetch en cours pendant sa propre résolution.
+      // setTimeout(0) laisse la transition auth se terminer avant de requêter la DB.
+      setTimeout(() => {
         if (nextSession?.user) {
-          await fetchMemberships(nextSession.user);
+          fetchMemberships(nextSession.user)
+            .catch((e) =>
+              console.error("Erreur memberships (onAuthStateChange):", e)
+            )
+            .finally(() => setIsLoading(false));
         } else {
           setRole(null);
           setMemberships([]);
           setOrgId(null);
           setActiveFleetIdState(null);
           setTenantOptions([]);
+          setIsLoading(false);
         }
-      } catch (e) {
-        console.error(
-          "Erreur lors du chargement des memberships (onAuthStateChange):",
-          e
-        );
-        setRole(null);
-        setMemberships([]);
-        setActiveFleetIdState(null);
-        setTenantOptions([]);
-      } finally {
-        setIsLoading(false);
-      }
+      }, 0);
     });
 
     void initSession();
@@ -440,6 +450,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       tenantOptions,
       isLoading,
       isTenantOrgLoading,
+      isPasswordRecovery,
       refreshMemberships,
       refreshUser,
       setActiveFleetId,
@@ -455,6 +466,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       tenantOptions,
       isLoading,
       isTenantOrgLoading,
+      isPasswordRecovery,
       refreshMemberships,
       refreshUser,
       setActiveFleetId,
@@ -534,6 +546,7 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
       tenantOptions: [],
       isLoading: false,
       isTenantOrgLoading: false,
+      isPasswordRecovery: false,
       setActiveFleetId: () => {
         // En mode mock, le changement de flotte est géré par la configuration mock.
       },
@@ -554,6 +567,8 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+const USE_CLERK = import.meta.env.VITE_AUTH_PROVIDER === "clerk";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [mockEnabled, setMockEnabled] = useState(() => isMockAuthEnabled());
 
@@ -565,6 +580,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   if (mockEnabled) {
     return <MockAuthProvider>{children}</MockAuthProvider>;
+  }
+  if (USE_CLERK) {
+    return (
+      <Suspense fallback={null}>
+        <ClerkAuthProvider>{children}</ClerkAuthProvider>
+      </Suspense>
+    );
   }
   return <SupabaseAuthProvider>{children}</SupabaseAuthProvider>;
 }
