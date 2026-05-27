@@ -76,13 +76,13 @@ export function getPaymentWebhookSecrets(): {
   };
 }
 
-/** Fournisseur PSP par défaut pour les nouveaux paiements (phase 1 : pas d’appel API sortant). */
+/** Fournisseur PSP par défaut pour les nouveaux paiements. */
 export function getPaymentProvider(): PaymentProviderId {
   const raw = process.env.PAYMENT_PROVIDER?.trim().toLowerCase();
   if (raw && PAYMENT_PROVIDER_VALUES.includes(raw as PaymentProviderId)) {
     return raw as PaymentProviderId;
   }
-  return "manual";
+  return "notch";
 }
 
 export function getAppUrl(): string {

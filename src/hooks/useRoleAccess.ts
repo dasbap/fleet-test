@@ -9,7 +9,7 @@
  *   if (!can("vehicle.create")) return <Forbidden />;
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDemoSession } from "@/hooks/useDemoSession";
@@ -153,11 +153,11 @@ export function useRoleAccess(): UseRoleAccessReturn {
 
   // ── Flottes accessibles ───────────────────────────────────────────────────────
 
-  const accessibleFleets: string[] = isPlatformAdmin
-    ? [] // admin a accès à tout (liste vide = non filtré)
-    : memberships
-        .filter((m) => m.is_active)
-        .map((m) => m.fleet_id);
+  const accessibleFleets: string[] = useMemo(() => {
+    if (isPlatformAdmin) return []; // admin a accès à tout (liste vide = non filtré)
+    const safeMemberships = memberships ?? [];
+    return safeMemberships.filter((m) => m.is_active).map((m) => m.fleet_id);
+  }, [isPlatformAdmin, memberships]);
 
   // ── Contexte RBAC ─────────────────────────────────────────────────────────────
 

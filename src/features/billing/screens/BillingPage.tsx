@@ -1,13 +1,9 @@
-import { useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
-  AlertTriangle,
   ArrowUpRight,
   CalendarClock,
   Car,
   Check,
-  CheckCircle2,
-  Clock,
   CreditCard,
   Download,
   ExternalLink,
@@ -16,11 +12,9 @@ import {
   MessageCircle,
   QrCode,
   RefreshCw,
-  ShieldAlert,
   TriangleAlert,
   X,
   XCircle,
-  Zap,
 } from "lucide-react";
 import { format, formatDistanceToNow, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -40,91 +34,12 @@ import {
   PROVIDER_LABELS,
   type PaymentRecord,
 } from "@/hooks/usePaymentHistory";
-import { toast } from "@/hooks/use-toast";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { isBffConfigured } from "@/lib/bff-config";
 import { formatPublicPriceXaf } from "@/lib/public-pricing";
 import { cn } from "@/lib/utils";
-import type { BillingStatus } from "@/types/fleet-billing";
-
-// ─── Config statuts ────────────────────────────────────────────────────────
-
-const STATUS_CONFIG: Record<BillingStatus, {
-  label: string;
-  badgeClass: string;
-  icon: React.ElementType;
-  alertClass?: string;
-  alertTitle?: string;
-  alertDesc?: string;
-}> = {
-  trial: {
-    label: "Essai gratuit",
-    badgeClass: "bg-blue-100 text-blue-700 border-blue-200",
-    icon: Clock,
-    alertClass: "border-blue-200 bg-blue-50 text-blue-800",
-    alertTitle: "Essai gratuit en cours",
-    alertDesc: "Passez à un plan payant pour continuer sans interruption après la fin de l'essai.",
-  },
-  active: {
-    label: "Actif",
-    badgeClass: "bg-green-100 text-green-700 border-green-200",
-    icon: CheckCircle2,
-  },
-  grace: {
-    label: "Période de grâce",
-    badgeClass: "bg-amber-100 text-amber-700 border-amber-200",
-    icon: AlertTriangle,
-    alertClass: "border-amber-200 bg-amber-50 text-amber-800",
-    alertTitle: "Période de grâce — accès maintenu temporairement",
-    alertDesc: "Votre abonnement a expiré. Un accès minimal au terrain est conservé. Renouvelez avant la suspension automatique.",
-  },
-  suspended: {
-    label: "Suspendu",
-    badgeClass: "bg-red-100 text-red-700 border-red-200",
-    icon: ShieldAlert,
-    alertClass: "border-red-200 bg-red-50 text-red-800",
-    alertTitle: "Flotte suspendue — accès coupé",
-    alertDesc: "Vos véhicules sont inactifs et les features premium désactivées. Renouvelez votre abonnement pour les réactiver.",
-  },
-  enterprise: {
-    label: "Entreprise",
-    badgeClass: "bg-purple-100 text-purple-700 border-purple-200",
-    icon: Zap,
-  },
-};
-
-// ─── Hook callback Notch Pay ───────────────────────────────────────────────
-
-function useNotchPayCallback() {
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  useEffect(() => {
-    const status = searchParams.get("status");
-    const ref    = searchParams.get("ref");
-    if (!status) return;
-
-    if (status === "success" || status === "complete") {
-      toast({
-        title: "Paiement reçu",
-        description: ref
-          ? `Réf. ${ref} — activation en cours via webhook. Rechargez dans quelques instants.`
-          : "Activation en cours via webhook. Rechargez dans quelques instants.",
-      });
-    } else if (status === "failed" || status === "cancelled") {
-      toast({
-        title: "Paiement non complété",
-        description: "Le paiement a été annulé ou a échoué.",
-        variant: "destructive",
-      });
-    }
-
-    const next = new URLSearchParams(searchParams);
-    next.delete("status");
-    next.delete("ref");
-    setSearchParams(next, { replace: true });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-}
+import { STATUS_CONFIG } from "@/features/billing/constants/billingStatusConfig";
+import { useNotchPayCallback } from "@/features/billing/hooks/useNotchPayCallback";
 
 // ─── Page principale ────────────────────────────────────────────────────────
 

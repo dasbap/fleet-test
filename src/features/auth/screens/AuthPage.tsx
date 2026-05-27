@@ -44,6 +44,12 @@ import {
   LEGACY_POST_LOGIN_REDIRECT_PARAM,
   POST_LOGIN_NEXT_PARAM,
 } from "@/navigation/postLoginRedirect";
+import {
+  DEMO_DEV_PASSWORD,
+  DEMO_UI_ENABLED,
+  IS_PROD,
+  loadDemoAuthUiData,
+} from "@/features/auth/lib/demoAuthUi";
 
 /**
  * Page d’authentification E-Samba (connexion, inscription, réinitialisation).
@@ -54,21 +60,6 @@ import {
  * Redirection « retour » : `?next=` sur `/auth` (voir `getLoginPathPreservingReturn` / garde dashboard),
  * pas `location.state.from`. Après succès : navigation vers `/post-login?next=…` puis décision centralisée.
  */
-// true en production (build Vite) — élimine les blocs démo par tree-shaking
-const IS_PROD = import.meta.env.PROD;
-
-// Double guard : VITE_ENABLE_DEMO_UI doit être explicitement "true" pour activer les raccourcis démo.
-// Défensif : protège si IS_PROD est mal évalué (preview deployment, config Vercel incorrecte, etc.)
-// À définir uniquement dans .env.development — jamais en production.
-const DEMO_UI_ENABLED = !IS_PROD && import.meta.env.VITE_ENABLE_DEMO_UI === "true";
-
-// Mot de passe partagé pour les sessions démo locales/staging.
-// À définir dans .env.development uniquement, JAMAIS committé.
-// Ce bloc est dead-code en production (DEMO_UI_ENABLED = false → tree-shaken par Vite).
-const DEMO_DEV_PASSWORD = DEMO_UI_ENABLED
-  ? (import.meta.env.VITE_DEMO_PASSWORD as string | undefined) ?? ""
-  : "";
-
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -172,11 +163,10 @@ const Auth = () => {
   useEffect(() => {
     if (!DEMO_UI_ENABLED) return;
     void (async () => {
-      const { DEMO_CREDENTIAL_ACCOUNTS } = await import("@/features/auth/data/demoCredentials");
-      const { DEMO_QUICK_ACCOUNTS, DEMO_QUICK_ROLE_COLORS } = await import("@/features/auth/data/demoQuickAccess");
-      setDemoAccounts(DEMO_CREDENTIAL_ACCOUNTS);
-      setDemoQuickAccounts(DEMO_QUICK_ACCOUNTS);
-      setDemoRoleColors(DEMO_QUICK_ROLE_COLORS);
+      const { demoAccounts, demoQuickAccounts, demoRoleColors } = await loadDemoAuthUiData();
+      setDemoAccounts(demoAccounts);
+      setDemoQuickAccounts(demoQuickAccounts);
+      setDemoRoleColors(demoRoleColors);
     })();
   }, []);
 
