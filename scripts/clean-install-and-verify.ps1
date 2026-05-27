@@ -1,4 +1,4 @@
-# Réparation Windows : libère node_modules, réinstalle, build + tests webhook Clerk.
+# Réparation Windows : libère node_modules, réinstalle, build + tests.
 # Exécuter dans PowerShell (fermer npm run dev / autres IDE sur ce dossier avant).
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
@@ -23,13 +23,9 @@ Write-Host "==> npm run build..."
 npm run build
 if ($LASTEXITCODE -ne 0) { throw "npm run build a échoué ($LASTEXITCODE)" }
 
-Write-Host "==> npm run test:clerk-webhook..."
-npm run test:clerk-webhook
-if ($LASTEXITCODE -ne 0) { throw "test:clerk-webhook a échoué ($LASTEXITCODE)" }
-
-Write-Host "==> verify:clerk-webhook-prod..."
-npm run verify:clerk-webhook-prod
-if ($LASTEXITCODE -ne 0) { throw "verify:clerk-webhook-prod a échoué ($LASTEXITCODE)" }
+Write-Host "==> npm test..."
+npm test
+if ($LASTEXITCODE -ne 0) { throw "npm test a échoué ($LASTEXITCODE)" }
 
 Write-Host ""
-Write-Host "Tout est vert : install, build, tests webhook Clerk, vérif prod."
+Write-Host "Tout est vert : install, build, tests."
