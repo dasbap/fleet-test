@@ -1,10 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = [
+  "https://www.e-samba.com",
+  "https://e-samba.com",
+  "https://app.e-samba.com",
+  "capacitor://localhost",
+  "http://localhost:5173",
+  "https://localhost",
+];
+
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") ?? "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
+}
 
 // ─── i18n coaching messages ───────────────────────────────────────────────────
 interface CoachingLocale {
@@ -113,7 +128,8 @@ async function generateElevenLabsAudio(text: string, lang: string): Promise<Arra
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const CORS = corsHeaders(req);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
     const supabase = createClient(
@@ -130,7 +146,7 @@ serve(async (req) => {
     if (!driver_id || !fleet_id || score === undefined) {
       return new Response(JSON.stringify({ error: "driver_user_id, fleet_id, score requis" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
 
@@ -229,12 +245,12 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ session_id: session.id, coaching_text: coachingText, audio_url: audioUrl, push_sent: pushSent }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { headers: { ...CORS, "Content-Type": "application/json" } },
     );
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...CORS, "Content-Type": "application/json" },
     });
   }
 });
