@@ -23,7 +23,10 @@ export default function DvirDetailPage() {
 
   const { data, isLoading, isError } = useDvirById(dvirId);
 
-  const itemEntries = data ? Object.entries(data.items) : [];
+  const itemEntries =
+    data?.items != null && typeof data.items === "object"
+      ? Object.entries(data.items as Record<string, { status?: string; note?: string | null }>)
+      : [];
 
   return (
     <main className="container mx-auto space-y-4 p-4">

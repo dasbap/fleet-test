@@ -40,8 +40,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright (Chromium, Firefox, WebKit)
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Run HelpCenter i18n E2E
         env:

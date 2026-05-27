@@ -7,6 +7,7 @@ import { DriverShiftRepository } from '@/repositories/driver-shift.repository';
 import { VehicleRepository } from '@/repositories/vehicle.repository';
 import { OfflineQueueService } from '@/services/offlineQueue.service';
 import { operationsQueryKeys } from '@/hooks/useOperations';
+import type { CollectionMode } from '@/domain/constants/collectionMode';
 
 // Instances singleton des services et repositories
 const driverShiftRepository = new DriverShiftRepository();
@@ -16,7 +17,7 @@ const offlineQueueService = new OfflineQueueService();
 
 // Réexporter les types pour compatibilité
 export type ShiftStatus = 'open' | 'closed';
-export type CollectionMode = 'cash' | 'momo' | 'mix';
+export type { CollectionMode };
 
 export interface DriverShift {
   id: string;

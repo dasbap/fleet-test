@@ -39,10 +39,16 @@ Pour aller plus loin (contenu riche dans le HTML initial), options possibles :
 ## Search Console
 
 1. Créer ou vérifier la propriété pour `https://www.e-samba.com`.
-2. Soumettre le sitemap : `https://www.e-samba.com/sitemap.xml`.
+2. Soumettre le sitemap index : `https://www.e-samba.com/sitemap-index.xml` (ou `sitemap.xml`, même contenu).
 3. Vérifier que le sitemap est bien pris en compte et sans erreur.
 
-Le sitemap est déclaré dans `public/robots.txt` et le fichier est généré dans `public/sitemap.xml`.
+| Fichier | Rôle |
+|---------|------|
+| `public/sitemap-index.xml` | Index : SPA (`sitemap-app.xml`) + marketing Astro |
+| `public/sitemap-app.xml` | Pages www (sans `/dashboard`) — `node scripts/generate-sitemap.mjs` |
+| `marketing.e-samba.com/sitemap-index.xml` | Guides, solutions, fonctionnalités — build Astro |
+
+Hub **flotte / CEMAC** (site séparé) : voir [deployment-marketing-vercel.md](./deployment-marketing-vercel.md) et `apps/marketing/`.
 
 ## URL de base (canonical, og:url)
 
@@ -53,6 +59,41 @@ La base utilisée pour les URLs canoniques et og:url est :
 
 **À faire en production** : définir `VITE_APP_URL=https://www.e-samba.com` dans la configuration Vercel (ou équivalent) pour rester cohérent avec la version canonique du site (www).
 
+## Pages programmatiques `/use-case/`
+
+Landing pages marketing indexables, alimentées par Supabase (`seo_taxonomy`, `seo_use_cases`) et affichées en SPA.
+
+### Pattern d’URL
+
+`/use-case/{outil}-{cible}-{cas-usage}` — ex. `/use-case/esamba-transporteur-pme-maintenance-predictive`
+
+### Publication (CMS Supabase)
+
+1. Insérer ou mettre à jour une ligne dans `seo_use_cases` (dimensions validées via `seo_taxonomy`).
+2. Renseigner les champs SEO : `intention`, `kw_principal`, `entites`, `paa`, `structure_serp`, `secteur` (pour le prompt rédaction interne).
+3. Passer `status` à `published` et définir `published_at`.
+4. Synchroniser le build local :
+   - `npm run seo:use-cases:fetch` — optionnel, lit les pages publiées via la service role et met à jour `src/data/published-use-cases.json`
+   - ou éditer manuellement `src/data/published-use-cases.json` (titres / meta pour le pré-rendu)
+5. `npm run seo:use-cases` — met à jour le bloc `<!-- use-case:auto:* -->` dans `public/sitemap-app.xml`
+6. `npm run build` — pré-rend les métas HTML pour `/use-case` et chaque slug listé dans `ROUTE_META`
+
+**RLS** : lecture publique uniquement pour `status = published`. Pas d’édition côté client (Studio / migrations).
+
+### Fichiers dédiés
+
+- `supabase/migrations/20260524000000_seo_use_cases.sql` — schéma + seeds
+- `src/data/published-use-cases.json` — métas build (sync avec Supabase)
+- `src/pages/UseCaseHub.tsx`, `src/pages/UseCaseDetail.tsx`
+- `scripts/generate-use-case-seo.mjs`
+
+## Hub ressources SEO + IA
+
+- URLs publiques : `/ressources`, `/ressources/seo-ia`, articles sous `/ressources/seo-ia/{slug}`.
+- Contenu : `src/content/seo-ia/` ; métas fusionnées dans `ROUTE_META` via `src/lib/seo-resources.ts`.
+- Sitemap SPA acquisition (sans `/dashboard`) : `npm run sitemap:generate` → `public/sitemap-app.xml`.
+- Pipeline éditorial : [seo-content-pipeline.md](seo-content-pipeline.md) ; KPIs : [seo-ia-hub-kpis.md](seo-ia-hub-kpis.md).
+
 ## Fichiers concernés
 
 - `vercel.json` – Redirections 301, rewrites par route, headers.
@@ -60,4 +101,4 @@ La base utilisée pour les URLs canoniques et og:url est :
 - `src/lib/site.ts` – `SITE_BASE_URL`, `ROUTE_META`, `getCanonicalUrl`.
 - `scripts/vite-plugin-prerender-seo.ts` – Génération d’un `index.html` par route au build avec canonical et meta corrects.
 - `public/robots.txt` – Allow / et référence au sitemap.
-- `public/sitemap.xml` – Liste des URLs.
+- `public/sitemap-index.xml` – Index app + marketing ; `public/sitemap-app.xml` – URLs www.

@@ -1,0 +1,29 @@
+---
+import { getCollection, render } from "astro:content";
+import LandingLayout from "@/layouts/LandingLayout.astro";
+import { solutionPath } from "@/lib/content";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("solutions", ({ data }) => !data.draft);
+  return entries.map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<LandingLayout
+  title={entry.data.title}
+  description={entry.data.description}
+  canonicalPath={solutionPath(entry.slug)}
+  heroLabel={entry.data.audience}
+  breadcrumbs={[
+    { label: "Solutions", href: "/solutions" },
+    { label: entry.data.title },
+  ]}
+>
+  <Content />
+</LandingLayout>

@@ -13,19 +13,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MobileKpiCard } from "./MobileKpiCard";
 import { MobileQuickActions } from "./MobileQuickActions";
 import { getQuickActionsForRole } from "./mobileQuickActionsByRole";
+import { RoleBadge, getRoleLabel } from "@/components/auth/RoleBadge";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import {
   mobileHomeBrandOverline,
   mobileHomeHeroSubtitle,
   mobileHomeHeroTitle,
   mobileScreenStackRelaxed,
 } from "@/lib/mobile/mobileUiTokens";
-
-const roleLabel: Record<string, string> = {
-  organizer: "Organisateur",
-  manager: "Gestionnaire",
-  mechanic: "Mécanicien",
-  driver: "Conducteur",
-};
 
 function KpiGridSkeleton() {
   return (
@@ -42,18 +37,21 @@ function KpiGridSkeleton() {
  */
 export function MobileHomeDashboard() {
   const { role } = useAuth();
+  const { rbac } = useRoleAccess();
   const { kpis, isLoading, isError } = useMobileHomeKpis();
   const copy = getMobileHomeCopy(role);
   const quickActions = getQuickActionsForRole(role);
-  const r = role ?? "organizer";
-  const greeting = roleLabel[r] ?? "Équipe";
+  const greeting = getRoleLabel(rbac.platformRole);
   const L = copy.labels;
 
   return (
     <div className={cn("mx-auto w-full max-w-lg pb-safe", mobileScreenStackRelaxed)}>
       <header className="space-y-2">
         <p className={mobileHomeBrandOverline}>Flotte E-Samba</p>
-        <h1 className={mobileHomeHeroTitle}>Bonjour, {greeting}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className={mobileHomeHeroTitle}>Bonjour !</h1>
+          <RoleBadge role={rbac.platformRole} size="sm" showIcon />
+        </div>
         <p className={mobileHomeHeroSubtitle}>{copy.subtitle}</p>
       </header>
 

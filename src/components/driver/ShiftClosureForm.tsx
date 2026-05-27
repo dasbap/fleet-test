@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import {
+  shiftClosureFormSchema,
+  type ShiftClosureFormValues,
+} from "@/domain/schemas/driver-shift.schema";
+import { COLLECTION_MODE_LABELS, type CollectionMode } from "@/domain/constants/collectionMode";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Form,
@@ -23,24 +27,18 @@ import { useNavigate } from "react-router-dom";
 import { useCloseShift } from "@/hooks/useDriverShifts";
 import { useActivation } from "@/hooks/useActivation";
 
-const closureFormSchema = z.object({
-  kmEnd: z.coerce.number().min(0, "Kilométrage invalide"),
-  revenueDeclared: z.coerce.number().min(0, "Montant invalide"),
-  collectionMode: z.enum(["cash", "momo", "mix"]),
-  notes: z.string().optional(),
-});
-
-type ClosureFormValues = z.infer<typeof closureFormSchema>;
+const closureFormSchema = shiftClosureFormSchema;
+type ClosureFormValues = ShiftClosureFormValues;
 
 interface ShiftClosureFormProps {
   shiftId: string;
   kmStart: number;
 }
 
-const collectionModes = [
-  { value: "cash", label: "Espèces", icon: Banknote },
-  { value: "momo", label: "Mobile Money", icon: Smartphone },
-  { value: "mix", label: "Mixte", icon: CreditCard },
+const collectionModes: { value: CollectionMode; label: string; icon: typeof Banknote }[] = [
+  { value: "cash", label: COLLECTION_MODE_LABELS.cash, icon: Banknote },
+  { value: "momo", label: COLLECTION_MODE_LABELS.momo, icon: Smartphone },
+  { value: "mix", label: COLLECTION_MODE_LABELS.mix, icon: CreditCard },
 ];
 
 const ShiftClosureForm = ({ shiftId, kmStart }: ShiftClosureFormProps) => {

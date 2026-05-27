@@ -63,7 +63,6 @@ model Organisation {
 
   flottes     Flotte[]
   paiements   Paiement[]
-  abonnements Abonnement[]
 
   @@map("organisations")
 }
@@ -291,30 +290,32 @@ model Paiement {
 model Abonnement {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   fleetId   String   @map("fleet_id") @db.Uuid
-  orgId     String   @map("org_id") @db.Uuid
   planId    String   @map("plan_id") @db.Uuid
   paymentId String?  @map("payment_id") @db.Uuid
   startsAt  DateTime @map("starts_at") @db.Timestamptz(6)
   endsAt    DateTime @map("ends_at") @db.Timestamptz(6)
   status    String   @default("active")
 
-  flotte       Flotte       @relation(fields: [fleetId], references: [id], onDelete: Cascade)
-  organisation Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  plan         Plan         @relation(fields: [planId], references: [id])
-  paiement     Paiement?    @relation(fields: [paymentId], references: [id])
-  droits       DroitVehicule[]
+  flotte   Flotte          @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  plan     Plan            @relation(fields: [planId], references: [id])
+  paiement Paiement?       @relation(fields: [paymentId], references: [id])
+  droits   DroitVehicule[]
 
   @@map("abonnements")
 }
 
 model DroitVehicule {
-  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  vehicleId      String  @map("vehicle_id") @db.Uuid
-  subscriptionId String  @map("subscription_id") @db.Uuid
-  active         Boolean @default(true)
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vehicleId      String   @map("vehicle_id") @db.Uuid
+  subscriptionId String   @map("subscription_id") @db.Uuid
+  active         Boolean  @default(true)
+  startsAt       DateTime @default(now()) @map("starts_at") @db.Timestamptz(6)
+  endsAt         DateTime @map("ends_at") @db.Timestamptz(6)
+  status         String   @default("active")
+  isPremium      Boolean  @default(false) @map("is_premium")
 
-  vehicule    Vehicule   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  abonnement  Abonnement @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  vehicule   Vehicule   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  abonnement Abonnement @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
   @@unique([vehicleId, subscriptionId])
   @@map("droits_vehicules")

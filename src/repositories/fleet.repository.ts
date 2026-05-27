@@ -17,9 +17,10 @@ export class FleetRepository {
   async findByIds(fleetIds: string[]): Promise<FleetInfo[]> {
     if (fleetIds.length === 0) return [];
 
+    // Sélection directe de org_id sur flottes — évite le join PostgREST (FK schema cache instable)
     const { data, error } = await supabase
       .from('flottes')
-      .select('id, name, organisations(id, country_code)')
+      .select('id, name, org_id')
       .in('id', fleetIds);
 
     if (error) {
@@ -27,11 +28,10 @@ export class FleetRepository {
       throw new Error(error.message);
     }
 
-    return (data || []).map((row: { id: string; name: string; organisations: { id: string; country_code: string } | null }) => ({
+    return (data || []).map((row: { id: string; name: string; org_id: string | null }) => ({
       id: row.id,
       name: row.name,
-      orgId: row.organisations?.id ?? undefined,
-      country_code: row.organisations?.country_code,
+      orgId: row.org_id ?? undefined,
     }));
   }
 }

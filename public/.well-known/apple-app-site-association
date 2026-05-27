@@ -1,0 +1,25 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID.com.esamba.flotte",
+        "paths": [
+          "/auth/*",
+          "/dashboard/*",
+          "/post-login",
+          "/post-login/*",
+          "/onboarding",
+          "/onboarding/*",
+          "/start",
+          "/terrain",
+          "/terrain/*",
+          "/maintenance",
+          "/maintenance/*",
+          "/upgrade",
+          "/login"
+        ]
+      }
+    ]
+  }
+}

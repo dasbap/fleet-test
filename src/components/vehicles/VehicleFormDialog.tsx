@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import {
+  vehicleCreateFormSchema,
+  type VehicleCreateFormValues,
+} from "@/domain/schemas/vehicle.schema";
 import {
   Dialog,
   DialogContent,
@@ -22,15 +25,8 @@ import { Button } from "@/components/ui/button";
 import { useCreateVehicle } from "@/hooks/useVehicles";
 import { useActivation } from "@/hooks/useActivation";
 
-const vehicleFormSchema = z.object({
-  registration: z.string().min(1, "L'immatriculation est requise"),
-  brand: z.string().min(1, "La marque est requise"),
-  model: z.string().min(1, "Le modèle est requis"),
-  year: z.coerce.number().min(1990, "Année invalide").max(new Date().getFullYear() + 1, "Année invalide"),
-  current_km: z.coerce.number().min(0, "Kilométrage invalide"),
-});
-
-type VehicleFormValues = z.infer<typeof vehicleFormSchema>;
+const vehicleFormSchema = vehicleCreateFormSchema;
+type VehicleFormValues = VehicleCreateFormValues;
 
 interface VehicleFormDialogProps {
   open: boolean;

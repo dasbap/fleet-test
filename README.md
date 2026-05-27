@@ -34,7 +34,23 @@ npm run check:supabase
 npm run dev
 ```
 
-L’application est disponible sur `http://localhost:8080`.
+L’application est disponible sur `http://localhost:8080` (ou un port voisin si **8080** est déjà pris).
+
+**Ouvrir le navigateur une fois le serveur prêt (recommandé si la page reste vide ou se charge mal) :**
+
+```sh
+# Terminal 1 : serveur
+npm run dev
+
+# Terminal 2 : attend des réponses HTTP sur /, main.tsx et locales, puis ouvre le navigateur
+npm run open:local
+```
+
+**Tout-en-un** (Vite sans ouverture auto intégrée, puis une seule ouverture quand le serveur répond) : `npm run dev:local`.
+
+**Smoke** (ouverture + contrôle réseau headless Playwright, pratique après changement de dépendances) : `npm run smoke:dev-local`.
+
+Variables optionnelles : `LOCAL_DEV_PORTS` (ex. `8080,5173` ; `E2E_PORTS` est encore accepté comme alias), `LOCAL_OPEN_WAIT_MS` (délai d’attente en ms), `SMOKE_STRICT=1` pour exiger aussi `/favicon.svg` à l’ouverture et ne pas ignorer les erreurs sous `/.vite/deps/` dans l’audit réseau. Pour n’attendre que le serveur sans lancer de fenêtre navigateur : `node scripts/open-local-browser.mjs --no-open` ou `npm run smoke:dev-local:ci`.
 
 ## Comptes démo
 
@@ -78,6 +94,12 @@ Checklist : prévisualisations 401, variables `VITE_*`, auth Supabase, DNS et do
 ## Scripts disponibles
 
 - `npm run dev` — serveur de développement
+- `npm run dev:local` — Vite puis ouverture du navigateur quand `/`, `main.tsx` et `locales` répondent
+- `npm run open:local` — ouvre le navigateur si un `npm run dev` est déjà actif (même attente HTTP)
+- `npm run smoke:dev-local` — `open:local` puis audit réseau (`scripts/dev-network-check.mjs`)
+- `npm run smoke:dev-local:ci` — idem sans ouvrir de navigateur (CI / SSH)
+- `npm run verify:auth-chunk` — Playwright : `/` puis `/auth` (ou `VERIFY_AUTH_PATH=/login`), vérifie l’absence de double requête sur les modules d’écran auth ; `npm run verify:auth-chunk:verbose` journalise les URLs `.tsx` (équivalent partiel F12 → Réseau)
+- `npm run verify:local:force` — démarre Vite si besoin, puis smoke réseau + vérifications auth `/auth` et `/login` ; `VERIFY_SKIP_AUTH=1` pour n’exécuter que le smoke réseau
 - `npm run build` — build de production
 - `npm run build:analyze` — build avec génération d’un rapport treemap des bundles (`dist/stats.html`, équivalent à webpack-bundle-analyzer pour Vite/Rollup)
 - `npm run analyze:visual` — alias de `build:analyze` (ouvrir `dist/stats.html` dans le navigateur après build)
@@ -95,6 +117,11 @@ Checklist : prévisualisations 401, variables `VITE_*`, auth Supabase, DNS et do
 - `npm run test:integration:supabase:linked` — suite SQL Supabase forcée en linked (CI/projet lié)
 - `npm run build:capacitor` — build web avec chemins relatifs (`base: './'`) pour Capacitor
 - `npm run cap:doctor` — diagnostic Node/Capacitor (explique pourquoi `npx cap sync` peut échouer)
+- `npm run verify:capacitor-config` — vérifie l’alignement `capacitor.config.ts` / Android / iOS / deep links (sans émulateur)
+- `npm run android` — `mobile:prepare` puis ouverture Android Studio
+- `npm run ios` — `mobile:prepare` puis ouverture Xcode (macOS)
+- Checklist QA appareil : [`docs/mobile-qa-checklist.md`](docs/mobile-qa-checklist.md)
+- QA rapide Android (Windows) : `rebuild-and-install.bat --qa` — build Capacitor, install APK debug, deep links `esamba://tutorials` (voir [`docs/deep-links-esamba.md`](docs/deep-links-esamba.md))
 - `npm run cap:sync` — synchronise Capacitor (Android/iOS) avec un runtime Node 22 isolé
 - `npm run mobile:prepare` — `build:capacitor` puis `cap:sync` (met à jour `android/` et `ios/`)
 - `npm run cap:assets` — régénère icônes et splash natifs à partir de `assets/logo.svg` (@capacitor/assets)
@@ -136,6 +163,7 @@ Si `npx cap sync` échoue avec `The Capacitor CLI requires NodeJS >=22.0.0`, lan
 
 - **Parcours métier à valider** : connexion → liste véhicules / flotte mobile → formulaire de déclaration d’incident (`/dashboard/incidents/declare`). Vérifier le `.env` utilisé au `build:capacitor` (backend Supabase embarqué).
 - **Installation USB** : `adb install -r chemin/vers/app-release.apk` (plusieurs appareils : `adb -s <serial> install -r …`). La commande `adb` se trouve dans `platform-tools` du SDK Android — ajoutez ce dossier au `PATH` si besoin. Sur **Xiaomi / Redmi**, activer si besoin l’installation via USB dans les options développeur.
+- **Rebuild debug + deep links tutoriels** : `rebuild-and-install.bat` (ou `--qa` / `--qa-full`) — utilise `npm run build:capacitor` et [`scripts/adb-env.bat`](scripts/adb-env.bat) pour résoudre `adb`.
 - **Mémoire** : Android Studio → **View → Tool Windows → Profiler** sur le processus `com.esamba.flotte` (l’ancien *Device Monitor* n’est plus supporté). Pour la WebView : navigateur Chrome sur le PC → `chrome://inspect#devices` → inspecter la WebView Capacitor.
 - **Réseau type 3G** : avec débogage USB, inspecter la WebView → onglet **Network** → profil **Slow 3G** (ou tester la PWA dans Chrome desktop avec throttling pour comparaison).
 

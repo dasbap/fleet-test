@@ -4,7 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useDashcams, useDashcamAlerts, useAckDashcamAlert } from "@/hooks/useDashcam";
+import {
+  useDashcams,
+  useDashcamAlerts,
+  useAckDashcamAlert,
+  type DashcamAlert,
+} from "@/hooks/useDashcam";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +38,7 @@ const SEVERITY_BADGE: Record<string, "destructive" | "secondary" | "outline"> = 
   low:      "outline",
 };
 
-function AlertCard({ alert, onAck }: { alert: any; onAck: (id: string) => void }) {
+function AlertCard({ alert, onAck }: { alert: DashcamAlert; onAck: (id: string) => void }) {
   return (
     <div className={cn("flex gap-3 p-3 rounded-lg border", SEVERITY_COLOR[alert.severity])}>
       {alert.snapshot_url && (
@@ -167,7 +172,7 @@ export default function DashcamPage() {
                   <div className="flex-1">
                     <p className="font-medium text-sm">{cam.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {cam.brand} · Canal {(cam as any).channel ?? 1}
+                      {cam.brand} · Canal {cam.channel ?? 1}
                       {cam.firmware_ver && ` · FW ${cam.firmware_ver}`}
                     </p>
                   </div>

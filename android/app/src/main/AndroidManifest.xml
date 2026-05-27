@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:tools="http://schemas.android.com/tools"
+  xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Caméra optionnelle : ne pas exclure les appareils sans caméra du catalogue Play -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
@@ -30,6 +31,20 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="esamba" />
             </intent-filter>
+
+            <!-- App Links HTTPS — voir public/.well-known/assetlinks.json -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.e-samba.com" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="e-samba.com" />
+            </intent-filter>
         </activity>
 
         <provider
@@ -43,13 +58,16 @@
 
     <!-- Permissions -->
 
-    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.INTERNET"
+      tools:ignore="ManifestOrder" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Caméra : alertes, sinistres, état véhicule (@capacitor/camera) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Galerie / lecture médias (Android 13+) pour « Choisir dans la galerie » -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
+      tools:ignore="PhotoAndVideoPolicy,SelectedPhotoAccess" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"
+      tools:ignore="SelectedPhotoAccess" />
     <!-- Géolocalisation terrain (@capacitor/geolocation) -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />

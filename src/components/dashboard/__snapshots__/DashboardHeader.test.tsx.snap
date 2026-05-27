@@ -60,8 +60,10 @@ exports[`DashboardHeader > correspond au snapshot (régression structure / thèm
         >
           Mobile
         </div>
-        <button
+        <a
+          aria-label="0 alertes non résolues"
           class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-11 w-11 min-h-[2.75rem] min-w-[2.75rem] md:h-10 md:w-10 md:min-h-0 md:min-w-0 relative"
+          href="/dashboard/alerts"
         >
           <svg
             class="lucide lucide-bell w-5 h-5"
@@ -82,12 +84,7 @@ exports[`DashboardHeader > correspond au snapshot (régression structure / thèm
               d="M10.3 21a1.94 1.94 0 0 0 3.4 0"
             />
           </svg>
-          <span
-            class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center"
-          >
-            3
-          </span>
-        </button>
+        </a>
         <button
           aria-expanded="false"
           aria-haspopup="menu"

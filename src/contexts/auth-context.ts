@@ -24,6 +24,12 @@ export interface AuthContextValue {
   isLoading: boolean;
   /** True tant que les flottes / org ne sont pas résolues après chargement des adhésions. */
   isTenantOrgLoading: boolean;
+  /**
+   * True quand Supabase a émis l'event PASSWORD_RECOVERY (clic lien email reset).
+   * Dans ce mode, l'utilisateur est authentifié temporairement pour changer son mot de passe
+   * uniquement — aucun accès aux fonctionnalités dashboard.
+   */
+  isPasswordRecovery: boolean;
   setActiveFleetId: (fleetId: string) => void;
   refreshMemberships: () => Promise<FleetMembership[]>;
   refreshUser: () => Promise<void>;

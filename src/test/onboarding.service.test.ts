@@ -47,7 +47,7 @@ describe('OnboardingService', () => {
         user_id: 'user-1',
         step: 1,
         completed: false,
-        data: { step1: step1Data },
+        steps_data: { step1: step1Data },
       } satisfies OnboardingProgress)
       .mockResolvedValueOnce({
         id: 'progress-1',
@@ -55,7 +55,7 @@ describe('OnboardingService', () => {
         user_id: 'user-1',
         step: 2,
         completed: false,
-        data: {
+        steps_data: {
           step1: step1Data,
           step2: { alerts: { oil: true, revision: false, tires: true, brakes: true } },
         },
@@ -75,7 +75,7 @@ describe('OnboardingService', () => {
         org_id: 'org-1',
         step: 4,
         completed: true,
-        data: expect.objectContaining({
+        steps_data: expect.objectContaining({
           step1: step1Data,
           step2: { alerts: { oil: true, revision: false, tires: true, brakes: true } },
           step4: { confirmed: true },

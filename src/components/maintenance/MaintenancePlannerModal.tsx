@@ -56,24 +56,17 @@ import {
   type MaintenanceTypeUi,
   type PlanPriorityUi,
 } from "./maintenancePlannerPayload";
+import {
+  DEFAULT_PRESTATAIRES,
+  DEFAULT_REVISION_ITEMS,
+  DURATION_OPTIONS,
+  MAINTENANCE_TYPE_DEFAULT,
+  PRIORITY_OPTIONS,
+  type CheckItem,
+  type Prestataire,
+} from "./maintenancePlanner.constants";
 
 // --- Types locaux ---
-
-interface Prestataire {
-  id: string;
-  name: string;
-  location: string;
-  rating: number;
-  availability: string;
-}
-
-interface CheckItem {
-  id: string;
-  label: string;
-  priceXaf: number;
-  checked: boolean;
-  mandatory?: boolean;
-}
 
 interface PlanForm {
   type: MaintenanceTypeUi;
@@ -89,55 +82,6 @@ interface NotifOptions {
   manager: boolean;
   provider: boolean;
 }
-
-const PRIORITY_OPTIONS: { value: PlanPriorityUi; label: string }[] = [
-  { value: "critical", label: "Critique — immédiat" },
-  { value: "high", label: "Haute — cette semaine" },
-  { value: "normal", label: "Normale — ce mois" },
-  { value: "low", label: "Faible — planifié" },
-];
-
-const DURATION_OPTIONS = [
-  { value: 2, label: "2 heures" },
-  { value: 4, label: "4 heures (demi-journée)" },
-  { value: 8, label: "Journée complète" },
-  { value: 16, label: "2 jours" },
-];
-
-const DEFAULT_REVISION_ITEMS: Omit<CheckItem, "id">[] = [
-  { label: "Vidange huile moteur + filtre", priceXaf: 85_000, checked: true, mandatory: true },
-  { label: "Filtre à air", priceXaf: 25_000, checked: true },
-  { label: "Filtre habitacle", priceXaf: 20_000, checked: true },
-  { label: "Contrôle liquides (frein, refroid., dir.)", priceXaf: 45_000, checked: true },
-  { label: "Contrôle freins + étriers", priceXaf: 35_000, checked: false },
-  { label: "Courroie de distribution", priceXaf: 180_000, checked: false },
-  { label: "Diagnostic électronique OBD", priceXaf: 15_000, checked: true },
-  { label: "Contrôle géométrie", priceXaf: 30_000, checked: false },
-];
-
-const DEFAULT_PRESTATAIRES: Prestataire[] = [
-  {
-    id: "p1",
-    name: "Garage Auto Elite",
-    location: "Yaounde Centre",
-    rating: 5,
-    availability: "Disponible aujourd'hui",
-  },
-  {
-    id: "p2",
-    name: "Atelier Toyota CM",
-    location: "Yaounde, bd de l'URSS",
-    rating: 4,
-    availability: "Disponible demain matin",
-  },
-  {
-    id: "p3",
-    name: "Centre Revision Express",
-    location: "Douala, Akwa",
-    rating: 3,
-    availability: "Disponible dans 3 jours",
-  },
-];
 
 const STEP_LABELS = ["Planification", "Prestataire", "Confirmation"];
 
@@ -275,7 +219,7 @@ export function MaintenancePlannerModal({
 
   const [step, setStep] = useState<1 | 2 | 3 | "success">(1);
   const [form, setForm] = useState<PlanForm>({
-    type: "revision",
+    type: MAINTENANCE_TYPE_DEFAULT,
     priority: "normal",
     date: null,
     time: "08:00",

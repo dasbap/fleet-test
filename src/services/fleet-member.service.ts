@@ -6,6 +6,9 @@ import type {
   FleetMemberFilters,
   RoleType,
 } from '@/repositories/fleet-member.repository';
+import { requirePermission, RbacError } from '@/lib/rbac/server';
+import { canManageRole } from '@/lib/rbac/permissions';
+import type { PlatformRole } from '@/types/rbac';
 
 /**
  * Service pour la logique métier des membres de flotte
@@ -44,7 +47,8 @@ export class FleetMemberService {
       return [];
     }
 
-    return this.repository.findAll({ fleet_id: fleetId });
+    await requirePermission('member.view', fleetId);
+    return this.repository.findAllViaRpc(fleetId);
   }
 
   /**
@@ -92,6 +96,11 @@ export class FleetMemberService {
     }
 
     try {
+      const callerRole = await requirePermission('member.invite', fleetId);
+      if (!canManageRole(callerRole as PlatformRole, role)) {
+        throw new RbacError('Vous ne pouvez pas inviter ce rôle.', 'RBAC_DENIED', 'member.invite');
+      }
+
       const membershipId = await this.repository.addMemberByEmail(fleetId, email.trim().toLowerCase(), role);
       // Si un téléphone est fourni, mettre à jour le profil (non bloquant)
       if (phone && membershipId) {
@@ -146,7 +155,42 @@ export class FleetMemberService {
       throw new Error('Rôle invalide');
     }
 
-    await this.repository.upsertMembership(fleetId, userId, role, true);
+    await requirePermission('member.update_role', fleetId);
+    await this.repository.updateRoleViaRpc(membershipId, role);
+  }
+
+  /**
+   * Réactive ou désactive un membre (sans changement de rôle).
+   */
+  async setMemberActive(
+    fleetId: string,
+    userId: string,
+    role: RoleType,
+    isActive: boolean,
+  ): Promise<void> {
+    if (!fleetId || !userId) {
+      throw new Error('Flotte et utilisateur requis.');
+    }
+
+    if (isActive) {
+      await requirePermission('member.invite', fleetId);
+    } else {
+      await requirePermission('member.remove', fleetId);
+    }
+
+    await this.repository.upsertMembership(fleetId, userId, role, isActive);
+  }
+
+  /**
+   * Retire un membre de la flotte (offboarding complet).
+   */
+  async offboardMember(userId: string, fleetId: string): Promise<void> {
+    if (!userId || !fleetId) {
+      throw new Error('Utilisateur et flotte requis.');
+    }
+
+    await requirePermission('member.remove', fleetId);
+    await this.repository.offboardMember(userId, fleetId);
   }
 
   /**
@@ -168,8 +212,8 @@ export class FleetMemberService {
       throw new Error('Membre introuvable');
     }
 
-    // Désactiver le membre
-    await this.repository.deactivateMember(membershipId);
+    await requirePermission('member.remove', fleetId);
+    await this.repository.upsertMembership(fleetId, member.user_id, member.role, false);
   }
 
   /**

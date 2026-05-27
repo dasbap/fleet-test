@@ -97,4 +97,18 @@ export const ROUTE_PATHS = {
   securite: "/securite",
   /** Politique de cookies. */
   cookies: "/cookies",
+  /** Page tarifs publique avec calculateur et checkout Notch Pay. */
+  pricing: "/pricing",
+  /** Hub des cas d’usage marketing (SEO programmatique). */
+  useCaseHub: "/use-case",
+  /** Chemin détail cas d'usage (évite le préfixe `use` pour les règles React hooks). */
+  caseDetailPath: (slug: string) => `/use-case/${slug}` as const,
+  /** Formulaire de définition du nouveau mot de passe (flux PASSWORD_RECOVERY Supabase). */
+  updatePassword: "/auth/update-password",
+  /** Page standalone mot de passe oublié (envoi du lien). */
+  forgotPassword: "/auth/forgot-password",
+  /** Connexion sans mot de passe via lien magique. */
+  magicLink: "/auth/magic-link",
+  /** Callback Supabase — échange code PKCE (magic link, confirmation email). */
+  authCallback: "/auth/callback",
 } as const;

@@ -66,12 +66,47 @@ const TYPE_ICONS: Record<SearchResultType, ReactNode> = {
       <path d="M10 9v3M10 14.5v.5" />
     </svg>
   ),
+  page: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4" aria-hidden>
+      <rect x="4" y="2" width="12" height="16" rx="1.5" />
+      <path d="M7 7h6M7 10h6M7 13h4" strokeLinecap="round" />
+    </svg>
+  ),
+  action: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4" aria-hidden>
+      <path d="M11 2L4 11h6l-1 7 7-9h-6l1-7z" strokeLinejoin="round" />
+    </svg>
+  ),
+  setting: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4" aria-hidden>
+      <circle cx="10" cy="10" r="2.5" />
+      <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" strokeLinecap="round" />
+    </svg>
+  ),
+  faq: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4" aria-hidden>
+      <circle cx="10" cy="10" r="8" />
+      <path d="M8 8c0-1.1.9-2 2-2s2 .9 2 2c0 1.5-2 2-2 2.5" strokeLinecap="round" />
+      <circle cx="10" cy="14" r="0.5" fill="currentColor" />
+    </svg>
+  ),
+  guide: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4" aria-hidden>
+      <path d="M10 4C8 2 4 2 3 3v13c1-1 5-1 7 1 2-2 6-2 7-1V3c-1-1-5-1-7 1z" />
+      <path d="M10 4v14" strokeLinecap="round" />
+    </svg>
+  ),
 };
 
 const TYPE_ICON_CLASSES: Record<SearchResultType, string> = {
-  vehicle: "bg-primary/10 text-primary",
+  vehicle:     "bg-primary/10 text-primary",
   maintenance: "bg-info/10 text-info",
-  alert: "bg-destructive/10 text-destructive",
+  alert:       "bg-destructive/10 text-destructive",
+  page:        "bg-blue-500/10 text-blue-500",
+  action:      "bg-amber-500/10 text-amber-600",
+  setting:     "bg-slate-500/10 text-slate-500",
+  faq:         "bg-violet-500/10 text-violet-600",
+  guide:       "bg-emerald-500/10 text-emerald-600",
 };
 
 const BADGE_CLASSES: Record<NonNullable<SearchResult["badgeVariant"]>, string> = {
@@ -367,7 +402,7 @@ export function SearchDialog({ open, fleetId, onClose, onNavigate }: SearchDialo
         <DialogTitle className="sr-only">{t("searchPalette.dialogTitle", { defaultValue: "Recherche universelle" })}</DialogTitle>
         <DialogDescription className="sr-only">
           {t("searchPalette.dialogDescription", {
-            defaultValue: "Rechercher dans les véhicules, entretiens et alertes.",
+            defaultValue: "Rechercher dans les véhicules, pages, actions rapides, FAQ et paramètres.",
           })}
         </DialogDescription>
 
@@ -382,7 +417,7 @@ export function SearchDialog({ open, fleetId, onClose, onNavigate }: SearchDialo
             aria-controls="search-listbox"
             aria-activedescendant={selectedIndex >= 0 ? `search-result-${selectedIndex}` : undefined}
             placeholder={t("searchPalette.placeholder", {
-              defaultValue: "Rechercher un véhicule, conducteur, alerte…",
+              defaultValue: "Rechercher un véhicule, une page, une action, de l'aide…",
             })}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -447,7 +482,7 @@ export function SearchDialog({ open, fleetId, onClose, onNavigate }: SearchDialo
                 {t("searchPalette.idlePrompt", { defaultValue: "Saisissez au moins 2 caractères" })}
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2 px-6">
-                {["CM-", "Moteur", "critique", "vidange"].map((hint) => (
+                {["CM-", "DVIR", "scanner", "aide", "panne"].map((hint) => (
                   <button
                     key={hint}
                     type="button"

@@ -92,7 +92,35 @@ Attendre la propagation DNS et le certificat SSL (géré par Vercel).
 
 ---
 
-## 5. Vérification rapide
+## 5. Erreur `404 DEPLOYMENT_NOT_FOUND` (Vercel)
+
+**Symptôme** : page Vercel avec le texte *Deployment not found*, code `DEPLOYMENT_NOT_FOUND`, identifiant du type `cdg1::…`.
+
+**Ce n’est pas** une 404 de l’application React : Vercel ne trouve **aucun déploiement** pour l’URL demandée (preview supprimée, lien expiré, ou déploiement jamais terminé).
+
+**À faire** :
+
+1. **Production** : ouvrir uniquement **`https://www.e-samba.com`** (ou le domaine indiqué dans Vercel → Domains), pas un ancien lien `*.vercel.app` copié depuis un commentaire PR ou un e-mail.
+2. **Dashboard Vercel** → projet `smart-fleet-africa` → **Deployments** : vérifier que le dernier déploiement **Production** est **Ready** (vert). Si **Error** ou **Canceled**, ouvrir les logs de build, corriger, puis **Redeploy**.
+3. **Branche de production** : **Settings** → **Git** → *Production Branch* doit correspondre à la branche que vous poussez (souvent `main`). Un push sur une autre branche ne met à jour que les **Preview**.
+4. **Redéploiement prebuilt** (recommandé si `vercel build` échoue avec `spawn cmd.exe ENOENT` sous Windows) :
+   ```bash
+   npm run build
+   npm run vercel:package-prebuilt
+   npx vercel deploy --prebuilt --prod
+   ```
+   Raccourci : `npm run deploy:prebuilt`
+
+   Sous **PowerShell / CMD Windows**, `npx vercel build --prod` peut fonctionner ; sinon utiliser le script ci-dessus (équivalent Build Output API v3 à partir de `dist/`).
+
+   **Limite** : ce flux prebuilt statique ne recompile pas les fonctions `api/` ; pour un changement webhook/API, préférer `npx vercel deploy --prod` (build distant) ou `vercel build` réussi en local.
+5. **Preview** : chaque URL `…-git-…-….vercel.app` est liée à **un** déploiement ; après suppression ou expiration, elle affiche `DEPLOYMENT_NOT_FOUND` → utiliser le lien **Visit** du déploiement le plus récent dans le dashboard, ou merger sur la branche de prod.
+
+**Vérification locale** : `npm run build` puis `npx vite preview` → `http://localhost:4173/ressources/seo-ia`.
+
+---
+
+## 6. Vérification rapide
 
 1. `https://www.e-samba.com/` charge le shell HTML (titre E-Samba).
 2. Pas d’erreur de démarrage liée à `VITE_SUPABASE_*` (voir [`src/integrations/supabase/client.ts`](../src/integrations/supabase/client.ts)).
@@ -102,6 +130,21 @@ Attendre la propagation DNS et le certificat SSL (géré par Vercel).
 
 ---
 
-## 6. Rollout production combiné (web + stores)
+## 7. Webhook Clerk — un seul endpoint actif
+
+Deux implémentations existent dans le dépôt ; **le dashboard Clerk ne doit en appeler qu’une** à la fois pour la production (éviter double logique, retries parallèles et bruit opérationnel).
+
+| Implémentation | Fichier | Où le déployer |
+| --- | --- | --- |
+| **Recommandé pour www.e-samba.com** | [`api/webhooks/clerk.ts`](../api/webhooks/clerk.ts) | **Vercel** : route `/api/webhooks/clerk` (runtime Edge). URL type `https://www.e-samba.com/api/webhooks/clerk` (voir commentaire en tête du fichier). |
+| Alternative | [`supabase/functions/clerk-webhook/`](../supabase/functions/clerk-webhook/) | Projet **Supabase** (Edge Function + URL dédiée). |
+
+**Variables côté Vercel** (en plus des `VITE_*`) : `CLERK_WEBHOOK_SECRET`, `SUPABASE_URL` (ou `VITE_SUPABASE_URL`), `SUPABASE_SERVICE_ROLE_KEY`. Sans elles, le handler renvoie une erreur de configuration.
+
+**Idempotence** : le handler Vercel enregistre chaque événement dans la table `clerk_webhook_events` (clé `svix_id`) avant traitement ; un doublon est ignoré. La fonction Supabase suit le même principe. **Malgré cela**, garder **une seule** URL dans Clerk reste la règle de bonne conduite (un seul chemin à surveiller et à faire évoluer).
+
+---
+
+## 8. Rollout production combiné (web + stores)
 
 Pour une procédure incluant déploiement progressif sur les stores, surveillance 24 h et montée en charge : [`rollout-production-web-mobile.md`](./rollout-production-web-mobile.md).

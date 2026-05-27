@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 6%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 98%;
+    --primary: 145 100% 39%;
+    --primary-foreground: 0 0% 6%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 45 100% 51%;
+    --accent-foreground: 0 0% 6%;
+    --border: 0 0% 20%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html.dark,
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  .prose-esamba h2 {
+    @apply font-heading text-2xl font-bold mt-10 mb-4 text-foreground;
+  }
+
+  .prose-esamba h3 {
+    @apply font-heading text-xl font-semibold mt-6 mb-3;
+  }
+
+  .prose-esamba p {
+    @apply text-muted-foreground leading-relaxed mb-4;
+  }
+
+  .prose-esamba ul {
+    @apply list-disc pl-6 mb-4 text-muted-foreground space-y-2;
+  }
+
+  .prose-esamba a {
+    @apply text-primary hover:underline;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+
+  .glass-dark {
+    @apply bg-background/80 backdrop-blur-md border-b border-border;
+  }
+}
