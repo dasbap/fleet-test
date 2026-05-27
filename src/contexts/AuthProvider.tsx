@@ -1,19 +1,10 @@
 import {
-  lazy,
-  Suspense,
   useCallback,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
-// Import dynamique : clerk-auth-provider (et @clerk/clerk-react) ne chargent
-// que si VITE_AUTH_PROVIDER=clerk — évite un crash au module-init sinon.
-const ClerkAuthProvider = lazy(() =>
-  import("@/contexts/clerk-auth-provider").then((m) => ({
-    default: m.ClerkAuthProvider,
-  }))
-);
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { AUTH_MODE_CHANGED_EVENT, isMockAuthEnabled } from "@/lib/authMode";
@@ -567,8 +558,6 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-const USE_CLERK = import.meta.env.VITE_AUTH_PROVIDER === "clerk";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [mockEnabled, setMockEnabled] = useState(() => isMockAuthEnabled());
 
@@ -580,13 +569,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   if (mockEnabled) {
     return <MockAuthProvider>{children}</MockAuthProvider>;
-  }
-  if (USE_CLERK) {
-    return (
-      <Suspense fallback={null}>
-        <ClerkAuthProvider>{children}</ClerkAuthProvider>
-      </Suspense>
-    );
   }
   return <SupabaseAuthProvider>{children}</SupabaseAuthProvider>;
 }

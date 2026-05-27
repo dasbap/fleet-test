@@ -73,13 +73,11 @@ export default defineConfig(({ mode }) => {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
           const n = id.replace(/\\/g, "/");
-          // Clerk dans son propre chunk — évite un conflit d'ordre d'init avec React
-          if (n.includes("/@clerk/")) return "vendor-clerk";
           // react-router dans son propre chunk — ses appels module-level à createContext
           // doivent s'exécuter APRÈS que React soit pleinement initialisé (chunks séparés = ordre garanti)
           if (n.includes("/react-router")) return "vendor-router";
           if (
-            // Strict : seulement le package 'react' lui-même, pas @clerk/react ou @stripe/react-*
+            // Strict : seulement le package 'react' lui-même, pas @stripe/react-*
             n.match(/\/node_modules\/react\//) ||
             n.match(/\/node_modules\/react-dom\//) ||
             n.match(/\/node_modules\/scheduler\//)
