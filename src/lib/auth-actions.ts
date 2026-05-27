@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { enableDemoAuthFallback, isMockAuthEnabled } from "@/lib/authMode";
-import { clearBiometricLockStorage } from "@/services/biometric-lock.service";
+import { signOut as esambaSignOut } from "@/lib/auth/esamba-auth";
 import { normalizeLoginRole } from "@/lib/mobile/mobileRoleBridge";
 import { mockAuthService } from "@/services/mock-auth.service";
 import type { AppRole } from "@/types/auth";
@@ -118,12 +118,7 @@ export async function signOut() {
     notifyMockAuthChanged();
     return { error: null };
   }
-  try {
-    await clearBiometricLockStorage();
-  } catch {
-    /* non bloquant */
-  }
-  const { error } = await supabase.auth.signOut();
+  const { error } = await esambaSignOut();
   return { error };
 }
 

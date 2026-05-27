@@ -12,9 +12,6 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION?: string;
   /** Session mockée locale (sans Supabase). Valeur attendue : "true". */
   readonly VITE_USE_MOCK_AUTH?: string;
-  /** `clerk` pour Clerk ; absent ou autre valeur → Supabase Auth. */
-  readonly VITE_AUTH_PROVIDER?: string;
-  readonly VITE_CLERK_PUBLISHABLE_KEY?: string;
   /** Base URL du BFF (ex. `/api`). Voir src/lib/bff-config.ts */
   readonly VITE_API_BASE_URL?: string;
   /** `true` : proxy Vite vers le BFF en dev. */
