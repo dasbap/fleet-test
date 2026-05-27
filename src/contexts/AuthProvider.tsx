@@ -34,33 +34,17 @@ import {
 import type { AppRole, AuthUser, FleetMembership } from "@/types/auth";
 import { AuthContext, type AuthContextValue } from "@/contexts/auth-context";
 import { isValidUuid } from "@/lib/isUuid";
+import {
+  devLog,
+  devWarn,
+  mapSupabaseUserToAuthUser,
+} from "@/features/auth/lib/authProviderUtils";
 
 const fleetMemberRepository = new FleetMemberRepository();
 const fleetMemberService = new FleetMemberService(fleetMemberRepository);
 const fleetRepository = new FleetRepository();
 const fleetService = new FleetService(fleetRepository);
 const ACTIVE_FLEET_STORAGE_KEY = "esamba.active_fleet_id";
-
-const isDev =
-  typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
-const devLog = (...args: unknown[]) => {
-  if (isDev) console.log(...args);
-};
-const devWarn = (...args: unknown[]) => {
-  if (isDev) console.warn(...args);
-};
-
-function mapSupabaseUserToAuthUser(user: User | null): AuthUser | null {
-  if (!user) return null;
-  return {
-    id: user.id,
-    email: user.email ?? undefined,
-    phone: user.phone ?? undefined,
-    created_at: user.created_at,
-    user_metadata: user.user_metadata as Record<string, unknown>,
-    app_metadata: user.app_metadata as Record<string, unknown>,
-  };
-}
 
 function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

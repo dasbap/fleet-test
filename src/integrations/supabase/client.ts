@@ -36,11 +36,10 @@ export const supabase: SupabaseClient = createClient(
       storageKey: "sfa_auth_token",
       persistSession: true,
       autoRefreshToken: true,
-      // En Capacitor (WebView https://localhost) : désactiver la détection de session
-      // par URL — le verifier PKCE ne survit pas au cycle redirect dans le WebView Android.
-      // Sur le web : conserver PKCE + détection URL pour la sécurité OAuth (RFC 7636).
+      // Capacitor + web utilisent PKCE. En natif, on garde detectSessionInUrl=false
+      // car la session est réinjectée via deep link, pas via parsing d'URL webview.
       detectSessionInUrl: !estEnvCapacitor,
-      flowType: estEnvCapacitor ? "implicit" : "pkce",
+      flowType: "pkce",
     },
     db: {
       schema: 'public',
