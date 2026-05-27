@@ -63,16 +63,29 @@ interface ValidateResult {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin":  "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+const ALLOWED_ORIGINS = [
+  "https://www.e-samba.com",
+  "https://app.e-samba.com",
+  "capacitor://localhost",
+  "http://localhost:5173",
+];
 
-function json(data: unknown, status = 200): Response {
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") ?? "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin":  allowedOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Vary": "Origin",
+  };
+}
+
+function json(data: unknown, status = 200, req?: Request): Response {
+  const headers = req ? corsHeaders(req) : { "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0] };
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    headers: { ...headers, "Content-Type": "application/json" },
   });
 }
 

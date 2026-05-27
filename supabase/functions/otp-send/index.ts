@@ -27,16 +27,28 @@ function isAllowedCountry(phone: string): boolean {
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = [
+  'https://www.e-samba.com',
+  'https://app.e-samba.com',
+  'capacitor://localhost',
+  'http://localhost:5173',
+];
 
-function respond(body: unknown, status = 200) {
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') ?? '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin':  allowedOrigin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  };
+}
+
+function respond(body: unknown, status = 200, req: Request) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
   });
 }
 
@@ -44,18 +56,18 @@ function respond(body: unknown, status = 200) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: CORS_HEADERS });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   if (req.method !== 'POST') {
-    return respond({ ok: false, message: 'Méthode non autorisée.' }, 405);
+    return respond({ ok: false, message: 'Méthode non autorisée.' }, 405, req);
   }
 
   let body: { phone?: string; channel?: string };
   try {
     body = await req.json();
   } catch {
-    return respond({ ok: false, message: 'Corps de requête invalide.' }, 400);
+    return respond({ ok: false, message: 'Corps de requête invalide.' }, 400, req);
   }
 
   const { phone, channel = 'sms' } = body;
@@ -63,7 +75,7 @@ Deno.serve(async (req) => {
   // ── Validation du numéro ─────────────────────────────────────────────────────
 
   if (!phone || typeof phone !== 'string') {
-    return respond({ ok: false, reason: 'invalid_phone', message: 'Numéro de téléphone requis.' }, 400);
+    return respond({ ok: false, reason: 'invalid_phone', message: 'Numéro de téléphone requis.' }, 400, req);
   }
 
   const normalized = phone.trim();
@@ -73,7 +85,7 @@ Deno.serve(async (req) => {
       ok:      false,
       reason:  'invalid_phone',
       message: 'Format invalide. Utilisez le format international (ex: +237612345678).',
-    }, 400);
+    }, 400, req);
   }
 
   if (!isAllowedCountry(normalized)) {
@@ -81,7 +93,7 @@ Deno.serve(async (req) => {
       ok:      false,
       reason:  'invalid_phone',
       message: 'Pays non supporté. E-Samba est disponible au Cameroun et en Afrique Centrale.',
-    }, 400);
+    }, 400, req);
   }
 
   // ── Rate limiting ─────────────────────────────────────────────────────────────
@@ -93,7 +105,7 @@ Deno.serve(async (req) => {
 
   if (rateErr) {
     console.error('[otp-send] rate check error:', rateErr);
-    return respond({ ok: false, reason: 'unknown', message: 'Erreur interne. Réessayez.' }, 500);
+    return respond({ ok: false, reason: 'unknown', message: 'Erreur interne. Réessayez.' }, 500, req);
   }
 
   if (!rateCheck?.allowed) {
@@ -102,7 +114,7 @@ Deno.serve(async (req) => {
       reason:     'rate_limited',
       message:    rateCheck?.message ?? 'Trop de tentatives. Réessayez plus tard.',
       retryAfter: COOLDOWN_SECONDS,
-    }, 429);
+    }, 429, req);
   }
 
   // ── Envoi OTP via Supabase Auth ───────────────────────────────────────────────
@@ -134,7 +146,7 @@ Deno.serve(async (req) => {
       ok:      false,
       reason:  'provider_error',
       message: 'Impossible d\'envoyer le code. Vérifiez votre numéro et réessayez.',
-    }, 502);
+    }, 502, req);
   }
 
   // ── Enregistrer la tentative réussie ──────────────────────────────────────────
@@ -150,5 +162,5 @@ Deno.serve(async (req) => {
     channel,
     retryAfter:  COOLDOWN_SECONDS,
     maskedPhone: `${normalized.slice(0, 4)}${'•'.repeat(normalized.length - 7)}${normalized.slice(-3)}`,
-  });
+  }, 200, req);
 });

@@ -3,6 +3,7 @@
 ## 🔒 Sécurité
 
 **IMPORTANT** : Les clés Supabase ne doivent jamais être commitées dans Git. Utilisez toujours des variables d'environnement.
+Le fichier `.env.example` doit rester avec des placeholders (jamais de clé réelle de projet).
 
 ## 📋 Configuration initiale
 
@@ -160,3 +161,8 @@ vercel env add VITE_SUPABASE_ANON_KEY
 2. **Utiliser la clé anon côté client** - La clé service ne doit jamais être exposée
 3. **Vérifier les politiques RLS** - Assurez-vous qu'elles sont correctement configurées
 4. **Backup régulier** - Faites des backups de votre base de données Supabase
+
+## CORS Edge Functions
+
+Pour les fonctions critiques (OTP, sessions, démo, webhooks), n'utilisez pas `Access-Control-Allow-Origin: *` en production.
+Configurez une allow-list d'origines (ex: `https://www.e-samba.com`, `https://e-samba.com`, `https://app.e-samba.com`, `capacitor://localhost`, `https://localhost`).
