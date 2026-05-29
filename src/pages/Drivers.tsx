@@ -19,11 +19,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { User, Car, MoreVertical, Phone, Calendar, History, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useFleetDrivers, useActiveAssignments } from "@/hooks/useAssignments";
 import { useFleetDriverActivationHealth } from "@/hooks/useFleetDriverActivationHealth";
 import { cn } from "@/lib/utils";
 import DriverHistoryDialog from "@/components/drivers/DriverHistoryDialog";
 import DriverProfileDialog from "@/components/drivers/DriverProfileDialog";
+import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
 
 // Réparation : Ajout des fonctions utilitaires manquantes pour le score
 function getScoreBadgeVariant(scoreLevel: string): BadgeProps["variant"] {
@@ -59,6 +61,8 @@ function getScoreLabel(scoreLevel: string): string {
 const Drivers = () => {
   const navigate = useNavigate();
   const { role, userFleetId } = useAuth();
+  const { can } = useRoleAccess();
+  const canManageAssignment = can("assignment.manage");
 
   const { data: drivers = [], isLoading: driversLoading } = useFleetDrivers(
     userFleetId ?? undefined
@@ -164,6 +168,7 @@ const Drivers = () => {
             <p className="text-muted-foreground mt-1">
               Suivez les affectations et l&apos;historique de vos chauffeurs
             </p>
+            <ContextualHelpTrigger slug="assign-driver" className="mt-2" />
           </div>
         </div>
 
@@ -441,10 +446,12 @@ const Drivers = () => {
                               <History className="w-4 h-4 mr-2" />
                               Voir historique
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Calendar className="w-4 h-4 mr-2" />
-                              Planifier
-                            </DropdownMenuItem>
+                            {canManageAssignment && (
+                              <DropdownMenuItem>
+                                <Calendar className="w-4 h-4 mr-2" />
+                                Planifier
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

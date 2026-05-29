@@ -1,9 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { DollarSign, Lock } from "lucide-react";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 const Collections = () => {
-  const { role } = useAuth();
+  const { can } = useRoleAccess();
+  const canViewBilling = can("billing.view");
+
+  if (!canViewBilling) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3 text-center">
+        <Lock className="h-10 w-10 text-muted-foreground" />
+        <p className="text-muted-foreground">Accès réservé aux managers et organisateurs.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

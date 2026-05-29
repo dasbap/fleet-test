@@ -26,6 +26,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import {
   usePaymentHistory,
@@ -38,6 +39,7 @@ import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { isBffConfigured } from "@/lib/bff-config";
 import { formatPublicPriceXaf } from "@/lib/public-pricing";
 import { cn } from "@/lib/utils";
+import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
 import { STATUS_CONFIG } from "@/features/billing/constants/billingStatusConfig";
 import { useNotchPayCallback } from "@/features/billing/hooks/useNotchPayCallback";
 
@@ -45,10 +47,12 @@ import { useNotchPayCallback } from "@/features/billing/hooks/useNotchPayCallbac
 
 export default function BillingPage() {
   const { userFleetId } = useAuth();
+  const { can } = useRoleAccess();
   useNotchPayCallback();
 
   const billing        = useFleetBillingContext(userFleetId ?? undefined);
   const paymentHistory = usePaymentHistory();
+  const canManageBilling = can("billing.manage");
 
   // ── Squelette chargement ──
   if (billing.isLoading) {
@@ -129,6 +133,7 @@ export default function BillingPage() {
           <p className="text-sm text-muted-foreground">
             Gérez votre plan, vos licences véhicules et l'historique de paiements
           </p>
+          <ContextualHelpTrigger slug="subscription-overview" className="mt-2" />
         </div>
         <Badge className={cn("gap-1.5 px-3 py-1.5 text-sm font-medium border", statusCfg.badgeClass)}>
           <StatusIcon className="h-4 w-4" />
@@ -150,7 +155,7 @@ export default function BillingPage() {
                 )}
               </p>
             </div>
-            {showUpgradeCta && (
+            {showUpgradeCta && canManageBilling && (
               <Button size="sm" className="shrink-0" asChild>
                 <Link to={canPayOnline ? ROUTE_PATHS.pricing : ROUTE_PATHS.upgrade}>
                   <ArrowUpRight className="mr-1.5 h-3.5 w-3.5" />
@@ -275,7 +280,8 @@ export default function BillingPage() {
       <section className="rounded-xl border bg-muted/20 p-4">
         <h2 className="mb-3 text-base font-semibold">Actions rapides</h2>
         <div className="flex flex-wrap gap-2">
-          {ctx.billingStatus !== "enterprise" && (
+          {/* Renouveler / plans — organisateur + manager uniquement */}
+          {canManageBilling && ctx.billingStatus !== "enterprise" && (
             <Button asChild size="sm" variant={showUpgradeCta ? "default" : "outline"}>
               <Link to={canPayOnline ? ROUTE_PATHS.pricing : ROUTE_PATHS.upgrade}>
                 <CreditCard className="mr-1.5 h-4 w-4" />
@@ -283,7 +289,7 @@ export default function BillingPage() {
               </Link>
             </Button>
           )}
-          {ctx.billingStatus === "enterprise" && (
+          {canManageBilling && ctx.billingStatus === "enterprise" && (
             <Button asChild size="sm" variant="outline">
               <a href="mailto:support@e-samba.com?subject=Renouvellement%20Enterprise">
                 <ArrowUpRight className="mr-1.5 h-4 w-4" />
@@ -291,9 +297,11 @@ export default function BillingPage() {
               </a>
             </Button>
           )}
+
+          {/* Support — visible par tous */}
           <Button asChild size="sm" variant="outline">
             <a
-              href="https://wa.me/237600000000?text=Bonjour%2C%20je%20souhaite%20de%20l%27aide%20sur%20mon%20abonnement%20E-Samba"
+              href="https://wa.me/237641341857?text=Bonjour%2C%20je%20souhaite%20de%20l%27aide%20sur%20mon%20abonnement%20E-Samba"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -307,7 +315,9 @@ export default function BillingPage() {
               Email support
             </a>
           </Button>
-          {canPayOnline && (
+
+          {/* Licences QR — organisateur + manager + paiement en ligne */}
+          {canManageBilling && canPayOnline && (
             <Button asChild size="sm" variant="outline">
               <Link to={ROUTE_PATHS.pricing}>
                 <QrCode className="mr-1.5 h-4 w-4" />

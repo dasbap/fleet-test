@@ -22,7 +22,7 @@ import {
 } from "@/hooks/useHelp";
 import { HelpContext } from "@/context/help.context.store";
 import { useHelpArticles, helpService } from "@/hooks/useHelpArticles";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthOptional } from "@/hooks/useAuth";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import type { HelpLocale, HelpUserContext } from "@/types/help";
 import type { AppRole } from "@/types/auth";
@@ -40,9 +40,12 @@ function resolveLocale(): HelpLocale {
 export function HelpProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { t } = useTranslation("help");
-  const { role, userFleetId } = useAuth();
+  const auth = useAuthOptional();
+  const role = auth?.role ?? null;
+  const userFleetId = auth?.userFleetId ?? null;
   const locale = resolveLocale();
-  const { data: dbArticles = [] } = useHelpArticles(locale);
+  const { data: dbArticlesRaw } = useHelpArticles(locale);
+  const dbArticles = dbArticlesRaw ?? [];
   const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
 
   const [isOpen, setIsOpen] = useState(false);

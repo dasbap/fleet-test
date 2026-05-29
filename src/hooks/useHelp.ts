@@ -18,6 +18,9 @@ export interface HelpArticle {
   category: HelpCategory;
   questionKey: string;
   answerKey: string;
+  /** Texte direct (articles DB) — prioritaire sur i18n. */
+  questionText?: string;
+  answerText?: string;
   videoId?: string;
   videoDuration?: number;
   tags: string[];
@@ -31,6 +34,10 @@ export interface HelpVideo {
   href: string;
 }
 
+export interface OpenHelpOptions {
+  slug?: string;
+}
+
 export interface UseHelpReturn {
   contextualArticles: HelpArticle[];
   featuredVideos: HelpVideo[];
@@ -41,7 +48,7 @@ export interface UseHelpReturn {
   searchResults: HelpArticle[];
 
   isOpen: boolean;
-  openHelp: () => void;
+  openHelp: (options?: OpenHelpOptions) => void;
   closeHelp: () => void;
   toggleHelp: () => void;
 
@@ -49,6 +56,9 @@ export interface UseHelpReturn {
   toggleArticle: (id: string) => void;
 
   currentPage: HelpCategory | null;
+
+  /** Slug article DB ciblé (aide contextuelle). */
+  focusedSlug: string | null;
 }
 
 // Catalogue complet des articles. Les clés questionKey / answerKey
@@ -317,6 +327,7 @@ export function useHelp(): UseHelpReturn {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQueryRaw] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [focusedSlug] = useState<string | null>(null);
 
   const currentPage = useMemo(
     () => routeToCategory(location.pathname),
@@ -353,14 +364,14 @@ export function useHelp(): UseHelpReturn {
     );
   }, [searchQuery, t]);
 
-  const openHelp = useCallback(() => {
+  const openHelp = useCallback((options?: OpenHelpOptions) => {
     setIsOpen(true);
     try {
       window.localStorage.setItem(HELP_OPEN_KEY, "true");
     } catch {
       // localStorage indisponible (mode privé, etc.)
     }
-    trackHelpEvent("help_opened", { page: currentPage });
+    trackHelpEvent("help_opened", { page: currentPage, slug: options?.slug });
   }, [currentPage]);
 
   const closeHelp = useCallback(() => {
@@ -405,6 +416,7 @@ export function useHelp(): UseHelpReturn {
     expandedId,
     toggleArticle,
     currentPage,
+    focusedSlug,
   };
 }
 

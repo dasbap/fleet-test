@@ -10,13 +10,13 @@ import { FaqSchemaOrg } from '@/components/faq/FaqSchemaOrg';
 import { ROUTE_PATHS } from '@/navigation/routePaths';
 import { SupportPanel } from '@/components/help/SupportPanel';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthOptional } from '@/hooks/useAuth';
 
 export default function HelpArticlePage() {
   const { category, slug } = useParams<{ category: string; slug: string }>();
   const { data: article, isLoading } = useHelpArticle(slug, 'fr');
   const trackView = useTrackHelpView();
-  const { userFleetId } = useAuth();
+  const userFleetId = useAuthOptional()?.userFleetId ?? null;
 
   useEffect(() => {
     if (article?.id && !article.id.startsWith('fallback-')) {

@@ -107,7 +107,7 @@ const Footer = () => {
             <h4 className="font-heading font-semibold mb-4">Support</h4>
             <ul className="space-y-2">
               {[
-                { name: "Centre d'aide", to: "/aide" },
+                { name: "Centre d'aide", to: "/help" },
                 { name: "Documentation", to: "/documentation" },
                 { name: "API", to: "/api" },
                 { name: "Status", to: "/status" },

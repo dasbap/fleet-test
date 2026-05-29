@@ -38,6 +38,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useFeedbackPrompt } from "@/hooks/useFeedbackPrompt";
 import { FeedbackWidget } from "@/components/shared/FeedbackWidget";
+import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -208,6 +209,7 @@ export default function Maintenance() {
                   <p className="text-muted-foreground mt-1">
                     Gérez les interventions de maintenance sur vos véhicules
                   </p>
+                  <ContextualHelpTrigger slug="create-intervention" className="mt-2" />
                 </div>
                 {can("maintenance.create") && (
                   <Button onClick={() => setCreateDialogOpen(true)}>

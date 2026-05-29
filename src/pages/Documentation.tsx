@@ -8,14 +8,14 @@ const SECTIONS = [
     icon: Zap,
     titre: "Démarrage rapide",
     description: "Créez votre flotte, invitez votre équipe et ajoutez vos premiers véhicules en moins de 10 minutes.",
-    href: "/aide",
+    href: "/help",
     label: "Voir le guide",
   },
   {
     icon: Layers,
     titre: "Modules",
     description: "Documentation complète de chaque module : Véhicules, Maintenance, Inspections DVIR, GPS, Finances, Transit CEMAC.",
-    href: "/aide",
+    href: "/help",
     label: "Explorer les modules",
   },
   {
@@ -29,7 +29,7 @@ const SECTIONS = [
     icon: FileText,
     titre: "Guides thématiques",
     description: "Transit CEMAC, Mobile Money, gestion des rôles, configuration des alertes, rapports automatiques.",
-    href: "/aide",
+    href: "/help",
     label: "Lire les guides",
   },
 ];
@@ -83,7 +83,7 @@ export default function DocumentationPage() {
                 questions.
               </p>
               <Link
-                to="/aide"
+                to="/help"
                 className="inline-flex items-center gap-2 text-sm text-primary font-medium hover:underline"
               >
                 Aller au Centre d'aide <ArrowRight className="w-4 h-4" />

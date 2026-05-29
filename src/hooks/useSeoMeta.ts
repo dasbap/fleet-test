@@ -42,6 +42,11 @@ export function useSeoMeta({ title, canonical, metas = [] }: UseSeoMetaOptions) 
         document.head.appendChild(link);
       }
       link.href = canonical;
+      ensureMetaTag({ property: "og:url", content: canonical });
+    }
+
+    if (title) {
+      ensureMetaTag({ property: "og:title", content: title });
     }
 
     metas.forEach((meta) => {

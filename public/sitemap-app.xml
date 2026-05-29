@@ -31,6 +31,18 @@
       <priority>0.8</priority>
    </url>
    <url>
+      <loc>https://www.e-samba.com/help</loc>
+      <lastmod>2026-05-29</lastmod>
+      <changefreq>weekly</changefreq>
+      <priority>0.7</priority>
+   </url>
+   <url>
+      <loc>https://www.e-samba.com/help/quickstart</loc>
+      <lastmod>2026-05-29</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.6</priority>
+   </url>
+   <url>
       <loc>https://www.e-samba.com/carrieres</loc>
       <lastmod>2026-05-23</lastmod>
       <changefreq>monthly</changefreq>
@@ -171,25 +183,25 @@
 <!-- use-case:auto:start -->
   <url>
     <loc>https://www.e-samba.com/use-case</loc>
-    <lastmod>2026-05-25</lastmod>
+    <lastmod>2026-05-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.e-samba.com/use-case/esamba-transporteur-pme-maintenance-predictive</loc>
-    <lastmod>2026-05-25</lastmod>
+    <lastmod>2026-05-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.e-samba.com/use-case/mobile-logistique-cemac-dvir-inspections</loc>
-    <lastmod>2026-05-25</lastmod>
+    <lastmod>2026-05-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.e-samba.com/use-case/n8n-saas-b2b-alertes-flotte</loc>
-    <lastmod>2026-05-25</lastmod>
+    <lastmod>2026-05-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

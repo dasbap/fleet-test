@@ -9,7 +9,6 @@ import { DriverTerrainActivationModal } from "@/components/activation/DriverTerr
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { HelpBubble } from "@/components/shared/HelpCenter";
 import { useAuth } from "@/hooks/useAuth";
-import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { isNativePlatform } from "@/lib/platform";
 import MobileLayout from "@/layouts/MobileLayout";
@@ -26,13 +25,6 @@ const NotificationsPermissionGate = lazy(() =>
  */
 export default function DashboardLayout() {
   const { user, role, userFleetId } = useAuth();
-  const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
-  // Sans flotte : pas de requête billing → on affiche l’aide. Avec flotte : masquer pendant
-  // le chargement (évite un flash sur plan free), puis selon aiEnabled une fois la query en succès.
-  const hideHelpBubble =
-    Boolean(userFleetId) &&
-    (billingQuery.isPending ||
-      (billingQuery.isSuccess && billingQuery.data?.aiEnabled === false));
   const userRole = role || "organizer";
   const userMetadata = user?.user_metadata || {};
   const rawFromMeta = userMetadata.full_name;
@@ -76,7 +68,7 @@ export default function DashboardLayout() {
               <Outlet />
             </Suspense>
           </main>
-          <HelpBubble disabled={hideHelpBubble} />
+          <HelpBubble />
         </SidebarInset>
       </div>
     </SidebarProvider>

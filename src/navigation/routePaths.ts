@@ -111,4 +111,16 @@ export const ROUTE_PATHS = {
   magicLink: "/auth/magic-link",
   /** Callback Supabase — échange code PKCE (magic link, confirmation email). */
   authCallback: "/auth/callback",
+  /** Centre d'aide public (canonique SEO). */
+  help: "/help",
+  helpQuickstart: "/help/quickstart",
+  helpSearch: "/help/search",
+  helpCategory: (category: string) => `/help/${category}` as const,
+  helpArticle: (category: string, slug: string) => `/help/${category}/${slug}` as const,
+  /** Legacy — redirection vers /help. */
+  aide: "/aide",
+  /** Analytics centre d'aide (organisateur). */
+  dashboardHelpAnalytics: "/dashboard/admin/help-analytics",
+  /** Backoffice articles aide (v2). */
+  dashboardHelpAdmin: "/dashboard/admin/help",
 } as const;
