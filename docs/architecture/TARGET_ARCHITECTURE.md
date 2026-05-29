@@ -7,7 +7,7 @@ Ce document fixe les **objectifs d’architecture** et les **options d’évolut
 1. **Une source de vérité pour le schéma runtime** : les migrations **Supabase** (`supabase/migrations/`) et la baseline alignée avec l’environnement déployé.
 2. **Sécurité par défaut** : RLS PostgreSQL pour tout accès multi-tenant ; le client ne sert pas de filet de sécurité unique.
 3. **Séparation des couches** : présentation → hooks React Query → services → repositories → Supabase (voir [docs/ARCHITECTURE.md](../ARCHITECTURE.md)).
-4. **Auth explicite** : un chemin par défaut documenté (**Supabase Auth**), des options **Clerk** et **mock** clairement bornées (voir [AUTH_FLOW.md](./AUTH_FLOW.md)).
+4. **Auth explicite** : un chemin par défaut documenté (**Supabase Auth**) et un mode **mock** borné pour le développement (voir [AUTH_FLOW.md](./AUTH_FLOW.md)).
 5. **Observabilité** : erreurs front (Sentry chargé en différé dans [src/main.tsx](../../src/main.tsx)), analytics optionnelle (PostHog), logs structurés pour actions critiques.
 6. **Facturation traçable** : états de paiement persistés, idempotence, webhooks ou traitements async documentés quand ils existent (voir [PAYMENTS.md](./PAYMENTS.md)).
 
@@ -39,14 +39,14 @@ Ces pistes ne sont **pas** des engagements de roadmap ; elles servent à cadrer 
 | --- | --- | --- |
 | Hébergement / SSR | Framework avec SSR (ex. Next.js) si besoin SEO serveur, i18n critique SSR, ou intégrations BFF | Métriques LCP/SEO ou exigences réglementaires |
 | ORM serveur | Prisma (ou autre) sur un **backend Node** séparé, si la logique dépasse ce que RLS + Edge Functions couvrent proprement | Complexité des transactions, intégrations tierces lourdes |
-| Auth | **Un seul** fournisseur primaire en production (Supabase *ou* Clerk) pour simplifier support et garde-fous | Décision produit / conformité |
+| Auth | **Un seul** fournisseur primaire en production : Supabase Auth | Décision produit / conformité |
 | Paiements | Passerelle unifiée + webhooks signés + réconciliation automatique | Volume de transactions, réduction du travail manuel support |
 
 ## Dépendances critiques à documenter
 
 - Projet Supabase (URL, clés anon, secrets fonctions).
 - Fournisseurs paiement (Orange Money, MTN MoMo) et états métier associés.
-- Clerk si activé (`VITE_AUTH_PROVIDER=clerk` + clé publique).
+- Aucune dépendance auth externe active côté runtime (Supabase Auth uniquement).
 
 ## Métriques de succès suggérées
 

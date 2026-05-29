@@ -1020,7 +1020,7 @@ E-Samba SaaS (Vite SPA → évolue vers SSR optionnel)
 ├── Edge Functions
 │   ├── refresh-analytics        — cron horaire MV + scores
 │   ├── expire-accounts          — cron quotidien comptes temporaires
-│   ├── clerk-webhook            — sync Clerk → Supabase Auth
+│   ├── webhook-auth-legacy      — archive technique (retiré du runtime)
 │   └── health                  — endpoint monitoring
 │
 └── Vercel

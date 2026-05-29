@@ -17,10 +17,10 @@ URL : https://e-samba.com | Cible : PME et transporteurs CM, TD, CF, CG, GA, GQ.
 | Langage | TypeScript strict |
 | Style | Tailwind CSS + shadcn/ui |
 | Données | PostgreSQL via **Supabase** (client JS, RLS) |
-| Auth | **Supabase Auth** par défaut ; **Clerk** optionnel (`VITE_AUTH_PROVIDER=clerk`) ; mock dev (`VITE_USE_MOCK_AUTH`) |
+| Auth | **Supabase Auth** (source de vérité) ; mock dev (`VITE_USE_MOCK_AUTH`) |
 | ORM / schéma | Migrations **Supabase** (`supabase/migrations/`) = source de vérité runtime ; **Prisma** dans `packages/db` (génération / tooling, pas le runtime navigateur) |
 | Déploiement | **Vercel** (SPA : `vercel.json`, build `dist`, rewrites) — pas de Next.js App Router dans ce dépôt |
-| Webhook Clerk → Supabase | Handler [`api/webhooks/clerk.ts`](api/webhooks/clerk.ts) (URL prod documentée dans le fichier) ; **une seule** URL doit être enregistrée dans Clerk (voir [docs/deployment-e-samba-vercel.md](docs/deployment-e-samba-vercel.md) §6) |
+| Webhook auth | Archive technique : ancien webhook Clerk retiré du runtime ; ne pas réactiver de double-auth |
 | Emails / automatisations | Edge Functions et secrets côté Supabase (voir doc setup) |
 
 ### Mobile (app native)

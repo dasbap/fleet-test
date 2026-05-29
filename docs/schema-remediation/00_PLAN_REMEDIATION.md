@@ -1,6 +1,7 @@
 # E-Samba — Plan de remédiation schéma
 
 > Généré le 2026-05-21 · Basé sur l'audit réel du projet `zqxjvmejoktwlcqshnwi`
+> Note C-1 : les mentions `clerk_*` ci-dessous sont conservées uniquement à titre d'archive technique de nettoyage SQL.
 
 ---
 

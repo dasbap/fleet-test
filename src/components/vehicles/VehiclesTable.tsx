@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useVehicles, VehicleStatus } from "@/hooks/useVehicles";
 import { AssignmentFormDialog } from "./AssignmentFormDialog";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 // Configuration du statut des véhicules
 // Règle métier : Un véhicule "Actif" (statut ok) doit être lié à un chauffeur actif
@@ -63,6 +64,12 @@ interface VehiclesTableProps {
 const VehiclesTable = ({ fleetId }: VehiclesTableProps) => {
   const { data: vehicles = [], isLoading } = useVehicles(fleetId);
   const queryClient = useQueryClient();
+  const { can } = useRoleAccess();
+
+  const canUpdate      = can("vehicle.update");
+  const canDelete      = can("vehicle.delete");
+  const canAssignDriver = can("vehicle.assign_driver");
+
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<{ id: string; registration: string } | null>(null);
 
@@ -200,18 +207,33 @@ const VehiclesTable = ({ fleetId }: VehiclesTableProps) => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {/* vehicle.view — visible par tous les rôles */}
                         <DropdownMenuItem asChild>
                           <Link to={`/dashboard/vehicles/${vehicle.id}`}>Voir détails</Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>Modifier</DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleAssignClick(vehicle.id, vehicle.registration)}
-                          disabled={!fleetId || vehicle.status === 'blocked' || !!vehicle.active_assignment}
-                        >
-                          <UserPlus className="w-4 h-4 mr-2" />
-                          Affecter chauffeur
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>Historique</DropdownMenuItem>
+
+                        {/* vehicle.update — organisateur, manager, mécanicien */}
+                        {canUpdate && (
+                          <DropdownMenuItem>Modifier</DropdownMenuItem>
+                        )}
+
+                        {/* vehicle.assign_driver — organisateur, manager */}
+                        {canAssignDriver && (
+                          <DropdownMenuItem
+                            onClick={() => handleAssignClick(vehicle.id, vehicle.registration)}
+                            disabled={!fleetId || vehicle.status === 'blocked' || !!vehicle.active_assignment}
+                          >
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Affecter chauffeur
+                          </DropdownMenuItem>
+                        )}
+
+                        {/* vehicle.delete — organisateur uniquement */}
+                        {canDelete && (
+                          <DropdownMenuItem className="text-destructive focus:text-destructive">
+                            Supprimer
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
