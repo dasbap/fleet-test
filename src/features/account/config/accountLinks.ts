@@ -1,14 +1,24 @@
 /**
- * URLs externes — surcharger via variables d’environnement (Vite).
- * Si absentes, l’UI affiche un message « bientôt » ou ouvre une page placeholder.
+ * Liens légaux et support — routes internes par défaut,
+ * surchargeables via variables d’environnement (Vite).
  */
 export const ACCOUNT_EXTERNAL_LINKS = {
+  /** Centre d’aide — route interne. Surcharger avec VITE_HELP_CENTER_URL pour domaine externe. */
   helpCenter:
-    typeof import.meta.env.VITE_HELP_CENTER_URL === "string"
+    typeof import.meta.env.VITE_HELP_CENTER_URL === "string" &&
+    import.meta.env.VITE_HELP_CENTER_URL.length > 1
       ? import.meta.env.VITE_HELP_CENTER_URL
-      : undefined,
+      : "/help",
+  /** Politique de confidentialité — route interne. */
   privacyPolicy:
-    typeof import.meta.env.VITE_PRIVACY_POLICY_URL === "string"
+    typeof import.meta.env.VITE_PRIVACY_POLICY_URL === "string" &&
+    import.meta.env.VITE_PRIVACY_POLICY_URL.length > 1
       ? import.meta.env.VITE_PRIVACY_POLICY_URL
-      : undefined,
+      : "/confidentialite",
+  /** Conditions d’utilisation — route interne. */
+  termsOfService:
+    typeof import.meta.env.VITE_TERMS_URL === "string" &&
+    import.meta.env.VITE_TERMS_URL.length > 1
+      ? import.meta.env.VITE_TERMS_URL
+      : "/conditions",
 } as const;

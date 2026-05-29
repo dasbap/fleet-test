@@ -51,6 +51,11 @@ function radixPreferJsWhenMjsMissing(): Plugin {
 
 export default defineConfig({
   plugins: [radixPreferJsWhenMjsMissing(), react()],
+  // Force React à charger son build dev (act() disponible) même quand Vite
+  // injecterait process.env.NODE_ENV="production" par défaut.
+  define: {
+    "process.env.NODE_ENV": JSON.stringify("test"),
+  },
   test: {
     environment: "jsdom",
     globals: true,

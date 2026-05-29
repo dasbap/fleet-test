@@ -50,7 +50,7 @@ Un **BFF Node optionnel** (`src/server/`, `npm run dev:api`) expose des routes `
 
 ## Authentification (aperçu)
 
-Trois modes possibles : **mock** (`VITE_USE_MOCK_AUTH`), **Clerk** (`VITE_AUTH_PROVIDER=clerk`), **Supabase Auth** (défaut). Détail : [AUTH_FLOW.md](./AUTH_FLOW.md).
+Deux modes possibles : **mock** (`VITE_USE_MOCK_AUTH`) et **Supabase Auth** (défaut). Détail : [AUTH_FLOW.md](./AUTH_FLOW.md).
 
 ## Multi-tenant (aperçu)
 
@@ -71,8 +71,6 @@ Préfixe **`VITE_`** : exposées au bundle client — ne jamais y mettre de secr
 | `VITE_SUPABASE_URL` | URL du projet Supabase |
 | `VITE_SUPABASE_ANON_KEY` | Clé anon (publique côté client ; droits limités par RLS) |
 | `VITE_USE_MOCK_AUTH` | Auth mock locale (développement / démo) |
-| `VITE_AUTH_PROVIDER` | `clerk` pour Clerk ; autre valeur ou absent → Supabase Auth |
-| `VITE_CLERK_PUBLISHABLE_KEY` | Clé publique Clerk ; si absente, le provider Clerk n’est pas embarqué (tree-shaking) |
 | `VITE_SENTRY_DSN` | Observabilité erreurs (optionnel) |
 | `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` | Analytics (optionnel) |
 | `VITE_APP_URL` | URL canonique du site (SEO / partage) |
@@ -94,4 +92,4 @@ Les secrets Edge Functions, BFF (`SUPABASE_SERVICE_ROLE_KEY`, `PAYMENTS_WEBHOOK_
 
 ## Note sur `CLAUDE.md` à la racine
 
-Le fichier [CLAUDE.md](../../CLAUDE.md) est **aligné sur ce dépôt** (Vite, React Router, `src/app/`, Supabase, Clerk optionnel) et renvoie ici pour l’architecture détaillée. Toute ancienne mention « Next.js App Router » hors de ce dépôt ne s’applique pas au code de **smart-fleet-africa**.
+Le fichier [CLAUDE.md](../../CLAUDE.md) est **aligné sur ce dépôt** (Vite, React Router, `src/app/`, Supabase Auth) et renvoie ici pour l’architecture détaillée. Toute ancienne mention « Next.js App Router » hors de ce dépôt ne s’applique pas au code de **smart-fleet-africa**.

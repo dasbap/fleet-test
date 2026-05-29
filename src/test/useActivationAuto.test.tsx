@@ -15,7 +15,9 @@ vi.mock("@/hooks/useOnboarding", () => ({
 
 describe("useActivation (auto)", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    // toFake:['Date'] uniquement — laisser queueMicrotask/Promise réels pour
+    // que React 18 puisse vider sa file de state sans déclencher act() warnings.
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-04-16T10:00:00.000Z"));
     window.localStorage.clear();
     useAuthMock.mockReturnValue({
@@ -55,9 +57,4 @@ describe("useActivation (auto)", () => {
     const { result } = renderHook(() => useActivation());
     expect(result.current.isBannerVisible).toBe(true);
     act(() => {
-      result.current.dismissBanner();
-    });
-    expect(window.localStorage.getItem("esamba.activation_banner_dismissed_user-1")).toBe("1");
-    expect(result.current.isBannerVisible).toBe(false);
-  });
-});
+      result.current.dismiss

@@ -7,12 +7,12 @@ import {
 } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 
 import type {
   UseHelpReturn,
   HelpArticle,
   HelpCategory,
-  HelpVideo,
 } from "@/hooks/useHelp";
 import {
   ALL_ARTICLES_EXPORT as ALL_ARTICLES,
@@ -21,36 +21,92 @@ import {
   searchArticlesHelper,
 } from "@/hooks/useHelp";
 import { HelpContext } from "@/context/help.context.store";
+import { useHelpArticles, helpService } from "@/hooks/useHelpArticles";
+import { useAuth } from "@/hooks/useAuth";
+import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
+import type { HelpLocale, HelpUserContext } from "@/types/help";
+import type { AppRole } from "@/types/auth";
+
 type PosthogWindow = Window & {
   posthog?: { capture: (event: string, props?: Record<string, unknown>) => void };
 };
 
+function resolveLocale(): HelpLocale {
+  const lang = i18n.language?.slice(0, 2);
+  if (lang === "en" || lang === "ln") return lang;
+  return "fr";
+}
+
 export function HelpProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { t } = useTranslation("help");
+  const { role, userFleetId } = useAuth();
+  const locale = resolveLocale();
+  const { data: dbArticles = [] } = useHelpArticles(locale);
+  const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
 
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchRaw] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [focusedSlug, setFocusedSlug] = useState<string | null>(null);
 
   const currentPage = useMemo(
     () => routeToCategory(location.pathname),
     [location.pathname],
   );
 
+  const helpCtx: HelpUserContext = useMemo(
+    () => ({
+      role: (role ?? "organizer") as AppRole,
+      planCode: billingQuery.data?.planCode ?? "free",
+      billingFlags: {
+        financeEnabled: billingQuery.data?.financeEnabled ?? false,
+        reportsEnabled: billingQuery.data?.reportsEnabled ?? false,
+        aiEnabled: billingQuery.data?.aiEnabled ?? false,
+        driverScoringEnabled: billingQuery.data?.driverScoringEnabled ?? false,
+      },
+      pathname: location.pathname,
+      locale,
+    }),
+    [role, billingQuery.data, location.pathname, locale],
+  );
+
   useEffect(() => {
     setIsOpen(false);
     setSearchRaw("");
     setExpandedId(null);
+    setFocusedSlug(null);
   }, [location.pathname]);
 
-  const contextualArticles = useMemo(
-    () =>
-      !currentPage
-        ? ALL_ARTICLES.slice(0, 4)
-        : ALL_ARTICLES.filter((a: HelpArticle) => a.category === currentPage),
-    [currentPage],
-  );
+  const contextualDbArticles = useMemo(() => {
+    const filtered = helpService.filterForUser(dbArticles, helpCtx);
+    const routeSlug = helpService.resolveRouteSlug(location.pathname);
+    if (focusedSlug) {
+      const focused = filtered.find((a) => a.slug === focusedSlug);
+      if (focused) return [focused, ...filtered.filter((a) => a.slug !== focusedSlug)].slice(0, 6);
+    }
+    if (routeSlug) {
+      const primary = filtered.find((a) => a.slug === routeSlug);
+      if (primary) return [primary, ...filtered.filter((a) => a.slug !== routeSlug)].slice(0, 6);
+    }
+    return helpService.getContextualArticles(dbArticles, location.pathname, helpCtx);
+  }, [dbArticles, helpCtx, location.pathname, focusedSlug]);
+
+  const contextualArticles = useMemo((): HelpArticle[] => {
+    if (contextualDbArticles.length > 0) {
+      return contextualDbArticles.map((a) => ({
+        id: a.id,
+        category: (currentPage ?? "dashboard") as HelpCategory,
+        questionKey: a.slug,
+        answerKey: a.slug,
+        questionText: a.title,
+        answerText: a.content,
+        tags: a.keywords,
+      }));
+    }
+    if (!currentPage) return ALL_ARTICLES.slice(0, 4);
+    return ALL_ARTICLES.filter((a: HelpArticle) => a.category === currentPage);
+  }, [contextualDbArticles, currentPage]);
 
   const setSearchQuery = useCallback((q: string) => {
     setSearchRaw(q);
@@ -63,24 +119,46 @@ export function HelpProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const searchResults = useMemo(
-    () =>
-      searchQuery.trim().length < 2
-        ? []
-        : searchArticlesHelper(ALL_ARTICLES, searchQuery, (key: string, ns: string) =>
-            t(key, { ns }),
-          ),
-    [searchQuery, t],
-  );
+  const dbSearchResults = useMemo(() => {
+    if (searchQuery.trim().length < 2) return [];
+    return helpService.searchArticles(dbArticles, searchQuery, helpCtx);
+  }, [searchQuery, dbArticles, helpCtx]);
 
-  const openHelp = useCallback(() => {
-    setIsOpen(true);
-    try {
-      (window as PosthogWindow).posthog?.capture("help_opened", { page: currentPage });
-    } catch {
-      // Suivi analytics non bloquant.
+  const searchResults = useMemo((): HelpArticle[] => {
+    if (searchQuery.trim().length < 2) return [];
+
+    if (dbSearchResults.length > 0) {
+      return dbSearchResults.map(({ article }) => ({
+        id: article.id,
+        category: (currentPage ?? "dashboard") as HelpCategory,
+        questionKey: article.slug,
+        answerKey: article.slug,
+        questionText: article.title,
+        answerText: article.content,
+        tags: article.keywords,
+      }));
     }
-  }, [currentPage]);
+
+    return searchArticlesHelper(ALL_ARTICLES, searchQuery, (key: string, ns: string) =>
+      t(key, { ns }),
+    );
+  }, [searchQuery, dbSearchResults, currentPage, t]);
+
+  const openHelp = useCallback(
+    (options?: { slug?: string }) => {
+      if (options?.slug) setFocusedSlug(options.slug);
+      setIsOpen(true);
+      try {
+        (window as PosthogWindow).posthog?.capture("help_opened", {
+          page: currentPage,
+          slug: options?.slug,
+        });
+      } catch {
+        // Suivi analytics non bloquant.
+      }
+    },
+    [currentPage],
+  );
 
   const closeHelp = useCallback(() => setIsOpen(false), []);
   const toggleHelp = useCallback(
@@ -99,10 +177,14 @@ export function HelpProvider({ children }: { children: ReactNode }) {
         } catch {
           // Suivi analytics non bloquant.
         }
+        const dbArticle = dbArticles.find((a) => a.id === id);
+        if (dbArticle && !id.startsWith("fallback-")) {
+          void helpService.trackView(id, "bubble", userFleetId);
+        }
       }
       return next;
     });
-  }, []);
+  }, [dbArticles, userFleetId]);
 
   const value = useMemo<UseHelpReturn>(
     () => ({
@@ -119,6 +201,7 @@ export function HelpProvider({ children }: { children: ReactNode }) {
       expandedId,
       toggleArticle,
       currentPage: currentPage as HelpCategory | null,
+      focusedSlug,
     }),
     [
       contextualArticles,
@@ -132,9 +215,9 @@ export function HelpProvider({ children }: { children: ReactNode }) {
       expandedId,
       toggleArticle,
       currentPage,
+      focusedSlug,
     ],
   );
 
   return <HelpContext.Provider value={value}>{children}</HelpContext.Provider>;
 }
-

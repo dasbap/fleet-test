@@ -29,8 +29,8 @@ import {
 } from "@/components/ui/select";
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
-  PopoverTrigger,
 } from "@/components/ui/popover";
 import {
   Command,
@@ -708,7 +708,7 @@ export function FleetTeamManagementPanel({
                   <FormItem className="flex flex-col">
                     <FormLabel>Rechercher un membre</FormLabel>
                     <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-                      <PopoverTrigger asChild>
+                      <PopoverAnchor asChild>
                         <FormControl>
                           <div className="relative">
                             <Input
@@ -753,8 +753,8 @@ export function FleetTeamManagementPanel({
                             )}
                           </div>
                         </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[400px] p-0" align="start">
+                      </PopoverAnchor>
+                      <PopoverContent className="w-[400px] p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
                         <Command>
                           <CommandInput
                             placeholder="Rechercher un utilisateur..."

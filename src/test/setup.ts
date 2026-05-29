@@ -36,6 +36,7 @@ if (!i18n.isInitialized) {
 }
 
 const originalConsoleWarn = console.warn;
+const originalConsoleError = console.error;
 
 // Filtre ciblé des warnings Router v7 en environnement de test.
 console.warn = (...args: unknown[]) => {
@@ -46,8 +47,4 @@ console.warn = (...args: unknown[]) => {
     firstArg.includes("v7_relativeSplatPath");
 
   if (isReactRouterFutureFlagWarning) {
-    return;
-  }
-
-  originalConsoleWarn(...args);
-};
+    return;

@@ -48,7 +48,10 @@ describe("useHelp hook", () => {
     expect(result.current.isOpen).toBe(true);
 
     mockPathname = "/flotte";
-    rerender();
+    // act() requis : le rerender déclenche un useEffect qui appelle
+    // setIsOpen/setSearchQueryRaw/setExpandedId — ces 3 setState doivent
+    // être vidés dans le même tick React pour éviter les act() warnings.
+    act(() => { rerender(); });
 
     expect(result.current.isOpen).toBe(false);
     expect(result.current.searchQuery).toBe("");
@@ -129,17 +132,4 @@ describe("useHelp hook", () => {
     expect(result.current.expandedId).toBe("dash-1");
     expect(captureSpy).toHaveBeenCalledWith(
       "help_article_expanded",
-      expect.objectContaining({
-        article_id: "dash-1",
-        page: "dashboard",
-      }),
-    );
-
-    act(() => {
-      result.current.toggleArticle("dash-1");
-    });
-
-    expect(result.current.expandedId).toBeNull();
-  });
-});
-
+      expe
