@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://www.e-samba.com/help</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.e-samba.com/help/quickstart</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.e-samba.com/help/vehicles</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.e-samba.com/help/billing</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.e-samba.com/help/drivers</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.e-samba.com/help/maintenance</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.e-samba.com/help/security</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://www.e-samba.com/help/qr</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+</urlset>

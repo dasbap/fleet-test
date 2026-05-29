@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -30,10 +31,13 @@ import { recommendTutorialOfflineQuota } from "@/lib/tutorialOfflineQuotaRecomme
 import { SettingsSection, SettingsRow } from "@/features/account/components";
 import { ACCOUNT_EXTERNAL_LINKS } from "@/features/account/config/accountLinks";
 import { FleetTeamManagementPanel } from "@/features/teams/components";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 const Settings = () => {
   const { t } = useTranslation("common");
   const { user, isLoading: authLoading } = useAuth();
+  const { can } = useRoleAccess();
+  const canOrgSettings = can("org.settings");
   const { toast } = useToast();
   const {
     data: verificationStatus,
@@ -65,17 +69,6 @@ const Settings = () => {
         variant: "destructive",
       });
     }
-  };
-
-  const openExternal = (url: string | undefined, label: string) => {
-    if (url && url.length > 1) {
-      window.open(url, "_blank", "noopener,noreferrer");
-      return;
-    }
-    toast({
-      title: `${label}`,
-      description: "Lien à configurer (variable d’environnement ou API).",
-    });
   };
 
   if (authLoading || !user) {
@@ -188,7 +181,7 @@ const Settings = () => {
         </SettingsRow>
       </SettingsSection>
 
-      <SettingsSection
+      {canOrgSettings && <SettingsSection
         title={
           <span className="flex items-center gap-2">
             <CheckCircle2 className="text-success h-5 w-5" />
@@ -293,38 +286,36 @@ const Settings = () => {
             </Badge>
           )}
         </SettingsRow>
-      </SettingsSection>
+      </SettingsSection>}
 
-      <FleetTeamManagementPanel layout="embedded" currentUserId={user?.id ?? null} />
+      {canOrgSettings && (
+        <FleetTeamManagementPanel layout="embedded" currentUserId={user?.id ?? null} />
+      )}
 
       <SettingsSection title="Aide & confidentialité">
         <SettingsRow>
-          <button
-            type="button"
+          <Link
+            to={ACCOUNT_EXTERNAL_LINKS.helpCenter}
             className="flex w-full items-center justify-between gap-2 text-left"
-            onClick={() => openExternal(ACCOUNT_EXTERNAL_LINKS.helpCenter, "Centre d’aide")}
           >
             <span className="flex items-center gap-3">
               <HelpCircle className="text-muted-foreground h-5 w-5" />
               <span className="text-sm font-medium">Centre d’aide</span>
             </span>
             <ChevronRight className="text-muted-foreground h-4 w-4" />
-          </button>
+          </Link>
         </SettingsRow>
         <SettingsRow>
-          <button
-            type="button"
+          <Link
+            to={ACCOUNT_EXTERNAL_LINKS.privacyPolicy}
             className="flex w-full items-center justify-between gap-2 text-left"
-            onClick={() =>
-              openExternal(ACCOUNT_EXTERNAL_LINKS.privacyPolicy, "Politique de confidentialité")
-            }
           >
             <span className="flex items-center gap-3">
               <Shield className="text-muted-foreground h-5 w-5" />
               <span className="text-sm font-medium">Politique de confidentialité</span>
             </span>
             <ChevronRight className="text-muted-foreground h-4 w-4" />
-          </button>
+          </Link>
         </SettingsRow>
       </SettingsSection>
     </div>

@@ -2,6 +2,7 @@
 -- 00_audit_schema.sql — E-Samba
 -- Lecture seule. Exécuter dans Supabase SQL Editor avant toute correction.
 -- Copier les résultats pour détecter le drift.
+-- Note C-1 : toute référence `clerk_*` est historique (archive technique) et sert uniquement au contrôle de nettoyage.
 -- ============================================================
 
 -- ── 1. Colonnes manquantes vs schéma canonique ───────────────────────────────

@@ -5,6 +5,7 @@
 --   2. Avoir un backup récent (Supabase Dashboard → Backups)
 --   3. Avoir vérifié que le frontend ne référence plus les colonnes supprimées
 --   4. Avoir déployé le code frontend sans référence à data/access_universe/clerk_user_id
+-- Note C-1 : les blocs `clerk_*` de ce fichier sont des étapes d'archive SQL, pas des dépendances runtime.
 -- ============================================================
 
 BEGIN;

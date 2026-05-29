@@ -7,8 +7,7 @@ Ce fichier résume **qui fournit la session** et **où la navigation est décid�
 | Mode | Condition typique | Implémentation |
 | --- | --- | --- |
 | **Mock** | `VITE_USE_MOCK_AUTH=true` | `MockAuthProvider` dans [src/contexts/AuthProvider.tsx](../../src/contexts/AuthProvider.tsx) — session locale, utile dev/démo ; garde vers `/login` selon configuration. |
-| **Clerk** | `VITE_AUTH_PROVIDER=clerk` (et bundle Clerk chargé) | `ClerkAuthProvider` (lazy) ; `ClerkProvider` optionnel en tête d’app si `VITE_CLERK_PUBLISHABLE_KEY` est défini — [src/App.tsx](../../src/App.tsx). |
-| **Supabase Auth** | Défaut (mock désactivé, provider ≠ `clerk`) | `SupabaseAuthProvider` : session Supabase, adhésions flotte, résolution `orgId` / flotte active. |
+| **Supabase Auth** | Défaut (mock désactivé) | `SupabaseAuthProvider` : session Supabase, adhésions flotte, résolution `orgId` / flotte active. |
 
 Un changement de mode mock peut être propagé via les événements documentés dans [src/lib/authMode.ts](../../src/lib/authMode.ts) (`AUTH_MODE_CHANGED_EVENT`).
 

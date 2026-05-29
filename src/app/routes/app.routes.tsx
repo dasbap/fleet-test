@@ -11,7 +11,11 @@ import { AccesRestreint } from "@/components/layout/AccesRestreint";
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
-const AidePage = lazy(() => import("@/pages/Aide"));
+const HelpHomePage = lazy(() => import("@/features/help/screens/HelpHomePage"));
+const HelpQuickStartPage = lazy(() => import("@/features/help/screens/HelpQuickStartPage"));
+const HelpCategoryPage = lazy(() => import("@/features/help/screens/HelpCategoryPage"));
+const HelpArticlePage = lazy(() => import("@/features/help/screens/HelpArticlePage"));
+const HelpSearchPage = lazy(() => import("@/features/help/screens/HelpSearchPage"));
 const OnboardingRoute = lazy(() =>
   import("@/components/auth/OnboardingRoute").then((module) => ({
     default: module.OnboardingRoute,
@@ -86,7 +90,13 @@ const AuthCallbackPage = lazy(() =>
 export const appRoutes = (
   <Route element={<RootLayout />}>
     <Route path="/" element={<Index />} />
-    <Route path="/aide" element={<AccesRestreint><AidePage /></AccesRestreint>} />
+    <Route path="/help" element={<HelpHomePage />} />
+    <Route path="/help/quickstart" element={<HelpQuickStartPage />} />
+    <Route path="/help/search" element={<HelpSearchPage />} />
+    <Route path="/help/:category/:slug" element={<HelpArticlePage />} />
+    <Route path="/help/:category" element={<HelpCategoryPage />} />
+    <Route path="/aide" element={<Navigate to="/help" replace />} />
+    <Route path="/aide/*" element={<Navigate to="/help" replace />} />
     <Route path="/fuel" element={<FuelMonitoringPage />} />
     <Route path="/inspections/nouveau" element={<DvirChecklistPage />} />
     <Route path="/inspections/:dvirId/modifier" element={<DvirChecklistPage />} />
@@ -108,8 +118,8 @@ export const appRoutes = (
     />
     <Route path="/securite" element={<SecuritePage />} />
     <Route path="/cookies" element={<CookiesPage />} />
-    <Route path="/confidentialite" element={<AccesRestreint><ConfidentialitePage /></AccesRestreint>} />
-    <Route path="/conditions" element={<AccesRestreint><ConditionsPage /></AccesRestreint>} />
+    <Route path="/confidentialite" element={<ConfidentialitePage />} />
+    <Route path="/conditions" element={<ConditionsPage />} />
     <Route path="/apropos" element={<AproposPage />} />
     <Route path="/blog" element={<BlogPage />} />
     <Route path="/ressources" element={<ResourcesIndexPage />} />

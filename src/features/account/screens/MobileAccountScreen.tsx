@@ -101,17 +101,6 @@ export default function MobileAccountScreen() {
     };
   }, []);
 
-  const openExternal = (url: string | undefined, label: string) => {
-    if (url && url.length > 1) {
-      window.open(url, "_blank", "noopener,noreferrer");
-      return;
-    }
-    toast({
-      title: `${label}`,
-      description: "Lien à configurer (variable d’environnement ou API).",
-    });
-  };
-
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
@@ -232,9 +221,7 @@ export default function MobileAccountScreen() {
           <button
             type="button"
             className="flex w-full items-center justify-between gap-2 text-left"
-            onClick={() =>
-              openExternal(ACCOUNT_EXTERNAL_LINKS.helpCenter, "Centre d’aide")
-            }
+            onClick={() => navigate(ACCOUNT_EXTERNAL_LINKS.helpCenter)}
           >
             <span className="flex items-center gap-3">
               <HelpCircle className="h-5 w-5 text-muted-foreground" />
@@ -247,12 +234,7 @@ export default function MobileAccountScreen() {
           <button
             type="button"
             className="flex w-full items-center justify-between gap-2 text-left"
-            onClick={() =>
-              openExternal(
-                ACCOUNT_EXTERNAL_LINKS.privacyPolicy,
-                "Politique de confidentialité"
-              )
-            }
+            onClick={() => navigate(ACCOUNT_EXTERNAL_LINKS.privacyPolicy)}
           >
             <span className="flex items-center gap-3">
               <Shield className="h-5 w-5 text-muted-foreground" />
