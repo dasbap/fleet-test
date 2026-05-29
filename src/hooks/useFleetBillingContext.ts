@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthOptional } from "@/hooks/useAuth";
 import { FleetBillingService } from "@/services/fleet-billing.service";
 import { FleetBillingRepository } from "@/repositories/fleet-billing.repository";
 const fleetBillingRepository = new FleetBillingRepository();
@@ -9,7 +9,7 @@ const fleetBillingService = new FleetBillingService(fleetBillingRepository);
  * Contexte facturation et droits (plan effectif, plafond véhicules, finance, IA).
  */
 export function useFleetBillingContext(fleetId?: string) {
-  const { userFleetId } = useAuth();
+  const userFleetId = useAuthOptional()?.userFleetId ?? null;
   const targetFleetId = fleetId ?? userFleetId;
 
   return useQuery({

@@ -7,3 +7,7 @@ export function useHelpContext(): UseHelpReturn {
   if (!ctx) throw new Error("useHelpContext must be used within HelpProvider");
   return ctx;
 }
+
+export function useHelpContextOptional(): UseHelpReturn | null {
+  return useContext(HelpContext);
+}

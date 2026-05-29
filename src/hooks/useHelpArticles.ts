@@ -39,7 +39,7 @@ export function useHelpArticles(locale: HelpLocale = 'fr') {
       return articles;
     },
     staleTime: 30 * 60 * 1000,
-    placeholderData: () => readCachedArticles(locale) as ReturnType<typeof helpService.getArticles> extends Promise<infer T> ? T : never,
+    placeholderData: () => readCachedArticles(locale) ?? undefined,
   });
 }
 

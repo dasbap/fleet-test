@@ -3,13 +3,15 @@ import { toast } from '@/hooks/use-toast';
 import { SupportRepository } from '@/repositories/support.repository';
 import { SupportService } from '@/services/support.service';
 import type { CreateCallbackInput, CreateTicketInput } from '@/services/support.service';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthOptional } from '@/hooks/useAuth';
 
 const supportRepository = new SupportRepository();
 const supportService = new SupportService(supportRepository);
 
 export function useCreateSupportTicket() {
-  const { user, userFleetId } = useAuth();
+  const auth = useAuthOptional();
+  const user = auth?.user ?? null;
+  const userFleetId = auth?.userFleetId ?? null;
 
   return useMutation({
     mutationFn: (input: Omit<CreateTicketInput, 'fleet_id'>) => {
@@ -36,7 +38,9 @@ export function useCreateSupportTicket() {
 }
 
 export function useCreateSupportCallback() {
-  const { user, userFleetId } = useAuth();
+  const auth = useAuthOptional();
+  const user = auth?.user ?? null;
+  const userFleetId = auth?.userFleetId ?? null;
 
   return useMutation({
     mutationFn: (input: Omit<CreateCallbackInput, 'fleet_id'>) => {

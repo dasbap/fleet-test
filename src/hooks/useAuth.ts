@@ -1,4 +1,4 @@
-import { useAuthContext } from "@/hooks/useAuthContext";
+import { useAuthContext, useAuthContextOptional } from "@/hooks/useAuthContext";
 
 export type { AppRole, FleetMembership } from "@/types/auth";
 export type { AuthUser } from "@/types/auth";
@@ -8,6 +8,11 @@ export type { AuthUser } from "@/types/auth";
  */
 export function useAuth() {
   return useAuthContext();
+}
+
+/** Session optionnelle — routes publiques sans AuthProvider (ex. /, /help). */
+export function useAuthOptional() {
+  return useAuthContextOptional();
 }
 
 /* Les actions auth (signIn, signOut, etc.) sont importées depuis @/lib/auth-actions

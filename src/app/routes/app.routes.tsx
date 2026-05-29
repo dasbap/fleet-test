@@ -11,6 +11,11 @@ import { AccesRestreint } from "@/components/layout/AccesRestreint";
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const HelpPublicLayout = lazy(() =>
+  import("@/features/help/components/HelpPublicLayout").then((m) => ({
+    default: m.HelpPublicLayout,
+  })),
+);
 const HelpHomePage = lazy(() => import("@/features/help/screens/HelpHomePage"));
 const HelpQuickStartPage = lazy(() => import("@/features/help/screens/HelpQuickStartPage"));
 const HelpCategoryPage = lazy(() => import("@/features/help/screens/HelpCategoryPage"));
@@ -90,11 +95,13 @@ const AuthCallbackPage = lazy(() =>
 export const appRoutes = (
   <Route element={<RootLayout />}>
     <Route path="/" element={<Index />} />
-    <Route path="/help" element={<HelpHomePage />} />
-    <Route path="/help/quickstart" element={<HelpQuickStartPage />} />
-    <Route path="/help/search" element={<HelpSearchPage />} />
-    <Route path="/help/:category/:slug" element={<HelpArticlePage />} />
-    <Route path="/help/:category" element={<HelpCategoryPage />} />
+    <Route element={<HelpPublicLayout />}>
+      <Route path="/help" element={<HelpHomePage />} />
+      <Route path="/help/quickstart" element={<HelpQuickStartPage />} />
+      <Route path="/help/search" element={<HelpSearchPage />} />
+      <Route path="/help/:category/:slug" element={<HelpArticlePage />} />
+      <Route path="/help/:category" element={<HelpCategoryPage />} />
+    </Route>
     <Route path="/aide" element={<Navigate to="/help" replace />} />
     <Route path="/aide/*" element={<Navigate to="/help" replace />} />
     <Route path="/fuel" element={<FuelMonitoringPage />} />

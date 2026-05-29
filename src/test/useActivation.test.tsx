@@ -47,4 +47,12 @@ describe("useActivation", () => {
 
   it("persist dismissBanner et masque immédiatement", () => {
     const { result } = renderHook(() => useActivation());
-    expect(result.current.isBannerVisible).t
+    expect(result.current.isBannerVisible).toBe(true);
+
+    act(() => {
+      result.current.dismissBanner();
+    });
+
+    expect(result.current.isBannerVisible).toBe(false);
+  });
+});

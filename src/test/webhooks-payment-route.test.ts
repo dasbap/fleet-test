@@ -1,0 +1,57 @@
+/** @vitest-environment node */
+import { describe, expect, it, vi } from "vitest";
+import { Hono } from "hono";
+
+const verifyMock = vi.fn();
+const parseMock = vi.fn(() => ({ externalRef: "ref-replay-1", rawStatus: "succeeded" }));
+const runInboundMock = vi.fn(async () => ({
+  paymentId: "pay-1",
+  normalizedStatus: "succeeded",
+  subscriptionActivated: false,
+}));
+
+vi.mock("@/server/payments/webhookProviders", () => ({
+  resolvePaymentWebhookProvider: () => ({
+    verify: verifyMock,
+    parse: parseMock,
+  }),
+}));
+
+vi.mock("@/server/env", () => ({
+  getPaymentWebhookSecrets: () => ({
+    generic: "secret-test",
+    notch: "secret-test",
+    cinetpay: "secret-test",
+  }),
+}));
+
+vi.mock("@/server/infra/supabaseServiceClient", () => ({
+  createSupabaseServiceClient: () => ({ from: vi.fn() }),
+}));
+
+vi.mock("@/server/domain/billing/processInboundPaymentWebhook", () => ({
+  runInboundPaymentWebhook: runInboundMock,
+}));
+
+describe("route /webhooks/payment", () => {
+  it("accepte le replay idempotent et renvoie 204", async () => {
+    const { registerWebhooksPaymentRoutes } = await import("@/server/http/routes/webhooksPayment");
+    const app = new Hono();
+    registerWebhooksPaymentRoutes(app);
+
+    const body = JSON.stringify({ external_ref: "ref-replay-1", status: "succeeded" });
+    const headers = {
+      "Content-Type": "application/json",
+      "x-payments-webhook-secret": "secret-test",
+    };
+
+    const first = await app.request("/webhooks/payment", { method: "POST", headers, body });
+    const second = await app.request("/webhooks/payment", { method: "POST", headers, body });
+
+    expect(first.status).toBe(204);
+    expect(second.status).toBe(204);
+    expect(runInboundMock).toHaveBeenCalledTimes(2);
+    expect(runInboundMock).toHaveBeenNthCalledWith(1, expect.any(Object), "ref-replay-1", "succeeded");
+    expect(runInboundMock).toHaveBeenNthCalledWith(2, expect.any(Object), "ref-replay-1", "succeeded");
+  });
+});
