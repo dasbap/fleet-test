@@ -47,4 +47,12 @@ console.warn = (...args: unknown[]) => {
     firstArg.includes("v7_relativeSplatPath");
 
   if (isReactRouterFutureFlagWarning) {
-    return;
+    return;
+  }
+
+  originalConsoleWarn(...args);
+};
+
+console.error = (...args: unknown[]) => {
+  originalConsoleError(...args);
+};

@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActivation } from "@/hooks/useActivation";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 const RevenueChart = lazy(() =>
   import("@/components/reports/RevenueChart").then((module) => ({ default: module.RevenueChart }))
@@ -63,6 +64,8 @@ export default function Reports() {
   type ExportFormat = "pdf" | "excel";
   const { role, userFleetId } = useAuth();
   const userRole = role || "organizer";
+  const { can } = useRoleAccess();
+  const canExport = can("report.export");
   const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
 
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
@@ -257,33 +260,35 @@ export default function Reports() {
                     Analysez les performances de votre flotte
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={() => requestExport("pdf")}
-                    disabled={!report || isLoading || isPdfExporting || isExcelExporting}
-                    size="lg"
-                  >
-                    {isPdfExporting ? (
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    ) : (
-                      <Download className="mr-2 h-5 w-5" />
-                    )}
-                    {isPdfExporting ? "Préparation du PDF…" : "Télécharger PDF"}
-                  </Button>
-                  <Button 
-                    onClick={() => requestExport("excel")}
-                    disabled={!report || isLoading || isPdfExporting || isExcelExporting}
-                    size="lg"
-                    variant="outline"
-                  >
-                    {isExcelExporting ? (
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    ) : (
-                      <FileSpreadsheet className="mr-2 h-5 w-5" />
-                    )}
-                    {isExcelExporting ? "Préparation Excel…" : "Télécharger Excel"}
-                  </Button>
-                </div>
+                {canExport && (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => requestExport("pdf")}
+                      disabled={!report || isLoading || isPdfExporting || isExcelExporting}
+                      size="lg"
+                    >
+                      {isPdfExporting ? (
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-5 w-5" />
+                      )}
+                      {isPdfExporting ? "Préparation du PDF…" : "Télécharger PDF"}
+                    </Button>
+                    <Button
+                      onClick={() => requestExport("excel")}
+                      disabled={!report || isLoading || isPdfExporting || isExcelExporting}
+                      size="lg"
+                      variant="outline"
+                    >
+                      {isExcelExporting ? (
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      ) : (
+                        <FileSpreadsheet className="mr-2 h-5 w-5" />
+                      )}
+                      {isExcelExporting ? "Préparation Excel…" : "Télécharger Excel"}
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Date Range Selector & Vehicle Filter */}

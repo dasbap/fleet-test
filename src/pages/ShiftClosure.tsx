@@ -1,7 +1,9 @@
 import ShiftClosureForm from "@/components/driver/ShiftClosureForm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
-import { Car, Clock, Gauge } from "lucide-react";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { Car, Clock, Gauge, Lock } from "lucide-react";
+import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
 
 // Mock active shift data
 const mockActiveShift = {
@@ -18,6 +20,8 @@ const mockActiveShift = {
 const ShiftClosure = () => {
   const { role } = useAuth();
   const userRole = role ?? "driver";
+  const { can } = useRoleAccess();
+  const canSubmitDvir = can("dvir.submit");
 
   const formatDuration = (startedAt: string) => {
     const start = new Date(startedAt);
@@ -27,6 +31,15 @@ const ShiftClosure = () => {
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}min`;
   };
+
+  if (!canSubmitDvir) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3 text-center">
+        <Lock className="h-10 w-10 text-muted-foreground" />
+        <p className="text-muted-foreground">Accès réservé aux conducteurs et superviseurs.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -38,6 +51,7 @@ const ShiftClosure = () => {
                 <p className="text-muted-foreground mt-1">
                   Déclarez vos kilomètres et recettes du jour
                 </p>
+                <ContextualHelpTrigger slug="shift-closure" className="mt-2" />
               </div>
 
               {/* Active Shift Info */}

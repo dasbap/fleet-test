@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { WhatsAppSupportButton } from '@/components/help/WhatsAppSupportButton';
 import { useCreateSupportTicket, useCreateSupportCallback } from '@/hooks/useSupportTicket';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthOptional } from '@/hooks/useAuth';
 
 type SupportTab = 'channels' | 'ticket' | 'callback';
 
@@ -21,7 +21,7 @@ export function SupportPanel({ compact = false }: { compact?: boolean }) {
   const [phone, setPhone] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
   const location = useLocation();
-  const { role } = useAuth();
+  const role = useAuthOptional()?.role ?? null;
   const createTicket = useCreateSupportTicket();
   const createCallback = useCreateSupportCallback();
 

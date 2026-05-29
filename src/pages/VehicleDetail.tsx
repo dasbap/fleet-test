@@ -8,6 +8,7 @@ import { useVehicleDetail, type VehicleStatus } from "@/hooks/useVehicles";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import { cn } from "@/lib/utils";
 import { MaintenancePlannerModal } from "@/components/maintenance/MaintenancePlannerModal";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 const statusLabel = (status: VehicleStatus, hasAssignment: boolean) => {
   if (status === "blocked") return "Bloqué";
@@ -20,6 +21,8 @@ export default function VehicleDetail() {
   const navigate = useNavigate();
   const { data: vehicle, isLoading, isError } = useVehicleDetail(vehicleId);
   const [plannerOpen, setPlannerOpen] = useState(false);
+  const { can } = useRoleAccess();
+  const canScheduleMaintenance = can("maintenance.create");
 
   if (isLoading) {
     return <PageLoader />;
@@ -55,10 +58,12 @@ export default function VehicleDetail() {
           </Button>
           <h1 className="font-heading text-xl font-bold">Fiche véhicule</h1>
         </div>
-        <Button type="button" onClick={() => setPlannerOpen(true)}>
-          <Wrench className="mr-2 h-4 w-4" />
-          Planifier un entretien
-        </Button>
+        {canScheduleMaintenance && (
+          <Button type="button" onClick={() => setPlannerOpen(true)}>
+            <Wrench className="mr-2 h-4 w-4" />
+            Planifier un entretien
+          </Button>
+        )}
       </div>
 
       <Card>

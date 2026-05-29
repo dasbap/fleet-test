@@ -132,4 +132,13 @@ describe("useHelp hook", () => {
     expect(result.current.expandedId).toBe("dash-1");
     expect(captureSpy).toHaveBeenCalledWith(
       "help_article_expanded",
-      expe
+      expect.objectContaining({ article_id: "dash-1" }),
+    );
+
+    act(() => {
+      result.current.toggleArticle("dash-1");
+    });
+
+    expect(result.current.expandedId).toBeNull();
+  });
+});

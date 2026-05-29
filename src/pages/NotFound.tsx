@@ -31,7 +31,7 @@ const NotFound = () => {
             <Link to={ROUTE_PATHS.auth}>Se connecter</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link to="/aide">Aide</Link>
+            <Link to="/help">Aide</Link>
           </Button>
         </div>
       </div>

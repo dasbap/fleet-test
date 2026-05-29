@@ -11,7 +11,8 @@ import { useSeoMeta } from '@/hooks/useSeoMeta';
 export default function HelpSearchPage() {
   const [params, setParams] = useSearchParams();
   const initialQ = params.get('q') ?? '';
-  const { data: articles = [] } = useHelpArticles('fr');
+  const { data: articlesRaw } = useHelpArticles('fr');
+  const articles = articlesRaw ?? [];
   const { query, setQuery, results } = useHelpSearchUnified(articles);
 
   useSeoMeta({

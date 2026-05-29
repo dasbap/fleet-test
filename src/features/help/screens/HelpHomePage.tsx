@@ -33,7 +33,8 @@ const ROLE_TABS: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
 
 export default function HelpHomePage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('tutoriels');
-  const { data: articles = [] } = useHelpArticles('fr');
+  const { data: articlesRaw } = useHelpArticles('fr');
+  const articles = articlesRaw ?? [];
   const { query, setQuery, results, isSearching } = useHelpSearchUnified(articles);
   const { history } = useHelpSearchHistory();
   const topTutorials = QUICK_TUTORIALS.slice(0, 6);

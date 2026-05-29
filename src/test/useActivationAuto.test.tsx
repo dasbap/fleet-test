@@ -57,4 +57,8 @@ describe("useActivation (auto)", () => {
     const { result } = renderHook(() => useActivation());
     expect(result.current.isBannerVisible).toBe(true);
     act(() => {
-      result.current.dismiss
+      result.current.dismissBanner();
+    });
+    expect(result.current.isBannerVisible).toBe(false);
+  });
+});

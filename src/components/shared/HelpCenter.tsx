@@ -196,8 +196,8 @@ interface HelpArticleItemProps {
 function HelpArticleItem({ article, query }: HelpArticleItemProps) {
   const { t } = useTranslation("help");
   const navigate = useNavigate();
-  const question = t(article.questionKey);
-  const answer = t(article.answerKey);
+  const question = article.questionText ?? t(article.questionKey);
+  const answer = article.answerText ?? t(article.answerKey);
   const emoji = CATEGORY_EMOJI[article.category];
 
   function highlight(text: string) {

@@ -169,3 +169,17 @@ describe("useUniversalSearch", () => {
       await vi.advanceTimersByTimeAsync(220);
     });
     expect(result.current.status).toBe("success");
+    expect(searchAllMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      result.current.setQuery("");
+      await vi.advanceTimersByTimeAsync(220);
+      result.current.setQuery("cache");
+      await vi.advanceTimersByTimeAsync(220);
+    });
+
+    expect(searchAllMock).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe("success");
+    expect(result.current.flatResults[0]?.id).toBe("veh-cache");
+  });
+});
