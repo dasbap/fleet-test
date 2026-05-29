@@ -82,19 +82,59 @@
     <noscript>
       <p>E-Samba – Gestion intelligente de flotte en Afrique Centrale. Suivi des véhicules, entretiens, alertes et supervision des opérations.</p>
     </noscript>
-    <!-- Si le bundle JS ne remplace pas l’écran (réseau lent, VPN, IP LAN), message après maxMs -->
+    <!-- Récupération cache PWA obsolète (service worker) puis message après maxMs -->
     <script>
       (function () {
+        var swRecoveryKey = "esamba-sw-recovery-v1";
+        var swRecoveryMs = 12000;
         var maxMs = 90000;
         var sec = Math.round(maxMs / 1000);
         var start = Date.now();
+        var swRecoveryDone = false;
+
+        function trySwRecovery(loader) {
+          if (swRecoveryDone || !loader) return;
+          swRecoveryDone = true;
+          try {
+            if (sessionStorage.getItem(swRecoveryKey) === "1") return;
+            sessionStorage.setItem(swRecoveryKey, "1");
+          } catch (e) {
+            return;
+          }
+          if (!("serviceWorker" in navigator)) return;
+          navigator.serviceWorker
+            .getRegistrations()
+            .then(function (regs) {
+              if (!regs.length) {
+                location.reload();
+                return;
+              }
+              return Promise.all(regs.map(function (r) { return r.unregister(); })).then(function () {
+                if ("caches" in window) {
+                  return caches.keys().then(function (keys) {
+                    return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+                  });
+                }
+              }).then(function () {
+                location.reload();
+              });
+            })
+            .catch(function () {
+              location.reload();
+            });
+        }
+
         var id = window.setInterval(function () {
           var loader = document.getElementById("app-loader");
           if (!loader) {
             window.clearInterval(id);
             return;
           }
-          if (Date.now() - start < maxMs) return;
+          var elapsed = Date.now() - start;
+          if (!swRecoveryDone && elapsed >= swRecoveryMs) {
+            trySwRecovery(loader);
+          }
+          if (elapsed < maxMs) return;
           window.clearInterval(id);
           var port = location.port || "8080";
           var host = location.hostname || "";
@@ -111,7 +151,7 @@
             "<p style=\"margin:0 0 8px 0;font-size:16px\">Le chargement dépasse " +
               sec +
               "&nbsp;s (premier chargement ou connexion lente).</p>" +
-            "<p style=\"margin:0;color:#bbb;font-size:14px;line-height:1.45\">Rechargez (Ctrl+R) ou ouvrez F12 → Réseau pour voir une requête bloquée (souvent <code>/src/main.tsx</code> ou <code>/locales/</code>).</p>" +
+            "<p style=\"margin:0;color:#bbb;font-size:14px;line-height:1.45\">Rechargez (Ctrl+Shift+R) ou videz le cache du site (F12 → Application → Service Workers → Unregister).</p>" +
             hint +
             "<p style=\"margin:14px 0 0 0\"><a href=\"#\" id=\"esamba-retry-load\" style=\"color:#6ee7b7\">Réessayer</a></p>";
           var a = document.getElementById("esamba-retry-load");
