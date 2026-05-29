@@ -6,6 +6,7 @@ export const updateSW = registerSW({
     console.info("E-Samba est prêt pour un usage hors ligne.");
   },
   onNeedRefresh() {
-    console.info("Nouvelle version disponible.");
+    // Recharge automatiquement pour éviter de rester bloqué sur une version SW obsolète.
+    void updateSW(true);
   },
 });
