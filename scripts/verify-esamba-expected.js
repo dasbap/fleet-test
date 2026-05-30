@@ -31,6 +31,10 @@ loadEnvLocal();
 
 const url = process.env.VITE_SUPABASE_URL;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+/** Ops/CI : service_role ; navigateur : anon + session authenticated */
+const apiKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+const usingServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
 
 const CRITERES_DONNEES = [
   { key: 'organisation', label: 'Organisation ESAMBA' },
@@ -40,15 +44,22 @@ const CRITERES_DONNEES = [
 ];
 
 async function main() {
-  if (!url || !anonKey) {
-    console.error('ERREUR: VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY requis dans .env.local');
+  if (!url || !apiKey) {
+    console.error(
+      'ERREUR: VITE_SUPABASE_URL et (VITE_SUPABASE_ANON_KEY ou SUPABASE_SERVICE_ROLE_KEY) requis dans .env.local',
+    );
     process.exit(1);
   }
 
   const { createClient } = await import('@supabase/supabase-js');
-  const supabase = createClient(url, anonKey, { auth: { persistSession: false } });
+  const supabase = createClient(url, apiKey, { auth: { persistSession: false } });
 
   console.log('Vérification des résultats attendus ESAMBA (RPC verifier_esamba_2024)...\n');
+  if (usingServiceRole) {
+    console.log('(clé service_role — membership_organizer sera KO sans auth.uid())\n');
+  } else {
+    console.log('(clé anon — connectez-vous dans l’app ou définissez SUPABASE_SERVICE_ROLE_KEY)\n');
+  }
 
   const { data, error } = await supabase.rpc('verifier_esamba_2024');
   if (error) {
