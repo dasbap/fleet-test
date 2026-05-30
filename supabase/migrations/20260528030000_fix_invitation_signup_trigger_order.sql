@@ -12,6 +12,7 @@
 -- Ordre garanti : on_auth_user_created → on_auth_user_invitation_signup
 
 DROP TRIGGER IF EXISTS auth_users_handle_invitation_signup ON auth.users;
+DROP TRIGGER IF EXISTS on_auth_user_invitation_signup ON auth.users;
 
 CREATE TRIGGER on_auth_user_invitation_signup
   AFTER INSERT ON auth.users
