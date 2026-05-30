@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { BiometricAuthError } from "@capgo/capacitor-native-biometric";
+import { NativeBiometricAuthError } from "@/lib/biometric/native-biometric-codes";
 import {
   BIOMETRIC_MAX_PIN_ATTEMPTS,
   clearBiometricLockStorage,
@@ -42,9 +42,9 @@ function parseErrorCode(error: unknown): number | undefined {
 function isUserChosePinOrCancel(error: unknown): boolean {
   const code = parseErrorCode(error);
   if (
-    code === BiometricAuthError.USER_CANCEL ||
-    code === BiometricAuthError.USER_FALLBACK ||
-    code === BiometricAuthError.SYSTEM_CANCEL
+    code === NativeBiometricAuthError.USER_CANCEL ||
+    code === NativeBiometricAuthError.USER_FALLBACK ||
+    code === NativeBiometricAuthError.SYSTEM_CANCEL
   ) {
     return true;
   }
@@ -180,7 +180,7 @@ export function useBiometricLock({
       onUnlocked(next);
     } catch (e) {
       const code = parseErrorCode(e);
-      if (code === BiometricAuthError.AUTHENTICATION_FAILED) {
+      if (code === NativeBiometricAuthError.AUTHENTICATION_FAILED) {
         setAuthState("failed");
       } else if (isUserChosePinOrCancel(e)) {
         setAuthState("pin");

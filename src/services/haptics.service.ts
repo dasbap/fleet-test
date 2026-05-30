@@ -1,4 +1,3 @@
-import { ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { isNativePlatform } from "@/lib/platform";
 
 let hapticsModule: typeof import("@capacitor/haptics") | null = null;
@@ -23,7 +22,7 @@ export class HapticsService {
     const mod = await getHapticsModule();
     if (!mod) return;
     try {
-      await mod.Haptics.notification({ type: NotificationType.Success });
+      await mod.Haptics.notification({ type: mod.NotificationType.Success });
     } catch {
       // Ne bloque jamais le flux métier si le retour haptique échoue.
     }
@@ -33,7 +32,7 @@ export class HapticsService {
     const mod = await getHapticsModule();
     if (!mod) return;
     try {
-      await mod.Haptics.notification({ type: NotificationType.Error });
+      await mod.Haptics.notification({ type: mod.NotificationType.Error });
     } catch {
       // Ne bloque jamais le flux métier si le retour haptique échoue.
     }
@@ -43,7 +42,7 @@ export class HapticsService {
     const mod = await getHapticsModule();
     if (!mod) return;
     try {
-      await mod.Haptics.impact({ style: ImpactStyle.Light });
+      await mod.Haptics.impact({ style: mod.ImpactStyle.Light });
     } catch {
       // Feedback optionnel.
     }

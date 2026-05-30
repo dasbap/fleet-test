@@ -55,7 +55,8 @@ export default defineConfig(({ mode }) => {
   base: mode === "capacitor" ? "./" : "/",
   build: {
     target: "es2020",
-    chunkSizeWarningLimit: 400,
+    // xlsx / jspdf / charts : import() dynamique uniquement ; seuil relevé pour éviter le bruit au build.
+    chunkSizeWarningLimit: 520,
     sourcemap: isProd ? "hidden" : true,
     rollupOptions: {
       plugins:
