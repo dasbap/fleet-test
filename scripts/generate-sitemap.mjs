@@ -21,6 +21,8 @@ const staticPaths = [
   { loc: "/status", priority: "0.4", changefreq: "weekly" },
   { loc: "/securite", priority: "0.6", changefreq: "monthly" },
   { loc: "/pricing", priority: "0.8", changefreq: "monthly" },
+  { loc: "/help", priority: "0.7", changefreq: "weekly" },
+  { loc: "/help/quickstart", priority: "0.6", changefreq: "monthly" },
   { loc: "/ressources", priority: "0.7", changefreq: "weekly" },
   { loc: "/ressources/seo-ia", priority: "0.85", changefreq: "weekly" },
 ];
@@ -65,12 +67,25 @@ const urlEntries = all
   )
   .join("\n");
 
+const markerStart = "<!-- use-case:auto:start -->";
+const markerEnd = "<!-- use-case:auto:end -->";
+const out = path.join(root, "public", "sitemap-app.xml");
+
+let useCaseBlock = "";
+if (fs.existsSync(out)) {
+  const existing = fs.readFileSync(out, "utf-8");
+  const match = existing.match(
+    new RegExp(`${markerStart}[\\s\\S]*?${markerEnd}`)
+  );
+  if (match) {
+    useCaseBlock = `\n${match[0]}\n`;
+  }
+}
+
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urlEntries}
-</urlset>
+${urlEntries}${useCaseBlock}</urlset>
 `;
 
-const out = path.join(root, "public", "sitemap-app.xml");
 fs.writeFileSync(out, xml, "utf-8");
 console.log(`Sitemap écrit : ${out} (${all.length} URLs, sans routes /dashboard)`);

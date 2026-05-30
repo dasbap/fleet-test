@@ -1,4 +1,3 @@
-import { AccessControl } from "@capgo/capacitor-native-biometric";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { hashPin } from "@/lib/biometric/pinHash";
@@ -26,16 +25,19 @@ async function ensurePreferences() {
   return Preferences;
 }
 
-async function ensureNativeBiometric() {
-  const { NativeBiometric } = await import("@capgo/capacitor-native-biometric");
-  return NativeBiometric;
+let nativeBiometricModule: typeof import("@capgo/capacitor-native-biometric") | null = null;
+
+async function ensureNativeBiometricModule() {
+  if (!nativeBiometricModule) {
+    nativeBiometricModule = await import("@capgo/capacitor-native-biometric");
+  }
+  return nativeBiometricModule;
 }
 
 export async function getBiometricDisplayLabel(): Promise<string> {
   if (!shouldUseBiometricLock()) return "Biométrie";
   try {
-    const NativeBiometric = await ensureNativeBiometric();
-    const { BiometryType } = await import("@capgo/capacitor-native-biometric");
+    const { NativeBiometric, BiometryType } = await ensureNativeBiometricModule();
     const res = await NativeBiometric.isAvailable({ useFallback: false });
     switch (res.biometryType) {
       case BiometryType.FACE_ID:
@@ -58,7 +60,7 @@ export async function getBiometricDisplayLabel(): Promise<string> {
 export async function isNativeBiometricHardwareAvailable(): Promise<boolean> {
   if (!shouldUseBiometricLock()) return false;
   try {
-    const NativeBiometric = await ensureNativeBiometric();
+    const { NativeBiometric } = await ensureNativeBiometricModule();
     const res = await NativeBiometric.isAvailable({ useFallback: false });
     return res.isAvailable && res.strongBiometryIsAvailable;
   } catch {
@@ -79,7 +81,7 @@ export async function isBiometricLockEnabledForUser(userId: string): Promise<boo
 export async function isCredentialSavedInVault(): Promise<boolean> {
   if (!shouldUseBiometricLock()) return false;
   try {
-    const NativeBiometric = await ensureNativeBiometric();
+    const { NativeBiometric } = await ensureNativeBiometricModule();
     const { isSaved } = await NativeBiometric.isCredentialsSaved({
       server: BIOMETRIC_CREDENTIAL_SERVER,
     });
@@ -100,7 +102,7 @@ export async function enableBiometricLock(
   if (!shouldUseBiometricLock()) {
     throw new Error("Verrou biométrique indisponible sur cette plateforme.");
   }
-  const NativeBiometric = await ensureNativeBiometric();
+  const { NativeBiometric, AccessControl } = await ensureNativeBiometricModule();
   const prefs = await ensurePreferences();
   const salt = crypto.randomUUID();
   const hashed = await hashPin(pin, salt);
@@ -122,7 +124,7 @@ export async function disableBiometricLock(): Promise<void> {
   if (!shouldUseBiometricLock()) return;
   const prefs = await ensurePreferences();
   try {
-    const NativeBiometric = await ensureNativeBiometric();
+    const { NativeBiometric } = await ensureNativeBiometricModule();
     await NativeBiometric.deleteCredentials({ server: BIOMETRIC_CREDENTIAL_SERVER });
   } catch {
     /* ignore */
@@ -141,7 +143,7 @@ export async function clearBiometricLockStorage(): Promise<void> {
  * Prompt biométrique natif (sans lecture du jeton).
  */
 export async function promptNativeBiometricUnlock(): Promise<void> {
-  const NativeBiometric = await ensureNativeBiometric();
+  const { NativeBiometric } = await ensureNativeBiometricModule();
   await NativeBiometric.verifyIdentity({
     reason: "Déverrouiller Flotte E-Samba",
     title: "Flotte E-Samba",
@@ -156,7 +158,7 @@ export async function promptNativeBiometricUnlock(): Promise<void> {
  * Relit le refresh token, rafraîchit la session Supabase et met à jour le coffre avec le nouveau jeton.
  */
 export async function resumeSupabaseSessionFromVault(): Promise<Session> {
-  const NativeBiometric = await ensureNativeBiometric();
+  const { NativeBiometric, AccessControl } = await ensureNativeBiometricModule();
   const { password: refreshToken } = await NativeBiometric.getCredentials({
     server: BIOMETRIC_CREDENTIAL_SERVER,
   });

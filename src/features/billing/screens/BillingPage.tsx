@@ -1,20 +1,20 @@
 import { Link } from "react-router-dom";
 import {
+  AlertTriangle,
   ArrowUpRight,
   CalendarClock,
   Car,
-  Check,
+  CheckCircle2,
   CreditCard,
   Download,
   ExternalLink,
   Info,
-  Loader2,
   MessageCircle,
   QrCode,
   RefreshCw,
   TriangleAlert,
   X,
-  XCircle,
+  Zap,
 } from "lucide-react";
 import { format, formatDistanceToNow, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
