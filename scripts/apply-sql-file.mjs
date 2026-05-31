@@ -13,9 +13,30 @@ if (!file) {
   process.exit(1);
 }
 
-const url = process.env.DATABASE_URL?.trim();
+function resolveDatabaseUrl() {
+  const direct = process.env.DATABASE_URL?.trim() || process.env.DIRECT_URL?.trim();
+  if (direct) return direct;
+
+  const dbUrl = process.env.SUPABASE_DB_URL?.trim();
+  if (dbUrl) return dbUrl;
+
+  const dbPassword = process.env.SUPABASE_DB_PASSWORD?.trim();
+  const supabaseUrl = process.env.VITE_SUPABASE_URL?.trim();
+  if (dbPassword && supabaseUrl) {
+    const ref = supabaseUrl.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1];
+    if (ref) {
+      return `postgresql://postgres.${ref}:${encodeURIComponent(dbPassword)}@aws-1-eu-west-1.pooler.supabase.com:5432/postgres`;
+    }
+  }
+
+  return null;
+}
+
+const url = resolveDatabaseUrl();
 if (!url) {
-  console.error('ERREUR: DATABASE_URL manquant (.env.local)');
+  console.error(
+    'ERREUR: connexion DB manquante (.env.local). Ajoutez DATABASE_URL, DIRECT_URL, SUPABASE_DB_URL ou SUPABASE_DB_PASSWORD + VITE_SUPABASE_URL',
+  );
   process.exit(1);
 }
 
