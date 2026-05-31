@@ -33,6 +33,18 @@ export const organizerOperationsMockSnapshot: OrganizerOperationsMock = {
       href: "/dashboard/closure",
     },
   ],
+  plannedShiftsToday: [
+    {
+      id: "snap-p1",
+      title: "Créneau planifié · CG-220-CD",
+      subtitle: "Départ matinal",
+      vehicleLabel: "Toyota Hiace",
+      driverName: "Paul N.",
+      timeWindow: "07:00 – 11:00",
+      status: "planned",
+      href: "/terrain",
+    },
+  ],
   vehiclesInService: [
     {
       id: "snap-v1",
@@ -147,6 +159,9 @@ export const driverOperationsMockSnapshot: MockDriverDay = {
   vehicleLabel: "Mercedes Sprinter",
   vehiclePlate: "CG-204-AA",
   vehicleKm: "128 420 km",
+  activeShiftId: "snap-shift-1",
+  vehicleId: "snap-vehicle-1",
+  fleetId: "snap-fleet-1",
   departureChecklist,
   arrivalChecklist,
 };

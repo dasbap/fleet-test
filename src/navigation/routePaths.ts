@@ -50,6 +50,8 @@ export const ROUTE_PATHS = {
   dashboardAlertDetail: (alertId: string) =>
     `/dashboard/alerts/${alertId}` as const,
   dashboardOperations: "/dashboard/operations",
+  /** Ancre vers la section validation des clôtures (manager / organisateur). */
+  dashboardOperationsPendingClosures: "/dashboard/operations#clotures-en-attente",
   dashboardScan: "/dashboard/scan",
   dashboardMissionDetail: (missionId: string) =>
     `/dashboard/operations/mission/${missionId}` as const,
@@ -124,3 +126,8 @@ export const ROUTE_PATHS = {
   /** Backoffice articles aide (v2). */
   dashboardHelpAdmin: "/dashboard/admin/help",
 } as const;
+
+/** Hub conducteur et sous-routes (scan QR, etc.). */
+export function isTerrainPath(pathname: string): boolean {
+  return pathname === ROUTE_PATHS.terrain || pathname.startsWith(`${ROUTE_PATHS.terrain}/`);
+}

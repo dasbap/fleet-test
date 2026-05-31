@@ -54,7 +54,7 @@ describe("ClosureBanner", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Clôtures à valider");
     expect(screen.getByText("2 clôtures de créneau attendent une validation.")).toBeInTheDocument();
     const cta = screen.getByRole("link", { name: "Traiter les clôtures" });
-    expect(cta).toHaveAttribute("href", ROUTE_PATHS.dashboardShiftClosure);
+    expect(cta).toHaveAttribute("href", ROUTE_PATHS.dashboardOperationsPendingClosures);
   });
 
   it("gère la pluralisation pour une clôture unique", () => {

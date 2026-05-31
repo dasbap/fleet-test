@@ -1,14 +1,15 @@
 import { FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ClipboardCheck, Fuel, Loader2, QrCode } from "lucide-react";
+import { ClipboardCheck, Clock, Fuel, Loader2, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import { useActiveAssignments } from "@/hooks/useAssignments";
+import { useActiveAssignments, type Assignment } from "@/hooks/useAssignments";
 import { useCreateFuelEntry } from "@/hooks/useFuel";
 import { useActiveShift, useStartShift } from "@/hooks/useDriverShifts";
+import { useUpcomingPlannedShift } from "@/hooks/usePlannedShifts";
 import { cn } from "@/lib/utils";
 import {
   mobileScreenRootList,
@@ -27,15 +28,17 @@ function parsePositiveNumber(raw: string): number | null {
 /** Hub terrain conducteur : créneau, carburant, lien scan. */
 export default function TerrainPage() {
   const { user, userFleetId } = useAuth();
-  const { data: assignments = [], isPending: assignmentsPending } = useActiveAssignments(
+  const { data: rawAssignments, isPending: assignmentsPending } = useActiveAssignments(
     userFleetId ?? undefined,
   );
+  const assignments: Assignment[] = rawAssignments ?? [];
   const myAssignment = useMemo(
     () => (user ? assignments.find((a) => a.driver_user_id === user.id) : null),
     [assignments, user],
   );
   const vehicleId = myAssignment?.vehicle_id ?? null;
   const { data: activeShift, isPending: shiftPending } = useActiveShift();
+  const { data: upcomingPlanned } = useUpcomingPlannedShift();
   const startShift = useStartShift();
   const createFuel = useCreateFuelEntry();
 
@@ -103,6 +106,38 @@ export default function TerrainPage() {
           Actions rapides : créneau, carburant et scan QR (sans menu administration).
         </p>
       </div>
+
+      {!hasOpenShift && upcomingPlanned ? (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+              <div>
+                <p className="font-medium">Créneau prévu</p>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(upcomingPlanned.planned_start).toLocaleTimeString("fr-FR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  {upcomingPlanned.vehicle?.registration
+                    ? ` · ${upcomingPlanned.vehicle.registration}`
+                    : ""}
+                </p>
+              </div>
+            </div>
+            {myAssignment && kmDepartOk !== null ? (
+              <Button
+                type="button"
+                size="sm"
+                disabled={startShift.isPending}
+                onClick={handleOpenShift}
+              >
+                Ouvrir maintenant
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

@@ -1,27 +1,18 @@
+import { Link } from "react-router-dom";
 import ShiftClosureForm from "@/components/driver/ShiftClosureForm";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useActiveShift } from "@/hooks/useDriverShifts";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { Car, Clock, Gauge, Lock } from "lucide-react";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { Car, Clock, Gauge, Lock, Loader2 } from "lucide-react";
 import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
 
-// Mock active shift data
-const mockActiveShift = {
-  id: "shift-1",
-  vehicle: {
-    plate: "LT 1234 A",
-    brand: "Toyota",
-    model: "Corolla",
-  },
-  kmStart: 45230,
-  startedAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
-};
-
 const ShiftClosure = () => {
-  const { role } = useAuth();
-  const userRole = role ?? "driver";
   const { can } = useRoleAccess();
   const canSubmitDvir = can("dvir.submit");
+  const { data: activeShift, isPending } = useActiveShift();
 
   const formatDuration = (startedAt: string) => {
     const start = new Date(startedAt);
@@ -41,68 +32,99 @@ const ShiftClosure = () => {
     );
   }
 
+  const vehicle = activeShift?.assignment?.vehicle;
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-              {/* Header */}
-              <div>
-                <h1 className="text-2xl md:text-3xl font-heading font-bold">
-                  Clôture journalière
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                  Déclarez vos kilomètres et recettes du jour
-                </p>
-                <ContextualHelpTrigger slug="shift-closure" className="mt-2" />
-              </div>
+      <div>
+        <h1 className="text-2xl md:text-3xl font-heading font-bold">Clôture journalière</h1>
+        <p className="text-muted-foreground mt-1">
+          Déclarez vos kilomètres et recettes du jour
+        </p>
+        <ContextualHelpTrigger slug="shift-closure" className="mt-2" />
+      </div>
 
-              {/* Active Shift Info */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-heading">Service en cours</CardTitle>
-                  <CardDescription>Informations sur votre service actif</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Car className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground">Véhicule</div>
-                        <div className="font-semibold">{mockActiveShift.vehicle.plate}</div>
+      {isPending ? (
+        <Card>
+          <CardContent className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Chargement du créneau en cours…
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!isPending && !activeShift ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-heading">Aucun créneau ouvert</CardTitle>
+            <CardDescription>
+              Ouvrez d&apos;abord un créneau depuis le hub terrain pour clôturer votre service.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link to={ROUTE_PATHS.terrain}>Ouvrir un créneau</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!isPending && activeShift ? (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-heading">Service en cours</CardTitle>
+              <CardDescription>Informations sur votre service actif</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Car className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Véhicule</div>
+                    {vehicle ? (
+                      <>
+                        <div className="font-semibold">{vehicle.registration}</div>
                         <div className="text-xs text-muted-foreground">
-                          {mockActiveShift.vehicle.brand} {mockActiveShift.vehicle.model}
+                          {[vehicle.brand, vehicle.model].filter(Boolean).join(" ")}
                         </div>
-                      </div>
-                    </div>
+                      </>
+                    ) : (
+                      <Skeleton className="h-5 w-24" />
+                    )}
+                  </div>
+                </div>
 
-                    <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Gauge className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground">KM départ</div>
-                        <div className="font-semibold">{mockActiveShift.kmStart.toLocaleString()} km</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground">Durée</div>
-                        <div className="font-semibold">{formatDuration(mockActiveShift.startedAt)}</div>
-                      </div>
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Gauge className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">KM départ</div>
+                    <div className="font-semibold">
+                      {activeShift.km_start.toLocaleString()} km
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              {/* Closure Form */}
-              <ShiftClosureForm 
-                shiftId={mockActiveShift.id}
-                kmStart={mockActiveShift.kmStart}
-              />
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Durée</div>
+                    <div className="font-semibold">{formatDuration(activeShift.started_at)}</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <ShiftClosureForm shiftId={activeShift.id} kmStart={activeShift.km_start} />
+        </>
+      ) : null}
     </div>
   );
 };

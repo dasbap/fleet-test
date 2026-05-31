@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -66,6 +66,15 @@ export function AssignmentFormDialog({
     },
   });
 
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        vehicle_id: preselectedVehicleId || "",
+        driver_user_id: "",
+      });
+    }
+  }, [open, preselectedVehicleId, form]);
+
   const onSubmit = async (data: AssignmentFormData) => {
     try {
       await assignVehicle.mutateAsync({
@@ -111,7 +120,7 @@ export function AssignmentFormDialog({
                     <FormLabel>Véhicule</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -155,7 +164,7 @@ export function AssignmentFormDialog({
                     <FormLabel>Chauffeur</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>

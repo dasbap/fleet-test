@@ -75,6 +75,14 @@ export function mapSupabaseErrorToFrench(message: string): string {
     return "Vous devez être connecté pour créer une flotte.";
   }
 
+  // PostgREST / Supabase client
+  if (m.includes("cannot coerce") || m.includes("single json object") || m.includes("pgrst116")) {
+    return "Donnée introuvable ou action non autorisée. Réessayez ou contactez votre superviseur.";
+  }
+  if (m.includes("statement timeout") || m.includes("canceling statement")) {
+    return "Le serveur met trop de temps à répondre. Réessayez dans quelques instants.";
+  }
+
   // Erreurs RLS / permissions
   if (m.includes("infinite recursion") && m.includes("policy")) {
     return "Erreur de configuration des droits. Contactez l'administrateur.";

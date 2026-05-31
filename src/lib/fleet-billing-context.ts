@@ -31,16 +31,19 @@ export function normalizeFleetBillingContext(raw: unknown): FleetBillingContext 
 
   const planCode = str(o.plan_code) ?? EMPTY.planCode;
   const isPaid = Boolean(o.is_paid);
+  const maxVehicles = Math.max(0, toNum(o.max_vehicles)) || 999_999;
+  const rawSlots = toNum(o.vehicle_slots);
+  const vehicleSlots = rawSlots > 0 ? rawSlots : maxVehicles;
 
   return {
     planCode,
-    planName: str(o.plan_name) ?? EMPTY.planName,
+    planName: str(o.plan_name) ?? planNameFromCode(planCode),
     isPaid,
     // véhicules
     vehicleCount:   toNum(o.vehicle_count),
     activeVehicles: toNum(o.active_vehicles),
-    vehicleSlots:   Math.max(1, toNum(o.vehicle_slots)),
-    maxVehicles:    Math.max(0, toNum(o.max_vehicles)) || 999_999,
+    vehicleSlots:   Math.max(1, vehicleSlots),
+    maxVehicles,
     // facturation
     billingStatus:     toBillingStatus(o.billing_status),
     trialEndsAt:       str(o.trial_ends_at),
@@ -79,6 +82,27 @@ function str(v: unknown): string | null {
 }
 
 const VALID_STATUSES: BillingStatus[] = ["trial", "active", "grace", "suspended", "enterprise"];
+
+const BILLING_STATUS_ALIASES: Record<string, BillingStatus> = {
+  grace_period: "grace",
+  pending_payment: "trial",
+  expired: "suspended",
+  cancelled: "suspended",
+};
+
 function toBillingStatus(v: unknown): BillingStatus {
-  return VALID_STATUSES.includes(v as BillingStatus) ? (v as BillingStatus) : "trial";
+  if (typeof v !== "string" || v.length === 0) return "trial";
+  if (VALID_STATUSES.includes(v as BillingStatus)) return v as BillingStatus;
+  return BILLING_STATUS_ALIASES[v] ?? "trial";
+}
+
+const PLAN_DISPLAY_NAMES: Record<string, string> = {
+  free: "Gratuit",
+  starter: "Starter",
+  pro: "Pro",
+  enterprise: "Enterprise",
+};
+
+function planNameFromCode(planCode: string): string {
+  return PLAN_DISPLAY_NAMES[planCode] ?? planCode;
 }

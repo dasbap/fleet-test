@@ -25,13 +25,22 @@ const refetchIntervalWhenVisible = (visibleMs: number, hiddenMs = visibleMs * 3)
   return document.visibilityState === "hidden" ? hiddenMs : visibleMs;
 };
 
-/** Interventions datées (retards + à venir) ; sinon file sans date planifiée pour le widget. */
+/** Interventions datées (retards + à venir) ; fallback file sans date si timeout ou vide. */
 async function fetchScheduledMaintenance(fleetId: string): Promise<MaintenanceJob[]> {
-  const scheduled = await maintenanceRepository.findDashboardMaintenanceWindow(fleetId, {
-    totalLimit: 10,
-  });
-  if (scheduled.length > 0) return scheduled;
-  return maintenanceRepository.findAll({ fleet_id: fleetId, status: "queued", limit: 6 });
+  try {
+    const scheduled = await maintenanceRepository.findDashboardMaintenanceWindow(fleetId, {
+      totalLimit: 10,
+    });
+    if (scheduled.length > 0) return scheduled;
+  } catch (err) {
+    console.warn("Planning maintenance dashboard indisponible, fallback file:", err);
+  }
+
+  try {
+    return await maintenanceRepository.findAll({ fleet_id: fleetId, status: "queued", limit: 6 });
+  } catch {
+    return [];
+  }
 }
 
 /**

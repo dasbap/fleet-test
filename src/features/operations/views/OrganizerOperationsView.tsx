@@ -5,6 +5,7 @@ import { TaskRowCard } from "@/components/operations/TaskRowCard";
 import { VehicleCirculationCard } from "@/components/operations/VehicleCirculationCard";
 import { OperationSection } from "@/components/operations/OperationSection";
 import { OrganizerQuickActions } from "@/components/operations/OrganizerQuickActions";
+import { PendingClosuresSection } from "@/components/operations/PendingClosuresSection";
 import { OperationsViewSkeleton } from "@/components/operations/OperationsViewSkeleton";
 import { OperationsQueryMessage } from "@/components/operations/OperationsQueryMessage";
 import { OperationsEmptyState } from "@/components/operations/OperationsEmptyState";
@@ -35,6 +36,23 @@ export function OrganizerOperationsView() {
   return (
     <div className="space-y-6 sm:space-y-8">
       <OrganizerQuickActions />
+
+      <PendingClosuresSection fleetId={userFleetId} />
+
+      <OperationSection
+        title="Créneaux planifiés aujourd'hui"
+        description="Services confirmés ou manqués, en attente de démarrage."
+      >
+        {operations.plannedShiftsToday.length === 0 ? (
+          <OperationsEmptyState message="Aucun créneau planifié pour aujourd'hui." />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {operations.plannedShiftsToday.map((m) => (
+              <MissionCard key={m.id} mission={m} ctaLabel="Voir le terrain" />
+            ))}
+          </div>
+        )}
+      </OperationSection>
 
       <OperationSection title="Missions du jour" description="Planning et suivi des tournées.">
         {operations.missionsToday.length === 0 ? (

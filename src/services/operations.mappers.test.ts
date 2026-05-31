@@ -3,8 +3,10 @@ import {
   buildOrganizerTasks,
   maintenanceJobToIntervention,
   shiftToMissionCard,
+  plannedShiftToMissionCard,
 } from "@/services/operations.mappers";
 import type { DriverShift } from "@/repositories/driver-shift.repository";
+import type { PlannedShift } from "@/repositories/planned-shift.repository";
 import type { MaintenanceJob } from "@/repositories/maintenance.repository";
 
 describe("operations.mappers", () => {
@@ -39,6 +41,33 @@ describe("operations.mappers", () => {
     expect(card.vehicleLabel).toContain("Iveco");
   });
 
+  it("plannedShiftToMissionCard produit une carte planifiée", () => {
+    const planned = {
+      id: "p1",
+      fleet_id: "f1",
+      driver_user_id: "d1",
+      vehicle_id: "v1",
+      planned_start: "2026-05-31T08:00:00.000Z",
+      planned_end: "2026-05-31T12:00:00.000Z",
+      status: "confirmed",
+      creneau_id: null,
+      notes: "Tournée matin",
+      created_by: "mgr-1",
+      created_at: "2026-05-30T10:00:00.000Z",
+      vehicle: {
+        id: "v1",
+        registration: "LT-1234-A",
+        brand: "Toyota",
+        model: "Hiace",
+      },
+    } as PlannedShift;
+
+    const card = plannedShiftToMissionCard(planned, "Paul N.");
+    expect(card.title).toContain("LT-1234-A");
+    expect(card.status).toBe("planned");
+    expect(card.driverName).toBe("Paul N.");
+  });
+
   it("maintenanceJobToIntervention mappe le statut ready vers completed et canClose", () => {
     const job = {
       id: "j1",
@@ -68,5 +97,14 @@ describe("operations.mappers", () => {
     expect(tasks).toHaveLength(1);
     expect(tasks[0].id).toBe("task-ok");
     expect(tasks[0].status).toBe("completed");
+  });
+
+  it("buildOrganizerTasks pointe les clôtures vers la section validation", () => {
+    const tasks = buildOrganizerTasks({
+      pendingClosureCount: 2,
+      queuedMaintenanceCount: 0,
+      recentIncidentCount: 0,
+    });
+    expect(tasks[0].href).toBe("/dashboard/operations#clotures-en-attente");
   });
 });

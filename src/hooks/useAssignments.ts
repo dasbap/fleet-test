@@ -46,7 +46,7 @@ export function useFleetDrivers(fleetId?: string) {
 }
 
 export function useActiveAssignments(fleetId?: string) {
-  return useQuery({
+  return useQuery<Assignment[]>({
     queryKey: ['active-assignments', fleetId],
     queryFn: () => assignmentService.getActiveAssignments(fleetId),
     enabled: !!fleetId,
@@ -74,6 +74,8 @@ export function useAssignVehicle() {
     }) => assignmentService.assignVehicle(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles-list'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicle'] });
       queryClient.invalidateQueries({ queryKey: ['active-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['fleet-drivers'] });
       toast({

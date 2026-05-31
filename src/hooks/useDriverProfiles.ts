@@ -32,14 +32,22 @@ export function useUpdateDriverProfile() {
       driverUserId: string;
       updates: Parameters<DriverProfileService['updateDriverProfile']>[1];
     }) => driverProfileService.updateDriverProfile(driverUserId, updates),
-    onSuccess: (profile) => {
-      queryClient.invalidateQueries({ queryKey: ['driver-profile'] });
-      queryClient.invalidateQueries({ queryKey: ['fleet-drivers'] });
-      queryClient.invalidateQueries({ queryKey: ['driver-terrain-self'] });
-      queryClient.invalidateQueries({ queryKey: ['fleet-driver-activation-health'] });
+    onSuccess: async (profile, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['driver-profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['fleet-drivers'] }),
+        queryClient.invalidateQueries({ queryKey: ['driver-terrain-self'] }),
+        queryClient.invalidateQueries({ queryKey: ['fleet-driver-activation-health'] }),
+      ]);
+      await queryClient.refetchQueries({ queryKey: ['driver-terrain-self'] });
+      const phoneOnly =
+        variables.updates.phone != null &&
+        Object.keys(variables.updates).length === 1;
       toast({
-        title: 'Profil conducteur mis à jour',
-        description: `${profile.full_name ?? 'Le conducteur'} a été mis à jour.`,
+        title: phoneOnly ? 'Numéro enregistré' : 'Profil conducteur mis à jour',
+        description: phoneOnly
+          ? 'Votre mobile est prêt pour les SMS E-Samba.'
+          : `${profile.full_name ?? 'Le conducteur'} a été mis à jour.`,
       });
     },
     onError: (error: Error) => {

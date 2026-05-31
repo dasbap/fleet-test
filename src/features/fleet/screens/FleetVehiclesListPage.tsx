@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Car } from "lucide-react";
+import { Search, Car, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale/fr";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,10 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import VehicleFormDialog from "@/components/vehicles/VehicleFormDialog";
+import { AssignmentFormDialog } from "@/components/vehicles/AssignmentFormDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVehicleList, type VehicleStatusApi } from "@/hooks/useVehicles";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { cn } from "@/lib/utils";
 import {
   mobileScreenRootList,
@@ -35,14 +38,23 @@ const FILTER_TABS: { id: StatusFilter; label: string }[] = [
 export default function FleetVehiclesListPage() {
   const { userFleetId, isLoading: authLoading } = useAuth();
   const { canWriteFleet } = usePermissions();
+  const { can } = useRoleAccess();
+  const canAssignDriver = can("vehicle.assign_driver");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [tab, setTab] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
 
   const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+  };
+
+  const openAssignDialog = (vehicleId: string) => {
+    setSelectedVehicleId(vehicleId);
+    setAssignDialogOpen(true);
   };
 
   const listFilters = useMemo(
@@ -155,44 +167,79 @@ export default function FleetVehiclesListPage() {
         </Card>
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {vehicles.map((v) => (
-            <li key={v.id}>
-              <Card className="h-full">
-                <CardContent className="space-y-3 p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-mono text-base font-semibold">{v.registration}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {[v.brand, v.model].filter(Boolean).join(" ")}
+          {vehicles.map((v) => {
+            const driverName = v.active_assignment?.driver?.full_name?.trim();
+            return (
+              <li key={v.id}>
+                <Card className="h-full">
+                  <CardContent className="space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <button
+                        type="button"
+                        className="min-w-0 text-left outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                        onClick={() => navigate(ROUTE_PATHS.dashboardVehicleDetail(v.id))}
+                      >
+                        <p className="font-mono text-base font-semibold">{v.registration}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {[v.brand, v.model].filter(Boolean).join(" ")}
+                        </p>
+                      </button>
+                      <Badge variant={v.status === "blocked" ? "destructive" : "secondary"}>
+                        {v.status === "blocked" ? "Bloqué" : driverName ? "En service" : "Actif"}
+                      </Badge>
+                    </div>
+                    <div className="text-sm">
+                      <p className="text-xs text-muted-foreground">Conducteur</p>
+                      <p className="font-medium">{driverName || "Non assigné"}</p>
+                    </div>
+                    <div className="text-sm">
+                      <p className="text-xs text-muted-foreground">Prochain entretien</p>
+                      <p className="font-medium">
+                        {v.next_maintenance_at
+                          ? format(new Date(v.next_maintenance_at), "d MMM yyyy", { locale: fr })
+                          : "Non planifié"}
                       </p>
                     </div>
-                    <Badge variant={v.status === "blocked" ? "destructive" : "secondary"}>
-                      {v.status === "blocked" ? "Bloqué" : "Actif"}
-                    </Badge>
-                  </div>
-                  <div className="text-sm">
-                    <p className="text-xs text-muted-foreground">Prochain entretien</p>
-                    <p className="font-medium">
-                      {v.next_maintenance_at
-                        ? format(new Date(v.next_maintenance_at), "d MMM yyyy", { locale: fr })
-                        : "Non planifié"}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
+                    {canAssignDriver && v.status === "ok" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-2"
+                        onClick={() => openAssignDialog(v.id)}
+                      >
+                        <UserPlus className="h-4 w-4" aria-hidden />
+                        {driverName ? "Changer le chauffeur" : "Affecter un chauffeur"}
+                      </Button>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              </li>
+            );
+          })}
         </ul>
       )}
 
       {canWriteFleet && (
-          <VehicleFormDialog
-            open={isFormOpen}
-            onOpenChange={setIsFormOpen}
-            fleetId={userFleetId}
-            onSuccess={handleSuccess}
-          />
-        )}
+        <VehicleFormDialog
+          open={isFormOpen}
+          onOpenChange={setIsFormOpen}
+          fleetId={userFleetId}
+          onSuccess={handleSuccess}
+        />
+      )}
+
+      {canAssignDriver && selectedVehicleId ? (
+        <AssignmentFormDialog
+          open={assignDialogOpen}
+          onOpenChange={(open) => {
+            setAssignDialogOpen(open);
+            if (!open) setSelectedVehicleId(null);
+          }}
+          fleetId={userFleetId}
+          preselectedVehicleId={selectedVehicleId}
+        />
+      ) : null}
     </div>
   );
 }

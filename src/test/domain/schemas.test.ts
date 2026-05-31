@@ -112,6 +112,21 @@ describe('shiftStartSchema', () => {
       parseSchemaOrThrow(shiftStartSchema, { assignment_id: 'a1', km_start: -1 }),
     ).toThrow(/négatif/);
   });
+
+  it('accepte un démarrage valide', () => {
+    const parsed = parseSchemaOrThrow(shiftStartSchema, {
+      assignment_id: 'a1',
+      km_start: 45230,
+    });
+    expect(parsed.assignment_id).toBe('a1');
+    expect(parsed.km_start).toBe(45230);
+  });
+
+  it('exige assignment_id', () => {
+    expect(() =>
+      parseSchemaOrThrow(shiftStartSchema, { assignment_id: '', km_start: 0 }),
+    ).toThrow(/affectation/i);
+  });
 });
 
 describe('shiftClosureFormSchema', () => {
