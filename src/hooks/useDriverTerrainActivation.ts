@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { isValidCameroonMobileInput } from '@/lib/cameroonPhone';
+import { isTerrainPath } from '@/navigation/routePaths';
 import {
   buildDriverTerrainSnoozePayload,
   canApplyDriverTerrainSnooze,
@@ -45,8 +47,10 @@ async function fetchDriverTerrainSelf(
 
 export function useDriverTerrainActivation() {
   const { user, role, userFleetId } = useAuth();
+  const { pathname } = useLocation();
   const userId = user?.id;
   const isDriver = role === 'driver';
+  const onTerrainHub = isTerrainPath(pathname);
   const [snoozeState, setSnoozeState] = useState<DriverTerrainSnoozeState>({ until: null, count: 0 });
 
   useEffect(() => {
@@ -60,7 +64,7 @@ export function useDriverTerrainActivation() {
   const query = useQuery({
     queryKey: ['driver-terrain-self', userId, userFleetId],
     queryFn: () => fetchDriverTerrainSelf(userId!, userFleetId!),
-    enabled: Boolean(isDriver && userId && userFleetId),
+    enabled: Boolean(isDriver && userId && userFleetId && !onTerrainHub),
     staleTime: STALE_TIME_MS,
   });
 
@@ -81,7 +85,13 @@ export function useDriverTerrainActivation() {
   }, [query.data, phoneOk]);
 
   const shouldShowModal = Boolean(
-    isDriver && userId && userFleetId && !query.isLoading && needsAttention && !isSnoozed,
+    isDriver &&
+      userId &&
+      userFleetId &&
+      !query.isLoading &&
+      needsAttention &&
+      !isSnoozed &&
+      !onTerrainHub,
   );
 
   const canSnooze = canApplyDriverTerrainSnooze(snoozeState);
@@ -106,5 +116,6 @@ export function useDriverTerrainActivation() {
     snoozeForOneDay,
     canSnooze,
     snoozeRemaining,
+    refetch: query.refetch,
   };
 }

@@ -16,6 +16,10 @@ BEGIN
     RAISE EXCEPTION 'Objet manquant: table public.creneaux_conducteurs';
   END IF;
 
+  IF to_regclass('public.planning_creneaux') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: table public.planning_creneaux';
+  END IF;
+
   IF to_regclass('public.clotures_creneaux') IS NULL THEN
     RAISE EXCEPTION 'Objet manquant: table public.clotures_creneaux';
   END IF;

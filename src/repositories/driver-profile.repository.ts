@@ -26,6 +26,14 @@ export interface DriverProfileUpdate {
   rh_notes?: string | null;
 }
 
+/** Colonnes garanties sur tous les environnements Supabase déployés. */
+const PROFILE_CORE_COLUMNS = `
+  user_id,
+  full_name,
+  phone,
+  created_at
+`;
+
 export class DriverProfileRepository {
   async findByDriverAndFleet(driverUserId: string, fleetId: string): Promise<DriverProfile | null> {
     const { data, error } = await supabase
@@ -36,17 +44,7 @@ export class DriverProfileRepository {
         role,
         is_active,
         profile:profils!flotte_adhesions_user_id_fkey(
-          user_id,
-          full_name,
-          phone,
-          employee_code,
-          hire_date,
-          contract_type,
-          employment_status,
-          emergency_contact_name,
-          emergency_contact_phone,
-          rh_notes,
-          created_at
+          ${PROFILE_CORE_COLUMNS}
         )
       `,
       )
@@ -68,27 +66,28 @@ export class DriverProfileRepository {
       .from('profils')
       .update(updates)
       .eq('user_id', driverUserId)
-      .select(
-        `
-        user_id,
-        full_name,
-        phone,
-        employee_code,
-        hire_date,
-        contract_type,
-        employment_status,
-        emergency_contact_name,
-        emergency_contact_phone,
-        rh_notes,
-        created_at
-      `,
-      )
-      .single();
+      .select(PROFILE_CORE_COLUMNS)
+      .maybeSingle();
 
     if (error) {
       throw new Error(error.message);
     }
 
-    return data as DriverProfile;
+    if (data) {
+      return data as DriverProfile;
+    }
+
+    // Profil absent (edge signup) — création minimale pour le conducteur connecté
+    const { data: inserted, error: insertError } = await supabase
+      .from('profils')
+      .insert({ user_id: driverUserId, ...updates })
+      .select(PROFILE_CORE_COLUMNS)
+      .single();
+
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
+
+    return inserted as DriverProfile;
   }
 }

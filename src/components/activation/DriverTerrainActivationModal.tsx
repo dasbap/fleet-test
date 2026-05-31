@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -16,14 +16,16 @@ import { useDriverTerrainActivation } from '@/hooks/useDriverTerrainActivation';
 import { useUpdateDriverProfile } from '@/hooks/useDriverProfiles';
 import { isValidCameroonMobileInput, normalizeCameroonPhoneE164 } from '@/lib/cameroonPhone';
 import { MAX_DRIVER_TERRAIN_SNOOZE_USES } from '@/lib/driverTerrainSnooze';
-import { ROUTE_PATHS } from '@/navigation/routePaths';
-import { CheckCircle2, Smartphone } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { isTerrainPath, ROUTE_PATHS } from '@/navigation/routePaths';
+import { CheckCircle2, Loader2, MapPin, Smartphone } from 'lucide-react';
 
 /**
  * Parcours minimal chauffeur : numéro CM (SMS) + rappel pour ouvrir un premier créneau.
  */
 export function DriverTerrainActivationModal() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { user } = useAuth();
   const {
     shouldShowModal,
@@ -34,17 +36,27 @@ export function DriverTerrainActivationModal() {
     snoozeForOneDay,
     canSnooze,
     snoozeRemaining,
+    refetch,
   } = useDriverTerrainActivation();
   const updateProfile = useUpdateDriverProfile();
 
   const [draftPhone, setDraftPhone] = useState('');
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [savedPhone, setSavedPhone] = useState<string | null>(null);
 
   useEffect(() => {
     setDraftPhone(phone ?? '');
   }, [phone]);
 
+  useEffect(() => {
+    if (phoneOk) {
+      setSavedPhone(null);
+    }
+  }, [phoneOk]);
+
   const open = shouldShowModal && !isLoading;
+  const phoneRegistered =
+    phoneOk || (savedPhone != null && isValidCameroonMobileInput(savedPhone));
 
   const handleSavePhone = async () => {
     setPhoneError(null);
@@ -52,28 +64,42 @@ export function DriverTerrainActivationModal() {
       setPhoneError('Saisissez un mobile Cameroun valide (9 chiffres, ex. 6XX XXX XXX).');
       return;
     }
-    if (!user?.id) return;
+    if (!user?.id) {
+      setPhoneError('Session expirée. Reconnectez-vous puis réessayez.');
+      return;
+    }
     try {
       const normalized = normalizeCameroonPhoneE164(draftPhone);
       await updateProfile.mutateAsync({
         driverUserId: user.id,
         updates: { phone: normalized },
       });
+      setSavedPhone(normalized);
+      setDraftPhone(normalized);
+      await refetch();
     } catch {
       /* toast géré par le hook */
     }
   };
 
   const goToTerrainHub = () => {
-    navigate(ROUTE_PATHS.terrain);
+    // Ne pas fermer la modale avant la navigation : un démontage immédiat annule le clic (mobile).
+    navigate(ROUTE_PATHS.terrain, { replace: true });
   };
+
+  if (isTerrainPath(pathname)) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="sm:max-w-md"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
+        className={cn(
+          'sm:max-w-md [&>button.absolute]:hidden',
+          /* Bottom sheet mobile : CTA au-dessus de la zone pouce / onglets */
+          'max-sm:top-auto max-sm:bottom-0 max-sm:max-h-[88dvh] max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-2xl',
+          'pb-[max(1.5rem,env(safe-area-inset-bottom))]',
+        )}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-heading">
@@ -97,13 +123,19 @@ export function DriverTerrainActivationModal() {
             </ol>
           </div>
 
-          {phoneOk ? (
+          {phoneRegistered ? (
             <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
               Numéro enregistré pour les SMS.
             </div>
           ) : (
-            <div className="space-y-2">
+            <form
+              className="space-y-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleSavePhone();
+              }}
+            >
               <Label htmlFor="driver-terrain-phone">Mobile Cameroun (+237)</Label>
               <Input
                 id="driver-terrain-phone"
@@ -111,22 +143,25 @@ export function DriverTerrainActivationModal() {
                 inputMode="tel"
                 autoComplete="tel"
                 placeholder="6XX XXX XXX ou +237…"
-                value={draftPhone || phone || ''}
+                value={draftPhone}
                 onChange={(e) => {
                   setDraftPhone(e.target.value);
                   setPhoneError(null);
+                  setSavedPhone(null);
                 }}
               />
               {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSavePhone}
-                disabled={updateProfile.isPending}
-              >
-                Enregistrer le numéro
+              <Button type="submit" size="sm" disabled={updateProfile.isPending}>
+                {updateProfile.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                    Enregistrement…
+                  </>
+                ) : (
+                  'Enregistrer le numéro'
+                )}
               </Button>
-            </div>
+            </form>
           )}
 
           {!hasEverShift && (
@@ -137,31 +172,35 @@ export function DriverTerrainActivationModal() {
           )}
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
-          <div className="flex flex-col gap-1 w-full sm:w-auto">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={snoozeForOneDay}
-              disabled={!canSnooze}
-            >
-              Plus tard (24 h)
-            </Button>
-            {canSnooze ? (
-              <span className="text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left">
-                Rappels restants : {snoozeRemaining} sur {MAX_DRIVER_TERRAIN_SNOOZE_USES}
-              </span>
-            ) : (
-              <span className="text-xs text-amber-800 dark:text-amber-200 text-center sm:text-left">
-                Limite de reports atteinte — ouvrez un créneau ou complétez l&apos;activation.
-              </span>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={goToTerrainHub}>
-              Ouvrir le hub terrain
-            </Button>
-          </div>
+        <DialogFooter className="flex flex-col gap-3 sm:flex-col sm:items-stretch sm:justify-start">
+          <Button
+            type="button"
+            variant="default"
+            className="order-1 w-full min-h-11 touch-manipulation gap-2"
+            data-testid="driver-terrain-hub-cta"
+            onClick={goToTerrainHub}
+          >
+            <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+            Ouvrir le hub terrain
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="order-2 w-full min-h-11 touch-manipulation sm:w-auto"
+            onClick={snoozeForOneDay}
+            disabled={!canSnooze}
+          >
+            Plus tard (24 h)
+          </Button>
+          {canSnooze ? (
+            <span className="order-3 text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left">
+              Rappels restants : {snoozeRemaining} sur {MAX_DRIVER_TERRAIN_SNOOZE_USES}
+            </span>
+          ) : (
+            <span className="order-3 text-xs text-amber-800 dark:text-amber-200 text-center sm:text-left">
+              Limite de reports atteinte — ouvrez un créneau ou complétez l&apos;activation.
+            </span>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

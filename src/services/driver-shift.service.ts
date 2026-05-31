@@ -6,6 +6,7 @@ import type {
   ShiftInsert,
   ShiftClosureInsert,
   ShiftClosureUpdate,
+  PendingFleetClosure,
 } from '@/repositories/driver-shift.repository';
 import { shiftClosureInsertSchema, shiftStartSchema } from '@/domain/schemas/driver-shift.schema';
 import { parseSchemaOrThrow } from '@/domain/lib/parseSchema';
@@ -85,9 +86,14 @@ export class DriverShiftService {
 
     await this.repository.calculateExpectedRevenue(parsed.shift_id);
 
+    // Best-effort : le km véhicule est mis à jour par la RPC fermer_creneau (SECURITY DEFINER).
     const vehicleId = await this.repository.getVehicleIdByShiftId(parsed.shift_id);
     if (vehicleId) {
-      await this.vehicleRepository.updateKilometerage(vehicleId, parsed.km_end);
+      try {
+        await this.vehicleRepository.updateKilometerage(vehicleId, parsed.km_end);
+      } catch (err) {
+        console.warn('Mise à jour km véhicule ignorée après clôture:', err);
+      }
     }
   }
 
@@ -141,13 +147,7 @@ export class DriverShiftService {
   /**
    * Récupère les clôtures en attente de validation pour une flotte.
    */
-  async getPendingClosuresForFleet(fleetId: string): Promise<
-    {
-      id: string;
-      created_at: string;
-      vehicleRegistration: string | null;
-    }[]
-  > {
+  async getPendingClosuresForFleet(fleetId: string): Promise<PendingFleetClosure[]> {
     if (!fleetId) {
       return [];
     }

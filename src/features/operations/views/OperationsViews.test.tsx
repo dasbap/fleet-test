@@ -6,6 +6,7 @@ import { OrganizerOperationsView } from "@/features/operations/views/OrganizerOp
 import { DriverOperationsView } from "@/features/operations/views/DriverOperationsView";
 import { MechanicOperationsView } from "@/features/operations/views/MechanicOperationsView";
 import { ManagerOperationsView } from "@/features/operations/views/ManagerOperationsView";
+import { getDefaultDriverChecklists } from "@/features/operations/mocks/operationsMock";
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -47,6 +48,7 @@ vi.mock("@/hooks/useOperations", () => ({
       ],
       operationalIncidents: [],
       assignedTasks: [],
+      plannedShiftsToday: [],
     },
   }),
   useManagerOperations: () => ({
@@ -66,28 +68,26 @@ vi.mock("@/hooks/useOperations", () => ({
       scheduledMaintenance: [],
     },
   }),
-  useDriverOperations: () => ({
-    ...baseQuery,
-    data: {
-      missionTitle: "Mission fixture conducteur",
-      missionRoute: "Itinéraire test",
-      missionStatus: "in_progress",
-      missionTime: "06:00",
-      vehicleLabel: "Véhicule test",
-      vehiclePlate: "AA-000-BB",
-      vehicleKm: "10 000 km",
-      departureChecklist: {
-        id: "departure" as const,
-        title: "Départ",
-        items: [{ id: "d1", label: "Feux", done: true }],
+  useDriverOperations: () => {
+    const { departureChecklist, arrivalChecklist } = getDefaultDriverChecklists();
+    return {
+      ...baseQuery,
+      data: {
+        missionTitle: "Mission fixture conducteur",
+        missionRoute: "Itinéraire test",
+        missionStatus: "in_progress",
+        missionTime: "06:00",
+        vehicleLabel: "Véhicule test",
+        vehiclePlate: "AA-000-BB",
+        vehicleKm: "10 000 km",
+        activeShiftId: "shift-fixture-1",
+        vehicleId: "vehicle-fixture-1",
+        fleetId: "fleet-1",
+        departureChecklist,
+        arrivalChecklist,
       },
-      arrivalChecklist: {
-        id: "arrival" as const,
-        title: "Arrivée",
-        items: [{ id: "a1", label: "Clés", done: false }],
-      },
-    },
-  }),
+    };
+  },
   useMechanicOperations: () => ({
     ...baseQuery,
     data: {
@@ -109,6 +109,43 @@ vi.mock("@/hooks/useOperations", () => ({
   }),
 }));
 
+vi.mock("@/hooks/usePlannedShifts", () => ({
+  plannedShiftQueryKeys: {
+    all: ["planned-shifts"],
+    fleetToday: (id?: string) => ["planned-shifts", "fleet-today", id],
+    driverUpcoming: (id?: string) => ["planned-shifts", "driver-upcoming", id],
+  },
+  usePlannedShiftsForFleetToday: () => ({
+    ...baseQuery,
+    data: [],
+  }),
+  useUpcomingPlannedShift: () => ({
+    ...baseQuery,
+    data: null,
+  }),
+  useCreatePlannedShift: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  linkPlannedShiftOnStart: vi.fn(),
+}));
+
+vi.mock("@/hooks/useAssignments", () => ({
+  useFleetDrivers: () => ({ data: [], isPending: false }),
+}));
+
+vi.mock("@/hooks/useVehicles", () => ({
+  useVehicles: () => ({ data: [], isPending: false }),
+}));
+
+vi.mock("@/hooks/useFleetCompliance", () => ({
+  usePendingClosures: () => ({ data: [], isPending: false }),
+}));
+
+vi.mock("@/hooks/useDriverShifts", () => ({
+  useReviewClosure: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
 function wrap(ui: React.ReactElement) {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
 }
@@ -116,6 +153,7 @@ function wrap(ui: React.ReactElement) {
 describe("Vues Opérations (UI par rôle)", () => {
   it("organisateur : sections missions et circulation visibles", () => {
     wrap(<OrganizerOperationsView />);
+    expect(screen.getByText("Clôtures à valider")).toBeInTheDocument();
     expect(screen.getByText("Missions du jour")).toBeInTheDocument();
     expect(screen.getByText("Mission fixture organisateur")).toBeInTheDocument();
     expect(screen.getByText("Véhicules en circulation")).toBeInTheDocument();
@@ -126,11 +164,25 @@ describe("Vues Opérations (UI par rôle)", () => {
     wrap(<DriverOperationsView />);
     expect(screen.getByText("Ma mission du jour")).toBeInTheDocument();
     expect(screen.getByText("Mission fixture conducteur")).toBeInTheDocument();
-    expect(screen.getByText("Checklist départ")).toBeInTheDocument();
-    expect(screen.getByText("Checklist arrivée")).toBeInTheDocument();
-    expect(screen.getByText("Départ")).toBeInTheDocument();
-    expect(screen.getByText("Arrivée")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Clôture de créneau/i })).toHaveAttribute(
+      "href",
+      "/dashboard/closure",
+    );
+    expect(screen.getByRole("link", { name: /Accéder à la clôture/i })).toHaveAttribute(
+      "href",
+      "/dashboard/closure",
+    );
+    expect(screen.getByRole("heading", { name: "Checklist départ" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Checklist arrivée" })).toBeInTheDocument();
+    expect(screen.getByText("Feux, essuie-glaces et signalisation")).toBeInTheDocument();
+    expect(screen.getByText("Kilométrage fin de service saisi")).toBeInTheDocument();
+    expect(screen.getByText("0/4")).toBeInTheDocument();
+    expect(screen.getByText("0/3")).toBeInTheDocument();
     expect(screen.getAllByText("Signaler un problème").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("link", { name: /Accéder aux incidents/i })).toHaveAttribute(
+      "href",
+      "/dashboard/incidents",
+    );
   });
 
   it("mécanicien : interventions, diagnostics et bandeau synthèse", () => {
@@ -144,6 +196,7 @@ describe("Vues Opérations (UI par rôle)", () => {
 
   it("gestionnaire : synthèse et incidents parc", () => {
     wrap(<ManagerOperationsView />);
+    expect(screen.getByText("Clôtures à valider")).toBeInTheDocument();
     expect(screen.getByText("Vue synthétique des opérations")).toBeInTheDocument();
     expect(screen.getByText(/kpi test/i)).toBeInTheDocument();
     expect(screen.getByText("Incident fixture gestionnaire")).toBeInTheDocument();

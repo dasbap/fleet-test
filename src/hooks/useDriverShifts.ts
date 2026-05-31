@@ -6,6 +6,7 @@ import { DriverShiftService } from '@/services/driver-shift.service';
 import { DriverShiftRepository } from '@/repositories/driver-shift.repository';
 import { VehicleRepository } from '@/repositories/vehicle.repository';
 import { OfflineQueueService } from '@/services/offlineQueue.service';
+import { linkPlannedShiftOnStart } from '@/hooks/usePlannedShifts';
 import { operationsQueryKeys } from '@/hooks/useOperations';
 import type { CollectionMode } from '@/domain/constants/collectionMode';
 
@@ -124,7 +125,7 @@ export function useStartShift() {
       queryClient.setQueryData(activeShiftKey, optimisticShift);
       return { previousActive };
     },
-    onSuccess: (result) => {
+    onSuccess: async (result, _variables) => {
       if ((result as { kind?: string })?.kind === 'queued') {
         toast({
           title: 'Hors ligne',
@@ -135,10 +136,18 @@ export function useStartShift() {
           title: 'Journée démarrée',
           description: 'Votre créneau a été enregistré.',
         });
+        if (user?.id && (result as DriverShift)?.id) {
+          try {
+            await linkPlannedShiftOnStart(user.id, (result as DriverShift).id);
+          } catch {
+            // Liaison planifiée non bloquante
+          }
+        }
       }
       queryClient.invalidateQueries({ queryKey: activeShiftKey });
       queryClient.invalidateQueries({ queryKey: ['driver-shifts'] });
       queryClient.invalidateQueries({ queryKey: operationsQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['planned-shifts'] });
       if ((result as { kind?: string })?.kind !== 'queued') {
         queryClient.invalidateQueries({ queryKey: ['driver-terrain-self'] });
         queryClient.invalidateQueries({ queryKey: ['fleet-driver-activation-health'] });
@@ -232,6 +241,9 @@ export function useReviewClosure() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['shift-closures'] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-pending-closures'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['operations'] });
       toast({
         title: variables.status === 'validated' ? 'Clôture approuvée' : 'Clôture rejetée',
         description: `La clôture a été ${variables.status === 'validated' ? 'approuvée' : 'rejetée'}.`,

@@ -11,6 +11,9 @@ import { OperationsViewSkeleton } from "@/components/operations/OperationsViewSk
 import { OperationsQueryMessage } from "@/components/operations/OperationsQueryMessage";
 import { useAuth } from "@/hooks/useAuth";
 import { useDriverOperations } from "@/hooks/useOperations";
+import { useDriverOperationalChecklists } from "@/hooks/useDriverOperationalChecklists";
+import type { MockDriverDay } from "@/features/operations/mocks/operationsMock";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 /** Vue conducteur : mission, véhicule, checklists départ / arrivée. */
 export function DriverOperationsView() {
@@ -33,9 +36,33 @@ export function DriverOperationsView() {
     return null;
   }
 
+  const hasActiveShift = day.missionStatus === "in_progress";
+  const hasVehicleAssignment = day.vehiclePlate !== "—";
+
+  return (
+    <DriverOperationsContent
+      day={day}
+      hasActiveShift={hasActiveShift}
+      hasVehicleAssignment={hasVehicleAssignment}
+    />
+  );
+}
+
+function DriverOperationsContent({
+  day,
+  hasActiveShift,
+  hasVehicleAssignment,
+}: {
+  day: MockDriverDay;
+  hasActiveShift: boolean;
+  hasVehicleAssignment: boolean;
+}) {
+  const { departure, arrival, toggleDepartureItem, toggleArrivalItem } =
+    useDriverOperationalChecklists(day);
+
   return (
     <div className="space-y-6 sm:space-y-8">
-      <DriverQuickActions />
+      <DriverQuickActions hasActiveShift={hasActiveShift} />
 
       <OperationSection title="Ma mission du jour" description={day.missionRoute}>
         <Card className="border-l-4 border-l-primary">
@@ -47,9 +74,19 @@ export function DriverOperationsView() {
             <p className="text-sm text-muted-foreground">{day.missionTime}</p>
           </CardHeader>
           <CardContent>
-            <Button asChild>
-              <Link to="/dashboard/closure">Accéder à la clôture</Link>
-            </Button>
+            {hasActiveShift ? (
+              <Button asChild>
+                <Link to={ROUTE_PATHS.dashboardShiftClosure}>Accéder à la clôture</Link>
+              </Button>
+            ) : hasVehicleAssignment ? (
+              <Button asChild>
+                <Link to={ROUTE_PATHS.terrain}>Ouvrir un créneau sur le terrain</Link>
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Aucune affectation active — contactez votre superviseur pour être assigné à un véhicule.
+              </p>
+            )}
           </CardContent>
         </Card>
       </OperationSection>
@@ -66,19 +103,31 @@ export function DriverOperationsView() {
                 <Badge variant="secondary">{day.vehicleKm}</Badge>
               </div>
             </div>
-            <Button variant="secondary" asChild>
-              <Link to="/dashboard/my-vehicle">Fiche véhicule</Link>
-            </Button>
+            {hasVehicleAssignment ? (
+              <Button variant="secondary" asChild>
+                <Link to={ROUTE_PATHS.dashboardMyVehicle}>Fiche véhicule</Link>
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       </OperationSection>
 
       <OperationSection title="Checklist départ" description="Contrôles avant de prendre la route.">
-        <ChecklistCard checklist={day.departureChecklist} />
+        <ChecklistCard
+          checklist={departure}
+          onToggleItem={toggleDepartureItem}
+          showTitle={false}
+          dvirLinkLabel="Contrôle détaillé (DVIR pré-départ)"
+        />
       </OperationSection>
 
       <OperationSection title="Checklist arrivée" description="Contrôles en fin de service.">
-        <ChecklistCard checklist={day.arrivalChecklist} />
+        <ChecklistCard
+          checklist={arrival}
+          onToggleItem={toggleArrivalItem}
+          showTitle={false}
+          dvirLinkLabel="Contrôle détaillé (DVIR post-trajet)"
+        />
       </OperationSection>
 
       <OperationSection title="Signaler un problème" description="Incident, panne ou situation dangereuse.">

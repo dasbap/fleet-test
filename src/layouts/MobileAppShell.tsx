@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { ActivationBanner } from "@/components/shared/ActivationBanner";
 import { DriverTerrainActivationModal } from "@/components/activation/DriverTerrainActivationModal";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
+import { useDriverTerrainActivation } from "@/hooks/useDriverTerrainActivation";
 
 const NotificationsPermissionGate = lazy(() =>
   import("@/components/notifications/NotificationsPermissionGate").then((module) => ({
@@ -28,6 +29,8 @@ export function MobileAppShell({ userRole }: MobileAppShellProps) {
   useMobileTabTracking();
   const { pathname } = useLocation();
   const outletShellClass = getMobileOutletShellClass(pathname);
+  const { shouldShowModal, isLoading: terrainModalLoading } = useDriverTerrainActivation();
+  const hideTabBar = shouldShowModal && !terrainModalLoading;
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
@@ -49,7 +52,7 @@ export function MobileAppShell({ userRole }: MobileAppShellProps) {
           </Suspense>
         </div>
       </main>
-      <BottomTabBar userRole={userRole} />
+      {!hideTabBar ? <BottomTabBar userRole={userRole} /> : null}
     </div>
   );
 }

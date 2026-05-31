@@ -67,6 +67,18 @@ export interface ShiftClosureUpdate {
   validated_at?: string | null;
 }
 
+/** Clôture en attente de validation, enrichie pour la supervision flotte. */
+export interface PendingFleetClosure {
+  id: string;
+  created_at: string;
+  vehicleRegistration: string | null;
+  revenue_declared: number;
+  collection_mode: CollectionMode;
+  kmStart: number | null;
+  kmEnd: number | null;
+  driverName: string | null;
+}
+
 /**
  * Repository pour l'accès aux données des créneaux conducteurs
  */
@@ -275,12 +287,12 @@ export class DriverShiftRepository {
    */
   async closeShift(closure: ShiftClosureInsert): Promise<void> {
     const { error } = await supabase.rpc('fermer_creneau', {
-      p_shift_id: closure.shift_id,
-      p_km_end: closure.km_end,
-      p_revenue_declared: closure.revenue_declared,
-      p_collection_mode: closure.collection_mode,
-      p_proof_type: closure.proof_type,
-      p_proof_value: closure.proof_value,
+      p_creneau_id: closure.shift_id,
+      p_km_fin: closure.km_end,
+      p_revenu_declare: closure.revenue_declared,
+      p_mode_collecte: closure.collection_mode,
+      p_type_preuve: closure.proof_type,
+      p_valeur_preuve: closure.proof_value,
     });
 
     if (error) {
@@ -324,6 +336,29 @@ export class DriverShiftRepository {
 
     return (data as { assignment?: { vehicle_id?: string } } | null)?.assignment
       ?.vehicle_id || null;
+  }
+
+  /**
+   * Récupère la clôture la plus récente d'un créneau (s'il existe).
+   */
+  async findClosureByShiftId(shiftId: string): Promise<ShiftClosure | null> {
+    const { data, error } = await supabase
+      .from('clotures_creneaux')
+      .select('*')
+      .eq('shift_id', shiftId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      console.error('Error fetching closure by shift:', error);
+      throw new Error(error.message);
+    }
+
+    return (data as ShiftClosure | null) ?? null;
   }
 
   /**
@@ -462,13 +497,7 @@ export class DriverShiftRepository {
   /**
    * Clôtures en attente de validation pour une flotte (via affectations → créneaux).
    */
-  async findPendingClosuresForFleet(fleetId: string): Promise<
-    {
-      id: string;
-      created_at: string;
-      vehicleRegistration: string | null;
-    }[]
-  > {
+  async findPendingClosuresForFleet(fleetId: string): Promise<PendingFleetClosure[]> {
     const { data: assignments, error: e1 } = await supabase
       .from('affectations_vehicules')
       .select('id, vehicle_id')
@@ -486,7 +515,18 @@ export class DriverShiftRepository {
 
     const { data: shifts, error: e2 } = await supabase
       .from('creneaux_conducteurs')
-      .select('id, assignment_id')
+      .select(`
+        id,
+        assignment_id,
+        km_start,
+        km_end,
+        assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
+          vehicle_id,
+          driver:profils!affectations_vehicules_driver_user_id_fkey(
+            full_name
+          )
+        )
+      `)
       .in('assignment_id', assignmentIds);
 
     if (e2) {
@@ -509,15 +549,42 @@ export class DriverShiftRepository {
 
     const regByVehicleId = new Map((vehicles || []).map((v: { id: string; registration: string }) => [v.id, v.registration]));
 
-    const regByShift = new Map<string, string | null>();
-    (shifts || []).forEach((s: { id: string; assignment_id: string }) => {
-      const vid = (assignments || []).find((a: { id: string }) => a.id === s.assignment_id)?.vehicle_id;
-      regByShift.set(s.id, vid ? regByVehicleId.get(vid) ?? null : null);
+    type ShiftRow = {
+      id: string;
+      assignment_id: string;
+      km_start: number;
+      km_end: number | null;
+      assignment?: {
+        vehicle_id: string;
+        driver?: { full_name: string | null } | null;
+      } | null;
+    };
+
+    const detailsByShift = new Map<
+      string,
+      {
+        vehicleRegistration: string | null;
+        kmStart: number;
+        kmEnd: number | null;
+        driverName: string | null;
+      }
+    >();
+
+    (shifts || []).forEach((raw) => {
+      const s = raw as ShiftRow;
+      const vid = s.assignment?.vehicle_id
+        ?? (assignments || []).find((a: { id: string }) => a.id === s.assignment_id)?.vehicle_id;
+      detailsByShift.set(s.id, {
+        vehicleRegistration: vid ? regByVehicleId.get(vid) ?? null : null,
+        kmStart: s.km_start,
+        kmEnd: s.km_end,
+        driverName: s.assignment?.driver?.full_name ?? null,
+      });
     });
 
     const { data: closures, error: e3 } = await supabase
       .from('clotures_creneaux')
-      .select('id, created_at, shift_id')
+      .select('id, created_at, shift_id, revenue_declared, collection_mode')
       .eq('status', 'pending')
       .in('shift_id', shiftIds)
       .order('created_at', { ascending: false })
@@ -528,11 +595,27 @@ export class DriverShiftRepository {
       throw new Error(e3.message);
     }
 
-    return (closures || []).map((c: { id: string; created_at: string; shift_id: string }) => ({
-      id: c.id,
-      created_at: c.created_at,
-      vehicleRegistration: regByShift.get(c.shift_id) ?? null,
-    }));
+    return (closures || []).map(
+      (c: {
+        id: string;
+        created_at: string;
+        shift_id: string;
+        revenue_declared: number;
+        collection_mode: CollectionMode;
+      }) => {
+        const details = detailsByShift.get(c.shift_id);
+        return {
+          id: c.id,
+          created_at: c.created_at,
+          vehicleRegistration: details?.vehicleRegistration ?? null,
+          revenue_declared: c.revenue_declared,
+          collection_mode: c.collection_mode,
+          kmStart: details?.kmStart ?? null,
+          kmEnd: details?.kmEnd ?? null,
+          driverName: details?.driverName ?? null,
+        };
+      },
+    );
   }
 
   /**

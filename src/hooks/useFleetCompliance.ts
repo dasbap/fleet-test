@@ -21,6 +21,16 @@ export function usePendingClosures(fleetId?: string) {
   });
 }
 
+/** Créneaux ouverts pour une flotte (supervision / statut conducteur). */
+export function useFleetOpenShifts(fleetId?: string) {
+  return useQuery({
+    queryKey: ["fleet-open-shifts", fleetId],
+    queryFn: () => shiftRepository.findOpenShiftsByFleetId(fleetId!),
+    enabled: Boolean(fleetId),
+    staleTime: 30_000,
+  });
+}
+
 export function useExpiringVehicleDocuments(fleetId?: string, daysAhead = 30) {
   return useQuery({
     queryKey: ["fleet-expiring-vehicle-documents", fleetId, daysAhead],

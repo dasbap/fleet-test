@@ -14,8 +14,10 @@ export type PaymentStatus =
   | "initiated"
   | "processing"
   | "successful"
+  | "succeeded"
   | "failed"
   | "cancelled"
+  | "canceled"
   | "refunded";
 
 export type PaymentProvider =
@@ -55,23 +57,32 @@ export interface UsePaymentHistoryReturn {
 
 // ─── Libellés affichage ────────────────────────────────────────────────────
 
-export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   initiated:  "Initié",
   processing: "En cours",
   successful: "Payé",
+  succeeded:  "Payé",
   failed:     "Échoué",
   cancelled:  "Annulé",
+  canceled:   "Annulé",
   refunded:   "Remboursé",
 };
 
-export const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
+export const PAYMENT_STATUS_COLORS: Record<string, string> = {
   initiated:  "bg-blue-100 text-blue-700",
   processing: "bg-amber-100 text-amber-700",
   successful: "bg-green-100 text-green-700",
+  succeeded:  "bg-green-100 text-green-700",
   failed:     "bg-red-100 text-red-700",
   cancelled:  "bg-gray-100 text-gray-600",
+  canceled:   "bg-gray-100 text-gray-600",
   refunded:   "bg-purple-100 text-purple-700",
 };
+
+/** Paiement confirmé (Notch `successful` ou BFF `succeeded`). */
+export function isSuccessfulPaymentStatus(status: string): boolean {
+  return status === "successful" || status === "succeeded";
+}
 
 export const PROVIDER_LABELS: Record<string, string> = {
   notch:        "Notch Pay",

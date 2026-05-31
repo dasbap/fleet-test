@@ -51,4 +51,43 @@ describe("normalizeFleetBillingContext", () => {
     expect(ctx.driverScoringEnabled).toBe(false);
     expect(ctx.anomalyInsightsEnabled).toBe(false);
   });
+
+  it("mappe grace_period vers grace et expose les dates lifecycle", () => {
+    const ctx = normalizeFleetBillingContext({
+      plan_code: "starter",
+      plan_name: "Starter",
+      is_paid: true,
+      billing_status: "grace_period",
+      vehicle_count: 4,
+      active_vehicles: 3,
+      max_vehicles: 25,
+      vehicle_slots: 25,
+      subscription_ends_at: "2026-05-01T00:00:00.000Z",
+      grace_until: "2026-05-08T00:00:00.000Z",
+    });
+    expect(ctx.billingStatus).toBe("grace");
+    expect(ctx.planName).toBe("Starter");
+    expect(ctx.graceUntil).toBe("2026-05-08T00:00:00.000Z");
+    expect(ctx.vehicleSlots).toBe(25);
+  });
+
+  it("fallback vehicle_slots depuis max_vehicles si absent", () => {
+    const ctx = normalizeFleetBillingContext({
+      plan_code: "pro",
+      is_paid: true,
+      vehicle_count: 5,
+      max_vehicles: 25,
+    });
+    expect(ctx.vehicleSlots).toBe(25);
+    expect(ctx.maxVehicles).toBe(25);
+  });
+
+  it("fallback plan_name depuis plan_code", () => {
+    const ctx = normalizeFleetBillingContext({
+      plan_code: "pro",
+      is_paid: true,
+      max_vehicles: 25,
+    });
+    expect(ctx.planName).toBe("Pro");
+  });
 });

@@ -11,14 +11,17 @@ import {
   Pencil,
   Plus,
   Share2,
+  UserPlus,
   Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { AssignmentFormDialog } from "@/components/vehicles/AssignmentFormDialog";
 import { cn } from "@/lib/utils";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { useAuth } from "@/hooks/useAuth";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useVehicleDetail } from "@/hooks/useVehicles";
 import { useVehicleAlerts } from "@/hooks/useAlerts";
 import { useVehicleMaintenanceJobs, useMaintenanceJob } from "@/hooks/useMaintenance";
@@ -411,7 +414,15 @@ function MaintenanceTimeline({
   );
 }
 
-function VehicleInfoPanel({ vehicle }: { vehicle: VehicleDto }) {
+function VehicleInfoPanel({
+  vehicle,
+  canAssignDriver,
+  onAssign,
+}: {
+  vehicle: VehicleDto;
+  canAssignDriver?: boolean;
+  onAssign?: () => void;
+}) {
   const st = vehicleStatusUi(vehicle);
   const fields: [string, string][] = [
     ["Plaque", vehicle.registration],
@@ -437,6 +448,14 @@ function VehicleInfoPanel({ vehicle }: { vehicle: VehicleDto }) {
           </div>
         ))}
       </div>
+      {canAssignDriver && vehicle.status === "ok" && onAssign ? (
+        <div className="border-t border-border p-4">
+          <Button type="button" variant="outline" size="sm" className="w-full gap-2" onClick={onAssign}>
+            <UserPlus className="h-4 w-4" aria-hidden />
+            {vehicle.active_assignment?.driver?.full_name ? "Changer le chauffeur" : "Affecter un chauffeur"}
+          </Button>
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -513,6 +532,8 @@ function VehicleDetailLoaded({
   alerts,
   fuelEntries,
   onShare,
+  canAssignDriver,
+  onAssignClick,
 }: {
   vehicle: VehicleDto;
   jobs: MaintenanceJob[];
@@ -520,6 +541,8 @@ function VehicleDetailLoaded({
   alerts: AlertDto[];
   fuelEntries: FuelEntry[];
   onShare: () => void;
+  canAssignDriver: boolean;
+  onAssignClick: () => void;
 }) {
   const stats = useMemo(() => buildVehicleDetailStats(jobs, alerts, fuelEntries), [jobs, alerts, fuelEntries]);
   const nextJob = useMemo(() => pickNextPendingMaintenance(jobs), [jobs]);
@@ -575,7 +598,11 @@ function VehicleDetailLoaded({
           </section>
         </div>
         <div className="space-y-4">
-          <VehicleInfoPanel vehicle={vehicle} />
+          <VehicleInfoPanel
+            vehicle={vehicle}
+            canAssignDriver={canAssignDriver}
+            onAssign={onAssignClick}
+          />
         </div>
       </div>
     </div>
@@ -585,6 +612,9 @@ function VehicleDetailLoaded({
 export default function FleetVehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const { userFleetId } = useAuth();
+  const { can } = useRoleAccess();
+  const canAssignDriver = can("vehicle.assign_driver");
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const { data: vehicle, isLoading: isVehicleLoading } = useVehicleDetail(vehicleId);
 
   useEffect(() => {
@@ -669,13 +699,25 @@ export default function FleetVehicleDetailPage() {
   }
 
   return (
-    <VehicleDetailLoaded
-      vehicle={vehicle}
-      jobs={maintenanceJobs}
-      jobsLoading={jobsLoading}
-      alerts={vehicleAlerts}
-      fuelEntries={fuelEntries}
-      onShare={handleShare}
-    />
+    <>
+      <VehicleDetailLoaded
+        vehicle={vehicle}
+        jobs={maintenanceJobs}
+        jobsLoading={jobsLoading}
+        alerts={vehicleAlerts}
+        fuelEntries={fuelEntries}
+        onShare={handleShare}
+        canAssignDriver={canAssignDriver}
+        onAssignClick={() => setAssignDialogOpen(true)}
+      />
+      {canAssignDriver && userFleetId && vehicle.status === "ok" ? (
+        <AssignmentFormDialog
+          open={assignDialogOpen}
+          onOpenChange={setAssignDialogOpen}
+          fleetId={userFleetId}
+          preselectedVehicleId={vehicle.id}
+        />
+      ) : null}
+    </>
   );
 }

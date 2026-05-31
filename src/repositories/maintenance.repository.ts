@@ -150,9 +150,18 @@ export class MaintenanceRepository {
     const startIso = startOfToday.toISOString();
 
     const selectClause = `
-        *,
-        vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
-        incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
+        id,
+        fleet_id,
+        vehicle_id,
+        created_from_incident_id,
+        priority,
+        status,
+        notes,
+        planned_at,
+        closed_at,
+        parts,
+        created_at,
+        vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model)
       `;
 
     const openStatuses = ['queued', 'in_progress', 'blocked'] as const;
