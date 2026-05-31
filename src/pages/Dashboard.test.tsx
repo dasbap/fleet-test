@@ -57,6 +57,12 @@ vi.mock("@/components/shared/ActivationChecklist", () => ({
   ActivationChecklist: () => <div>activation-checklist</div>,
 }));
 
+const usePendingClosuresMock = vi.fn();
+vi.mock("@/hooks/useFleetCompliance", () => ({
+  usePendingClosures: (...args: unknown[]) => usePendingClosuresMock(...args),
+  useExpiringVehicleDocuments: () => ({ data: [] }),
+}));
+
 const toastMock = vi.fn();
 vi.mock("@/hooks/use-toast", () => ({
   toast: (args: unknown) => toastMock(args),
@@ -79,6 +85,8 @@ describe("DashboardPage", () => {
   beforeEach(() => {
     useActivationMock.mockReset();
     toastMock.mockReset();
+    usePendingClosuresMock.mockReset();
+    usePendingClosuresMock.mockReturnValue({ data: [] });
     mutateAsyncMock.mockReset();
     mutateAsyncMock.mockResolvedValue({ full_name: "Conducteur" });
 
@@ -345,5 +353,48 @@ describe("DashboardPage", () => {
         }),
       );
     }, 10_000);
+  });
+
+  describe("bannière clôtures à valider", () => {
+    beforeEach(() => {
+      useActivationMock.mockReturnValue({ loading: false, completedCount: 0, steps: [] });
+      usePendingClosuresMock.mockReturnValue({
+        data: [{ id: "closure-1" }],
+      });
+    });
+
+    it("masque la bannière pour un conducteur", () => {
+      useAuthMock.mockReturnValue({
+        user: { created_at: "2026-04-10T00:00:00.000Z" },
+        userFleetId: FLEET_ID,
+        role: "driver",
+      });
+
+      render(
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>,
+        { wrapper: queryWrapper },
+      );
+
+      expect(screen.queryByText("Clôtures à valider")).not.toBeInTheDocument();
+    });
+
+    it("affiche la bannière pour un gestionnaire", () => {
+      useAuthMock.mockReturnValue({
+        user: { created_at: "2026-04-10T00:00:00.000Z" },
+        userFleetId: FLEET_ID,
+        role: "manager",
+      });
+
+      render(
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>,
+        { wrapper: queryWrapper },
+      );
+
+      expect(screen.getByText("Clôtures à valider")).toBeInTheDocument();
+    });
   });
 });
