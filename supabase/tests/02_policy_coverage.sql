@@ -13,7 +13,6 @@ BEGIN
       'affectations_vehicules',
       'creneaux_conducteurs',
       'clotures_creneaux',
-      'planning_creneaux',
       'incidents',
       'travaux_maintenance',
       'preuves_maintenance',

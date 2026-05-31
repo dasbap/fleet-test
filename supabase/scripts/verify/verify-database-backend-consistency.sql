@@ -116,26 +116,6 @@ WHERE table_schema = 'public'
   AND table_name = 'profils'
 ORDER BY ordinal_position;
 
--- Vérifier les colonnes de affectations_vehicules (fleet_id / driver_user_id, pas flotte_id / pilote_user_id)
-SELECT 
-  'COLONNES affectations_vehicules' as section,
-  column_name,
-  data_type,
-  CASE 
-    WHEN column_name IN (
-      'id', 'fleet_id', 'vehicle_id', 'driver_user_id',
-      'starts_at', 'ends_at', 'is_active', 'created_by', 'created_at'
-    )
-    THEN '✅ Colonne attendue'
-    WHEN column_name IN ('flotte_id', 'pilote_user_id', 'conducteur_user_id', 'driver_id')
-    THEN '❌ Colonne obsolète (renommer via migration)'
-    ELSE '❓ Colonne supplémentaire'
-  END as statut
-FROM information_schema.columns
-WHERE table_schema = 'public'
-  AND table_name = 'affectations_vehicules'
-ORDER BY ordinal_position;
-
 -- =====================================================
 -- ÉTAPE 3 : Vérifier les fonctions RPC appelées par le backend
 -- =====================================================
