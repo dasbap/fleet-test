@@ -34,6 +34,8 @@ Les fichiers suivants sont dans `.gitignore` et ne seront **JAMAIS** commités :
 - `.env`
 - `.env.local`
 - `.env.*.local`
+- `.env.local.bak`
+- `.env.*.bak`
 
 ## ✅ Vérification de sécurité
 
@@ -61,9 +63,22 @@ Ce script vérifie :
 Si une clé est compromise :
 
 1. Allez dans Supabase Dashboard → Settings → API
-2. Régénérez la clé compromise
+2. Régénérez la clé compromise (JWT secret → invalide aussi `service_role` / `anon`)
 3. Mettez à jour `.env.local` avec la nouvelle clé
-4. Redéployez l'application
+4. Synchronisez GitHub Actions : `npm run secrets:sync-github`
+5. Redéployez l'application
+
+### Purge d'un fichier sensible de l'historique Git
+
+Si un backup (ex. `.env.local.bak`) a été commité :
+
+```bash
+python -m git_filter_repo --path .env.local.bak --invert-paths --force
+git remote add origin https://github.com/<org>/<repo>.git   # si supprimé par filter-repo
+git push --force origin main
+npm run verify:no-env-backup-in-history
+npm run secrets:sync-github   # après rotation des clés dans Supabase
+```
 
 ## 📚 Ressources
 
