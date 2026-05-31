@@ -30,9 +30,31 @@ async function checkMigrationsList() {
   const { data, error } = await supabase.rpc('liste_migrations_appliquees');
   if (error) return { ok: false, reason: error.message };
   const ids = (data ?? []).map((v) => String(v).replace(/\.sql$/i, ''));
-  const needed = ['20260531120000_planning_creneaux', '20260531140000_fermer_creneau_update_vehicle_km'];
+  const needed = [
+    '20260531120000_planning_creneaux',
+    '20260531140000_fermer_creneau_update_vehicle_km',
+    '20260531150000_fermer_creneau_greatest_km_end',
+  ];
   const missing = needed.filter((m) => !ids.some((id) => id.includes(m.split('_')[0])));
   return { ok: missing.length === 0, missing, applied: ids.length };
+}
+
+async function checkFermerCreneauDefinition() {
+  const { data, error } = await supabase.rpc('exec_sql_readonly', {
+    query: `SELECT pg_get_functiondef('public.fermer_creneau(uuid,integer,integer,text,text,text)'::regprocedure) AS def`,
+  });
+
+  if (error?.code === 'PGRST202' || error?.message?.includes('Could not find the function')) {
+    return { ok: null, note: 'RPC exec_sql_readonly absente — vérification définition ignorée' };
+  }
+  if (error) return { ok: false, reason: error.message };
+
+  const row = Array.isArray(data) ? data[0] : data;
+  const def = String(row?.def ?? '').toLowerCase();
+  if (!def.includes('update vehicules') || !def.includes('greatest')) {
+    return { ok: false, reason: 'corps fermer_creneau sans UPDATE vehicules/GREATEST' };
+  }
+  return { ok: true };
 }
 
 async function main() {
@@ -58,8 +80,18 @@ async function main() {
     console.log('WARN migrations RPC:', migrations.reason);
   }
 
-  console.log('\nNote: la mise à jour km dans fermer_creneau nécessite une connexion PostgreSQL directe pour lire pg_get_functiondef.');
-  process.exit(planning.ok && migrations.ok ? 0 : 2);
+  const fnDef = await checkFermerCreneauDefinition();
+  if (fnDef.ok === true) {
+    console.log('OK fermer_creneau: UPDATE vehicules + GREATEST présents');
+  } else if (fnDef.ok === false) {
+    console.log('KO fermer_creneau définition:', fnDef.reason);
+  } else {
+    console.log('WARN fermer_creneau définition:', fnDef.note);
+    console.log('      Exécuter supabase/tests/07_fermer_creneau_behavior.sql en local/linked.');
+  }
+
+  const allOk = planning.ok && migrations.ok && fnDef.ok !== false;
+  process.exit(allOk ? 0 : 2);
 }
 
 main().catch((e) => {

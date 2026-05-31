@@ -55,7 +55,7 @@ Pour toute évolution, modifier ce module et garder la cohérence avec les scrip
 
 ## Base de données (Supabase)
 
-- RPC et scripts SQL : répertoire `supabase/`, fichiers du type `rpc-*-esamba*.sql`, `setup-esamba-*.sql`, `verify-esamba-*.sql`, etc.
+- RPC et scripts SQL : répertoire `supabase/`, fichiers du type `rpc-*-esamba*.sql`, `setup-esamba-*.sql`, `setup-esamba-affectation-conducteur.sql` (seed `affectations_vehicules` : `fleet_id`, `driver_user_id`), `verify-esamba-*.sql`, etc.
 - Nouvelle RPC : suivre le nommage et les paramètres des RPC existantes (`creer_flotte_esamba`, `creer_ou_mettre_a_jour_adhesion_flotte`, etc.) ; prévoir les grants si le projet les utilise déjà (`grant-check-esamba-rpc.sql`, etc.).
 
 ## Documentation hors code

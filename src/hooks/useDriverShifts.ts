@@ -190,6 +190,8 @@ export function useCloseShift() {
       queryClient.invalidateQueries({ queryKey: activeShiftKey });
       queryClient.invalidateQueries({ queryKey: ['driver-shifts'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-pending-closures'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: operationsQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: ['driver-terrain-self'] });
       queryClient.invalidateQueries({ queryKey: ['fleet-driver-activation-health'] });
