@@ -3,7 +3,6 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { ArrowLeft, User } from "lucide-react";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { ActivationBanner } from "@/components/shared/ActivationBanner";
-import { DriverTerrainActivationModal } from "@/components/activation/DriverTerrainActivationModal";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,7 +32,6 @@ export default function TerrainLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <ActivationBanner />
-      <DriverTerrainActivationModal />
       <OfflineBanner />
       <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3 sm:px-5">

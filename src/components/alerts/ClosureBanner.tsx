@@ -35,7 +35,7 @@ export function ClosureBanner({ fleetId, compact = false }: BannerProps) {
         {pendingCount > 1 ? "ent" : ""} une validation.
         <div className="mt-2">
           <Button asChild size={compact ? "sm" : "default"} variant="outline">
-            <Link to={ROUTE_PATHS.dashboardShiftClosure}>Traiter les clôtures</Link>
+            <Link to={ROUTE_PATHS.dashboardOperationsPendingClosures}>Traiter les clôtures</Link>
           </Button>
         </div>
       </AlertDescription>

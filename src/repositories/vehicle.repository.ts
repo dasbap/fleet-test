@@ -22,6 +22,19 @@ export interface VehicleUpdate {
   blocked_reason?: string | null;
 }
 
+/** Affectation active d'un conducteur avec le véhicule associé. */
+export interface DriverActiveVehicleAssignment {
+  assignmentId: string;
+  fleetId: string;
+  vehicle: {
+    id: string;
+    registration: string;
+    brand: string | null;
+    model: string | null;
+    current_km: number;
+  };
+}
+
 export interface VehicleListItemDto extends VehicleDto {
   next_maintenance_at: string | null;
 }
@@ -296,6 +309,70 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
         driver,
       },
     } as VehicleDto;
+  }
+
+  /**
+   * Affectation active et véhicule assigné pour un conducteur (vue « Ma journée »).
+   */
+  async findActiveAssignmentVehicleForDriver(
+    driverUserId: string,
+  ): Promise<DriverActiveVehicleAssignment | null> {
+    const { data, error } = await supabase
+      .from("affectations_vehicules")
+      .select(
+        `
+        id,
+        fleet_id,
+        vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(
+          id,
+          registration,
+          brand,
+          model,
+          current_km
+        )
+      `,
+      )
+      .eq("driver_user_id", driverUserId)
+      .eq("is_active", true)
+      .order("starts_at", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error("Error fetching active assignment for driver:", error);
+      throw new Error(error.message);
+    }
+
+    const row = (data || [])[0] as
+      | {
+          id: string;
+          fleet_id: string;
+          vehicle: DriverActiveVehicleAssignment["vehicle"] | DriverActiveVehicleAssignment["vehicle"][] | null;
+        }
+      | undefined;
+
+    if (!row?.id) {
+      return null;
+    }
+
+    const rawVehicle = row.vehicle;
+    const vehicleRow = Array.isArray(rawVehicle) ? rawVehicle[0] : rawVehicle;
+    if (!vehicleRow || typeof vehicleRow !== "object") {
+      return null;
+    }
+
+    const vehicle = vehicleRow as DriverActiveVehicleAssignment["vehicle"];
+
+    return {
+      assignmentId: row.id,
+      fleetId: row.fleet_id,
+      vehicle: {
+        id: vehicle.id,
+        registration: vehicle.registration,
+        brand: vehicle.brand,
+        model: vehicle.model,
+        current_km: vehicle.current_km ?? 0,
+      },
+    };
   }
 
   /**

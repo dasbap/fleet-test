@@ -87,12 +87,17 @@ export interface MockDriverDay {
   vehicleLabel: string;
   vehiclePlate: string;
   vehicleKm: string;
+  /** Créneau conducteur ouvert, pour persistance checklist locale. */
+  activeShiftId?: string | null;
+  vehicleId?: string | null;
+  fleetId?: string | null;
   departureChecklist: MockChecklist;
   arrivalChecklist: MockChecklist;
 }
 
 export interface OrganizerOperationsMock {
   missionsToday: MockMissionCard[];
+  plannedShiftsToday: MockMissionCard[];
   vehiclesInService: { id: string; label: string; driver: string; route: string }[];
   operationalIncidents: MockMissionCard[];
   assignedTasks: MockTaskItem[];

@@ -95,6 +95,7 @@
     "verify:connection": "node scripts/verify-connection.js",
     "verify:supabase": "node scripts/verify-supabase-health.js",
     "verify:plan-gates-migration": "node --env-file=.env.local scripts/verify-plan-gates-migration.mjs",
+    "verify:billing-context": "node --env-file=.env.local scripts/verify-billing-context.mjs",
     "verify:test-yaounde-seed": "node --env-file=.env.local scripts/verify-test-yaounde-seed.mjs",
     "seed:test-yaounde": "node --env-file=.env.local scripts/apply-test-yaounde-seed.mjs",
     "reset:demo-passwords": "node --env-file=.env.local scripts/reset-demo-passwords.mjs",

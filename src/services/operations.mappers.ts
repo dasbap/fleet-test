@@ -1,6 +1,7 @@
 import type { Incident } from "@/repositories/incident.repository";
 import type { MaintenanceJob, JobStatus } from "@/repositories/maintenance.repository";
 import type { DriverShift } from "@/repositories/driver-shift.repository";
+import type { PlannedShift } from "@/repositories/planned-shift.repository";
 import type {
   MockMissionCard,
   MockOpsStatus,
@@ -192,7 +193,7 @@ export function buildOrganizerTasks(input: {
       assignee: "Vous",
       dueLabel: "Dès que possible",
       status: "attention",
-      href: "/dashboard/closure",
+      href: "/dashboard/operations#clotures-en-attente",
     });
   }
   if (input.queuedMaintenanceCount > 0) {
@@ -232,6 +233,33 @@ export function buildOrganizerTasks(input: {
     });
   }
   return tasks;
+}
+
+function plannedStatusToOps(status: PlannedShift['status']): MockOpsStatus {
+  if (status === 'started') return 'in_progress';
+  if (status === 'missed') return 'attention';
+  if (status === 'cancelled') return 'blocked';
+  return 'planned';
+}
+
+/** Carte mission pour un créneau planifié (non démarré ou manqué). */
+export function plannedShiftToMissionCard(
+  shift: PlannedShift,
+  driverName?: string,
+): MockMissionCard {
+  const v = shift.vehicle;
+  const reg = v?.registration ?? '—';
+  const endLabel = shift.planned_end ? ` – ${fmtTime(shift.planned_end)}` : '';
+  return {
+    id: shift.id,
+    title: `Créneau planifié · ${reg}`,
+    subtitle: shift.notes ?? undefined,
+    vehicleLabel: vehicleLabelFromParts(v?.brand, v?.model, reg),
+    driverName: driverName ?? 'Conducteur',
+    timeWindow: `${fmtTime(shift.planned_start)}${endLabel}`,
+    status: plannedStatusToOps(shift.status),
+    href: '/terrain',
+  };
 }
 
 export function startOfTodayIso(): string {

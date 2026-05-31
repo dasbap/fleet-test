@@ -158,7 +158,6 @@ export default defineConfig(({ mode }) => {
         : undefined,
   },
   plugins: [
-    radixUiMainEntryPlugin(),
     react(),
     prerenderSeoPlugin(),
     // Pas de directives globales : sinon chaque .jpg/.webp est transformé et servi via
@@ -413,6 +412,8 @@ export default defineConfig(({ mode }) => {
     include: [
       "react",
       "react-dom",
+      "react/jsx-runtime",
+      "@radix-ui/react-select",
       "i18next",
       "react-i18next",
       "i18next-http-backend",

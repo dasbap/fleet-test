@@ -98,4 +98,16 @@ describe('mapSupabaseErrorToFrench', () => {
   it('passes through already-French messages containing "Impossible"', () => {
     expect(mapSupabaseErrorToFrench('Impossible de créer la flotte.')).toBe('Impossible de créer la flotte.');
   });
+
+  it('traduit l\'erreur PostgREST single JSON object', () => {
+    expect(
+      mapSupabaseErrorToFrench('Cannot coerce the result to a single JSON object'),
+    ).toContain('introuvable');
+  });
+
+  it('traduit le timeout PostgreSQL', () => {
+    expect(
+      mapSupabaseErrorToFrench('canceling statement due to statement timeout'),
+    ).toContain('trop de temps');
+  });
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
@@ -22,6 +22,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useFleetDrivers, useActiveAssignments } from "@/hooks/useAssignments";
 import { useFleetDriverActivationHealth } from "@/hooks/useFleetDriverActivationHealth";
+import { useFleetOpenShifts } from "@/hooks/useFleetCompliance";
+import { PlannedShiftPlannerModal } from "@/components/operations/PlannedShiftPlannerModal";
 import { cn } from "@/lib/utils";
 import DriverHistoryDialog from "@/components/drivers/DriverHistoryDialog";
 import DriverProfileDialog from "@/components/drivers/DriverProfileDialog";
@@ -58,6 +60,24 @@ function getScoreLabel(scoreLevel: string): string {
   }
 }
 
+type DriverFieldStatus = "on_mission" | "assigned" | "available";
+
+const DRIVER_STATUS_LABEL: Record<DriverFieldStatus, string> = {
+  on_mission: "En mission",
+  assigned: "Affecté",
+  available: "Disponible",
+};
+
+function resolveDriverFieldStatus(
+  driverUserId: string,
+  hasAssignment: boolean,
+  openShiftDriverIds: Set<string>,
+): DriverFieldStatus {
+  if (openShiftDriverIds.has(driverUserId)) return "on_mission";
+  if (hasAssignment) return "assigned";
+  return "available";
+}
+
 const Drivers = () => {
   const navigate = useNavigate();
   const { role, userFleetId } = useAuth();
@@ -75,11 +95,25 @@ const Drivers = () => {
   const [selectedDriverName, setSelectedDriverName] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [planTarget, setPlanTarget] = useState<{ driverId: string; vehicleId?: string } | null>(
+    null,
+  );
   const [activationFilter, setActivationFilter] = useState<
     "all" | "no_phone" | "never_shift"
   >("all");
 
   const { data: activationHealth } = useFleetDriverActivationHealth(userFleetId ?? undefined);
+  const { data: openShifts = [] } = useFleetOpenShifts(userFleetId ?? undefined);
+
+  const openShiftDriverIds = useMemo(
+    () =>
+      new Set(
+        openShifts
+          .map((s) => s.assignment?.driver_user_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    [openShifts],
+  );
 
   useEffect(() => {
     if (!userFleetId && role === null) {
@@ -196,13 +230,16 @@ const Drivers = () => {
                   <Car className="w-6 h-6 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">
-                    {
-                      driversWithAssignments.filter((d) => d.currentAssignment)
-                        .length
-                    }
-                  </p>
+                  <p className="text-2xl font-bold">{openShiftDriverIds.size}</p>
                   <p className="text-sm text-muted-foreground">En mission</p>
+                  <p className="text-xs text-muted-foreground">
+                    {
+                      driversWithAssignments.filter(
+                        (d) => d.currentAssignment && !openShiftDriverIds.has(d.user_id),
+                      ).length
+                    }{" "}
+                    affecté(s) sans créneau ouvert
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -412,17 +449,28 @@ const Drivers = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "gap-1",
-                            driver.currentAssignment
-                              ? "bg-success/10 text-success border-success/20"
-                              : "bg-muted text-muted-foreground"
-                          )}
-                        >
-                          {driver.currentAssignment ? "En mission" : "Disponible"}
-                        </Badge>
+                        {(() => {
+                          const status = resolveDriverFieldStatus(
+                            driver.user_id,
+                            Boolean(driver.currentAssignment),
+                            openShiftDriverIds,
+                          );
+                          return (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "gap-1",
+                                status === "on_mission" &&
+                                  "bg-success/10 text-success border-success/20",
+                                status === "assigned" &&
+                                  "bg-primary/10 text-primary border-primary/20",
+                                status === "available" && "bg-muted text-muted-foreground",
+                              )}
+                            >
+                              {DRIVER_STATUS_LABEL[status]}
+                            </Badge>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -447,7 +495,14 @@ const Drivers = () => {
                               Voir historique
                             </DropdownMenuItem>
                             {canManageAssignment && (
-                              <DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setPlanTarget({
+                                    driverId: driver.user_id,
+                                    vehicleId: driver.currentAssignment?.vehicle_id,
+                                  });
+                                }}
+                              >
                                 <Calendar className="w-4 h-4 mr-2" />
                                 Planifier
                               </DropdownMenuItem>
@@ -476,6 +531,18 @@ const Drivers = () => {
         driverId={selectedDriverId}
         driverName={selectedDriverName}
       />
+      {userFleetId && planTarget ? (
+        <PlannedShiftPlannerModal
+          fleetId={userFleetId}
+          defaultDriverUserId={planTarget.driverId}
+          defaultVehicleId={planTarget.vehicleId}
+          open
+          hideTrigger
+          onOpenChange={(open) => {
+            if (!open) setPlanTarget(null);
+          }}
+        />
+      ) : null}
     </>
   );
 };

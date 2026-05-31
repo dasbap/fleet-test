@@ -4,6 +4,7 @@ import type { OperationsRepository } from "@/repositories/operations.repository"
 
 const emptyOrganizer = {
   missionsToday: [],
+  plannedShiftsToday: [],
   vehiclesInService: [],
   operationalIncidents: [],
   assignedTasks: [],

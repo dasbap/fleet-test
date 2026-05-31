@@ -128,7 +128,10 @@ export function DemoRequestSection() {
                   </div>
                   <div>
                     <Label htmlFor="demo-fleet">Taille de votre flotte</Label>
-                    <Select value={form.fleet_size} onValueChange={v => setForm(f => ({ ...f, fleet_size: v }))}>
+                    <Select
+                      value={form.fleet_size || undefined}
+                      onValueChange={(v) => setForm((f) => ({ ...f, fleet_size: v }))}
+                    >
                       <SelectTrigger id="demo-fleet">
                         <SelectValue placeholder="Nombre de véhicules" />
                       </SelectTrigger>

@@ -21,7 +21,7 @@ BEGIN
     i.expires_at,
     i.max_uses,
     i.current_uses,
-    f.nom AS fleet_name
+    f.name AS fleet_name
   INTO v_invitation
   FROM flotte_invitations i
   JOIN flottes f ON f.id = i.fleet_id

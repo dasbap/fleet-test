@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 /** Bloc mis en avant pour orienter le conducteur vers la création d’incident. */
 export function ReportProblemCard() {
@@ -18,7 +19,7 @@ export function ReportProblemCard() {
       </CardHeader>
       <CardContent>
         <Button variant="destructive" asChild>
-          <Link to="/dashboard/incidents">Accéder aux incidents</Link>
+          <Link to={ROUTE_PATHS.dashboardIncidents}>Accéder aux incidents</Link>
         </Button>
       </CardContent>
     </Card>
