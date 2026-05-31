@@ -372,10 +372,10 @@ SELECT
   v.model,
   v.year,
   v.current_km,
-  CASE
-    WHEN v.status::text = 'ok' THEN 'OK'
-    WHEN v.status::text = 'blocked' THEN 'Bloque'
-    ELSE v.status::text
+  CASE 
+    WHEN v.status = 'ok' THEN '✅ OK'
+    WHEN v.status = 'blocked' THEN '❌ Bloqué'
+    ELSE v.status
   END as statut
 FROM vehicules v
 JOIN flottes f ON f.id = v.fleet_id
@@ -389,16 +389,16 @@ SELECT
   COALESCE(p.phone, 'Non renseigné') as telephone,
   u.email,
   fm.role as role,
-  CASE
-    WHEN fm.role::text = 'organizer' THEN 'Organisateur'
-    WHEN fm.role::text = 'manager' THEN 'Gestionnaire'
-    WHEN fm.role::text = 'driver' THEN 'Chauffeur'
-    WHEN fm.role::text = 'mechanic' THEN 'Mecanicien'
-    ELSE fm.role::text
+  CASE 
+    WHEN fm.role = 'organizer' THEN 'Organisateur'
+    WHEN fm.role = 'manager' THEN 'Gestionnaire'
+    WHEN fm.role = 'driver' THEN 'Chauffeur'
+    WHEN fm.role = 'mechanic' THEN 'Mécanicien'
+    ELSE fm.role
   END as role_fr,
-  CASE
-    WHEN fm.is_active THEN 'Actif'
-    ELSE 'Inactif'
+  CASE 
+    WHEN fm.is_active THEN '✅ Actif'
+    ELSE '❌ Inactif'
   END as statut,
   TO_CHAR(fm.created_at, 'DD/MM/YYYY HH24:MI') as date_ajout
 FROM flotte_adhesions fm
@@ -464,9 +464,5 @@ BEGIN
   RAISE NOTICE '  2. Allez sur /dashboard/settings';
   RAISE NOTICE '  3. Vérifiez la section "Mon espace organisateur"';
   RAISE NOTICE '  4. Vous devriez voir tous les profils et leurs rôles';
-  RAISE NOTICE '========================================';
-  RAISE NOTICE 'Étape suivante (activation terrain conducteur) :';
-  RAISE NOTICE '  → supabase/scripts/setup/setup-esamba-affectation-conducteur.sql';
-  RAISE NOTICE '  (affectation driver ↔ ESAMBA-001 sur affectations_vehicules)';
   RAISE NOTICE '========================================';
 END $$;

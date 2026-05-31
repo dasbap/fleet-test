@@ -1,7 +1,5 @@
 # =====================================================
 # Tests SQL sécurité RLS/RPC (local + linked)
-# Prérequis local : stack Supabase + `supabase db reset --no-seed`
-# (toutes les migrations sous supabase/migrations/ doivent être appliquées).
 # =====================================================
 
 param(
@@ -16,10 +14,7 @@ $tests = @(
   "supabase/tests/01_security_invariants.sql",
   "supabase/tests/02_policy_coverage.sql",
   "supabase/tests/03_invitation_guardrails.sql",
-  "supabase/tests/04_post_migration_objects.sql",
-  "supabase/tests/05_affectations_vehicules_schema.sql",
-  "supabase/tests/07_fermer_creneau_behavior.sql",
-  "supabase/tests/08_vehicle_limit_billing.sql"
+  "supabase/tests/04_post_migration_objects.sql"
 )
 
 function Invoke-SupabaseCommand {

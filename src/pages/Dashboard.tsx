@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useCurrentRole } from "@/hooks/useCurrentRole";
 import { useNetworkOnline } from "@/features/account/hooks/useNetworkOnline";
 import { WifiOff } from "lucide-react";
 import { EmptyStateDashboard } from "@/components/dashboard/EmptyStateDashboard";
@@ -66,14 +65,6 @@ function OfflineBanner() {
   );
 }
 
-function PendingClosuresAlertBanner({ fleetId }: { fleetId?: string | null }) {
-  const { isManager, isOrganizer } = useCurrentRole();
-  if (!isManager && !isOrganizer) {
-    return null;
-  }
-  return <ClosureBanner fleetId={fleetId} />;
-}
-
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, userFleetId: currentFleetId } = useAuth();
@@ -136,7 +127,7 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         {!isOnline && <OfflineBanner />}
-        <PendingClosuresAlertBanner fleetId={currentFleetId} />
+        <ClosureBanner fleetId={currentFleetId} />
         <ExpiringDocumentsBanner fleetId={currentFleetId} />
         {showWelcome && (
           <WelcomeBanner
@@ -153,7 +144,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {!isOnline && <OfflineBanner />}
-      <PendingClosuresAlertBanner fleetId={currentFleetId} />
+      <ClosureBanner fleetId={currentFleetId} />
       <ExpiringDocumentsBanner fleetId={currentFleetId} />
       {showWelcome && (
         <WelcomeBanner
