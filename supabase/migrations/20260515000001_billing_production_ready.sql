@@ -117,16 +117,26 @@ CREATE POLICY billing_events_insert_service ON public.billing_events
     (auth.jwt() ->> 'role') = 'service_role'
   );
 
--- payment_attempts : lecture manager/organizer via paiements → fleet_id
+-- payment_attempts : lecture manager/organizer via abonnements.fleet_id (paiements n'a pas fleet_id)
 ALTER TABLE public.payment_attempts ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS payment_attempts_select_manager ON public.payment_attempts;
 CREATE POLICY payment_attempts_select_manager ON public.payment_attempts
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM public.paiements p
-      WHERE p.id = payment_id
-        AND p.fleet_id IN (
+      SELECT 1 FROM public.abonnements a
+      WHERE a.payment_id = payment_attempts.payment_id
+        AND a.fleet_id IN (
+          SELECT fa.fleet_id FROM public.flotte_adhesions fa
+          WHERE fa.user_id = auth.uid() AND fa.is_active = true
+        )
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.paiements p
+      INNER JOIN public.flottes f ON f.org_id = p.org_id
+      WHERE p.id = payment_attempts.payment_id
+        AND f.id IN (
           SELECT fa.fleet_id FROM public.flotte_adhesions fa
           WHERE fa.user_id = auth.uid() AND fa.is_active = true
         )

@@ -691,12 +691,24 @@ DROP POLICY IF EXISTS "payment_attempts_select_manager" ON public.payment_attemp
 CREATE POLICY "payment_attempts_select_manager" ON public.payment_attempts
   FOR SELECT
   USING (
-    EXISTS (SELECT 1 FROM paiements p
-      WHERE p.id = payment_attempts.payment_id
-        AND p.fleet_id IN (
-          SELECT fa.fleet_id FROM flotte_adhesions fa
+    EXISTS (
+      SELECT 1 FROM public.abonnements a
+      WHERE a.payment_id = payment_attempts.payment_id
+        AND a.fleet_id IN (
+          SELECT fa.fleet_id FROM public.flotte_adhesions fa
           WHERE fa.user_id = (SELECT auth.uid()) AND fa.is_active = true
-        ))
+        )
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.paiements p
+      INNER JOIN public.flottes f ON f.org_id = p.org_id
+      WHERE p.id = payment_attempts.payment_id
+        AND f.id IN (
+          SELECT fa.fleet_id FROM public.flotte_adhesions fa
+          WHERE fa.user_id = (SELECT auth.uid()) AND fa.is_active = true
+        )
+    )
   );
 
 DROP POLICY IF EXISTS "payment_attempts_service_role" ON public.payment_attempts;
