@@ -32,6 +32,7 @@ import {
   usePaymentHistory,
   PAYMENT_STATUS_LABELS,
   PAYMENT_STATUS_COLORS,
+  isSuccessfulPaymentStatus,
   PROVIDER_LABELS,
   type PaymentRecord,
 } from "@/hooks/usePaymentHistory";
@@ -42,6 +43,7 @@ import { cn } from "@/lib/utils";
 import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
 import { STATUS_CONFIG } from "@/features/billing/constants/billingStatusConfig";
 import { useNotchPayCallback } from "@/features/billing/hooks/useNotchPayCallback";
+import type { FleetBillingContext } from "@/types/fleet-billing";
 
 // ─── Page principale ────────────────────────────────────────────────────────
 
@@ -87,7 +89,7 @@ export default function BillingPage() {
     );
   }
 
-  const ctx = billing.data;
+  const ctx: FleetBillingContext | undefined = billing.data;
   if (!ctx) return null;
 
   const statusCfg  = STATUS_CONFIG[ctx.billingStatus] ?? STATUS_CONFIG.trial;
@@ -451,7 +453,7 @@ function PaymentRow({ payment }: { payment: PaymentRecord }) {
         <Badge className={cn("text-xs", statusClass)}>{statusLabel}</Badge>
       </td>
       <td className="px-4 py-3 text-center hidden sm:table-cell">
-        {payment.status === "successful" ? (
+        {isSuccessfulPaymentStatus(payment.status) ? (
           <Button
             variant="ghost"
             size="sm"
