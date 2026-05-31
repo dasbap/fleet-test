@@ -42,11 +42,33 @@ BEGIN
   END IF;
 
   IF to_regclass('public.onboarding_sequence_log') IS NULL THEN
-    RAISE EXCEPTION 'Objet manquant: table public.onboarding_sequence_log';
+    IF to_regclass('supabase_migrations.schema_migrations') IS NOT NULL
+       AND EXISTS (
+         SELECT 1
+         FROM supabase_migrations.schema_migrations
+         WHERE version = '20260413100000'
+       ) THEN
+      RAISE EXCEPTION
+        'Régression: table public.onboarding_sequence_log manquante après migration 20260413100000';
+    ELSE
+      RAISE EXCEPTION
+        'Objet manquant: table public.onboarding_sequence_log (exécuter supabase db push ou appliquer 20260531210000_ensure_onboarding_sequence_log)';
+    END IF;
   END IF;
 
   IF to_regclass('public.system_events') IS NULL THEN
-    RAISE EXCEPTION 'Objet manquant: table public.system_events';
+    IF to_regclass('supabase_migrations.schema_migrations') IS NOT NULL
+       AND EXISTS (
+         SELECT 1
+         FROM supabase_migrations.schema_migrations
+         WHERE version = '20260413100000'
+       ) THEN
+      RAISE EXCEPTION
+        'Régression: table public.system_events manquante après migration 20260413100000';
+    ELSE
+      RAISE EXCEPTION
+        'Objet manquant: table public.system_events (exécuter supabase db push ou appliquer 20260531210000_ensure_onboarding_sequence_log)';
+    END IF;
   END IF;
 
   IF to_regclass('public.journal_carburant') IS NULL THEN
@@ -75,6 +97,10 @@ BEGIN
 
   IF to_regprocedure('public.get_fleet_billing_context(uuid)') IS NULL THEN
     RAISE EXCEPTION 'Objet manquant: RPC public.get_fleet_billing_context(uuid)';
+  END IF;
+
+  IF to_regprocedure('public.get_fleet_billing_context_internal(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: public.get_fleet_billing_context_internal(uuid)';
   END IF;
 
   IF to_regprocedure('public.get_auth_flow_session_snapshot(uuid)') IS NULL THEN
