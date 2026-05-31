@@ -30,7 +30,12 @@ export class RealtimeNotificationService {
         title: "Nouvelle clôture de créneau",
         description: `${ctx.driverFullName || "Un chauffeur"} a terminé son créneau avec ${ctx.revenueDeclared} FCFA de revenus.`,
       },
-      invalidateKeys: [["dashboard-stats"], ["recent-activity"]],
+      invalidateKeys: [
+        ["dashboard-stats"],
+        ["recent-activity"],
+        ["fleet-pending-closures"],
+        ["operations"],
+      ],
     };
   }
 
