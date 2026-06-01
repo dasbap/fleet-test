@@ -121,5 +121,30 @@ BEGIN
   IF to_regprocedure('public.enregistrer_carburant_offline(uuid,uuid,uuid,numeric,integer,integer,timestamp with time zone,text,text,uuid)') IS NULL THEN
     RAISE EXCEPTION 'Objet manquant: RPC public.enregistrer_carburant_offline(...)';
   END IF;
+
+  -- Dashboard (vues compat + RPC KPI + plan guards)
+  IF to_regclass('public.vehicles') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: vue public.vehicles (compat dashboard)';
+  END IF;
+
+  IF to_regclass('public.alerts') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: vue public.alerts (compat dashboard)';
+  END IF;
+
+  IF to_regclass('public.dashboard_alerts') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: vue public.dashboard_alerts';
+  END IF;
+
+  IF to_regprocedure('public.get_kpi_summary(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: RPC public.get_kpi_summary(uuid)';
+  END IF;
+
+  IF to_regprocedure('public.can_create_vehicle(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: RPC public.can_create_vehicle(uuid)';
+  END IF;
+
+  IF to_regprocedure('public.get_plan_access(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: RPC public.get_plan_access(uuid)';
+  END IF;
 END
 $$;
