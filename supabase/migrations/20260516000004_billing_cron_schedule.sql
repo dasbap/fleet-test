@@ -66,13 +66,13 @@ BEGIN
     PERFORM cron.schedule(
       'billing-lifecycle-daily',          -- nom unique
       '0 2 * * *',                        -- tous les jours à 02h00 UTC
-      $$
+      $cron$
         SELECT extensions.http_post(
           url     := 'https://zqxjvmejoktwlcqshnwi.supabase.co/functions/v1/billing-lifecycle-cron',
           headers := '{"Content-Type": "application/json"}'::jsonb,
           body    := '{"secret": "CRON_SECRET_PLACEHOLDER"}'::jsonb
         );
-      $$
+      $cron$
     );
 
     RAISE NOTICE 'pg_cron job billing-lifecycle-daily enregistré (02:00 UTC).';
@@ -124,7 +124,7 @@ SELECT
     WHEN a.status IN ('expired', 'cancelled', 'suspended')                THEN 'terminal'
     ELSE 'ok'
   END AS lifecycle_health,
-  a.updated_at AS last_transition
+  COALESCE(a.cancelled_at, a.grace_until, a.ends_at) AS last_transition
 FROM public.abonnements a
 JOIN public.plans p ON p.id = a.plan_id
 WHERE a.status NOT IN ('cancelled')
