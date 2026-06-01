@@ -11,11 +11,15 @@ const Footer = () => {
       <div className="container mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-12">
           <div className="lg:col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <Zap className="w-6 h-6 text-primary-foreground" />
+            <Link
+              to="/"
+              className="mb-4 flex shrink-0 items-center gap-2 transition-opacity hover:opacity-90"
+              aria-label="Retour à l'accueil E-Samba"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary">
+                <Zap className="h-6 w-6 text-primary-foreground" aria-hidden />
               </div>
-              <span className="font-heading font-bold text-xl">E-Samba</span>
+              <span className="whitespace-nowrap font-heading text-xl font-bold">E-Samba</span>
             </Link>
             <p className="text-muted-foreground text-sm mb-6 max-w-xs">
               La plateforme de gestion de flotte intelligente conçue pour

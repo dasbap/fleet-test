@@ -37,8 +37,22 @@ describe("données marketing publiques", () => {
     }
   });
 
-  it("n'expose pas de liens menu dans la navbar publique", () => {
-    expect(PUBLIC_NAV_LINKS).toHaveLength(0);
+  it("n'inclut pas Guides dans la navbar (hub marketing externe)", () => {
+    const names = PUBLIC_NAV_LINKS.map((l) => l.name);
+    expect(names).not.toContain("Guides");
+    expect(PUBLIC_NAV_LINKS.some((l) => "href" in l && l.href?.includes("/guides"))).toBe(false);
+  });
+
+  it("utilise des routes www pour fonctionnalités, modules, tarifs, faq et contact", () => {
+    const internal = PUBLIC_NAV_LINKS.filter(
+      (l): l is Extract<typeof l, { to: string }> => !("external" in l && l.external),
+    );
+    const paths = internal.map((l) => l.to);
+    expect(paths).toContain("/fonctionnalites");
+    expect(paths).toContain("/modules");
+    expect(paths).toContain("/pricing");
+    expect(paths).toContain("/faq");
+    expect(paths).toContain("/contact");
   });
 
   it("pointe le CTA démo vers /contact#demo", () => {
