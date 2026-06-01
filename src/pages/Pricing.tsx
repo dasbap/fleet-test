@@ -143,7 +143,7 @@ const PLANS: PlanConfig[] = [
 
 export default function PricingPage() {
   usePageSeo("pricing");
-  const [vehicleCount, setVehicleCount] = useState(3);
+  const [vehicleCount, setVehicleCount] = useState(1);
   const [selectedDuration, setSelectedDuration] = useState(1);
   const [addOnPulse, setAddOnPulse] = useState(false);
   const [addOnQr, setAddOnQr] = useState(false);
@@ -227,6 +227,28 @@ export default function PricingPage() {
           </Alert>
         )}
 
+        {/* ── Cartes plans ──────────────────────────────────────────────── */}
+        <section>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {PLANS.map((plan) => (
+              <PlanCard
+                key={plan.code}
+                plan={plan}
+                vehicleCount={vehicleCount}
+                selectedDuration={selectedDuration}
+                discountPct={duration.discountPct}
+                calcMonthly={calcMonthlyTotal}
+                calcTotal={calcTotalXaf}
+                addOnPulse={addOnPulse}
+                addOnQr={addOnQr}
+                isLoading={isLoading}
+                bffAvailable={bffAvailable}
+                onPay={handlePay}
+              />
+            ))}
+          </div>
+        </section>
+
         {/* ── Configurateur ─────────────────────────────────────────────── */}
         <section className="rounded-2xl border bg-card p-6 shadow-sm">
           <h2 className="mb-6 font-semibold text-lg">Configurez votre abonnement</h2>
@@ -298,42 +320,20 @@ export default function PricingPage() {
             <label className="text-sm font-medium">Options complémentaires</label>
             <div className="flex flex-wrap gap-3">
               <AddonToggle
-                icon={<Zap className="h-4 w-4 text-amber-500" />}
-                label="Pulse+"
-                description={`IA prédictive — +${formatPublicPriceXaf(PRICE_ADDON_PULSE)} FCFA/véhicule/mois`}
-                active={addOnPulse}
-                onToggle={() => setAddOnPulse((v) => !v)}
-              />
-              <AddonToggle
                 icon={<QrCode className="h-4 w-4 text-blue-500" />}
                 label="QR Premium"
                 description={`Activation lot — +${formatPublicPriceXaf(PRICE_ADDON_QR)} FCFA/véhicule/mois`}
                 active={addOnQr}
                 onToggle={() => setAddOnQr((v) => !v)}
               />
-            </div>
-          </div>
-        </section>
-
-        {/* ── Cartes plans ──────────────────────────────────────────────── */}
-        <section>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {PLANS.map((plan) => (
-              <PlanCard
-                key={plan.code}
-                plan={plan}
-                vehicleCount={vehicleCount}
-                selectedDuration={selectedDuration}
-                discountPct={duration.discountPct}
-                calcMonthly={calcMonthlyTotal}
-                calcTotal={calcTotalXaf}
-                addOnPulse={addOnPulse}
-                addOnQr={addOnQr}
-                isLoading={isLoading}
-                bffAvailable={bffAvailable}
-                onPay={handlePay}
+              <AddonToggle
+                icon={<Zap className="h-4 w-4 text-amber-500" />}
+                label="Pulse+"
+                description={`IA prédictive — +${formatPublicPriceXaf(PRICE_ADDON_PULSE)} FCFA/véhicule/mois`}
+                active={addOnPulse}
+                onToggle={() => setAddOnPulse((v) => !v)}
               />
-            ))}
+            </div>
           </div>
         </section>
 
