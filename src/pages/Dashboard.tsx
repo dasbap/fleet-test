@@ -24,7 +24,7 @@ import { useActionableDashboard } from "@/hooks/useActionableDashboard";
 import { useActivation } from "@/hooks/useActivation";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { X, PartyPopper } from "lucide-react";
+import { X, PartyPopper, RefreshCw } from "lucide-react";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { useDriverScores } from "@/hooks/useDriverScores";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,6 +74,27 @@ function PendingClosuresAlertBanner({ fleetId }: { fleetId?: string | null }) {
   return <ClosureBanner fleetId={fleetId} />;
 }
 
+function KpiDegradedBanner({
+  onRetry,
+  isRetrying,
+}: {
+  onRetry: () => void;
+  isRetrying: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 px-4 py-2 text-sm text-amber-800 dark:text-amber-200">
+      <span>
+        Les indicateurs temps réel sont temporairement indisponibles. Rechargez la page ou réessayez dans
+        quelques instants.
+      </span>
+      <Button type="button" variant="outline" size="sm" onClick={onRetry} disabled={isRetrying}>
+        <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isRetrying && "animate-spin")} />
+        Réessayer
+      </Button>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, userFleetId: currentFleetId } = useAuth();
@@ -81,6 +102,8 @@ export default function DashboardPage() {
   const { steps, completedCount, loading } = useActivation();
   const {
     kpis,
+    kpisDegraded,
+    refetchKpis,
     alerts,
     resolveAlert,
     scheduledJobs,
@@ -91,6 +114,7 @@ export default function DashboardPage() {
     fuelLiters,
     coreLoading,
   } = useActionableDashboard();
+  const [isKpiRetrying, setIsKpiRetrying] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
@@ -181,25 +205,36 @@ export default function DashboardPage() {
             }
           />
 
-          {coreLoading || !kpis ? (
+          {coreLoading ? (
             <ActionableDashboardSkeleton />
           ) : (
-            <ActionableDashboard
-              kpis={kpis}
-              alerts={alerts}
-              scheduledJobs={scheduledJobs}
-              avgKm={avgKm}
-              todayRevenueXaf={todayRevenueXaf}
-              totalVehicles={totalVehicles}
-              fuelSpendXof={fuelSpendXof}
-              fuelLiters={fuelLiters}
-              onNavigateVehicle={(vehicleId) =>
-                navigate(ROUTE_PATHS.dashboardVehicleDetail(vehicleId))
-              }
-              onNavigateAlerts={() => navigate(ROUTE_PATHS.dashboardAlerts)}
-              onNavigateMaintenance={() => navigate(ROUTE_PATHS.dashboardMaintenance)}
-              onResolveAlert={resolveAlert}
-            />
+            <>
+              {kpisDegraded ? (
+                <KpiDegradedBanner
+                  isRetrying={isKpiRetrying}
+                  onRetry={() => {
+                    setIsKpiRetrying(true);
+                    void refetchKpis().finally(() => setIsKpiRetrying(false));
+                  }}
+                />
+              ) : null}
+              <ActionableDashboard
+                kpis={kpis}
+                alerts={alerts}
+                scheduledJobs={scheduledJobs}
+                avgKm={avgKm}
+                todayRevenueXaf={todayRevenueXaf}
+                totalVehicles={totalVehicles}
+                fuelSpendXof={fuelSpendXof}
+                fuelLiters={fuelLiters}
+                onNavigateVehicle={(vehicleId) =>
+                  navigate(ROUTE_PATHS.dashboardVehicleDetail(vehicleId))
+                }
+                onNavigateAlerts={() => navigate(ROUTE_PATHS.dashboardAlerts)}
+                onNavigateMaintenance={() => navigate(ROUTE_PATHS.dashboardMaintenance)}
+                onResolveAlert={resolveAlert}
+              />
+            </>
           )}
           <DriverActivationHealthCard />
           <DriverScoresQuickWidget

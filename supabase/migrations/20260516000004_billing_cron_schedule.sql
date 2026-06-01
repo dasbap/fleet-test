@@ -51,10 +51,11 @@ BEGIN
     SELECT 1 FROM pg_extension WHERE extname = 'http'
   ) THEN
     -- Supprime le job existant si présent (idempotent)
-    PERFORM cron.unschedule('billing-lifecycle-daily')
-    WHERE EXISTS (
+    IF EXISTS (
       SELECT 1 FROM cron.job WHERE jobname = 'billing-lifecycle-daily'
-    );
+    ) THEN
+      PERFORM cron.unschedule('billing-lifecycle-daily');
+    END IF;
 
     -- Enregistre le cron quotidien à 02:00 UTC
     -- Auth via body.secret (les headers custom sont strippés par le gateway Cloudflare/Supabase).

@@ -1,13 +1,5 @@
--- Migration: guards d'accès plan — RPC server-side
--- Jamais le frontend seul : toutes les règles sont enforced côté DB.
+-- Corrige ORDER BY : abonnements n'a pas de colonne created_at (aligné sur get_fleet_billing_context).
 
--- ─── can_create_vehicle ────────────────────────────────────────────────────────
--- Retourne TRUE si la flotte peut encore créer un véhicule selon son plan actif.
--- Règles :
---   - Pas d'abonnement actif → FALSE
---   - Trial → max 3 véhicules
---   - Plan avec max_vehicles NULL → illimité (enterprise)
---   - Sinon → compte véhicules existants < max_vehicles
 CREATE OR REPLACE FUNCTION public.can_create_vehicle(p_fleet_id uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -37,12 +29,6 @@ AS $$
   END;
 $$;
 
-COMMENT ON FUNCTION public.can_create_vehicle(uuid) IS
-  'Guard serveur : vérifie si la flotte peut créer un véhicule supplémentaire selon son abonnement actif.';
-
--- ─── get_plan_access ──────────────────────────────────────────────────────────
--- Retourne les droits complets de la flotte sous forme de JSONB.
--- Utilisé par le BFF pour répondre aux requêtes /billing/access.
 CREATE OR REPLACE FUNCTION public.get_plan_access(p_fleet_id uuid)
 RETURNS jsonb
 LANGUAGE sql
@@ -101,11 +87,4 @@ AS $$
   END;
 $$;
 
-COMMENT ON FUNCTION public.get_plan_access(uuid) IS
-  'Retourne les droits d''accès complets (plan + features) pour une flotte donnée. Source de vérité côté DB.';
-
--- ─── RLS : les managers peuvent lire leur propre contexte d'accès ─────────────
--- (Les RPCs sont SECURITY DEFINER donc contournent RLS, mais on documente l'intention)
-
-GRANT EXECUTE ON FUNCTION public.can_create_vehicle(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_plan_access(uuid)    TO authenticated;
+NOTIFY pgrst, 'reload schema';
