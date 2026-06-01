@@ -19,8 +19,8 @@ const distRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 // /login n'est pas prérendue : seule /auth est canonique (src/lib/seo.ts).
 // Augmenté à 450 Ko pour absorber le chunk recharts (vendor-charts, ~90 Ko gzip).
 const defaultBudgets = [
-  { route: "/", maxGzipKb: 450 },
-  { route: "/auth", maxGzipKb: 450 },
+  { route: "/", maxGzipKb: 280 },
+  { route: "/auth", maxGzipKb: 280 },
 ];
 
 function normalizeRoute(route) {

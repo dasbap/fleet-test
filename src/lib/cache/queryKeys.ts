@@ -22,8 +22,10 @@ export const queryKeys = {
 
   // ── Dashboard ───────────────────────────────────────────────────────────────
   dashboard: {
+    snapshot:    (fleetId: string, orgId: string) =>
+                                        ['dashboard', 'snapshot', fleetId, orgId] as const,
     stats:       (fleetId: string)   => ['dashboard', 'stats', fleetId]    as const,
-    kpis:        (fleetId: string)   => ['dashboard', 'kpis', fleetId]     as const,
+    kpis:        (orgId: string)     => ['dashboard', 'kpis', orgId]       as const,
     alerts:      (orgId: string)     => ['dashboard', 'alerts', orgId]     as const,
     activity:    (fleetId: string)   => ['dashboard', 'activity', fleetId] as const,
   },

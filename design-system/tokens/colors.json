@@ -1,0 +1,11 @@
+{
+  "primary": "hsl(var(--primary))",
+  "background": "hsl(var(--background))",
+  "foreground": "hsl(var(--foreground))",
+  "muted": "hsl(var(--muted))",
+  "destructive": "hsl(var(--destructive))",
+  "success": "hsl(var(--success))",
+  "warning": "hsl(var(--warning))",
+  "card": "hsl(var(--card))",
+  "border": "hsl(var(--border))"
+}

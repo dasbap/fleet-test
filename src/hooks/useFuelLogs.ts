@@ -28,8 +28,9 @@ export function useFuelLogs(limit = 50) {
   });
 }
 
+/** Résumé léger pour listes (pagination 50 entrées max). */
 export function useFuelSummary(): FuelSummary & { isLoading: boolean } {
-  const { data, isLoading } = useFuelLogs(200);
+  const { data, isLoading } = useFuelLogs(50);
   const entries = data ?? [];
 
   const totalLiters = entries.reduce((s, e) => s + e.liters, 0);

@@ -165,7 +165,11 @@
     "perf:inp:interaction": "node scripts/check-inp-interactions.mjs",
     "perf:audit": "node scripts/audit-perf.mjs",
     "perf:audit:bash": "node scripts/run-bash-audit.mjs",
-    "rum:web-vitals:report": "node scripts/report-rum-web-vitals.mjs"
+    "rum:web-vitals:report": "node scripts/report-rum-web-vitals.mjs",
+    "lighthouse:ci:dashboard": "lhci autorun --config=.github/lighthouse/lighthouserc.dashboard.json",
+    "audit:routes": "node scripts/generate-route-inventory.mjs",
+    "check:design-tokens": "node scripts/sync-design-tokens.mjs",
+    "check:no-supabase-ui": "node scripts/check-no-supabase-in-ui.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",
@@ -219,6 +223,7 @@
     "@tanstack/query-sync-storage-persister": "^5.99.0",
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-query-persist-client": "^5.99.0",
+    "@tanstack/react-virtual": "^3.14.1",
     "@types/mapbox-gl": "^3.4.1",
     "baseline-browser-mapping": "^2.10.32",
     "class-variance-authority": "^0.7.1",
@@ -281,6 +286,7 @@
     "caniuse-lite": "^1.0.30001793",
     "cross-env": "^10.1.0",
     "eslint": "^9.32.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",

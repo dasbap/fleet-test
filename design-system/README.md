@@ -6,8 +6,17 @@ Ce dossier documente les **tokens** et conventions UI partagés entre le dashboa
 
 | Fichier | Contenu |
 |---------|---------|
+| [`tokens/`](tokens/) | JSON documentés (colors, typography, spacing, radius, shadows, motion) |
 | [`src/index.css`](../src/index.css) | Variables CSS (`--primary`, `--background`, safe-area, etc.) |
 | [`tailwind.config.ts`](../tailwind.config.ts) | Mapping Tailwind → tokens HSL |
+
+Vérification CI : `node scripts/sync-design-tokens.mjs`
+
+## Composants E-Samba (wrappers)
+
+- [`src/components/esamba/EsambaButton.tsx`](../src/components/esamba/EsambaButton.tsx)
+- [`src/components/esamba/EsambaCard.tsx`](../src/components/esamba/EsambaCard.tsx)
+- [`src/components/esamba/EsambaDataTable.tsx`](../src/components/esamba/EsambaDataTable.tsx)
 
 Règles :
 
