@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import type { DashboardAlert } from "@/types/dashboard";
+import { mapRpcKpiSummary } from "@/lib/dashboard-kpis";
+import type { DashboardAlert, KpiSummary } from "@/types/dashboard";
 
 export interface DashboardAlertRow {
   id: string;
@@ -46,13 +47,13 @@ export class DashboardAlertRepository {
     }
   }
 
-  async getKpiSummary(orgId: string): Promise<unknown> {
+  async getKpiSummary(orgId: string): Promise<KpiSummary> {
     const { data, error } = await supabase.rpc("get_kpi_summary", { p_org_id: orgId });
     if (error) {
       console.error("Error fetching KPI summary:", error);
       throw new Error(error.message);
     }
-    return data;
+    return mapRpcKpiSummary(data);
   }
 
   subscribeToOrgAlerts(

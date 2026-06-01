@@ -4,19 +4,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useDashboardKpis, useDashboardStats, useFleetVehicles } from "@/hooks/useDashboardStats";
 import { toast } from "@/hooks/use-toast";
+import { isMockAuthEnabled } from "@/lib/authMode";
+import {
+  buildDashboardKpisFallback,
+  canFetchDashboardKpis,
+  resolveActionableDashboardKpis,
+} from "@/lib/dashboard-kpis";
+import { isValidUuid } from "@/lib/isUuid";
 import { MaintenanceRepository } from "@/repositories/maintenance.repository";
 import type { MaintenanceJob } from "@/hooks/useMaintenance";
 import type { DashboardAlert, KpiSummary } from "@/types/dashboard";
 import { useFuelSummary } from "@/hooks/useFuelLogs";
-
-const EMPTY_KPIS: KpiSummary = {
-  activeVehicles: 0,
-  inMaintenance: 0,
-  criticalAlerts: 0,
-  overdueServices: 0,
-  deltaCritical: 0,
-  deltaActive: 0,
-};
 
 const maintenanceRepository = new MaintenanceRepository();
 
@@ -47,21 +45,49 @@ async function fetchScheduledMaintenance(fleetId: string): Promise<MaintenanceJo
  * Données pour le tableau de bord actionnable : KPIs, alertes, planning maintenance, stats flotte.
  */
 export function useActionableDashboard() {
-  const { orgId, userFleetId, isLoading: authLoading } = useAuth();
-  const { alerts, loading: alertsLoading, resolveAlert } = useDashboard(orgId ?? "");
+  const {
+    orgId,
+    userFleetId,
+    isLoading: authLoading,
+    isTenantOrgLoading,
+  } = useAuth();
+  const skipRemoteKpis = isMockAuthEnabled();
+  const alertsOrgId = orgId && isValidUuid(orgId) ? orgId : "";
+  const { alerts, loading: alertsLoading, resolveAlert } = useDashboard(alertsOrgId);
   const kpisQuery = useDashboardKpis();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: fleetVehicles = [], isLoading: fleetLoading } = useFleetVehicles();
-  // Carburant : données déjà requêtées si FuelMonitoringPage actif (React Query déduplique)
   const fuelSummary = useFuelSummary();
 
-  const kpis = useMemo((): KpiSummary | null => {
-    if (kpisQuery.data) return kpisQuery.data;
-    if (!orgId) return EMPTY_KPIS;
-    return null;
-  }, [kpisQuery.data, orgId]);
+  const canFetchKpis = canFetchDashboardKpis(orgId, skipRemoteKpis);
 
-  const kpisLoading = Boolean(orgId) && kpisQuery.isLoading;
+  const fallbackKpis = useMemo(
+    () =>
+      stats !== undefined
+        ? buildDashboardKpisFallback(stats, alerts)
+        : null,
+    [stats, alerts],
+  );
+
+  const { kpis, kpisDegraded } = useMemo(
+    () =>
+      resolveActionableDashboardKpis({
+        orgId,
+        kpisData: kpisQuery.data,
+        isKpisError: kpisQuery.isError,
+        skipRemoteKpis,
+        fallbackKpis,
+      }),
+    [orgId, kpisQuery.data, kpisQuery.isError, skipRemoteKpis, fallbackKpis],
+  );
+
+  const kpisLoading = canFetchKpis && kpisQuery.isLoading;
+  const kpiError =
+    kpisQuery.isError && canFetchKpis
+      ? kpisQuery.error instanceof Error
+        ? kpisQuery.error.message
+        : "Erreur réseau ou serveur."
+      : null;
 
   const scheduledQuery = useQuery({
     queryKey: ["actionable-dashboard-maintenance", userFleetId],
@@ -74,6 +100,7 @@ export function useActionableDashboard() {
   });
 
   const maintenanceErrorToastShown = useRef(false);
+
   useEffect(() => {
     if (scheduledQuery.isSuccess) {
       maintenanceErrorToastShown.current = false;
@@ -100,15 +127,20 @@ export function useActionableDashboard() {
 
   const loading =
     authLoading ||
+    isTenantOrgLoading ||
     alertsLoading ||
     kpisLoading ||
     statsLoading ||
     fleetLoading ||
     (!!userFleetId && scheduledQuery.isLoading);
-  const coreLoading = authLoading || alertsLoading || kpisLoading;
+  const coreLoading =
+    authLoading || isTenantOrgLoading || alertsLoading || kpisLoading;
 
   return {
     kpis,
+    kpisDegraded,
+    kpiError,
+    refetchKpis: kpisQuery.refetch,
     alerts,
     resolveAlert,
     scheduledJobs: scheduledQuery.data ?? [],
@@ -123,7 +155,10 @@ export function useActionableDashboard() {
 }
 
 export type UseActionableDashboardReturn = {
-  kpis: KpiSummary | null;
+  kpis: KpiSummary;
+  kpisDegraded: boolean;
+  kpiError: string | null;
+  refetchKpis: () => Promise<unknown>;
   alerts: DashboardAlert[];
   resolveAlert: ReturnType<typeof useDashboard>["resolveAlert"];
   scheduledJobs: MaintenanceJob[];

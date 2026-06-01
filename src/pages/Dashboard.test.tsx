@@ -8,6 +8,7 @@ import { useFleetDrivers } from "@/hooks/useAssignments";
 import { useUpdateDriverProfile } from "@/hooks/useDriverProfiles";
 import type { FleetDriverActivationHealth } from "@/types/fleet-driver-activation-health";
 import { useDriverScores } from "@/hooks/useDriverScores";
+import { DASHBOARD_EMPTY_KPIS } from "@/lib/dashboard-kpis";
 
 const useActivationMock = vi.fn();
 const useAuthMock = vi.fn();
@@ -57,6 +58,13 @@ vi.mock("@/components/shared/ActivationChecklist", () => ({
   ActivationChecklist: () => <div>activation-checklist</div>,
 }));
 
+vi.mock("@/components/dashboard/ActionableDashboard", () => ({
+  ActionableDashboard: () => <div data-testid="actionable-dashboard">actionable-dashboard</div>,
+  ActionableDashboardSkeleton: () => (
+    <div data-testid="actionable-dashboard-skeleton">actionable-skeleton</div>
+  ),
+}));
+
 const usePendingClosuresMock = vi.fn();
 vi.mock("@/hooks/useFleetCompliance", () => ({
   usePendingClosures: (...args: unknown[]) => usePendingClosuresMock(...args),
@@ -96,13 +104,18 @@ describe("DashboardPage", () => {
       role: null,
     });
     useActionableDashboardMock.mockReturnValue({
-      kpis: null,
+      kpis: DASHBOARD_EMPTY_KPIS,
+      kpisDegraded: false,
+      kpiError: null,
+      refetchKpis: vi.fn(),
       alerts: [],
       resolveAlert: vi.fn(),
       scheduledJobs: [],
       avgKm: 0,
       todayRevenueXaf: 0,
       totalVehicles: 0,
+      fuelSpendXof: 0,
+      fuelLiters: 0,
       coreLoading: true,
       loading: false,
     });
@@ -198,6 +211,49 @@ describe("DashboardPage", () => {
       screen.getAllByRole("heading", { name: "Tableau de bord" }).length,
     ).toBeGreaterThan(0);
     expect(screen.getByText("activation-checklist")).toBeInTheDocument();
+  });
+
+  it("affiche le dashboard avec bandeau dégradé sans squelette KPI", () => {
+    const refetchKpis = vi.fn().mockResolvedValue({});
+    useActivationMock.mockReturnValue({
+      loading: false,
+      completedCount: 2,
+      steps: [
+        { id: "a", label: "a", description: "", cta: "", href: "/", icon: "", impact: "", completed: true },
+        { id: "b", label: "b", description: "", cta: "", href: "/", icon: "", impact: "", completed: true },
+      ],
+    });
+    useActionableDashboardMock.mockReturnValue({
+      kpis: { ...DASHBOARD_EMPTY_KPIS, activeVehicles: 2 },
+      kpisDegraded: true,
+      kpiError: "Erreur RPC",
+      refetchKpis,
+      alerts: [],
+      resolveAlert: vi.fn(),
+      scheduledJobs: [],
+      avgKm: 0,
+      todayRevenueXaf: 0,
+      totalVehicles: 2,
+      fuelSpendXof: 0,
+      fuelLiters: 0,
+      coreLoading: false,
+      loading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+      { wrapper: queryWrapper },
+    );
+
+    expect(screen.queryByTestId("actionable-dashboard-skeleton")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/indicateurs temps réel sont temporairement indisponibles/i),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("actionable-dashboard")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Réessayer/i }));
+    expect(refetchKpis).toHaveBeenCalled();
   });
 
   it("charge le widget scores conducteurs avec limit 5", () => {

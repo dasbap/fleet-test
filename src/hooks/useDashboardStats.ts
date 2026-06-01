@@ -4,6 +4,8 @@ import { DashboardService } from '@/services/dashboard.service';
 import { DashboardRepository } from '@/repositories/dashboard.repository';
 import { DashboardAlertRepository } from '@/repositories/dashboard-alert.repository';
 import { DashboardAlertService } from '@/services/dashboard-alert.service';
+import { isMockAuthEnabled } from '@/lib/authMode';
+import { canFetchDashboardKpis, DASHBOARD_EMPTY_KPIS } from '@/lib/dashboard-kpis';
 import type { KpiSummary } from '@/types/dashboard';
 
 const dashboardRepository = new DashboardRepository();
@@ -83,14 +85,17 @@ export function useDashboardStats() {
 
 export function useDashboardKpis() {
   const { orgId } = useAuth();
+  const skipRemoteKpis = isMockAuthEnabled();
+  const canFetch = canFetchDashboardKpis(orgId, skipRemoteKpis);
 
   return useQuery({
     queryKey: ['dashboard-kpis', orgId],
-    queryFn: async (): Promise<KpiSummary | null> => {
-      if (!orgId) return null;
+    queryFn: async (): Promise<KpiSummary> => {
+      if (!orgId) return DASHBOARD_EMPTY_KPIS;
       return dashboardAlertService.getKpiSummary(orgId);
     },
-    enabled: !!orgId,
+    enabled: canFetch,
+    retry: 1,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     refetchInterval: () =>
