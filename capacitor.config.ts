@@ -37,7 +37,7 @@ const config: CapacitorConfig = {
      * Ne pas passer en #00C853 sans revoir l’enchaînement visuel au cold start.
      */
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 1500,
       launchAutoHide: true,
       backgroundColor: "#0f0f0f",
       androidScaleType: "CENTER_CROP",

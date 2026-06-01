@@ -28,6 +28,8 @@ import { cn } from "@/lib/utils";
 import DriverHistoryDialog from "@/components/drivers/DriverHistoryDialog";
 import DriverProfileDialog from "@/components/drivers/DriverProfileDialog";
 import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
+import { ResponsiveDataView } from "@/components/data/ResponsiveDataView";
+import { DriversMobileList } from "@/components/drivers/DriversMobileList";
 
 // Réparation : Ajout des fonctions utilitaires manquantes pour le score
 function getScoreBadgeVariant(scoreLevel: string): BadgeProps["variant"] {
@@ -350,6 +352,48 @@ const Drivers = () => {
                 </p>
               </div>
             ) : (
+              <ResponsiveDataView
+                cards={
+                  <DriversMobileList
+                    drivers={driversWithAssignments.map((driver) => {
+                      const status = resolveDriverFieldStatus(
+                        driver.user_id,
+                        Boolean(driver.currentAssignment),
+                        openShiftDriverIds,
+                      );
+                      const terrainBadges: string[] = [];
+                      if (driver.terrainFlags && !driver.terrainFlags.has_phone) {
+                        terrainBadges.push("Sans tel.");
+                      }
+                      if (driver.terrainFlags && !driver.terrainFlags.has_ever_shift) {
+                        terrainBadges.push("Jamais créneau");
+                      }
+                      return {
+                        user_id: driver.user_id,
+                        full_name: driver.full_name,
+                        phone: driver.phone,
+                        statusLabel: DRIVER_STATUS_LABEL[status],
+                        vehicleRegistration: driver.currentAssignment?.vehicle?.registration,
+                        scoreLabel: driver.score
+                          ? getScoreLabel(driver.score.score_level)
+                          : undefined,
+                        terrainBadges,
+                        onProfile: () =>
+                          handleViewProfile(driver.user_id, driver.full_name),
+                        onHistory: () => handleViewHistory(driver.user_id),
+                        onPlan: canManageAssignment
+                          ? () => {
+                              setPlanTarget({
+                                driverId: driver.user_id,
+                                vehicleId: driver.currentAssignment?.vehicle_id,
+                              });
+                            }
+                          : undefined,
+                      };
+                    })}
+                  />
+                }
+                table={
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -514,6 +558,8 @@ const Drivers = () => {
                   ))}
                 </TableBody>
               </Table>
+                }
+              />
             )}
           </CardContent>
         </Card>

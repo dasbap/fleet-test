@@ -1,5 +1,20 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { FleetMetrics } from '@/types/fleet-metrics';
+import type { KpiSummary } from '@/types/dashboard';
+import { mapRpcKpiSummary } from '@/lib/dashboard-kpis';
+
+export interface DashboardFuelSummary {
+  totalLiters: number;
+  totalAmountXof: number;
+  entryCount: number;
+  avgCostPerLiter: number;
+}
+
+export interface DashboardSnapshot {
+  stats: DashboardStats;
+  kpis: KpiSummary;
+  fuelSummary: DashboardFuelSummary;
+}
 
 export interface DashboardStats {
   activeVehicles: number;
@@ -200,6 +215,38 @@ export class DashboardRepository {
       p_fleet_id: fleetId,
     });
     if (error) throw new Error(error.message);
+  }
+
+  /** Snapshot agrégé (1 RPC) : stats + KPIs org + carburant 90j. */
+  async getDashboardSnapshot(fleetId: string, orgId: string): Promise<DashboardSnapshot> {
+    const { data, error } = await supabase.rpc('get_dashboard_snapshot', {
+      p_fleet_id: fleetId,
+      p_org_id: orgId,
+    });
+    if (error) throw new Error(error.message);
+    const raw = (data ?? {}) as Record<string, unknown>;
+    const statsRaw = (raw.stats ?? {}) as Record<string, number>;
+    const fuelRaw = (raw.fuelSummary ?? {}) as Record<string, number>;
+    return {
+      stats: {
+        activeVehicles: statsRaw.activeVehicles ?? 0,
+        totalVehicles: statsRaw.totalVehicles ?? 0,
+        blockedVehicles: statsRaw.blockedVehicles ?? 0,
+        activeDrivers: statsRaw.activeDrivers ?? 0,
+        totalDrivers: statsRaw.totalDrivers ?? 0,
+        pendingIncidents: statsRaw.pendingIncidents ?? 0,
+        todayRevenue: statsRaw.todayRevenue ?? 0,
+        pendingClosures: statsRaw.pendingClosures ?? 0,
+        maintenanceInProgress: statsRaw.maintenanceInProgress ?? 0,
+      },
+      kpis: mapRpcKpiSummary(raw.kpis),
+      fuelSummary: {
+        totalLiters: Number(fuelRaw.totalLiters ?? 0),
+        totalAmountXof: Number(fuelRaw.totalAmountXof ?? 0),
+        entryCount: Number(fuelRaw.entryCount ?? 0),
+        avgCostPerLiter: Number(fuelRaw.avgCostPerLiter ?? 0),
+      },
+    };
   }
 
   async getFleetVehiclesOverview(fleetId: string): Promise<FleetVehicleOverviewItem[]> {

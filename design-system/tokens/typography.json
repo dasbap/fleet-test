@@ -1,0 +1,7 @@
+{
+  "pageTitle": "text-xl font-semibold sm:text-2xl",
+  "sectionTitle": "text-lg font-semibold",
+  "body": "text-sm text-foreground",
+  "caption": "text-xs text-muted-foreground",
+  "mobileTab": "text-[11px] font-semibold"
+}

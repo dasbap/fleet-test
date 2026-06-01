@@ -1,0 +1,6 @@
+{
+  "mobileGutter": "px-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]",
+  "tabBarOffset": "pb-[calc(5.5rem+env(safe-area-inset-bottom))]",
+  "stackSm": "space-y-3",
+  "stackMd": "space-y-6"
+}

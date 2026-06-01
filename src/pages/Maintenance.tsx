@@ -39,6 +39,9 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useFeedbackPrompt } from "@/hooks/useFeedbackPrompt";
 import { FeedbackWidget } from "@/components/shared/FeedbackWidget";
 import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
+import { ResponsiveDataView } from "@/components/data/ResponsiveDataView";
+import { MaintenanceMobileList } from "@/components/maintenance/MaintenanceMobileList";
+import { ErrorState } from "@/components/states";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -294,30 +297,46 @@ export default function Maintenance() {
                       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                     </div>
                   ) : error ? (
-                    <div className="text-center py-12 text-destructive">
-                      Erreur lors du chargement des interventions
-                    </div>
+                    <ErrorState
+                      title="Interventions indisponibles"
+                      description="Impossible de charger la liste. Réessayez."
+                      onRetry={() => window.location.reload()}
+                    />
                   ) : jobs.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <Wrench className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>Aucune intervention {activeTab !== "all" && statusConfig[activeTab as JobStatus]?.label.toLowerCase()}</p>
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Véhicule</TableHead>
-                          <TableHead>Priorité</TableHead>
-                          <TableHead>Statut</TableHead>
-                          <TableHead>Origine</TableHead>
-                          <TableHead>Créée le</TableHead>
-                          <TableHead className="w-[50px]"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {jobs.map(renderJobRow)}
-                      </TableBody>
-                    </Table>
+                    <ResponsiveDataView
+                      cards={
+                        <MaintenanceMobileList
+                          jobs={jobs}
+                          statusConfig={statusConfig}
+                          priorityConfig={priorityConfig}
+                          onSelect={setSelectedJobId}
+                          canUpdate={can("maintenance.update")}
+                          onStatusChange={(id, s) => void handleStatusChange(id, s)}
+                        />
+                      }
+                      table={
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Véhicule</TableHead>
+                              <TableHead>Priorité</TableHead>
+                              <TableHead>Statut</TableHead>
+                              <TableHead>Origine</TableHead>
+                              <TableHead>Créée le</TableHead>
+                              <TableHead className="w-[50px]"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {jobs.map(renderJobRow)}
+                          </TableBody>
+                        </Table>
+                      }
+                    />
                   )}
                 </CardContent>
               </Card>

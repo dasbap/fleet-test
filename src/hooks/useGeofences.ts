@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { GeofenceService } from '@/services/geofence.service';
+import { GeofenceRepository } from '@/repositories/geofence.repository';
+import { refetchIntervalWhenVisible } from '@/lib/query/refetchPolicy';
+
+const geofenceRepository = new GeofenceRepository();
+const geofenceService = new GeofenceService(geofenceRepository);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,17 +61,10 @@ export function useGeofences(fleetId?: string) {
 
   return useQuery({
     queryKey: ['geofences', fid],
-    queryFn: async () => {
-      if (!fid) return [] as Geofence[];
-      const { data, error } = await supabase
-        .from('geofences')
-        .select('*')
-        .eq('fleet_id', fid)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as Geofence[];
-    },
+    queryFn: () => (fid ? geofenceService.getGeofences(fid) : []),
     enabled: !!fid,
+    staleTime: 120_000,
+    refetchInterval: () => refetchIntervalWhenVisible(120_000),
   });
 }
 
@@ -77,23 +75,10 @@ export function useGeofenceEvents(fleetId?: string, limit = 50) {
 
   return useQuery({
     queryKey: ['geofence-events', fid, limit],
-    queryFn: async () => {
-      if (!fid) return [] as GeofenceEvent[];
-      const { data, error } = await supabase
-        .from('geofence_events')
-        .select(`
-          *,
-          geofence:geofences(name),
-          vehicle:vehicules(registration, label)
-        `)
-        .eq('fleet_id', fid)
-        .order('occurred_at', { ascending: false })
-        .limit(limit);
-      if (error) throw error;
-      return (data ?? []) as GeofenceEvent[];
-    },
+    queryFn: () => (fid ? geofenceService.getRecentEvents(fid, limit) : []),
     enabled: !!fid,
-    refetchInterval: 30_000, // rafraîchissement toutes les 30 s
+    staleTime: 60_000,
+    refetchInterval: () => refetchIntervalWhenVisible(120_000),
   });
 }
 
@@ -103,15 +88,9 @@ export function useCreateGeofence() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: CreateGeofenceInput) => {
+    mutationFn: (input: CreateGeofenceInput) => {
       if (!userFleetId) throw new Error('Aucune flotte active');
-      const { data, error } = await supabase
-        .from('geofences')
-        .insert({ ...input, fleet_id: userFleetId })
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Geofence;
+      return geofenceService.createGeofence(userFleetId, input);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['geofences', userFleetId] });
@@ -125,16 +104,8 @@ export function useUpdateGeofence() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...patch }: UpdateGeofenceInput & { id: string }) => {
-      const { data, error } = await supabase
-        .from('geofences')
-        .update(patch)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Geofence;
-    },
+    mutationFn: ({ id, ...patch }: UpdateGeofenceInput & { id: string }) =>
+      geofenceService.updateGeofence(id, patch),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['geofences', userFleetId] });
     },
@@ -147,13 +118,7 @@ export function useDeleteGeofence() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('geofences')
-        .update({ is_active: false })
-        .eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => geofenceService.updateGeofence(id, { is_active: false }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['geofences', userFleetId] });
     },

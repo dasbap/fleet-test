@@ -30,6 +30,28 @@ export interface FuelEntryInsert {
 }
 
 export class FuelRepository {
+  /** Agrégat carburant 90j (dashboard, sans charger N lignes). */
+  async findFleetSummaryAggregated(fleetId: string): Promise<{
+    totalLiters: number;
+    totalAmountXof: number;
+    entryCount: number;
+  }> {
+    const since = new Date();
+    since.setDate(since.getDate() - 90);
+    const { data, error } = await supabase
+      .from("journal_carburant")
+      .select("liters, amount_xof")
+      .eq("fleet_id", fleetId)
+      .gte("purchased_at", since.toISOString());
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    return {
+      totalLiters: rows.reduce((s, r) => s + Number(r.liters ?? 0), 0),
+      totalAmountXof: rows.reduce((s, r) => s + Number(r.amount_xof ?? 0), 0),
+      entryCount: rows.length,
+    };
+  }
+
   async findByFleet(
     fleetId: string,
     options: { limit?: number; offset?: number } = {},
