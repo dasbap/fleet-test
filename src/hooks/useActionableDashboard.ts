@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboard } from "@/hooks/useDashboard";
-import { useDashboardKpis, useDashboardStats, useFleetVehicles } from "@/hooks/useDashboardStats";
+import { useDashboardSnapshot } from "@/hooks/useDashboardSnapshot";
+import { useDashboardStats, useFleetVehicles } from "@/hooks/useDashboardStats";
 import { toast } from "@/hooks/use-toast";
 import { isMockAuthEnabled } from "@/lib/authMode";
 import {
@@ -14,14 +15,9 @@ import { isValidUuid } from "@/lib/isUuid";
 import { MaintenanceRepository } from "@/repositories/maintenance.repository";
 import type { MaintenanceJob } from "@/hooks/useMaintenance";
 import type { DashboardAlert, KpiSummary } from "@/types/dashboard";
-import { useFuelSummary } from "@/hooks/useFuelLogs";
+import { refetchIntervalWhenVisible } from "@/lib/query/refetchPolicy";
 
 const maintenanceRepository = new MaintenanceRepository();
-
-const refetchIntervalWhenVisible = (visibleMs: number, hiddenMs = visibleMs * 3) => {
-  if (typeof document === "undefined") return visibleMs;
-  return document.visibilityState === "hidden" ? hiddenMs : visibleMs;
-};
 
 /** Interventions datées (retards + à venir) ; fallback file sans date si timeout ou vide. */
 async function fetchScheduledMaintenance(fleetId: string): Promise<MaintenanceJob[]> {
@@ -42,7 +38,7 @@ async function fetchScheduledMaintenance(fleetId: string): Promise<MaintenanceJo
 }
 
 /**
- * Données pour le tableau de bord actionnable : KPIs, alertes, planning maintenance, stats flotte.
+ * Données pour le tableau de bord actionnable : snapshot RPC + alertes + planning maintenance.
  */
 export function useActionableDashboard() {
   const {
@@ -54,10 +50,17 @@ export function useActionableDashboard() {
   const skipRemoteKpis = isMockAuthEnabled();
   const alertsOrgId = orgId && isValidUuid(orgId) ? orgId : "";
   const { alerts, loading: alertsLoading, resolveAlert } = useDashboard(alertsOrgId);
-  const kpisQuery = useDashboardKpis();
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const snapshotQuery = useDashboardSnapshot();
+  const mockStatsQuery = useDashboardStats();
   const { data: fleetVehicles = [], isLoading: fleetLoading } = useFleetVehicles();
-  const fuelSummary = useFuelSummary();
+
+  const stats = skipRemoteKpis ? mockStatsQuery.data : snapshotQuery.data?.stats;
+  const fuelSummary = snapshotQuery.data?.fuelSummary ?? {
+    totalLiters: 0,
+    totalAmountXof: 0,
+    entryCount: 0,
+    avgCostPerLiter: 0,
+  };
 
   const canFetchKpis = canFetchDashboardKpis(orgId, skipRemoteKpis);
 
@@ -73,19 +76,20 @@ export function useActionableDashboard() {
     () =>
       resolveActionableDashboardKpis({
         orgId,
-        kpisData: kpisQuery.data,
-        isKpisError: kpisQuery.isError,
+        kpisData: snapshotQuery.data?.kpis,
+        isKpisError: snapshotQuery.isError,
         skipRemoteKpis,
         fallbackKpis,
       }),
-    [orgId, kpisQuery.data, kpisQuery.isError, skipRemoteKpis, fallbackKpis],
+    [orgId, snapshotQuery.data?.kpis, snapshotQuery.isError, skipRemoteKpis, fallbackKpis],
   );
 
-  const kpisLoading = canFetchKpis && kpisQuery.isLoading;
+  const kpisLoading = canFetchKpis && snapshotQuery.isLoading;
+  const statsLoading = skipRemoteKpis ? mockStatsQuery.isLoading : snapshotQuery.isLoading;
   const kpiError =
-    kpisQuery.isError && canFetchKpis
-      ? kpisQuery.error instanceof Error
-        ? kpisQuery.error.message
+    snapshotQuery.isError && canFetchKpis
+      ? snapshotQuery.error instanceof Error
+        ? snapshotQuery.error.message
         : "Erreur réseau ou serveur."
       : null;
 
@@ -93,9 +97,9 @@ export function useActionableDashboard() {
     queryKey: ["actionable-dashboard-maintenance", userFleetId],
     queryFn: () => fetchScheduledMaintenance(userFleetId!),
     enabled: !!userFleetId,
-    staleTime: 20_000,
+    staleTime: 120_000,
     refetchOnWindowFocus: true,
-    refetchInterval: () => refetchIntervalWhenVisible(25_000),
+    refetchInterval: () => refetchIntervalWhenVisible(120_000, 300_000),
     retry: 1,
   });
 
@@ -140,7 +144,7 @@ export function useActionableDashboard() {
     kpis,
     kpisDegraded,
     kpiError,
-    refetchKpis: kpisQuery.refetch,
+    refetchKpis: snapshotQuery.refetch,
     alerts,
     resolveAlert,
     scheduledJobs: scheduledQuery.data ?? [],

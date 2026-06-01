@@ -7,6 +7,11 @@ import { DashboardAlertService } from '@/services/dashboard-alert.service';
 import { isMockAuthEnabled } from '@/lib/authMode';
 import { canFetchDashboardKpis, DASHBOARD_EMPTY_KPIS } from '@/lib/dashboard-kpis';
 import type { KpiSummary } from '@/types/dashboard';
+import { queryKeys } from '@/lib/cache/queryKeys';
+import {
+  dashboardStaleTimeMs,
+  refetchIntervalWhenVisible,
+} from '@/lib/query/refetchPolicy';
 
 const dashboardRepository = new DashboardRepository();
 const dashboardService = new DashboardService(dashboardRepository);
@@ -52,12 +57,6 @@ function bindInteractionListenersOnce() {
   window.addEventListener("touchstart", markInteraction, { passive: true });
 }
 
-/** Ralentit le polling onglet caché au lieu de l’arrêter brutalement. */
-const refetchIntervalWhenVisible = (visibleMs: number, hiddenMs = visibleMs * 3) => {
-  if (typeof document === "undefined") return visibleMs;
-  return document.visibilityState === "hidden" ? hiddenMs : visibleMs;
-};
-
 /** Ralentit le polling juste après interaction pour protéger l'INP perçu. */
 const refetchIntervalForInteraction = (activeMs: number, relaxedMs: number) => {
   if (typeof window === "undefined") return activeMs;
@@ -70,16 +69,16 @@ export function useDashboardStats() {
   bindInteractionListenersOnce();
 
   return useQuery({
-    queryKey: ['dashboard-stats', userFleetId],
+    queryKey: queryKeys.dashboard.stats(userFleetId ?? ''),
     queryFn: async (): Promise<DashboardStats> => {
       if (!userFleetId) return emptyStats;
       return dashboardService.getDashboardStats(userFleetId);
     },
     enabled: !!userFleetId,
-    staleTime: 30_000,
+    staleTime: dashboardStaleTimeMs(),
     refetchOnWindowFocus: true,
     refetchInterval: () =>
-      refetchIntervalWhenVisible(refetchIntervalForInteraction(30_000, 45_000)),
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(120_000, 180_000)),
   });
 }
 
@@ -89,17 +88,17 @@ export function useDashboardKpis() {
   const canFetch = canFetchDashboardKpis(orgId, skipRemoteKpis);
 
   return useQuery({
-    queryKey: ['dashboard-kpis', orgId],
+    queryKey: queryKeys.dashboard.kpis(orgId ?? ''),
     queryFn: async (): Promise<KpiSummary> => {
       if (!orgId) return DASHBOARD_EMPTY_KPIS;
       return dashboardAlertService.getKpiSummary(orgId);
     },
     enabled: canFetch,
     retry: 1,
-    staleTime: 30_000,
+    staleTime: dashboardStaleTimeMs(),
     refetchOnWindowFocus: true,
     refetchInterval: () =>
-      refetchIntervalWhenVisible(refetchIntervalForInteraction(30_000, 45_000)),
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(120_000, 180_000)),
   });
 }
 
@@ -110,10 +109,10 @@ export function useRecentActivity() {
     queryKey: ['recent-activity', userFleetId],
     queryFn: () => (userFleetId ? dashboardService.getRecentActivity(userFleetId) : []),
     enabled: !!userFleetId,
-    staleTime: 30_000,
+    staleTime: dashboardStaleTimeMs(),
     refetchOnWindowFocus: true,
     refetchInterval: () =>
-      refetchIntervalWhenVisible(refetchIntervalForInteraction(30_000, 45_000)),
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(120_000, 180_000)),
   });
 }
 
@@ -124,9 +123,9 @@ export function useFleetVehicles() {
     queryKey: ['fleet-vehicles-overview', userFleetId],
     queryFn: () => (userFleetId ? dashboardService.getFleetVehiclesOverview(userFleetId) : []),
     enabled: !!userFleetId,
-    staleTime: 45_000,
+    staleTime: dashboardStaleTimeMs(),
     refetchOnWindowFocus: true,
     refetchInterval: () =>
-      refetchIntervalWhenVisible(refetchIntervalForInteraction(45_000, 60_000)),
+      refetchIntervalWhenVisible(refetchIntervalForInteraction(120_000, 180_000)),
   });
 }

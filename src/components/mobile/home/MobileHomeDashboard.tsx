@@ -21,6 +21,9 @@ import {
   mobileHomeHeroTitle,
   mobileScreenStackRelaxed,
 } from "@/lib/mobile/mobileUiTokens";
+import { PullToRefresh } from "@/components/mobile/PullToRefresh";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/cache/queryKeys";
 
 function KpiGridSkeleton() {
   return (
@@ -36,7 +39,8 @@ function KpiGridSkeleton() {
  * Accueil mobile : synthèse KPI (hooks métier) + actions rapides.
  */
 export function MobileHomeDashboard() {
-  const { role } = useAuth();
+  const { role, userFleetId, orgId } = useAuth();
+  const queryClient = useQueryClient();
   const { rbac } = useRoleAccess();
   const { kpis, isLoading, isError } = useMobileHomeKpis();
   const copy = getMobileHomeCopy(role);
@@ -44,8 +48,20 @@ export function MobileHomeDashboard() {
   const greeting = getRoleLabel(rbac.platformRole);
   const L = copy.labels;
 
+  const handleRefresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] }),
+      queryClient.invalidateQueries({ queryKey: ["alerts"] }),
+      userFleetId && orgId
+        ? queryClient.invalidateQueries({
+            queryKey: queryKeys.dashboard.snapshot(userFleetId, orgId),
+          })
+        : Promise.resolve(),
+    ]);
+  };
+
   return (
-    <div className={cn("mx-auto w-full max-w-lg pb-safe", mobileScreenStackRelaxed)}>
+    <PullToRefresh onRefresh={handleRefresh} className={cn("mx-auto w-full max-w-lg pb-safe", mobileScreenStackRelaxed)}>
       <header className="space-y-2">
         <p className={mobileHomeBrandOverline}>Flotte E-Samba</p>
         <div className="flex items-center justify-between">
@@ -103,6 +119,6 @@ export function MobileHomeDashboard() {
       </section>
 
       <MobileQuickActions actions={quickActions} />
-    </div>
+    </PullToRefresh>
   );
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MobileHomeDashboard } from "./MobileHomeDashboard";
 
 const { mockUseAuth, mockUseMobileHomeKpis } = vi.hoisted(() => ({
@@ -16,6 +17,25 @@ vi.mock("@/hooks/useMobileHomeKpis", () => ({
   useMobileHomeKpis: () => mockUseMobileHomeKpis(),
 }));
 
+vi.mock("@/hooks/useRoleAccess", () => ({
+  useRoleAccess: () => ({
+    rbac: { platformRole: "manager" },
+    can: () => true,
+  }),
+}));
+
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+function renderHome() {
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <MobileHomeDashboard />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
 describe("MobileHomeDashboard", () => {
   beforeEach(() => {
     mockUseAuth.mockReset();
@@ -23,6 +43,8 @@ describe("MobileHomeDashboard", () => {
 
     mockUseAuth.mockReturnValue({
       role: "manager",
+      userFleetId: "fleet-1",
+      orgId: "org-1",
     });
 
     mockUseMobileHomeKpis.mockReturnValue({
@@ -40,11 +62,7 @@ describe("MobileHomeDashboard", () => {
   it(
     "affiche uniquement les 4 KPI demandés et les 3 actions rapides",
     async () => {
-      render(
-        <MemoryRouter>
-          <MobileHomeDashboard />
-        </MemoryRouter>
-      );
+      renderHome();
 
       expect(screen.getByText("Véhicules actifs")).toBeInTheDocument();
       expect(screen.getByText("Immobilisés")).toBeInTheDocument();
@@ -65,11 +83,7 @@ describe("MobileHomeDashboard", () => {
     "utilise les bonnes URLs pour les actions rapides selon le rôle",
     () => {
     // Cas manager (rôle par défaut dans beforeEach)
-    const { rerender } = render(
-      <MemoryRouter>
-        <MobileHomeDashboard />
-      </MemoryRouter>
-    );
+    const { rerender } = renderHome();
 
     expect(
       screen.getByRole("link", { name: /déclarer incident/i }).getAttribute("href")
@@ -87,9 +101,11 @@ describe("MobileHomeDashboard", () => {
     });
 
     rerender(
-      <MemoryRouter>
-        <MobileHomeDashboard />
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <MobileHomeDashboard />
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
 
     expect(

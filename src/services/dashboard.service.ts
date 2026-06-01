@@ -1,6 +1,7 @@
 import { DashboardRepository } from '@/repositories/dashboard.repository';
 import type {
   DashboardStats,
+  DashboardSnapshot,
   RecentActivityItem,
   FleetVehicleOverviewItem,
 } from '@/repositories/dashboard.repository';
@@ -11,6 +12,13 @@ import type { FleetMetrics } from '@/types/fleet-metrics';
  */
 export class DashboardService {
   constructor(private repository: DashboardRepository) {}
+
+  async getDashboardSnapshot(fleetId: string, orgId: string): Promise<DashboardSnapshot> {
+    if (!fleetId || !orgId) {
+      throw new Error("La flotte et l'organisation sont requises");
+    }
+    return this.repository.getDashboardSnapshot(fleetId, orgId);
+  }
 
   async getDashboardStats(fleetId: string): Promise<DashboardStats> {
     if (!fleetId) {

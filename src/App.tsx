@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/react";
 import { lazy, Suspense } from "react";
 import Providers from "@/components/Providers";
 import { PageSEO } from "@/components/PageSEO";
@@ -7,9 +6,8 @@ import { WebVitalsRouteSync } from "@/components/WebVitalsRouteSync";
 import { PostHogPageViewSync } from "@/components/analytics/PostHogPageViewSync";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { appRoutes } from "@/app/routes/app.routes";
-import { AppErrorFallback } from "@/components/errors/AppErrorFallback";
+import { LazySentryErrorBoundary } from "@/components/errors/LazySentryErrorBoundary";
 import { HelpProvider } from "@/context/HelpContext";
-import { logError } from "@/lib/logging";
 
 const DeepLinkListener = lazy(() =>
   import("@/components/navigation/DeepLinkListener").then((module) => ({
@@ -18,16 +16,7 @@ const DeepLinkListener = lazy(() =>
 );
 
 const AppContent = () => (
-  <Sentry.ErrorBoundary
-    fallback={AppErrorFallback}
-    onError={(error, componentStack, eventId) => {
-      logError("Erreur capturée par la boundary racine", error, {
-        source: "error-boundary",
-        componentStack,
-        eventId,
-      });
-    }}
-  >
+  <LazySentryErrorBoundary>
     <Providers>
       <BrowserRouter
         future={{
@@ -48,7 +37,7 @@ const AppContent = () => (
         </HelpProvider>
       </BrowserRouter>
     </Providers>
-  </Sentry.ErrorBoundary>
+  </LazySentryErrorBoundary>
 );
 
 const App = () => <AppContent />;

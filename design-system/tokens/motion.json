@@ -1,0 +1,5 @@
+{
+  "fast": "duration-150",
+  "normal": "duration-200",
+  "slow": "duration-300"
+}

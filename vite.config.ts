@@ -58,6 +58,12 @@ export default defineConfig(({ mode }) => {
     // xlsx / jspdf / charts : import() dynamique uniquement ; seuil relevé pour éviter le bruit au build.
     chunkSizeWarningLimit: 520,
     sourcemap: isProd ? "hidden" : true,
+    modulePreload: {
+      resolveDependencies(_filename, deps) {
+        const heavy = /vendor-charts|chunk-map|vendor-analytics|jspdf|xlsx/i;
+        return deps.filter((d) => !heavy.test(d));
+      },
+    },
     rollupOptions: {
       plugins:
         isAnalyze
