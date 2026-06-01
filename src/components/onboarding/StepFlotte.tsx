@@ -4,6 +4,7 @@ import type { OnboardingData } from '@/types/onboarding';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { toast } from '@/hooks/use-toast';
 import { formatPostgrestError, mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
+import { OnboardingStepFooter } from '@/components/onboarding/OnboardingStepFooter';
 
 type Data = NonNullable<OnboardingData['step1']>;
 
@@ -149,18 +150,14 @@ export function StepFlotte({ orgId, initial, onNext, onSkip }: Props) {
         </div>
       </div>
 
-      <div className="mt-8 flex items-center justify-between">
-        <button onClick={onSkip} className="text-xs text-slate-400 underline hover:text-slate-500">
-          Passer cette étape
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={!isValid || isSaving}
-          className="rounded-md bg-brand px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {isSaving ? 'Enregistrement...' : 'Continuer ->'}
-        </button>
-      </div>
+      <OnboardingStepFooter
+        onSkip={onSkip}
+        onSubmit={handleSubmit}
+        submitLabel="Continuer"
+        isSubmitting={isSaving}
+        isSubmitDisabled={!isValid}
+        className="justify-end"
+      />
     </div>
   );
 }

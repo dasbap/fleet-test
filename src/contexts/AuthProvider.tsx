@@ -8,6 +8,7 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { AUTH_MODE_CHANGED_EVENT, isMockAuthEnabled } from "@/lib/authMode";
+import { getE2eMockOrgId, isE2eOnboardingMode } from "@/lib/e2e-onboarding";
 import { MOCK_AUTH_CHANGED_EVENT } from "@/lib/auth-actions";
 import { mockAuthService } from "@/services/mock-auth.service";
 import {
@@ -499,17 +500,19 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const userFleetId = memberships.length > 0 ? memberships[0].fleet_id : null;
+  const mockOrgId = isE2eOnboardingMode() ? getE2eMockOrgId() : "";
+
   const activeTenantContext = useMemo(
     () =>
       userFleetId
         ? {
-            // Pas d'organisation Supabase en session mock (évite RPC uuid invalides).
-            orgId: "",
+            // E2E onboarding : orgId stable pour le wizard ; sinon vide (évite RPC uuid invalides).
+            orgId: mockOrgId,
             fleetId: userFleetId,
             role: role ?? "driver",
           }
         : null,
-    [role, userFleetId]
+    [mockOrgId, role, userFleetId]
   );
 
   useEffect(() => {
@@ -533,7 +536,7 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
       role,
       memberships,
       userFleetId,
-      orgId: activeTenantContext?.orgId ?? null,
+      orgId: mockOrgId || (activeTenantContext?.orgId ?? null),
       activeTenantContext,
       tenantOptions: [],
       isLoading: false,
@@ -550,6 +553,7 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
       role,
       memberships,
       userFleetId,
+      mockOrgId,
       activeTenantContext,
       refreshMemberships,
       refreshUser,

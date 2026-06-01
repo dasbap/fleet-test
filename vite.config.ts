@@ -43,8 +43,14 @@ function radixUiMainEntryPlugin(): Plugin {
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const supabaseUrl = env.VITE_SUPABASE_URL ?? "";
-  const supabaseAnon = env.VITE_SUPABASE_ANON_KEY ?? "";
+  /** Playwright E2E : limite le scan de dépendances au front (ignore android/ios assets). */
+  const isE2eDevServer = process.env.ESAMBA_E2E === "1";
+  const supabaseUrl = isE2eDevServer
+    ? "https://placeholder-e2e.supabase.co"
+    : (env.VITE_SUPABASE_URL ?? "");
+  const supabaseAnon = isE2eDevServer
+    ? "placeholder-anon-key-e2e-only"
+    : (env.VITE_SUPABASE_ANON_KEY ?? "");
   const isProd = mode === "production" || mode === "capacitor";
   const isAnalyze = mode === "analyze" || process.env.ANALYZE === "true";
   /** Quand `npm run dev:local` lance Vite : pas d’ouverture auto ici (évite `vite --open false` → URL `/false`). */
@@ -133,6 +139,17 @@ export default defineConfig(({ mode }) => {
     hmr: {
       overlay: false,
     },
+    fs: isE2eDevServer
+      ? {
+          // Évite le scan de bundles Capacitor/Android (imports fantômes type @emotion/is-prop-valid).
+          deny: ["**/android/**", "**/ios/**", "**/.cache/**"],
+        }
+      : undefined,
+    watch: isE2eDevServer
+      ? {
+          ignored: ["**/android/**", "**/ios/**", "**/.cache/**"],
+        }
+      : undefined,
     // Pré-transforme les entrées critiques au démarrage du serveur (première ouverture plus rapide).
     warmup: {
       clientFiles: [
@@ -415,6 +432,9 @@ export default defineConfig(({ mode }) => {
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
   },
   optimizeDeps: {
+    entries: isE2eDevServer
+      ? ["index.html", "src/**/*.{tsx,ts,jsx,js}"]
+      : undefined,
     include: [
       "react",
       "react-dom",

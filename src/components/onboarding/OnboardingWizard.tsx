@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -22,9 +22,10 @@ type StepConfig<K extends StepKey = StepKey> = {
   render: (params: {
     orgId: string;
     initial: OnboardingData[K] | undefined;
+    allData: OnboardingData | undefined;
     onNext: (data: OnboardingData[K]) => void | Promise<void>;
     onBack?: () => void;
-    onSkip: () => void | Promise<void>;
+    onSkip?: () => void | Promise<void>;
   }) => React.ReactNode;
 };
 
@@ -57,8 +58,15 @@ const STEPS: StepConfig[] = [
     num: 4,
     key: 'step4',
     label: 'Validation',
-    render: ({ orgId, initial, onNext, onBack, onSkip }) => (
-      <StepValidation orgId={orgId} initial={initial} onNext={onNext} onBack={onBack} onSkip={onSkip} />
+    render: ({ orgId, initial, allData, onNext, onBack, onSkip }) => (
+      <StepValidation
+        orgId={orgId}
+        initial={initial}
+        summary={allData}
+        onNext={onNext}
+        onBack={onBack}
+        onSkip={onSkip}
+      />
     ),
   },
 ];
@@ -69,6 +77,7 @@ export function OnboardingWizard() {
   const { data: progress, saveStep, complete, isSaving, isCompleting } = useOnboarding(orgId ?? undefined);
   const { trackEvent } = useTrackFunnelEvent(orgId ?? undefined);
   const [step, setStep] = useState<StepNumber>(1);
+  const hasHydratedFromServer = useRef(false);
 
   const maxStep = STEPS[STEPS.length - 1].num;
   const currentIndex = STEPS.findIndex(item => item.num === step);
@@ -77,7 +86,12 @@ export function OnboardingWizard() {
   useEffect(() => {
     if (!progress?.step) return;
     const safeStep = Math.min(Math.max(progress.step, 1), maxStep) as StepNumber;
-    setStep(safeStep);
+    if (!hasHydratedFromServer.current) {
+      setStep(safeStep);
+      hasHydratedFromServer.current = true;
+      return;
+    }
+    setStep(prev => (safeStep > prev ? safeStep : prev));
   }, [maxStep, progress?.step]);
 
   useEffect(() => {
@@ -181,6 +195,7 @@ export function OnboardingWizard() {
                   step > item.num && 'border-brand bg-brand-light/20 text-brand-dark',
                   step < item.num && 'border-surface-raised bg-surface text-slate-400',
                 )}
+                aria-current={step === item.num ? 'step' : undefined}
               >
                 {step > item.num ? '✓' : item.num}
               </div>
@@ -198,16 +213,17 @@ export function OnboardingWizard() {
         <div className="mb-6 rounded-md border border-brand/20 bg-brand/5 p-3">
           <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Gain immédiat</p>
           <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-            Activez votre flotte maintenant pour recevoir des alertes en temps reel et corriger une anomalie en 1 clic.
+            Activez votre flotte maintenant pour recevoir des alertes en temps reel et corriger une anomalie en un clic.
           </p>
         </div>
 
         {currentStep.render({
           orgId,
           initial: progress?.steps_data?.[currentStep.key],
+          allData: progress?.steps_data,
           onNext: data => handleNext(currentStep.num, currentStep.key, data),
           onBack: currentIndex > 0 ? goBack : undefined,
-          onSkip: () => handleSkip(currentStep.num),
+          onSkip: currentStep.num < maxStep ? () => handleSkip(currentStep.num) : undefined,
         })}
         {isSaving ? <p className="mt-4 text-xs text-slate-500">Sauvegarde en cours...</p> : null}
         {isCompleting ? <p className="mt-2 text-xs text-slate-500">Finalisation en cours...</p> : null}

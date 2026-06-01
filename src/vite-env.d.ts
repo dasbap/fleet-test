@@ -12,6 +12,10 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION?: string;
   /** Session mockée locale (sans Supabase). Valeur attendue : "true". */
   readonly VITE_USE_MOCK_AUTH?: string;
+  /** Mode E2E Playwright onboarding : expose le wizard mock avec orgId stable. */
+  readonly VITE_E2E_ONBOARDING?: string;
+  /** UUID organisation mockée pour les scénarios E2E onboarding. */
+  readonly VITE_MOCK_ORG_ID?: string;
   /** Base URL du BFF (ex. `/api`). Voir src/lib/bff-config.ts */
   readonly VITE_API_BASE_URL?: string;
   /** `true` : proxy Vite vers le BFF en dev. */
