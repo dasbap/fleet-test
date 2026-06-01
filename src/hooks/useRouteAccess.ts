@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBilling } from "@/hooks/useBilling";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { isMockAuthEnabled } from "@/lib/authMode";
+import { getE2eMockOrgId, isE2eOnboardingMode } from "@/lib/e2e-onboarding";
 import { AUTH_FLOW_MAX_WAIT_MS, computeAuthFlowDecision } from "@/lib/auth-flow";
 import { computePlanGate } from "@/lib/compute-plan-gate";
 import type { RouteAccessResult } from "@/services/route-access.service";
@@ -68,8 +69,18 @@ export function useRouteAccess(): RouteAccessResult {
     return { state: "loading", orgId: null };
   }
 
-  /** Session mockée : pas d'organisation Supabase ; le dashboard reste utilisable (démo / E2E). */
+  /** Session mockée : dashboard direct, sauf scénario E2E onboarding dédié. */
   if (isMockAuthEnabled() && user?.id) {
+    if (isE2eOnboardingMode()) {
+      const mockOrgId = orgId ?? getE2eMockOrgId();
+      const onboardingCompleted = onboardingQuery.isError
+        ? false
+        : (onboardingQuery.data ?? false);
+      if (onboardingQuery.isFetched && onboardingCompleted) {
+        return { state: "ready", orgId: mockOrgId };
+      }
+      return { state: "onboarding", orgId: mockOrgId };
+    }
     return { state: "ready", orgId: null };
   }
 

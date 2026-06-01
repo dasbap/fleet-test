@@ -2,12 +2,23 @@ import { useState } from 'react';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { toast } from '@/hooks/use-toast';
 import type { AlertThresholdType, OnboardingStep2Data } from '@/types/onboarding';
+import { Checkbox } from '@/components/ui/checkbox';
+import { OnboardingStepFooter } from '@/components/onboarding/OnboardingStepFooter';
+import { ROUTE_PATHS } from '@/navigation/routePaths';
+import { useNavigate } from 'react-router-dom';
 
 const DEFAULT_ALERTS: OnboardingStep2Data['alerts'] = {
   oil: true,
   revision: true,
   tires: false,
   brakes: true,
+};
+
+const ALERT_LABELS: Record<AlertThresholdType, string> = {
+  oil: 'Huile',
+  revision: 'Revision',
+  tires: 'Pneus',
+  brakes: 'Freins',
 };
 
 interface StepAlertesProps {
@@ -19,6 +30,7 @@ interface StepAlertesProps {
 }
 
 export function StepAlertes({ orgId, initial, onNext, onBack, onSkip }: StepAlertesProps) {
+  const navigate = useNavigate();
   const [alerts, setAlerts] = useState<OnboardingStep2Data['alerts']>(initial?.alerts ?? DEFAULT_ALERTS);
   const { saveStep, isSaving } = useOnboarding(orgId);
 
@@ -41,39 +53,42 @@ export function StepAlertes({ orgId, initial, onNext, onBack, onSkip }: StepAler
 
   return (
     <div className="space-y-4">
+      <div>
+        <h2 className="mb-1 text-lg font-medium text-slate-900 dark:text-slate-100">Activez vos alertes essentielles</h2>
+        <p className="text-sm text-slate-500">
+          Ces preferences sont enregistrees pour votre demarrage. Vous pourrez les ajuster en detail dans les alertes.
+        </p>
+      </div>
+
       <div className="space-y-2">
         {(Object.keys(DEFAULT_ALERTS) as AlertThresholdType[]).map((type) => (
-          <label key={type} className="flex items-center justify-between rounded-md border p-3">
-            <span className="capitalize">{type}</span>
-            <input
-              type="checkbox"
+          <label key={type} className="flex items-center justify-between rounded-md border border-surface-raised p-3">
+            <span className="text-sm text-slate-100">{ALERT_LABELS[type]}</span>
+            <Checkbox
               checked={alerts[type]}
-              onChange={() => toggleAlert(type)}
-              aria-label={`Activer l'alerte ${type}`}
+              onCheckedChange={() => toggleAlert(type)}
+              aria-label={`Activer l'alerte ${ALERT_LABELS[type]}`}
             />
           </label>
         ))}
       </div>
 
-      <div className="flex gap-2">
-        {onBack ? (
-          <button type="button" onClick={onBack} className="rounded-md border px-3 py-2">
-            Retour
-          </button>
-        ) : null}
-        {onSkip ? (
-          <button type="button" onClick={onSkip} className="rounded-md border px-3 py-2">
-            Passer
-          </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={isSaving}
-          className="rounded-md bg-primary px-3 py-2 text-primary-foreground disabled:opacity-60"
-        >
-          Continuer
-        </button>
+      <button
+        type="button"
+        onClick={() => navigate(ROUTE_PATHS.dashboardAlerts)}
+        className="text-xs text-slate-400 underline hover:text-slate-300"
+      >
+        Ouvrir les alertes avancees
+      </button>
+
+      <div className="flex justify-end">
+        <OnboardingStepFooter
+          onBack={onBack}
+          onSkip={onSkip}
+          onSubmit={handleSubmit}
+          submitLabel="Continuer"
+          isSubmitting={isSaving}
+        />
       </div>
     </div>
   );

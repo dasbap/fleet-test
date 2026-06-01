@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { formatPostgrestError } from '@/lib/mapSupabaseError';
+import { isMockAuthEnabled } from '@/lib/authMode';
+import { mockAuthService } from '@/services/mock-auth.service';
 import type { OnboardingData, OnboardingProgress } from '@/types/onboarding';
 import type { VehicleDto } from '@/types/dto/vehicle.dto';
 
@@ -53,6 +55,13 @@ export class OnboardingRepository {
   }
 
   async getAuthenticatedUserId(): Promise<string> {
+    if (isMockAuthEnabled()) {
+      const mockUserId = mockAuthService.loadPersisted()?.user?.id;
+      if (mockUserId) {
+        return mockUserId;
+      }
+    }
+
     const { data, error } = await supabase.auth.getUser();
     if (error) {
       console.error("Erreur lors de la récupération de l'utilisateur :", error);
