@@ -17,42 +17,52 @@ const Navbar = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-dark">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-              <Zap className="w-6 h-6 text-primary-foreground" />
+        <div className="grid h-16 grid-cols-[1fr_auto_1fr] items-center md:h-20">
+          <Link
+            to="/"
+            className="flex shrink-0 items-center gap-2 justify-self-start rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label="Retour à l'accueil E-Samba"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary">
+              <Zap className="h-6 w-6 text-primary-foreground" aria-hidden />
             </div>
-            <span className="font-heading font-bold text-xl text-foreground">
+            <span className="whitespace-nowrap font-heading text-xl font-bold text-foreground">
               E-Samba
             </span>
           </Link>
 
           {PUBLIC_NAV_LINKS.length > 0 ? (
-          <div className="hidden md:flex items-center gap-8">
-            {PUBLIC_NAV_LINKS.map((link) =>
-              link.external ? (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  className="text-muted-foreground hover:text-primary transition-colors font-medium"
-                  rel="noopener noreferrer"
-                >
-                  {link.name}
-                </a>
-              ) : (
-                <Link
-                  key={link.name}
-                  to={link.to}
-                  className="text-muted-foreground hover:text-primary transition-colors font-medium"
-                >
-                  {link.name}
-                </Link>
-              ),
-            )}
-          </div>
-          ) : null}
+            <div
+              className="hidden items-center justify-center gap-6 md:flex lg:gap-8"
+              aria-label="Navigation principale"
+            >
+              {PUBLIC_NAV_LINKS.map((link) =>
+                link.external ? (
+                  <a
+                    key={link.name}
+                    href={link.href}
+                    className="font-medium text-muted-foreground transition-colors hover:text-primary"
+                    rel="noopener noreferrer"
+                  >
+                    {link.name}
+                  </a>
+                ) : (
+                  <Link
+                    key={link.name}
+                    to={link.to}
+                    className="font-medium text-muted-foreground transition-colors hover:text-primary"
+                  >
+                    {link.name}
+                  </Link>
+                ),
+              )}
+            </div>
+          ) : (
+            <span className="hidden md:block" aria-hidden />
+          )}
 
-          <div className="hidden md:flex items-center gap-4 ml-auto">
+          <div className="flex items-center justify-end gap-4 justify-self-end">
+            <div className="hidden items-center gap-4 md:flex">
             {user ? (
               <Button variant="ghost" asChild>
                 <Link to={appEntry}>Mon espace</Link>
@@ -70,9 +80,9 @@ const Navbar = () => {
                 <Link to={`${ROUTE_PATHS.auth}?mode=signup`}>Démarrer</Link>
               </Button>
             ) : null}
-          </div>
+            </div>
 
-          <button
+            <button
             type="button"
             className="md:hidden p-2 text-foreground"
             onClick={() => setIsOpen(!isOpen)}
@@ -80,7 +90,8 @@ const Navbar = () => {
             aria-label={isOpen ? "Fermer le menu" : "Ouvrir le menu"}
           >
             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+            </button>
+          </div>
         </div>
 
         {isOpen ? (
