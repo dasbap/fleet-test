@@ -74,6 +74,17 @@ export function getSmokePaths() {
   return base;
 }
 
+/** Pages marketing publiques à valider (smoke console + HTTP). */
+export const MARKETING_SMOKE_PATHS = [
+  "/",
+  "/fonctionnalites",
+  "/modules",
+  "/pricing",
+  "/faq",
+  "/contact",
+  "/tarifs",
+];
+
 /**
  * Ouvre l’URL dans le navigateur par défaut (Windows / macOS / Linux).
  * @param {string} url

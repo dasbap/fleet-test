@@ -10,7 +10,7 @@
 
 import { useCallback, useState } from "react";
 import { getBffBaseUrl, isBffConfigured } from "@/lib/bff-config";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthOptional } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import type { NotchPayInitiateResult } from "@/hooks/useNotchPayPayment";
 
@@ -100,7 +100,10 @@ export async function initiateNotchPayCheckout(
 
 export function useBillingCheckout(): UseBillingCheckoutReturn {
   const [state, setState] = useState<CheckoutState>({ status: "idle" });
-  const { orgId, activeTenantContext, session } = useAuth();
+  const auth = useAuthOptional();
+  const orgId = auth?.orgId;
+  const activeTenantContext = auth?.activeTenantContext;
+  const session = auth?.session;
   const bffAvailable = isBffConfigured();
 
   const reset = useCallback(() => setState({ status: "idle" }), []);
@@ -109,6 +112,13 @@ export function useBillingCheckout(): UseBillingCheckoutReturn {
     async (opts: BillingCheckoutOptions) => {
       if (!bffAvailable) {
         setState({ status: "failed", error: "Le paiement en ligne n'est pas disponible dans cette configuration." });
+        return;
+      }
+      if (!auth) {
+        setState({
+          status: "failed",
+          error: "Connectez-vous pour finaliser votre abonnement.",
+        });
         return;
       }
       if (!orgId) {
@@ -162,7 +172,7 @@ export function useBillingCheckout(): UseBillingCheckoutReturn {
         toast({ title: "Erreur paiement", description: message, variant: "destructive" });
       }
     },
-    [bffAvailable, orgId, activeTenantContext, session],
+    [auth, bffAvailable, orgId, activeTenantContext, session],
   );
 
   return {

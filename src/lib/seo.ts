@@ -31,6 +31,18 @@ export const SEO_ROUTE_KEYS = {
   upgrade: "upgrade",
   /** Hub des cas d’usage marketing. */
   useCaseHub: "useCaseHub",
+  /** Hub conversion fonctionnalités. */
+  fonctionnalites: "fonctionnalites",
+  /** Hub modules par rôle. */
+  modules: "modules",
+  /** FAQ marketing publique. */
+  faq: "faq",
+  /** Contact et démo. */
+  contact: "contact",
+  /** Tarifs publics. */
+  pricing: "pricing",
+  /** Centre d'aide public. */
+  help: "help",
   notFound: "notFound",
 } as const;
 
@@ -114,6 +126,42 @@ export const SEO_BY_ROUTE_KEY: Record<SeoRouteKey, SeoRouteConfig> = {
       "Parcours par outil, profil metier et probleme operationnel : maintenance, DVIR, transit CEMAC, alertes et rapports.",
     canonicalPath: "/use-case",
   },
+  fonctionnalites: {
+    title: "Fonctionnalités E-Samba | Gestion de flotte intelligente",
+    description:
+      "Samba-Fleet, Samba-Fuel, Samba-Care, encaissements, alertes et scoring conducteur pour optimiser votre flotte en Afrique centrale.",
+    canonicalPath: "/fonctionnalites",
+  },
+  modules: {
+    title: "Modules E-Samba | Organisateur, gestionnaire, chauffeur, mécanicien",
+    description:
+      "Interfaces adaptées à chaque rôle métier : multi-flottes, pilotage opérationnel, terrain conducteur et atelier mécanicien.",
+    canonicalPath: "/modules",
+  },
+  faq: {
+    title: "FAQ E-Samba | Questions fréquentes",
+    description:
+      "Réponses sur l'essai gratuit, les paiements Mobile Money, la sécurité des données et la gestion multi-flottes E-Samba.",
+    canonicalPath: "/faq",
+  },
+  contact: {
+    title: "Contact E-Samba | Demander une démo",
+    description:
+      "Contactez l'équipe E-Samba pour une démo personnalisée de gestion de flotte. Réponse sous 24h, sans engagement.",
+    canonicalPath: "/contact",
+  },
+  pricing: {
+    title: "Tarifs E-Samba | Plans Starter, Pro et Enterprise",
+    description:
+      "Tarifs transparents en FCFA par véhicule. Essai gratuit jusqu'à 3 véhicules, Mobile Money et cartes bancaires acceptées.",
+    canonicalPath: "/pricing",
+  },
+  help: {
+    title: "Centre d'aide E-Samba",
+    description:
+      "Guides, tutoriels et articles pour démarrer avec E-Samba : flotte, maintenance, conducteurs et facturation.",
+    canonicalPath: "/help",
+  },
   notFound: {
     title: "E-Samba",
     description:
@@ -147,6 +195,12 @@ const PATH_TO_ROUTE_KEY: Record<string, SeoRouteKey> = {
   "/dashboard/operations": SEO_ROUTE_KEYS.operations,
   "/upgrade": SEO_ROUTE_KEYS.upgrade,
   "/use-case": SEO_ROUTE_KEYS.useCaseHub,
+  "/fonctionnalites": SEO_ROUTE_KEYS.fonctionnalites,
+  "/modules": SEO_ROUTE_KEYS.modules,
+  "/faq": SEO_ROUTE_KEYS.faq,
+  "/contact": SEO_ROUTE_KEYS.contact,
+  "/pricing": SEO_ROUTE_KEYS.pricing,
+  "/help": SEO_ROUTE_KEYS.help,
 };
 
 export function getCanonicalUrlFromPath(path: string): string {

@@ -78,8 +78,8 @@ export default function ConditionsPage() {
           L'accès à E-Samba est conditionné à la souscription d'un abonnement
           parmi les offres disponibles (Starter, Pro, Entreprise). Les tarifs
           en vigueur sont consultables sur{" "}
-          <a href="/#pricing" className="text-primary hover:underline">
-            e-samba.com/#pricing
+          <a href="/pricing" className="text-primary hover:underline">
+            e-samba.com/pricing
           </a>
           .
         </p>
