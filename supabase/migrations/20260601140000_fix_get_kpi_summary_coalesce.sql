@@ -1,4 +1,7 @@
 -- get_kpi_summary : toujours renvoyer un JSON (org sans véhicules) + search_path explicite.
+-- DROP requis si une ancienne signature (ex. p_fleet_id) existe déjà sur le remote.
+
+DROP FUNCTION IF EXISTS public.get_kpi_summary(uuid);
 
 CREATE OR REPLACE FUNCTION public.get_kpi_summary(p_org_id uuid)
 RETURNS jsonb

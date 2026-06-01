@@ -1,7 +1,4 @@
--- Dashboard : droits RPC/vue + colonnes snake_case alignées sur le client TypeScript.
-
-GRANT EXECUTE ON FUNCTION public.get_kpi_summary(uuid) TO authenticated;
-GRANT SELECT ON public.dashboard_alerts TO authenticated;
+-- Dashboard : vue alertes (snake_case) puis droits RPC/vue.
 
 CREATE OR REPLACE VIEW public.dashboard_alerts AS
 SELECT
@@ -50,3 +47,6 @@ WHERE a.resolved_at IS NULL;
 
 COMMENT ON VIEW public.dashboard_alerts IS
   'Alertes actives enrichies pour le tableau de bord (colonnes snake_case, RLS via security_invoker sur alerts/vehicles).';
+
+GRANT EXECUTE ON FUNCTION public.get_kpi_summary(uuid) TO authenticated;
+GRANT SELECT ON public.dashboard_alerts TO authenticated;
