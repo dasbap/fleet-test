@@ -19,7 +19,7 @@ export const SEO_IA_PILLARS: SeoIaArticle[] = [
     ],
     ctaPrimary: {
       label: "Télécharger la checklist PDF (contact)",
-      href: buildSeoIaCtaUrl("/#contact", "optimisation-contenu-ia-seo"),
+      href: buildSeoIaCtaUrl("/contact", "optimisation-contenu-ia-seo"),
     },
     leadMagnet: {
       title: "Checklist optimisation contenu IA",
@@ -170,7 +170,7 @@ export const SEO_IA_PILLARS: SeoIaArticle[] = [
     ],
     ctaPrimary: {
       label: "Réserver une démo E-Samba (ops B2B)",
-      href: buildSeoIaCtaUrl("/#contact", "production-contenu-seo-ia-echelle"),
+      href: buildSeoIaCtaUrl("/contact", "production-contenu-seo-ia-echelle"),
     },
     sections: [
       {

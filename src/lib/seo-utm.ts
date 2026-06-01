@@ -17,7 +17,6 @@ export function buildSeoIaCtaUrl(
     utm_content: contentSlug,
     ...extra,
   });
-  const hash = basePath.includes("#") ? "" : "#contact";
   const path = basePath.replace(/#.*$/, "");
-  return `${path}?${params.toString()}${hash}`;
+  return `${path}?${params.toString()}`;
 }
