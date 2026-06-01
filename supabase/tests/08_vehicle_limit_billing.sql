@@ -82,6 +82,10 @@ BEGIN
   )
   ON CONFLICT (id) DO NOTHING;
 
+  INSERT INTO profils (user_id, full_name)
+  VALUES (v_user_id, 'Test vehicle limit')
+  ON CONFLICT (user_id) DO NOTHING;
+
   INSERT INTO organisations (name, country_code)
   VALUES ('Test vehicle limit', 'CM')
   RETURNING id INTO v_org_id;

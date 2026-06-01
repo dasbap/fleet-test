@@ -25,10 +25,11 @@ export class DashboardAlertService {
     return rows.map(mapDashboardAlertRowToDomain);
   }
 
-  async getKpiSummary(orgId: string): Promise<KpiSummary | null> {
-    if (!orgId) return null;
-    const data = await this.repository.getKpiSummary(orgId);
-    return (data ?? null) as KpiSummary | null;
+  async getKpiSummary(orgId: string): Promise<KpiSummary> {
+    if (!orgId) {
+      throw new Error("L'ID de l'organisation est requis");
+    }
+    return this.repository.getKpiSummary(orgId);
   }
 
   async resolveAlert(alertId: string, action: DashboardAlert["action"]): Promise<void> {

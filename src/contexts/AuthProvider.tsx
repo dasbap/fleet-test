@@ -503,7 +503,8 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
     () =>
       userFleetId
         ? {
-            orgId: "mock-org",
+            // Pas d'organisation Supabase en session mock (évite RPC uuid invalides).
+            orgId: "",
             fleetId: userFleetId,
             role: role ?? "driver",
           }

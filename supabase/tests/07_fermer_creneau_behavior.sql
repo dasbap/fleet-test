@@ -39,9 +39,19 @@ DECLARE
   v_shift_status text;
   v_closure_status text;
 BEGIN
-  -- Nettoyage résidus d'exécutions précédentes (user/fixtures de test)
-  UPDATE affectations_vehicules SET is_active = false
-  WHERE driver_user_id = v_user_id AND is_active = true;
+  DELETE FROM clotures_creneaux WHERE shift_id IN (
+    SELECT c.id FROM creneaux_conducteurs c
+    JOIN affectations_vehicules a ON a.id = c.assignment_id
+    WHERE a.driver_user_id = v_user_id OR a.created_by = v_user_id
+  );
+  DELETE FROM creneaux_conducteurs WHERE assignment_id IN (
+    SELECT id FROM affectations_vehicules
+    WHERE driver_user_id = v_user_id OR created_by = v_user_id
+  );
+  DELETE FROM affectations_vehicules
+  WHERE driver_user_id = v_user_id OR created_by = v_user_id;
+  DELETE FROM profils WHERE user_id = v_user_id;
+  DELETE FROM auth.users WHERE id = v_user_id;
 
   INSERT INTO auth.users (
     instance_id,
@@ -66,6 +76,10 @@ BEGIN
     now()
   )
   ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO profils (user_id, full_name)
+  VALUES (v_user_id, 'Test fermer_creneau')
+  ON CONFLICT (user_id) DO NOTHING;
 
   INSERT INTO organisations (name, country_code)
   VALUES ('Test fermer_creneau', 'CM')
@@ -185,9 +199,11 @@ BEGIN
   DELETE FROM creneaux_conducteurs WHERE assignment_id IN (
     SELECT id FROM affectations_vehicules WHERE driver_user_id = v_user_id
   );
-  DELETE FROM affectations_vehicules WHERE driver_user_id = v_user_id;
+  DELETE FROM affectations_vehicules
+  WHERE driver_user_id = v_user_id OR created_by = v_user_id;
   DELETE FROM vehicules WHERE fleet_id = v_fleet_id;
   DELETE FROM flottes WHERE id = v_fleet_id;
   DELETE FROM organisations WHERE id = v_org_id;
+  DELETE FROM profils WHERE user_id = v_user_id;
   DELETE FROM auth.users WHERE id = v_user_id;
 END $$;
