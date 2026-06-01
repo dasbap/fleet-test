@@ -2,13 +2,14 @@
  * Barre de recherche FAQ — filtre les questions en temps réel.
  */
 
-import { useRef } from 'react';
-import { Search, X } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { useRef } from "react";
+import { Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface FaqSearchProps {
-  query:     string;
-  onChange:  (q: string) => void;
+  query: string;
+  onChange: (q: string) => void;
   className?: string;
   placeholder?: string;
 }
@@ -16,15 +17,15 @@ interface FaqSearchProps {
 export function FaqSearch({
   query,
   onChange,
-  className = '',
-  placeholder = 'Rechercher…',
+  className = "",
+  placeholder = "Rechercher dans la FAQ…",
 }: FaqSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={cn("relative", className)}>
       <Search
-        className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"
+        className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
         aria-hidden
       />
       <Input
@@ -32,18 +33,22 @@ export function FaqSearch({
         value={query}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="pl-8 pr-8 h-8 text-sm bg-gray-50 border-gray-200 focus:bg-white"
+        className="pl-9 pr-9 h-10 text-sm md:text-base bg-muted/50 border-border focus:bg-background"
         aria-label="Rechercher dans la FAQ"
       />
-      {query && (
+      {query ? (
         <button
-          onClick={() => { onChange(''); inputRef.current?.focus(); }}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          type="button"
+          onClick={() => {
+            onChange("");
+            inputRef.current?.focus();
+          }}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           aria-label="Effacer la recherche"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-4 w-4" />
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

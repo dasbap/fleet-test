@@ -115,6 +115,14 @@ vi.mock("@/pages/NotFound", () => ({
   default: () => <div data-testid="not-found">Not found</div>,
 }));
 
+vi.mock("@/pages/Pricing", () => ({
+  default: () => <div data-testid="pricing-page">Pricing</div>,
+}));
+
+vi.mock("@/pages/public/FonctionnalitesPage", () => ({
+  default: () => <div data-testid="fonctionnalites-page">Fonctionnalites</div>,
+}));
+
 function renderRoutes(initialPath: string) {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
@@ -132,6 +140,11 @@ describe("app.routes redirections critiques", () => {
   it("redirige /connexion vers /auth", async () => {
     renderRoutes("/connexion");
     expect(await screen.findByTestId("auth-page")).toBeInTheDocument();
+  });
+
+  it("redirige /tarifs vers /pricing", async () => {
+    renderRoutes("/tarifs");
+    expect(await screen.findByTestId("pricing-page")).toBeInTheDocument();
   });
 });
 

@@ -10,7 +10,7 @@ interface ProductBridgeCardProps {
 
 /** Encart unique vers le produit flotte (pas de claim outil SEO). */
 export function ProductBridgeCard({ contentSlug }: ProductBridgeCardProps) {
-  const demoHref = buildSeoIaCtaUrl("/#contact", contentSlug);
+  const demoHref = buildSeoIaCtaUrl("/contact", contentSlug);
 
   return (
     <Card className="border-primary/20 bg-primary/5">

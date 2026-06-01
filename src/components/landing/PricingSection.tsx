@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Check, Zap } from "lucide-react";
+import { Check, Zap, ArrowRight } from "lucide-react";
 import {
   PUBLIC_BILLING_PERIOD_LABEL,
   PUBLIC_CURRENCY_LABEL,
@@ -10,6 +10,7 @@ import {
   PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF,
   formatPublicPriceXaf,
 } from "@/lib/public-pricing";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { cn } from "@/lib/utils";
 
 type PricingPlan = {
@@ -89,7 +90,7 @@ const plans: PricingPlan[] = [
       "Chargé de compte dédié",
     ],
     cta: "Nous contacter",
-    ctaTo: "/#contact",
+    ctaTo: "/contact",
     popular: false,
   },
 ];
@@ -196,6 +197,15 @@ const PricingSection = () => {
             <span className="text-muted-foreground">•</span>
             <span className="font-medium">Visa / Mastercard</span>
           </div>
+          <p className="mt-8">
+            <Link
+              to={ROUTE_PATHS.pricing}
+              className="inline-flex items-center gap-2 text-primary font-medium hover:underline"
+            >
+              Voir le calculateur de tarifs
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </p>
         </div>
       </div>
     </section>

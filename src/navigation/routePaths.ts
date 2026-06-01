@@ -101,6 +101,16 @@ export const ROUTE_PATHS = {
   cookies: "/cookies",
   /** Page tarifs publique avec calculateur et checkout Notch Pay. */
   pricing: "/pricing",
+  /** Alias français → redirect vers pricing. */
+  tarifs: "/tarifs",
+  /** Hub conversion fonctionnalités (contenu profond sur marketing). */
+  fonctionnalites: "/fonctionnalites",
+  /** Hub modules par rôle métier. */
+  modules: "/modules",
+  /** FAQ marketing publique. */
+  faq: "/faq",
+  /** Contact et demande de démo. */
+  contact: "/contact",
   /** Hub des cas d’usage marketing (SEO programmatique). */
   useCaseHub: "/use-case",
   /** Chemin détail cas d'usage (évite le préfixe `use` pour les règles React hooks). */

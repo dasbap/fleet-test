@@ -1,12 +1,18 @@
 /**
  * En-tête minimal pour les pages publiques /help (navigation sans ancres landing).
  */
-import { Link, Outlet } from 'react-router-dom';
-import { Zap } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ROUTE_PATHS } from '@/navigation/routePaths';
+import { Link, Outlet } from "react-router-dom";
+import { Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuthOptional } from "@/hooks/useAuth";
+import { getAppEntryPath } from "@/navigation/appEntryPath";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 export function HelpPublicLayout() {
+  const auth = useAuthOptional();
+  const user = auth?.user;
+  const appEntry = getAppEntryPath(auth?.role);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -26,7 +32,11 @@ export function HelpPublicLayout() {
               <Link to={ROUTE_PATHS.help}>Centre d&apos;aide</Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
-              <Link to={ROUTE_PATHS.auth}>Connexion</Link>
+              {user ? (
+                <Link to={appEntry}>Mon espace</Link>
+              ) : (
+                <Link to={ROUTE_PATHS.auth}>Connexion</Link>
+              )}
             </Button>
           </nav>
         </div>

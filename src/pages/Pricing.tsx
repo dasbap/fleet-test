@@ -18,7 +18,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { PublicPageLayout } from "@/components/landing/PublicPageLayout";
+import { PublicPageHero } from "@/components/landing/PublicPageHero";
+import { PublicCtaSection } from "@/components/landing/PublicCtaSection";
 import { useBillingCheckout } from "@/hooks/useBillingCheckout";
+import { usePageSeo } from "@/hooks/usePageSeo";
 import { formatPublicPriceXaf } from "@/lib/public-pricing";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { cn } from "@/lib/utils";
@@ -138,6 +142,7 @@ const PLANS: PlanConfig[] = [
 // ─── Composant principal ──────────────────────────────────────────────────
 
 export default function PricingPage() {
+  usePageSeo("pricing");
   const [vehicleCount, setVehicleCount] = useState(3);
   const [selectedDuration, setSelectedDuration] = useState(1);
   const [addOnPulse, setAddOnPulse] = useState(false);
@@ -183,20 +188,19 @@ export default function PricingPage() {
   // ─── Rendu ────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* En-tête */}
-      <div className="bg-gradient-to-b from-primary/5 to-background pb-12 pt-16 text-center">
-        <Badge variant="secondary" className="mb-4">Tarifs E-Samba</Badge>
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Gérez votre flotte, payez à l'usage
-        </h1>
-        <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-          Paiement Mobile Money via Notch Pay · Activation immédiate après confirmation ·
-          Résiliation possible à tout moment
-        </p>
-      </div>
+    <PublicPageLayout showWhatsApp={false}>
+      <PublicPageHero
+        eyebrow="Tarifs"
+        title={
+          <>
+            Gérez votre flotte,{" "}
+            <span className="text-gradient">payez à l&apos;usage</span>
+          </>
+        }
+        description="Paiement Mobile Money via Notch Pay · Activation immédiate après confirmation · Résiliation possible à tout moment"
+      />
 
-      <div className="mx-auto max-w-6xl space-y-10 px-4 pb-24">
+      <div className="mx-auto max-w-6xl space-y-10 px-4 py-20 md:py-32">
 
         {/* Feedback état paiement */}
         {state.status === "failed" && (
@@ -212,7 +216,7 @@ export default function PricingPage() {
         )}
 
         {state.status === "redirecting" && (
-          <Alert className="border-blue-200 bg-blue-50 text-blue-800">
+          <Alert className="border-primary/30 bg-primary/5">
             <Loader2 className="mt-0.5 h-4 w-4 animate-spin shrink-0" />
             <AlertDescription>
               Redirection vers Notch Pay en cours… réf.{" "}
@@ -344,13 +348,15 @@ export default function PricingPage() {
           </div>
           <p>
             Paiement en XAF (FCFA) · Mobile Money (MTN, Orange) via Notch Pay ·{" "}
-            <Link to={ROUTE_PATHS.dashboardBilling} className="underline underline-offset-2">
-              Historique de facturation
+            <Link to={ROUTE_PATHS.contact} className="underline underline-offset-2">
+              Nous contacter
             </Link>
           </p>
         </div>
       </div>
-    </div>
+
+      <PublicCtaSection />
+    </PublicPageLayout>
   );
 }
 

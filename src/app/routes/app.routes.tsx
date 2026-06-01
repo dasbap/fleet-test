@@ -77,6 +77,10 @@ const PredictiveMaintenancePage = lazy(
   () => import("@/features/maintenance/screens/PredictiveMaintenancePage")
 );
 const PricingPage = lazy(() => import("@/pages/Pricing"));
+const FonctionnalitesPage = lazy(() => import("@/pages/public/FonctionnalitesPage"));
+const ModulesPage = lazy(() => import("@/pages/public/ModulesPage"));
+const FaqPage = lazy(() => import("@/pages/public/FaqPage"));
+const ContactPage = lazy(() => import("@/pages/public/ContactPage"));
 const DemoMagicLinkPage = lazy(() => import("@/pages/DemoMagicLinkPage"));
 const ProspectOnboarding = lazy(() =>
   import("@/features/demo/ProspectOnboarding").then((m) => ({ default: m.ProspectOnboarding }))
@@ -124,6 +128,12 @@ export const appRoutes = (
       element={<LegacyAideVideoRedirect />}
     />
     <Route path="/securite" element={<SecuritePage />} />
+    <Route path="/fonctionnalites" element={<FonctionnalitesPage />} />
+    <Route path="/modules" element={<ModulesPage />} />
+    <Route path="/faq" element={<FaqPage />} />
+    <Route path="/contact" element={<ContactPage />} />
+    <Route path="/pricing" element={<PricingPage />} />
+    <Route path="/tarifs" element={<Navigate to={ROUTE_PATHS.pricing} replace />} />
     <Route path="/cookies" element={<CookiesPage />} />
     <Route path="/confidentialite" element={<ConfidentialitePage />} />
     <Route path="/conditions" element={<ConditionsPage />} />
@@ -178,7 +188,6 @@ export const appRoutes = (
         element={<Navigate to={ROUTE_PATHS.dashboardMaintenance} replace />}
       />
       <Route path="/upgrade" element={<Upgrade />} />
-      <Route path="/pricing" element={<PricingPage />} />
       <Route path="/post-login" element={<PostLoginGate />} />
       {/* Flux commercial démo — pas de ProtectedRoute (auth via magic link) */}
       <Route path="/demo/access"     element={<DemoMagicLinkPage />} />
