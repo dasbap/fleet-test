@@ -1,19 +1,24 @@
 import { useState } from 'react';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { toast } from '@/hooks/use-toast';
-import type { OnboardingStep4Data } from '@/types/onboarding';
+import type { OnboardingData, OnboardingStep4Data } from '@/types/onboarding';
+import { Checkbox } from '@/components/ui/checkbox';
+import { OnboardingStepFooter } from '@/components/onboarding/OnboardingStepFooter';
 
 interface StepValidationProps {
   orgId: string;
   initial?: OnboardingStep4Data;
+  summary?: OnboardingData;
   onNext: (data: OnboardingStep4Data) => void | Promise<void>;
   onBack?: () => void;
   onSkip?: () => void | Promise<void>;
 }
 
-export function StepValidation({ orgId, initial, onNext, onBack, onSkip }: StepValidationProps) {
+export function StepValidation({ orgId, initial, summary, onNext, onBack, onSkip }: StepValidationProps) {
   const [confirmed, setConfirmed] = useState(Boolean(initial?.confirmed));
   const { saveStep, isSaving } = useOnboarding(orgId);
+  const activeAlerts = Object.entries(summary?.step2?.alerts ?? {}).filter(([, enabled]) => enabled).length;
+  const invitesCount = summary?.step3?.invites?.length ?? 0;
 
   const handleSubmit = async () => {
     if (!confirmed || isSaving) return;
@@ -38,31 +43,31 @@ export function StepValidation({ orgId, initial, onNext, onBack, onSkip }: StepV
         <p className="text-sm text-slate-500">Confirmez vos informations pour terminer la configuration.</p>
       </div>
 
+      <div className="space-y-2 rounded-md border border-surface-raised p-3 text-sm text-slate-200">
+        <p>
+          <span className="text-slate-400">Vehicule:</span> {summary?.step1?.plate || 'Non renseigne'}
+        </p>
+        <p>
+          <span className="text-slate-400">Alertes actives:</span> {activeAlerts}
+        </p>
+        <p>
+          <span className="text-slate-400">Invitations preparees:</span> {invitesCount}
+        </p>
+      </div>
+
       <label className="flex items-center gap-2 rounded-md border border-surface-raised p-3">
-        <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />
+        <Checkbox checked={confirmed} onCheckedChange={value => setConfirmed(Boolean(value))} />
         <span className="text-sm">Je confirme que la configuration initiale est correcte.</span>
       </label>
 
-      <div className="flex gap-2">
-        {onBack ? (
-          <button type="button" onClick={onBack} className="rounded-md border px-3 py-2">
-            Retour
-          </button>
-        ) : null}
-        {onSkip ? (
-          <button type="button" onClick={onSkip} className="rounded-md border px-3 py-2">
-            Passer
-          </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!confirmed || isSaving}
-          className="rounded-md bg-primary px-3 py-2 text-primary-foreground disabled:opacity-60"
-        >
-          Terminer
-        </button>
-      </div>
+      <OnboardingStepFooter
+        onBack={onBack}
+        onSkip={onSkip}
+        onSubmit={handleSubmit}
+        submitLabel="Terminer"
+        isSubmitting={isSaving}
+        isSubmitDisabled={!confirmed}
+      />
     </div>
   );
 }

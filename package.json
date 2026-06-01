@@ -139,6 +139,7 @@
     "playwright:install:browsers": "playwright install chromium firefox webkit",
     "e2e:verdict": "node scripts/e2e-summary.mjs",
     "test:e2e:help": "playwright test tests/e2e/help-center-i18n.spec.ts",
+    "test:e2e:onboarding": "playwright test --config=playwright.onboarding.config.ts",
     "diagnostic:e-samba": "node scripts/diagnostic-e-samba-console.mjs",
     "verify:dist": "node scripts/verify-dist.mjs",
     "smoke:spa": "node scripts/smoke-spa-preview.mjs",
