@@ -2,230 +2,206 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
    <url>
       <loc>https://www.e-samba.com/</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>weekly</changefreq>
       <priority>1.0</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/auth</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.8</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/apropos</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.6</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/carrieres</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.5</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/partenaires</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.5</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/status</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>weekly</changefreq>
       <priority>0.4</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/securite</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.6</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/pricing</loc>
-      <lastmod>2026-06-01</lastmod>
-      <changefreq>monthly</changefreq>
-      <priority>0.8</priority>
-   </url>
-   <url>
-      <loc>https://www.e-samba.com/fonctionnalites</loc>
-      <lastmod>2026-06-01</lastmod>
-      <changefreq>monthly</changefreq>
-      <priority>0.85</priority>
-   </url>
-   <url>
-      <loc>https://www.e-samba.com/modules</loc>
-      <lastmod>2026-06-01</lastmod>
-      <changefreq>monthly</changefreq>
-      <priority>0.85</priority>
-   </url>
-   <url>
-      <loc>https://www.e-samba.com/faq</loc>
-      <lastmod>2026-06-01</lastmod>
-      <changefreq>monthly</changefreq>
-      <priority>0.75</priority>
-   </url>
-   <url>
-      <loc>https://www.e-samba.com/contact</loc>
-      <lastmod>2026-06-01</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.8</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/help</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>weekly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/help/quickstart</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.6</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>weekly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>weekly</changefreq>
       <priority>0.85</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/optimisation-contenu-ia-seo</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.8</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/injecter-donnees-seo-prompt-ia</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.8</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/production-contenu-seo-ia-echelle</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.8</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/brief-seo-automatise-redaction-ia</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/score-seo-contenu-genere-ia</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/contenu-ia-optimise-google-2025</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/pipeline-contenu-seo-chatgpt</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/analyser-intention-recherche-ia</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/generer-mots-cles-longue-traine-automatiquement</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/outil-seo-contenu-genere-ia</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/mots-cles-longue-traine-b2b-saas</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/enrichissement-semantique-contenu-ia</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/analyse-serp-automatique-agence</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/outil-seo-freelance-redacteur-ia</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/ameliorer-classement-google-contenu-ia</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.7</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/modeles/brief-agence</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.65</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/modeles/brief-freelance</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.65</priority>
    </url>
    <url>
       <loc>https://www.e-samba.com/ressources/seo-ia/modeles/brief-saas</loc>
-      <lastmod>2026-05-30</lastmod>
+      <lastmod>2026-06-02</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.65</priority>
    </url>
 <!-- use-case:auto:start -->
   <url>
     <loc>https://www.e-samba.com/use-case</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://www.e-samba.com/use-case/esamba-transporteur-pme-maintenance-predictive</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.e-samba.com/use-case/mobile-logistique-cemac-dvir-inspections</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.e-samba.com/use-case/n8n-saas-b2b-alertes-flotte</loc>
-    <lastmod>2026-06-01</lastmod>
+    <lastmod>2026-06-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
