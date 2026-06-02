@@ -44,7 +44,7 @@
     "title": "Settings",
     "description": "Admin tools and configuration for your E-Samba workspace.",
     "languageSectionTitle": "Language",
-    "languageSectionDescription": "Choose the interface language. Lingala mainly covers field use (drivers)."
+    "languageSectionDescription": "Choose the interface language."
   },
   "languageSwitcher": {
     "ariaLabel": "Interface language"
