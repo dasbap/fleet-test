@@ -3,7 +3,7 @@
  * Optimisé 2G/3G : pas d'images, texte concis, accordéons.
  */
 
-export type GuideRole = 'chauffeur' | 'gestionnaire' | 'mécanicien' | 'general';
+export type GuideRole = 'chauffeur' | 'gestionnaire' | 'mécanicien' | 'organisateur' | 'general';
 export type GuideCategory = 'démarrage' | 'quotidien' | 'urgence' | 'avancé';
 
 export interface GuideStep {
@@ -263,6 +263,82 @@ export const GUIDES: Guide[] = [
     ],
   },
 
+  // ── Organisateur ──
+  {
+    id:       'organisateur-multi-flotte',
+    role:     'organisateur',
+    category: 'avancé',
+    title:    'Gérer plusieurs flottes',
+    summary:  'Centralisez plusieurs parcs sous une même organisation (plan Enterprise).',
+    duration: '4 min',
+    tags:     ['multi-flotte', 'flottes', 'organisation', 'enterprise'],
+    steps: [
+      { title: 'Vérifier le plan', body: 'La gestion multi-flotte est disponible avec le plan Enterprise. Consultez Dashboard → Abonnement pour confirmer votre offre.' },
+      { title: 'Accéder aux flottes', body: 'Paramètres → Flottes liste toutes les flottes rattachées à votre organisation.' },
+      { title: 'Basculer entre flottes', body: 'Sélectionnez la flotte active dans le menu — le tableau de bord et les données s\'adaptent immédiatement.' },
+      { title: 'Créer une flotte', body: 'Depuis la même page, « Nouvelle flotte » permet d\'ajouter un parc sous la même organisation sans nouveau compte.' },
+    ],
+  },
+  {
+    id:       'organisateur-abonnement',
+    role:     'organisateur',
+    category: 'démarrage',
+    title:    'Comprendre mon abonnement',
+    summary:  'Plan, limites et renouvellement en un coup d\'œil.',
+    duration: '3 min',
+    tags:     ['abonnement', 'plan', 'facturation', 'paiement'],
+    steps: [
+      { title: 'Ouvrir la page Abonnement', body: 'Dashboard → Abonnement affiche votre plan actuel, la date de renouvellement et les modules inclus.' },
+      { title: 'Lire les limites', body: 'Vérifiez le nombre de véhicules, de licences QR et les modules activés (rapports, maintenance, etc.).' },
+      { title: 'Changer de plan', body: 'Passez à un plan supérieur depuis cette page ou via /pricing si vous atteignez une limite.' },
+      { title: 'Historique des paiements', body: 'L\'onglet Paiements liste les transactions Mobile Money et cartes pour votre comptabilité.' },
+    ],
+  },
+  {
+    id:       'organisateur-permissions',
+    role:     'organisateur',
+    category: 'quotidien',
+    title:    'Gérer les permissions et rôles',
+    summary:  'Matrice des droits et promotion des membres.',
+    duration: '4 min',
+    tags:     ['permissions', 'rôles', 'rbac', 'accès'],
+    steps: [
+      { title: 'Ouvrir la matrice', body: 'Dashboard → Rôles affiche les permissions par rôle (chauffeur, gestionnaire, mécanicien).' },
+      { title: 'Promouvoir un membre', body: 'Seul l\'organisateur peut attribuer le rôle gestionnaire ou mécanicien à un membre existant.' },
+      { title: 'Révoquer un accès', body: 'Désactivez un membre sans supprimer son historique — utile en cas de départ ou de suspension.' },
+      { title: 'Auditer les changements', body: 'Les modifications sensibles sont journalisées pour la traçabilité de votre organisation.' },
+    ],
+  },
+  {
+    id:       'organisateur-rapports',
+    role:     'organisateur',
+    category: 'avancé',
+    title:    'Générer des rapports',
+    summary:  'Exports PDF et Excel pour piloter la flotte.',
+    duration: '3 min',
+    tags:     ['rapports', 'export', 'pdf', 'statistiques'],
+    steps: [
+      { title: 'Choisir la période', body: 'Dashboard → Rapports → sélectionnez la plage de dates (jour, semaine, mois).' },
+      { title: 'Sélectionner le type', body: 'Coûts, conformité DVIR, maintenance ou carburant — selon le module activé sur votre plan.' },
+      { title: 'Générer et télécharger', body: 'Appuyez sur « Générer » puis exportez en PDF ou Excel (disponible à partir du plan Starter).' },
+      { title: 'Planifier un envoi', body: 'Sur les plans Pro+, programmez l\'envoi automatique par e-mail à votre comptabilité.' },
+    ],
+  },
+  {
+    id:       'organisateur-paiement',
+    role:     'organisateur',
+    category: 'quotidien',
+    title:    'Modes de paiement acceptés',
+    summary:  'Mobile Money et cartes via Notch Pay.',
+    duration: '2 min',
+    tags:     ['paiement', 'mobile money', 'notch', 'cinetpay'],
+    steps: [
+      { title: 'Moyens acceptés', body: 'E-Samba accepte Mobile Money (MTN, Orange) et les cartes bancaires via Notch Pay.' },
+      { title: 'Renouveler l\'abonnement', body: 'Dashboard → Abonnement → « Renouveler » pour choisir votre mode de paiement préféré.' },
+      { title: 'En cas d\'échec', body: 'Vérifiez votre solde Mobile Money et réessayez. Contactez support@e-samba.com si le problème persiste après 24 h.' },
+    ],
+  },
+
   // ── Mécanicien ──
   {
     id:       'mecanicien-ordre-travail',
@@ -317,5 +393,6 @@ export const ONBOARDING_STEPS: Record<GuideRole, OnboardingStep[]> = {
     { id: 'o2', title: 'Vos outils',       body: 'Familiarisez-vous avec la liste des ordres de travail. En rouge = urgent, en orange = planifié, en vert = terminé.', action: 'Voir les ordres',  route: '/maintenance' },
     { id: 'o3', title: 'Diagnostic IA',    body: 'Consultez le module de diagnostic prédictif pour anticiper les pannes sur votre parc.',                        action: 'Voir le diagnostic',    route: '/maintenance/diagnostic' },
   ],
+  organisateur: [],
   general: [],
 };
