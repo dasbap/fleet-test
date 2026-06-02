@@ -21,7 +21,7 @@ import { FaqSchemaOrg } from '@/components/faq/FaqSchemaOrg';
 import { HELP_PUBLIC_CATEGORIES } from '@/types/help';
 import { QUICK_TUTORIALS, type GuideRole } from '@/data/help/guides';
 
-type ActiveTab = 'tutoriels' | GuideRole | 'organisateur';
+type ActiveTab = 'tutoriels' | GuideRole;
 
 const ROLE_TABS: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
   { id: 'tutoriels', label: 'Tutoriels', icon: <Zap className="h-4 w-4" /> },
@@ -185,30 +185,14 @@ export default function HelpHomePage() {
           {activeTab === 'chauffeur' && <RoleGuideSection role="chauffeur" />}
           {activeTab === 'gestionnaire' && <RoleGuideSection role="gestionnaire" />}
           {activeTab === 'mécanicien' && <RoleGuideSection role="mécanicien" />}
-          {activeTab === 'organisateur' && (
-            <section className="space-y-2">
-              {articles
-                .filter((a) => a.category === 'organizer' || a.category === 'billing')
-                .slice(0, 8)
-                .map((a) => (
-                  <Link
-                    key={a.id}
-                    to={ROUTE_PATHS.helpArticle(a.category, a.slug)}
-                    className="block rounded-lg border border-border p-3 hover:bg-muted/30"
-                  >
-                    <p className="text-sm font-medium">{a.title}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-1">{a.content}</p>
-                  </Link>
-                ))}
-            </section>
-          )}
+          {activeTab === 'organisateur' && <RoleGuideSection role="organisateur" />}
 
           <section>
             <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-muted-foreground" aria-hidden />
               Questions fréquentes
             </h2>
-            <HelpFAQ />
+            <HelpFAQ hideTitle />
           </section>
 
           <SupportPanel />

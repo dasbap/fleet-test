@@ -152,11 +152,11 @@ function HelpVideoCard({
     <button
       type="button"
       onClick={onPlay}
-      className="group w-full text-left rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:border-brand/50 transition-colors duration-150 bg-white dark:bg-surface"
+      className="group w-full text-left rounded-xl overflow-hidden border border-border bg-card hover:border-primary/50 transition-colors duration-150"
       aria-label={`${t("video_watch")}: ${title}`}
     >
       <div
-        className="relative w-full bg-surface-raised"
+        className="relative w-full bg-muted"
         style={{ aspectRatio: "16/9" }}
       >
         <img
@@ -172,7 +172,7 @@ function HelpVideoCard({
         />
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors">
           <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <IconPlay className="w-4 h-4 text-slate-800 ml-0.5" />
+            <IconPlay className="w-4 h-4 text-foreground ml-0.5" />
           </div>
         </div>
         <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
@@ -180,7 +180,7 @@ function HelpVideoCard({
         </div>
       </div>
       <div className="p-2.5">
-        <p className="text-xs font-medium text-slate-700 dark:text-slate-200 leading-tight group-hover:text-brand transition-colors">
+        <p className="text-xs font-medium text-foreground leading-tight group-hover:text-primary transition-colors">
           {title}
         </p>
       </div>
@@ -223,9 +223,9 @@ function HelpArticleItem({ article, query }: HelpArticleItemProps) {
   return (
     <AccordionItem
       value={article.id}
-      className="border-b border-slate-100 dark:border-slate-800 last:border-0"
+      className="border-b border-border last:border-0"
     >
-      <AccordionTrigger className="text-left text-sm font-medium text-slate-700 dark:text-slate-200 hover:no-underline hover:text-brand transition-colors py-3 gap-2">
+      <AccordionTrigger className="text-left text-sm font-medium text-foreground hover:no-underline hover:text-primary transition-colors py-3 gap-2 [&>svg]:text-muted-foreground">
         <span className="flex items-center gap-2">
           <span className="text-base flex-shrink-0" aria-hidden="true">
             {emoji}
@@ -234,7 +234,7 @@ function HelpArticleItem({ article, query }: HelpArticleItemProps) {
         </span>
       </AccordionTrigger>
       <AccordionContent className="pb-4">
-        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+        <p className="text-sm text-muted-foreground leading-relaxed mb-3">
           {answer}
         </p>
 
@@ -242,7 +242,7 @@ function HelpArticleItem({ article, query }: HelpArticleItemProps) {
           <button
             type="button"
             onClick={() => navigate(`/aide/videos/${article.videoId}`)}
-            className="inline-flex items-center gap-1.5 text-xs text-brand dark:text-brand-light hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
           >
             <IconPlay className="w-3 h-3" />
             <span>
@@ -293,33 +293,33 @@ function HelpPanelInternal() {
       <SheetContent
         side="right"
         data-testid="help-center-panel"
-        className="w-[380px] sm:w-[420px] p-0 flex flex-col bg-white dark:bg-surface border-l border-slate-200 dark:border-slate-800"
+        className="w-[380px] sm:w-[420px] p-0 flex flex-col bg-background border-border text-foreground"
       >
-        <SheetHeader className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+        <SheetHeader className="px-5 py-4 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between">
-            <SheetTitle className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <IconHelp className="w-4 h-4 text-brand" />
+            <SheetTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+              <IconHelp className="w-4 h-4 text-primary" />
               {t("title")}
             </SheetTitle>
             <button
               type="button"
               onClick={closeHelp}
               aria-label={t("bubble_close")}
-              className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <IconClose className="w-4 h-4" />
             </button>
           </div>
 
           <div className="relative mt-2">
-            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
               ref={searchInputRef}
               type="search"
               placeholder={t("search_placeholder")}
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              className="pl-9 bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus-visible:ring-brand/30 text-sm h-9"
+              className="pl-9 bg-muted border-input focus-visible:ring-primary/30 text-sm h-9"
               autoComplete="off"
             />
             {searchQuery && (
@@ -329,7 +329,7 @@ function HelpPanelInternal() {
                 className="absolute right-2.5 top-1/2 -translate-y-1/2"
                 aria-label="Effacer la recherche"
               >
-                <IconClose className="w-3 h-3 text-slate-400" />
+                <IconClose className="w-3 h-3 text-muted-foreground" />
               </button>
             )}
           </div>
@@ -341,7 +341,7 @@ function HelpPanelInternal() {
               <section>
                 {searchResults.length > 0 ? (
                   <>
-                    <p className="text-xs text-slate-400 mb-3">
+                    <p className="text-xs text-muted-foreground mb-3">
                       {searchResults.length} résultat
                       {searchResults.length > 1 ? "s" : ""}
                     </p>
@@ -357,7 +357,7 @@ function HelpPanelInternal() {
                   </>
                 ) : (
                   <div className="py-8 text-center">
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-muted-foreground">
                       {t("search_empty", { query: searchQuery })}
                     </p>
                   </div>
@@ -369,7 +369,7 @@ function HelpPanelInternal() {
               <>
                 <section>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {t("faq_title")}
                       {currentPage && (
                         <span className="ml-2">
@@ -396,16 +396,16 @@ function HelpPanelInternal() {
                       ))}
                     </Accordion>
                   ) : (
-                    <p className="text-sm text-slate-400 py-4 text-center">
+                    <p className="text-sm text-muted-foreground py-4 text-center">
                       {t("faq_empty")}
                     </p>
                   )}
                 </section>
 
-                <Separator className="bg-slate-100 dark:bg-slate-800" />
+                <Separator />
 
                 <section>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
                     {t("video_watch")}
                   </h3>
                   <div className="grid grid-cols-3 gap-2">
@@ -427,7 +427,7 @@ function HelpPanelInternal() {
                       navigate("/aide/videos");
                       closeHelp();
                     }}
-                    className="mt-3 text-xs text-brand dark:text-brand-light hover:underline w-full text-center"
+                    className="mt-3 text-xs text-primary hover:underline w-full text-center"
                   >
                     {t("view_all")} →
                   </button>
@@ -437,7 +437,7 @@ function HelpPanelInternal() {
           </div>
         </ScrollArea>
 
-        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0 space-y-2">
+        <div className="px-5 py-4 border-t border-border flex-shrink-0 space-y-2">
           <Button
             variant="outline"
             size="sm"
@@ -456,7 +456,7 @@ function HelpPanelInternal() {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full text-slate-500 hover:text-slate-700 text-xs"
+            className="w-full text-muted-foreground hover:text-foreground text-xs"
             onClick={() => {
               window.location.href = "mailto:support@e-samba.com";
             }}
@@ -486,7 +486,7 @@ export function HelpBubble({ disabled = false }: HelpBubbleProps) {
     <>
       <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
         {!isOpen && (
-          <span className="hidden group-hover:block text-xs font-medium bg-slate-800 text-white px-2.5 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+          <span className="hidden group-hover:block text-xs font-medium bg-popover text-popover-foreground px-2.5 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none border border-border">
             {t("bubble_tooltip")}
           </span>
         )}
@@ -503,14 +503,14 @@ export function HelpBubble({ disabled = false }: HelpBubbleProps) {
             "transition-all duration-200 hover:scale-105 active:scale-95",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
             isOpen
-              ? "bg-slate-700 dark:bg-slate-600"
-              : "bg-brand hover:bg-brand-dark",
+              ? "bg-muted"
+              : "bg-primary hover:bg-primary/90",
           )}
         >
           {isOpen ? (
-            <IconClose className="w-5 h-5 text-white" />
+            <IconClose className="w-5 h-5 text-foreground" />
           ) : (
-            <IconHelp className="w-5 h-5 text-white" />
+            <IconHelp className="w-5 h-5 text-primary-foreground" />
           )}
         </button>
       </div>
@@ -523,9 +523,11 @@ export function HelpBubble({ disabled = false }: HelpBubbleProps) {
 interface HelpFAQProps {
   maxItems?: number;
   className?: string;
+  /** Masque le titre interne lorsque la page parente affiche déjà un en-tête de section. */
+  hideTitle?: boolean;
 }
 
-export function HelpFAQ({ maxItems = 4, className }: HelpFAQProps) {
+export function HelpFAQ({ maxItems = 4, className, hideTitle = false }: HelpFAQProps) {
   const { t } = useTranslation("help");
   const { contextualArticles, expandedId, toggleArticle, currentPage } =
     useHelp();
@@ -539,21 +541,22 @@ export function HelpFAQ({ maxItems = 4, className }: HelpFAQProps) {
   return (
     <aside
       className={cn(
-        "rounded-2xl border border-slate-100 dark:border-slate-800",
-        "bg-white dark:bg-surface p-5",
+        "rounded-xl border border-border bg-card p-5",
         className,
       )}
       aria-label="Questions fréquentes"
     >
-      <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-        <IconHelp className="w-4 h-4 text-brand" />
-        {t("faq_title")}
-        {currentPage && (
-          <Badge variant="secondary" className="ml-auto text-[10px] font-medium">
-            {CATEGORY_EMOJI[currentPage]} {t(`category_${currentPage}`)}
-          </Badge>
-        )}
-      </h2>
+      {!hideTitle && (
+        <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+          <IconHelp className="w-4 h-4 text-primary" />
+          {t("faq_title")}
+          {currentPage && (
+            <Badge variant="secondary" className="ml-auto text-[10px] font-medium">
+              {CATEGORY_EMOJI[currentPage]} {t(`category_${currentPage}`)}
+            </Badge>
+          )}
+        </h2>
+      )}
 
       <Accordion
         type="single"
@@ -594,7 +597,7 @@ export function HelpSearch({ className, autoFocus }: HelpSearchProps) {
   return (
     <div className={cn("space-y-4", className)}>
       <div className="relative">
-        <IconSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        <IconSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
         <Input
           ref={inputRef}
           type="search"
@@ -609,12 +612,12 @@ export function HelpSearch({ className, autoFocus }: HelpSearchProps) {
       {searchQuery.trim().length >= 2 && (
         <div>
           {searchResults.length === 0 ? (
-            <p className="text-sm text-slate-400 py-6 text-center">
+            <p className="text-sm text-muted-foreground py-6 text-center">
               {t("search_empty", { query: searchQuery })}
             </p>
           ) : (
             <>
-              <p className="text-xs text-slate-400 mb-3">
+              <p className="text-xs text-muted-foreground mb-3">
                 {searchResults.length} résultat
                 {searchResults.length > 1 ? "s" : ""}
               </p>
