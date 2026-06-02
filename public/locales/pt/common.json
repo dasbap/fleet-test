@@ -44,7 +44,7 @@
     "title": "Configurações",
     "description": "Ferramentas de administração e configuração do seu espaço E-Samba.",
     "languageSectionTitle": "Idioma",
-    "languageSectionDescription": "Escolha o idioma da interface. O Lingala cobre principalmente o uso em campo (motoristas)."
+    "languageSectionDescription": "Escolha o idioma da interface."
   },
   "languageSwitcher": {
     "ariaLabel": "Idioma da interface"

@@ -44,7 +44,7 @@
     "title": "Paramètres",
     "description": "Outils d'administration et configuration de votre espace E-Samba.",
     "languageSectionTitle": "Langue",
-    "languageSectionDescription": "Choisissez la langue affichée dans l'interface. Le Lingala couvre surtout l'usage terrain (chauffeurs)."
+    "languageSectionDescription": "Choisissez la langue affichée dans l'interface."
   },
   "languageSwitcher": {
     "ariaLabel": "Langue de l'interface"
