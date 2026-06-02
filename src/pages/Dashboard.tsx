@@ -59,8 +59,8 @@ function WelcomeBanner({ userName, onDismiss }: { userName?: string; onDismiss: 
 
 function OfflineBanner() {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 px-4 py-2 text-sm text-amber-800 dark:text-amber-200">
-      <WifiOff className="h-4 w-4 flex-shrink-0" />
+    <div className="flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2 text-sm text-foreground">
+      <WifiOff className="h-4 w-4 flex-shrink-0 text-warning" aria-hidden />
       <span>Mode hors ligne — données issues du cache local.</span>
     </div>
   );
@@ -82,12 +82,22 @@ function KpiDegradedBanner({
   isRetrying: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 px-4 py-2 text-sm text-amber-800 dark:text-amber-200">
+    <div
+      role="status"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2 text-sm text-foreground"
+    >
       <span>
         Les indicateurs temps réel sont temporairement indisponibles. Rechargez la page ou réessayez dans
         quelques instants.
       </span>
-      <Button type="button" variant="outline" size="sm" onClick={onRetry} disabled={isRetrying}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="border-border bg-card hover:bg-muted"
+        onClick={onRetry}
+        disabled={isRetrying}
+      >
         <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isRetrying && "animate-spin")} />
         Réessayer
       </Button>

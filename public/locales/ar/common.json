@@ -44,7 +44,7 @@
     "title": "الإعدادات",
     "description": "أدوات الإدارة وضبط مساحة E-Samba الخاصة بك.",
     "languageSectionTitle": "اللغة",
-    "languageSectionDescription": "اختر لغة الواجهة. تُستخدم اللينغالا غالبًا في العمل الميداني (السائقون)."
+    "languageSectionDescription": "اختر لغة الواجهة."
   },
   "languageSwitcher": {
     "ariaLabel": "لغة الواجهة"
