@@ -14,3 +14,11 @@ export const addMemberSchema = z.object({
 });
 
 export type AddMemberFormValues = z.infer<typeof addMemberSchema>;
+
+/** Vérifie si l'utilisateur est déjà membre actif de la flotte (les inactifs peuvent être réinvités). */
+export function isActiveFleetMember(
+  members: { user_id: string; is_active: boolean }[],
+  userId: string,
+): boolean {
+  return members.some((member) => member.user_id === userId && member.is_active);
+}

@@ -20,6 +20,8 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -82,12 +84,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { canManageRole } from "@/lib/rbac/permissions";
+import { FLEET_ROLE_LABELS, type FleetRole } from "@/types/role";
 import type { PlatformRole } from "@/types/rbac";
 import type { RoleType } from "@/repositories/fleet-member.repository";
 import { useActivation } from "@/hooks/useActivation";
 import { isValidCameroonMobileInput, normalizeCameroonPhoneE164 } from "@/lib/cameroonPhone";
 import {
   addMemberSchema,
+  isActiveFleetMember,
   type AddMemberFormValues,
 } from "@/features/teams/components/fleetTeamManagement.constants";
 
@@ -120,6 +124,7 @@ export function FleetTeamManagementPanel({
   } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -199,9 +204,13 @@ export function FleetTeamManagementPanel({
     setIsSearchOpen(false);
   };
 
+  const activeMembers = members.filter((member) => member.is_active);
+  const inactiveCount = members.length - activeMembers.length;
+  const displayedMembers = showInactive ? members : activeMembers;
+
   const isUserAlreadyMember = (_email: string, searchedUserId?: string) => {
     if (!searchedUserId) return false;
-    return members.some((member) => member.user_id === searchedUserId);
+    return isActiveFleetMember(members, searchedUserId);
   };
 
   const handleUpdateRole = async (
@@ -267,20 +276,8 @@ export function FleetTeamManagementPanel({
     }
   };
 
-  const getRoleLabel = (memberRole: string) => {
-    switch (memberRole) {
-      case "organizer":
-        return "Organisateur";
-      case "manager":
-        return "Manager";
-      case "driver":
-        return "Chauffeur";
-      case "mechanic":
-        return "Mécanicien";
-      default:
-        return memberRole;
-    }
-  };
+  const getRoleLabel = (memberRole: string) =>
+    FLEET_ROLE_LABELS[memberRole as FleetRole] ?? memberRole;
 
   const getRoleBadgeVariant = (memberRole: string) => {
     switch (memberRole) {
@@ -391,10 +388,30 @@ export function FleetTeamManagementPanel({
 
       <Card>
         <CardHeader>
-          <CardTitle>Membres de l&apos;équipe</CardTitle>
-          <CardDescription>
-            {members.length} membre{members.length > 1 ? "s" : ""} dans votre flotte
-          </CardDescription>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle>Membres de l&apos;équipe</CardTitle>
+              <CardDescription>
+                {activeMembers.length} actif{activeMembers.length !== 1 ? "s" : ""}
+                {inactiveCount > 0 &&
+                  ` · ${inactiveCount} inactif${inactiveCount !== 1 ? "s" : ""}`}
+                {" "}dans votre flotte
+              </CardDescription>
+            </div>
+            {inactiveCount > 0 && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="teams-show-inactive"
+                  checked={showInactive}
+                  onCheckedChange={setShowInactive}
+                  className="scale-90"
+                />
+                <Label htmlFor="teams-show-inactive" className="cursor-pointer text-sm">
+                  Afficher inactifs
+                </Label>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoadingMembers ? (
@@ -415,12 +432,16 @@ export function FleetTeamManagementPanel({
                 Réessayer
               </Button>
             </div>
-          ) : members.length === 0 ? (
+          ) : displayedMembers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Users className="text-muted-foreground mb-4 h-16 w-16" />
-              <h3 className="mb-2 text-lg font-semibold">Aucun membre</h3>
+              <h3 className="mb-2 text-lg font-semibold">
+                {members.length > 0 ? "Aucun membre actif" : "Aucun membre"}
+              </h3>
               <p className="text-muted-foreground mb-4">
-                Commencez par ajouter des membres à votre équipe ou invitez-les par code.
+                {members.length > 0
+                  ? "Activez « Afficher inactifs » pour voir les membres retirés, ou ajoutez de nouveaux membres."
+                  : "Commencez par ajouter des membres à votre équipe ou invitez-les par code."}
               </p>
               {canManageTeam && (
                 <div className="flex flex-wrap justify-center gap-3">
@@ -439,7 +460,7 @@ export function FleetTeamManagementPanel({
             </div>
           ) : (
             <div className="space-y-3">
-              {members.map((member) => (
+              {displayedMembers.map((member) => (
                 <div
                   key={member.id}
                   className="bg-card flex items-center justify-between rounded-lg border p-4"
@@ -498,7 +519,7 @@ export function FleetTeamManagementPanel({
                           disabled={member.role === "manager"}
                         >
                           <UserCog className="mr-2 h-4 w-4" />
-                          Définir comme Manager
+                          Définir comme {FLEET_ROLE_LABELS.manager}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           type="button"
@@ -593,7 +614,7 @@ export function FleetTeamManagementPanel({
             <div className="bg-card space-y-3 rounded-lg border p-4">
               <div className="flex items-center gap-2">
                 <UserCog className="text-info h-5 w-5" />
-                <h3 className="font-semibold">Manager</h3>
+                <h3 className="font-semibold">{FLEET_ROLE_LABELS.manager}</h3>
               </div>
               <p className="text-muted-foreground text-sm">Gestion opérationnelle de la flotte</p>
               <div className="space-y-2 text-sm">
@@ -882,7 +903,7 @@ export function FleetTeamManagementPanel({
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-2">
                                 <UserCog className="h-4 w-4" />
-                                <span className="font-medium">Manager</span>
+                                <span className="font-medium">{FLEET_ROLE_LABELS.manager}</span>
                               </div>
                               <span className="text-muted-foreground ml-6 text-xs">
                                 Gestion opérationnelle de la flotte
