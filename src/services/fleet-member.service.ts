@@ -172,11 +172,8 @@ export class FleetMemberService {
       throw new Error('Flotte et utilisateur requis.');
     }
 
-    if (isActive) {
-      await requirePermission('member.invite', fleetId);
-    } else {
-      await requirePermission('member.remove', fleetId);
-    }
+    // Aligné sur le RPC SQL : manager et organizer peuvent suspendre/réactiver (member.invite).
+    await requirePermission('member.invite', fleetId);
 
     await this.repository.upsertMembership(fleetId, userId, role, isActive);
   }
