@@ -81,6 +81,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { canManageRole } from "@/lib/rbac/permissions";
+import type { PlatformRole } from "@/types/rbac";
+import type { RoleType } from "@/repositories/fleet-member.repository";
 import { useActivation } from "@/hooks/useActivation";
 import { isValidCameroonMobileInput, normalizeCameroonPhoneE164 } from "@/lib/cameroonPhone";
 import {
@@ -104,7 +107,7 @@ export function FleetTeamManagementPanel({
   currentUserId,
   className,
 }: FleetTeamManagementPanelProps) {
-  const { user, userFleetId } = useAuth();
+  const { user, userFleetId, activeTenantContext } = useAuth();
   const { canAccessBackoffice } = usePermissions();
   const { can } = useRoleAccess();
   const navigate = useNavigate();
@@ -297,6 +300,11 @@ export function FleetTeamManagementPanel({
   const canManageTeam = canAccessBackoffice && can("member.invite");
   const canUpdateRoles = can("member.update_role");
   const canRemoveMembers = can("member.remove");
+
+  const callerRole = (activeTenantContext?.role ?? null) as PlatformRole | null;
+  const invitableRoles: RoleType[] = (["organizer", "manager", "driver", "mechanic"] as const).filter(
+    (role) => canManageRole(callerRole, role),
+  );
   const isPage = layout === "page";
 
   if (!userFleetId) {
@@ -856,50 +864,58 @@ export function FleetTeamManagementPanel({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="organizer">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <Shield className="h-4 w-4" />
-                              <span className="font-medium">Organisateur</span>
+                        {invitableRoles.includes("organizer") && (
+                          <SelectItem value="organizer">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <Shield className="h-4 w-4" />
+                                <span className="font-medium">Organisateur</span>
+                              </div>
+                              <span className="text-muted-foreground ml-6 text-xs">
+                                Accès complet à toutes les fonctionnalités
+                              </span>
                             </div>
-                            <span className="text-muted-foreground ml-6 text-xs">
-                              Accès complet à toutes les fonctionnalités
-                            </span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="manager">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <UserCog className="h-4 w-4" />
-                              <span className="font-medium">Manager</span>
+                          </SelectItem>
+                        )}
+                        {invitableRoles.includes("manager") && (
+                          <SelectItem value="manager">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <UserCog className="h-4 w-4" />
+                                <span className="font-medium">Manager</span>
+                              </div>
+                              <span className="text-muted-foreground ml-6 text-xs">
+                                Gestion opérationnelle de la flotte
+                              </span>
                             </div>
-                            <span className="text-muted-foreground ml-6 text-xs">
-                              Gestion opérationnelle de la flotte
-                            </span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="driver">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <Car className="h-4 w-4" />
-                              <span className="font-medium">Chauffeur</span>
+                          </SelectItem>
+                        )}
+                        {invitableRoles.includes("driver") && (
+                          <SelectItem value="driver">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <Car className="h-4 w-4" />
+                                <span className="font-medium">Chauffeur</span>
+                              </div>
+                              <span className="text-muted-foreground ml-6 text-xs">
+                                Conduite et gestion des courses
+                              </span>
                             </div>
-                            <span className="text-muted-foreground ml-6 text-xs">
-                              Conduite et gestion des courses
-                            </span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="mechanic">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <Wrench className="h-4 w-4" />
-                              <span className="font-medium">Mécanicien</span>
+                          </SelectItem>
+                        )}
+                        {invitableRoles.includes("mechanic") && (
+                          <SelectItem value="mechanic">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <Wrench className="h-4 w-4" />
+                                <span className="font-medium">Mécanicien</span>
+                              </div>
+                              <span className="text-muted-foreground ml-6 text-xs">
+                                Maintenance et réparations
+                              </span>
                             </div>
-                            <span className="text-muted-foreground ml-6 text-xs">
-                              Maintenance et réparations
-                            </span>
-                          </div>
-                        </SelectItem>
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />

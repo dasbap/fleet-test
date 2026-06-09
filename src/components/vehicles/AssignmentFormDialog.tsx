@@ -119,6 +119,7 @@ export function AssignmentFormDialog({
                   <FormItem>
                     <FormLabel>Véhicule</FormLabel>
                     <Select
+                      modal={false}
                       onValueChange={field.onChange}
                       value={field.value}
                     >
@@ -163,6 +164,7 @@ export function AssignmentFormDialog({
                   <FormItem>
                     <FormLabel>Chauffeur</FormLabel>
                     <Select
+                      modal={false}
                       onValueChange={field.onChange}
                       value={field.value}
                     >
