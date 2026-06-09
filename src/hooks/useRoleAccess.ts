@@ -81,7 +81,9 @@ const adminCache = new Map<string, boolean>();
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useRoleAccess(): UseRoleAccessReturn {
-  const { user, role: fleetRole, userFleetId, memberships } = useAuth();
+  const { user, role: globalFleetRole, userFleetId, memberships, activeTenantContext } = useAuth();
+  /** Rôle dans la flotte active (pas le max multi-flotte). */
+  const fleetRole = activeTenantContext?.role ?? globalFleetRole;
   const { isDemo } = useDemoSession();
 
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
@@ -118,8 +120,8 @@ export function useRoleAccess(): UseRoleAccessReturn {
 
     supabase
       .from("admin_profiles")
-      .select("id, is_active")
-      .eq("id", user.id)
+      .select("user_id, is_active")
+      .eq("user_id", user.id)
       .eq("is_active", true)
       .maybeSingle()
       .then(({ data, error }) => {

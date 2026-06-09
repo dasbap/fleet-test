@@ -100,8 +100,9 @@ function MembersTab() {
   const [showInactive, setShowInactive]         = useState(false);
   const [confirmAction, setConfirmAction]        = useState<{ type: "deactivate" | "offboard"; member: MemberRow } | null>(null);
 
-  const canManage = can("member.update_role");
-  const canRemove = can("member.remove");
+  const canManageRoles = can("member.update_role");
+  const canSuspendMembers = can("member.invite");
+  const canOffboardMembers = can("member.remove");
 
   const displayed = showInactive ? members : members.filter((m) => m.is_active);
   const activeCount   = members.filter((m) => m.is_active).length;
@@ -228,7 +229,7 @@ function MembersTab() {
               </div>
 
               {/* Sélecteur de rôle */}
-              {canManage && !isSelf ? (
+              {canManageRoles && !isSelf ? (
                 <Select value={member.role} onValueChange={(v) => void handleRoleChange(member, v as RoleType)} disabled={isPending || !member.is_active}>
                   <SelectTrigger className="w-36 h-7 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -242,7 +243,7 @@ function MembersTab() {
               )}
 
               {/* Menu actions */}
-              {(canRemove || canManage) && !isSelf && (
+              {(canSuspendMembers || canOffboardMembers) && !isSelf && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" disabled={isPending}>
@@ -252,13 +253,19 @@ function MembersTab() {
                   <DropdownMenuContent align="end">
                     {member.is_active ? (
                       <>
-                        <DropdownMenuItem onClick={() => setConfirmAction({ type: "deactivate", member })} className="text-orange-600 focus:text-orange-600">
-                          <UserX className="h-3.5 w-3.5 mr-2" /> Suspendre l'accès
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setConfirmAction({ type: "offboard", member })} className="text-destructive focus:text-destructive">
-                          <LogOut className="h-3.5 w-3.5 mr-2" /> Retirer de la flotte
-                        </DropdownMenuItem>
+                        {canSuspendMembers && (
+                          <DropdownMenuItem onClick={() => setConfirmAction({ type: "deactivate", member })} className="text-orange-600 focus:text-orange-600">
+                            <UserX className="h-3.5 w-3.5 mr-2" /> Suspendre l&apos;accès
+                          </DropdownMenuItem>
+                        )}
+                        {canOffboardMembers && (
+                          <>
+                            {canSuspendMembers && <DropdownMenuSeparator />}
+                            <DropdownMenuItem onClick={() => setConfirmAction({ type: "offboard", member })} className="text-destructive focus:text-destructive">
+                              <LogOut className="h-3.5 w-3.5 mr-2" /> Retirer de la flotte
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </>
                     ) : (
                       <DropdownMenuItem onClick={() => void handleReactivate(member)}>
@@ -459,7 +466,7 @@ function InvitationsTab() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const { data: invitations, isLoading, refetch } = useInvitations(userFleetId ?? undefined);
 
-  const inviteLink = userFleetId ? `${window.location.origin}/join/${userFleetId}` : null;
+  const inviteLink = `${window.location.origin}/auth`;
 
   const copyLink = () => {
     if (!inviteLink) return;
@@ -528,7 +535,7 @@ function InvitationsTab() {
             <Link2 className="h-4 w-4" /> Lien d'invitation flotte
           </CardTitle>
           <CardDescription>
-            Partagez ce lien pour inviter un membre. Il devra créer un compte et rejoindre votre flotte.
+            Page d&apos;inscription : le futur membre saisit un code d&apos;invitation après création de compte.
           </CardDescription>
         </CardHeader>
         <CardContent>
