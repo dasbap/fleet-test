@@ -24,8 +24,9 @@ const NotificationsPermissionGate = lazy(() =>
  * Sous Capacitor : coque mobile à onglets (sans sidebar).
  */
 export default function DashboardLayout() {
-  const { user, role, userFleetId } = useAuth();
-  const userRole = role || "organizer";
+  const { user, role, userFleetId, activeTenantContext } = useAuth();
+  /** Rôle dans la flotte active (aligné sur la liste Équipes et useRoleAccess). */
+  const userRole = activeTenantContext?.role ?? role ?? "organizer";
   const userMetadata = user?.user_metadata || {};
   const rawFromMeta = userMetadata.full_name;
   const nameFromMeta =
@@ -43,7 +44,7 @@ export default function DashboardLayout() {
   useRealtimeNotifications(userFleetId);
 
   if (isNativePlatform()) {
-    return <MobileLayout userRole={role} />;
+    return <MobileLayout userRole={userRole} />;
   }
 
   return (
