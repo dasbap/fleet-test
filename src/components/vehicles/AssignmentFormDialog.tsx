@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useAssignVehicle, useFleetDrivers } from "@/hooks/useAssignments";
-import { useVehiclesSimple, Vehicle } from "@/hooks/useVehicles";
+import { useVehiclesSimple } from "@/hooks/useVehicles";
 import { Loader2, Car, User } from "lucide-react";
 
 const assignmentSchema = z.object({
@@ -43,6 +44,16 @@ interface AssignmentFormDialogProps {
   preselectedVehicleId?: string;
 }
 
+function formatVehicleLabel(registration: string, brand?: string | null, model?: string | null): string {
+  const details = [brand, model].filter(Boolean).join(" ");
+  return details ? `${registration} – ${details}` : registration;
+}
+
+function formatDriverLabel(fullName: string | null, phone: string | null): string {
+  const name = fullName?.trim() || "Sans nom";
+  return phone ? `${name} (${phone})` : name;
+}
+
 export function AssignmentFormDialog({
   open,
   onOpenChange,
@@ -53,10 +64,7 @@ export function AssignmentFormDialog({
   const { data: drivers = [], isLoading: loadingDrivers } = useFleetDrivers(fleetId);
   const assignVehicle = useAssignVehicle();
 
-  // Filter available vehicles (ok status, no active assignment)
-  const availableVehicles = vehicles.filter(
-    (v) => v.status === "ok"
-  );
+  const availableVehicles = vehicles.filter((v) => v.status === "ok");
 
   const form = useForm<AssignmentFormData>({
     resolver: zodResolver(assignmentSchema),
@@ -84,8 +92,8 @@ export function AssignmentFormDialog({
       });
       form.reset();
       onOpenChange(false);
-    } catch (error) {
-      // Error is handled by the mutation
+    } catch {
+      // Erreur gérée par la mutation
     }
   };
 
@@ -119,34 +127,31 @@ export function AssignmentFormDialog({
                   <FormItem>
                     <FormLabel>Véhicule</FormLabel>
                     <Select
-                      modal={false}
                       onValueChange={field.onChange}
-                      value={field.value}
+                      value={field.value || undefined}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger aria-label="Sélectionner un véhicule">
                           <SelectValue placeholder="Sélectionnez un véhicule" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent position="popper" sideOffset={4}>
                         {availableVehicles.length === 0 ? (
-                          <div className="p-2 text-sm text-muted-foreground text-center">
+                          <div className="p-2 text-center text-sm text-muted-foreground">
                             Aucun véhicule disponible
                           </div>
                         ) : (
                           availableVehicles.map((vehicle) => (
-                            <SelectItem key={vehicle.id} value={vehicle.id}>
-                              <div className="flex items-center gap-2">
-                                <Car className="h-4 w-4" />
-                                <span className="font-medium">
-                                  {vehicle.registration}
-                                </span>
-                                {vehicle.brand && (
-                                  <span className="text-muted-foreground">
-                                    - {vehicle.brand} {vehicle.model}
-                                  </span>
-                                )}
-                              </div>
+                            <SelectItem
+                              key={vehicle.id}
+                              value={vehicle.id}
+                              textValue={formatVehicleLabel(
+                                vehicle.registration,
+                                vehicle.brand,
+                                vehicle.model,
+                              )}
+                            >
+                              {formatVehicleLabel(vehicle.registration, vehicle.brand, vehicle.model)}
                             </SelectItem>
                           ))
                         )}
@@ -164,37 +169,40 @@ export function AssignmentFormDialog({
                   <FormItem>
                     <FormLabel>Chauffeur</FormLabel>
                     <Select
-                      modal={false}
                       onValueChange={field.onChange}
-                      value={field.value}
+                      value={field.value || undefined}
+                      disabled={drivers.length === 0}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger aria-label="Sélectionner un chauffeur">
                           <SelectValue placeholder="Sélectionnez un chauffeur" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent position="popper" sideOffset={4}>
                         {drivers.length === 0 ? (
-                          <div className="p-2 text-sm text-muted-foreground text-center">
-                            Aucun chauffeur dans cette flotte
+                          <div className="space-y-2 p-3 text-center text-sm text-muted-foreground">
+                            <p>Aucun chauffeur actif dans cette flotte.</p>
+                            <p>
+                              Ajoutez un membre avec le rôle{" "}
+                              <strong className="text-foreground">Chauffeur</strong> dans{" "}
+                              <Link
+                                to="/dashboard/teams"
+                                className="text-primary underline-offset-4 hover:underline"
+                                onClick={() => onOpenChange(false)}
+                              >
+                                Équipe
+                              </Link>
+                              .
+                            </p>
                           </div>
                         ) : (
                           drivers.map((driver) => (
                             <SelectItem
                               key={driver.user_id}
                               value={driver.user_id}
+                              textValue={formatDriverLabel(driver.full_name, driver.phone)}
                             >
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                <span>
-                                  {driver.full_name || "Sans nom"}
-                                </span>
-                                {driver.phone && (
-                                  <span className="text-muted-foreground text-xs">
-                                    ({driver.phone})
-                                  </span>
-                                )}
-                              </div>
+                              {formatDriverLabel(driver.full_name, driver.phone)}
                             </SelectItem>
                           ))
                         )}
@@ -215,7 +223,7 @@ export function AssignmentFormDialog({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={assignVehicle.isPending}
+                  disabled={assignVehicle.isPending || drivers.length === 0}
                 >
                   {assignVehicle.isPending && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
