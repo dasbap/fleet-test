@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import { Incident, useCreateMaintenanceFromIncident } from "@/hooks/useIncidents
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { SignedStorageLink } from "@/components/storage/SignedStorageLink";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 interface IncidentDetailsDialogProps {
   open: boolean;
@@ -45,19 +47,26 @@ const IncidentDetailsDialog = ({
   onSuccess,
   canCreateMaintenance = false,
 }: IncidentDetailsDialogProps) => {
+  const navigate = useNavigate();
   const createMaintenance = useCreateMaintenanceFromIncident();
   const [notes, setNotes] = useState("");
 
   const handleCreateMaintenance = async () => {
     if (!incident.vehicle?.fleet_id) return;
-    
-    await createMaintenance.mutateAsync({
-      incident_id: incident.id,
-      vehicle_id: incident.vehicle_id,
-      fleet_id: incident.vehicle.fleet_id,
-      priority: incident.severity,
-    });
-    onSuccess();
+
+    try {
+      await createMaintenance.mutateAsync({
+        incident_id: incident.id,
+        vehicle_id: incident.vehicle_id,
+        fleet_id: incident.vehicle.fleet_id,
+        priority: incident.severity,
+        notes: notes.trim() || undefined,
+      });
+      onSuccess();
+      navigate(ROUTE_PATHS.dashboardMaintenance);
+    } catch {
+      // Toast géré par le hook
+    }
   };
 
   return (

@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { formatPostgrestError, mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
 
 export type JobStatus = 'queued' | 'in_progress' | 'ready' | 'blocked';
 export type Priority = 'low' | 'medium' | 'high' | 'critical';
@@ -83,17 +84,49 @@ export interface DashboardMaintenanceWindowOptions {
  * Repository pour l'accès aux données des travaux de maintenance
  */
 export class MaintenanceRepository {
+  private static readonly jobSelect = `
+    *,
+    vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
+    incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
+  `;
+
+  private throwRepositoryError(context: string, error: unknown): never {
+    console.error(context, error);
+    throw new Error(mapSupabaseErrorToFrench(formatPostgrestError(error)));
+  }
+
+  /**
+   * Dernière intervention liée à un incident (création idempotente).
+   */
+  async findLatestByIncidentId(
+    incidentId: string,
+    fleetId: string,
+  ): Promise<MaintenanceJob | null> {
+    const { data, error } = await supabase
+      .from('travaux_maintenance')
+      .select(MaintenanceRepository.jobSelect)
+      .eq('created_from_incident_id', incidentId)
+      .eq('fleet_id', fleetId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      this.throwRepositoryError('Error fetching maintenance by incident:', error);
+    }
+
+    return (data as MaintenanceJob | null) ?? null;
+  }
   /**
    * Récupère tous les travaux de maintenance avec filtres
    */
   async findAll(filters?: MaintenanceJobFilters): Promise<MaintenanceJob[]> {
     let query = supabase
       .from('travaux_maintenance')
-      .select(`
-        *,
-        vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
-        incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
-      `)
+      .select(MaintenanceRepository.jobSelect)
       .order('created_at', { ascending: false });
 
     if (filters?.fleet_id) {
@@ -223,53 +256,61 @@ export class MaintenanceRepository {
   async findById(id: string): Promise<MaintenanceJob | null> {
     const { data, error } = await supabase
       .from('travaux_maintenance')
-      .select(`
-        *,
-        vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
-        incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
-      `)
+      .select(MaintenanceRepository.jobSelect)
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       if (error.code === 'PGRST116') {
         return null;
       }
-      console.error('Error fetching maintenance job:', error);
-      throw new Error(error.message);
+      this.throwRepositoryError('Error fetching maintenance job:', error);
     }
 
-    return data as MaintenanceJob;
+    return (data as MaintenanceJob | null) ?? null;
   }
 
   /**
    * Crée un nouveau travail de maintenance
    */
   async create(job: MaintenanceJobInsert): Promise<MaintenanceJob> {
-    const { data, error } = await supabase
-      .from('travaux_maintenance')
-      .insert({
-        vehicle_id: job.vehicle_id,
-        fleet_id: job.fleet_id,
-        created_from_incident_id: job.created_from_incident_id || null,
-        priority: job.priority || 'medium',
-        status: job.status || 'queued',
-        notes: job.notes || null,
-        planned_at: job.planned_at || null,
-        parts: job.parts || null,
-      })
-      .select(`
-        *,
-        vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model, fleet_id)
-      `)
-      .single();
+    const payload = {
+      vehicle_id: job.vehicle_id,
+      fleet_id: job.fleet_id,
+      created_from_incident_id: job.created_from_incident_id || null,
+      priority: job.priority || 'medium',
+      status: job.status || 'queued',
+      notes: job.notes || null,
+      planned_at: job.planned_at || null,
+      parts: job.parts || null,
+    };
 
-    if (error) {
-      console.error('Error creating maintenance job:', error);
-      throw new Error(error.message);
+    const { data: inserted, error: insertError } = await supabase
+      .from('travaux_maintenance')
+      .insert(payload)
+      .select('id')
+      .maybeSingle();
+
+    if (insertError) {
+      this.throwRepositoryError('Error creating maintenance job:', insertError);
     }
 
-    return data as MaintenanceJob;
+    if (inserted?.id) {
+      const full = await this.findById(inserted.id);
+      if (full) return full;
+    }
+
+    if (job.created_from_incident_id) {
+      const recovered = await this.findLatestByIncidentId(
+        job.created_from_incident_id,
+        job.fleet_id,
+      );
+      if (recovered) return recovered;
+    }
+
+    throw new Error(
+      'Intervention enregistrée mais la confirmation a échoué. Consultez la page Maintenance.',
+    );
   }
 
   /**

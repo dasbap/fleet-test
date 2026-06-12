@@ -122,7 +122,8 @@ export class MaintenanceService {
     incidentId: string,
     vehicleId: string,
     fleetId: string,
-    priority?: Priority
+    priority?: Priority,
+    notes?: string | null,
   ): Promise<MaintenanceJob> {
     if (!incidentId) {
       throw new Error('L\'ID de l\'incident est requis');
@@ -136,12 +137,18 @@ export class MaintenanceService {
       throw new Error('L\'ID de la flotte est requis');
     }
 
+    const existing = await this.repository.findLatestByIncidentId(incidentId, fleetId);
+    if (existing && (existing.status === 'queued' || existing.status === 'in_progress')) {
+      return existing;
+    }
+
     return this.createMaintenanceJob({
       vehicle_id: vehicleId,
       fleet_id: fleetId,
       created_from_incident_id: incidentId,
       priority: priority || 'medium',
       status: 'queued',
+      notes: notes?.trim() || null,
     });
   }
 
