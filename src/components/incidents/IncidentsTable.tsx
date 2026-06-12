@@ -15,9 +15,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Wrench, Eye, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Incident, useCreateMaintenanceFromIncident } from "@/hooks/useIncidents";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 interface IncidentsTableProps {
   incidents: Incident[];
@@ -41,19 +43,25 @@ const IncidentsTable = ({
   onViewDetails,
   canCreateMaintenance = false,
 }: IncidentsTableProps) => {
+  const navigate = useNavigate();
   const createMaintenance = useCreateMaintenanceFromIncident();
 
   const handleCreateMaintenance = async (incident: Incident) => {
     const fleetId = incident.vehicle?.fleet_id;
     if (!fleetId) return;
 
-    await createMaintenance.mutateAsync({
-      incident_id: incident.id,
-      vehicle_id: incident.vehicle_id,
-      fleet_id: fleetId,
-      priority: incident.severity,
-    });
-    onRefresh();
+    try {
+      await createMaintenance.mutateAsync({
+        incident_id: incident.id,
+        vehicle_id: incident.vehicle_id,
+        fleet_id: fleetId,
+        priority: incident.severity,
+      });
+      onRefresh();
+      navigate(ROUTE_PATHS.dashboardMaintenance);
+    } catch {
+      // Toast géré par le hook
+    }
   };
 
   if (isLoading) {
@@ -144,7 +152,10 @@ const IncidentsTable = ({
                       Voir détails
                     </DropdownMenuItem>
                     {canCreateMaintenance && incident.vehicle?.fleet_id && (
-                      <DropdownMenuItem onSelect={() => void handleCreateMaintenance(incident)}>
+                      <DropdownMenuItem
+                        disabled={createMaintenance.isPending}
+                        onSelect={() => void handleCreateMaintenance(incident)}
+                      >
                         <Plus className="mr-2 h-4 w-4" />
                         Créer intervention
                       </DropdownMenuItem>

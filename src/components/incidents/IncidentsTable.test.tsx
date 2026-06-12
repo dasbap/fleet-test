@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import IncidentsTable from "./IncidentsTable";
 import type { Incident } from "@/hooks/useIncidents";
 
@@ -46,12 +47,14 @@ describe("IncidentsTable", () => {
     const onViewDetails = vi.fn();
 
     render(
-      <IncidentsTable
-        incidents={[sampleIncident]}
-        isLoading={false}
-        onRefresh={vi.fn()}
-        onViewDetails={onViewDetails}
-      />,
+      <MemoryRouter>
+        <IncidentsTable
+          incidents={[sampleIncident]}
+          isLoading={false}
+          onRefresh={vi.fn()}
+          onViewDetails={onViewDetails}
+        />
+      </MemoryRouter>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /crevaison pneu avant droit/i }));
