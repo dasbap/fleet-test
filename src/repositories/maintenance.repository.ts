@@ -260,8 +260,7 @@ export class MaintenanceRepository {
       })
       .select(`
         *,
-        vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
-        incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
+        vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model, fleet_id)
       `)
       .single();
 
