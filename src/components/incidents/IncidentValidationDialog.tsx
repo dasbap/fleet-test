@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -13,6 +14,7 @@ import { AlertTriangle, Wrench, Car } from "lucide-react";
 import { Incident, useCreateMaintenanceFromIncident } from "@/hooks/useIncidents";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { SignedStorageLink } from "@/components/storage/SignedStorageLink";
 
 interface IncidentDetailsDialogProps {
   open: boolean;
@@ -27,6 +29,13 @@ const severityConfig = {
   medium: { label: "Moyen", variant: "outline" as const },
   high: { label: "Élevé", variant: "default" as const },
   critical: { label: "Critique", variant: "destructive" as const },
+};
+
+const statusLabels: Record<Incident["status"], string> = {
+  open: "Ouvert",
+  investigating: "En cours",
+  resolved: "Résolu",
+  closed: "Clôturé",
 };
 
 const IncidentDetailsDialog = ({
@@ -59,6 +68,9 @@ const IncidentDetailsDialog = ({
             <AlertTriangle className="w-5 h-5 text-primary" />
             Détails de l'incident
           </DialogTitle>
+          <DialogDescription>
+            Consultez le signalement et créez une intervention si nécessaire.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -80,7 +92,7 @@ const IncidentDetailsDialog = ({
               <p className="text-sm">{incident.description}</p>
             </div>
 
-            <div className="flex items-center gap-4 text-sm pt-2 border-t">
+            <div className="flex items-center gap-4 text-sm pt-2 border-t flex-wrap">
               <div>
                 <span className="text-muted-foreground">Signalé par: </span>
                 <span>{incident.driver?.full_name || "Inconnu"}</span>
@@ -93,19 +105,26 @@ const IncidentDetailsDialog = ({
                   })}
                 </span>
               </div>
+              <div>
+                <span className="text-muted-foreground">Statut: </span>
+                <span>{statusLabels[incident.status]}</span>
+              </div>
             </div>
+
+            {incident.latitude != null && incident.longitude != null && (
+              <div className="text-sm font-mono">
+                <span className="text-muted-foreground">Position: </span>
+                {incident.latitude.toFixed(5)}, {incident.longitude.toFixed(5)}
+              </div>
+            )}
 
             {incident.evidence_path && (
               <div className="text-sm">
                 <span className="text-muted-foreground">Preuve: </span>
-                <a 
-                  href={incident.evidence_path} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Voir le fichier
-                </a>
+                <SignedStorageLink
+                  bucket="incident-evidence"
+                  pathOrUrl={incident.evidence_path}
+                />
               </div>
             )}
           </div>
