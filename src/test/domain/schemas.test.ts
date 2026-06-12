@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { incidentCreateSchema, incidentDeclarationFormSchema } from '@/domain/schemas/incident.schema';
+import { incidentCreateSchema, incidentDeclarationFormSchema, incidentReportFormSchema } from '@/domain/schemas/incident.schema';
 import { vehicleInsertSchema, vehicleCreateFormSchema } from '@/domain/schemas/vehicle.schema';
 import {
   shiftClosureInsertSchema,
@@ -31,6 +31,33 @@ describe('incidentCreateSchema', () => {
     expect(() =>
       parseSchemaOrThrow(incidentCreateSchema, { ...base, latitude: 3.8 }),
     ).toThrow(/ensemble/);
+  });
+});
+
+describe('incidentReportFormSchema', () => {
+  it('rejette une description trop courte avant envoi API', () => {
+    const result = incidentReportFormSchema.safeParse({
+      vehicle_id: 'v1',
+      severity: 'medium',
+      description: 'vvvvvv',
+      attachGeo: false,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.message.includes('10 caractères'))).toBe(
+        true,
+      );
+    }
+  });
+
+  it('accepte un signalement minimal valide', () => {
+    const result = incidentReportFormSchema.safeParse({
+      vehicle_id: 'v1',
+      severity: 'high',
+      description: 'Crevaison pneu avant droit',
+      attachGeo: true,
+    });
+    expect(result.success).toBe(true);
   });
 });
 
