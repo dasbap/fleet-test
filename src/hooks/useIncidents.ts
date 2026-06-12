@@ -276,13 +276,21 @@ export function useCreateMaintenanceFromIncident() {
       vehicle_id,
       fleet_id,
       priority,
+      notes,
     }: {
       incident_id: string;
       vehicle_id: string;
       fleet_id: string;
       priority?: 'low' | 'medium' | 'high' | 'critical';
+      notes?: string | null;
     }) => {
-      return maintenanceService.createFromIncident(incident_id, vehicle_id, fleet_id, priority);
+      return maintenanceService.createFromIncident(
+        incident_id,
+        vehicle_id,
+        fleet_id,
+        priority,
+        notes,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incidents'] });
