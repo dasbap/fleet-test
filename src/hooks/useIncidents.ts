@@ -102,6 +102,7 @@ export function useIncidents(fleetId?: string) {
   return useQuery({
     queryKey: ['incidents', fleetId],
     queryFn: () => incidentService.getIncidents(fleetId),
+    enabled: !!fleetId,
   });
 }
 
