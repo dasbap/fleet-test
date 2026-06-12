@@ -3,12 +3,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import IncidentsTable from "./IncidentsTable";
 import type { Incident } from "@/hooks/useIncidents";
 
-vi.mock("@/hooks/usePermissions", () => ({
-  usePermissions: () => ({
-    canCreateMaintenanceFromIncident: true,
-  }),
-}));
-
 vi.mock("@/hooks/useIncidents", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/hooks/useIncidents")>();
   return {
@@ -19,15 +13,6 @@ vi.mock("@/hooks/useIncidents", async (importOriginal) => {
     }),
   };
 });
-
-vi.mock("@/components/incidents/IncidentValidationDialog", () => ({
-  default: ({ open, incident }: { open: boolean; incident: Incident }) =>
-    open ? <div data-testid="incident-details">{incident.description}</div> : null,
-}));
-
-vi.mock("@/components/storage/SignedStorageLink", () => ({
-  SignedStorageLink: () => null,
-}));
 
 const sampleIncident: Incident = {
   id: "inc-1",
@@ -57,13 +42,20 @@ const sampleIncident: Incident = {
 };
 
 describe("IncidentsTable", () => {
-  it("ouvre le dialogue détails en cliquant la description", () => {
+  it("notifie le parent pour ouvrir les détails", () => {
+    const onViewDetails = vi.fn();
+
     render(
-      <IncidentsTable incidents={[sampleIncident]} isLoading={false} onRefresh={vi.fn()} />,
+      <IncidentsTable
+        incidents={[sampleIncident]}
+        isLoading={false}
+        onRefresh={vi.fn()}
+        onViewDetails={onViewDetails}
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /crevaison pneu avant droit/i }));
 
-    expect(screen.getByTestId("incident-details")).toBeInTheDocument();
+    expect(onViewDetails).toHaveBeenCalledWith(sampleIncident);
   });
 });
