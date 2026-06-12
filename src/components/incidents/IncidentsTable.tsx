@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Incident, useCreateMaintenanceFromIncident } from "@/hooks/useIncidents";
 import { usePermissions } from "@/hooks/usePermissions";
+import IncidentDetailsDialog from "@/components/incidents/IncidentValidationDialog";
 
 interface IncidentsTableProps {
   incidents: Incident[];
@@ -37,12 +38,13 @@ const severityConfig = {
 const IncidentsTable = ({ incidents, isLoading, onRefresh }: IncidentsTableProps) => {
   const createMaintenance = useCreateMaintenanceFromIncident();
   const { canCreateMaintenanceFromIncident } = usePermissions();
+  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
   const canCreateMaintenance = canCreateMaintenanceFromIncident;
 
   const handleCreateMaintenance = async (incident: Incident) => {
     if (!incident.vehicle?.fleet_id) return;
-    
+
     await createMaintenance.mutateAsync({
       incident_id: incident.id,
       vehicle_id: incident.vehicle_id,
@@ -75,80 +77,101 @@ const IncidentsTable = ({ incidents, isLoading, onRefresh }: IncidentsTableProps
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Description</TableHead>
-            <TableHead>Véhicule</TableHead>
-            <TableHead>Chauffeur</TableHead>
-            <TableHead>Sévérité</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead className="w-[100px]">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {incidents.map((incident) => (
-            <TableRow key={incident.id}>
-              <TableCell>
-                <div className="max-w-[250px]">
-                  <div className="font-medium truncate">{incident.description}</div>
-                  {incident.evidence_path && (
+    <>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Description</TableHead>
+              <TableHead>Véhicule</TableHead>
+              <TableHead>Chauffeur</TableHead>
+              <TableHead>Sévérité</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {incidents.map((incident) => (
+              <TableRow key={incident.id}>
+                <TableCell>
+                  <button
+                    type="button"
+                    className="max-w-[250px] text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                    onClick={() => setSelectedIncident(incident)}
+                  >
+                    <div className="font-medium truncate">{incident.description}</div>
+                    {incident.evidence_path && (
+                      <div className="text-xs text-muted-foreground">
+                        📎 Preuve jointe
+                      </div>
+                    )}
+                  </button>
+                </TableCell>
+                <TableCell>
+                  <div className="font-mono text-sm">
+                    {incident.vehicle?.registration || "N/A"}
+                  </div>
+                  {incident.vehicle?.brand && (
                     <div className="text-xs text-muted-foreground">
-                      📎 Preuve jointe
+                      {incident.vehicle.brand} {incident.vehicle.model}
                     </div>
                   )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="font-mono text-sm">
-                  {incident.vehicle?.registration || "N/A"}
-                </div>
-                {incident.vehicle?.brand && (
-                  <div className="text-xs text-muted-foreground">
-                    {incident.vehicle.brand} {incident.vehicle.model}
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm">
+                    {incident.driver?.full_name || "Inconnu"}
                   </div>
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="text-sm">
-                  {incident.driver?.full_name || "Inconnu"}
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant={severityConfig[incident.severity].variant}>
-                  {severityConfig[incident.severity].label}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {format(new Date(incident.created_at), "dd MMM yyyy", { locale: fr })}
-              </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Voir détails
-                    </DropdownMenuItem>
-                    {canCreateMaintenance && incident.vehicle?.fleet_id && (
-                      <DropdownMenuItem onClick={() => handleCreateMaintenance(incident)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Créer intervention
+                </TableCell>
+                <TableCell>
+                  <Badge variant={severityConfig[incident.severity].variant}>
+                    {severityConfig[incident.severity].label}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {format(new Date(incident.created_at), "dd MMM yyyy", { locale: fr })}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" aria-label="Actions incident">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setSelectedIncident(incident)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Voir détails
                       </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+                      {canCreateMaintenance && incident.vehicle?.fleet_id && (
+                        <DropdownMenuItem onClick={() => handleCreateMaintenance(incident)}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Créer intervention
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {selectedIncident ? (
+        <IncidentDetailsDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedIncident(null);
+          }}
+          incident={selectedIncident}
+          onSuccess={() => {
+            setSelectedIncident(null);
+            onRefresh();
+          }}
+          canCreateMaintenance={canCreateMaintenance}
+        />
+      ) : null}
+    </>
   );
 };
 
