@@ -55,3 +55,17 @@ export const incidentDeclarationFormSchema = z.object({
 });
 
 export type IncidentDeclarationFormValues = z.infer<typeof incidentDeclarationFormSchema>;
+
+/** Dialogue « Signaler un incident » (dashboard /dashboard/incidents). */
+export const incidentReportFormSchema = z.object({
+  vehicle_id: z.string().min(1, 'Sélectionnez un véhicule'),
+  severity: incidentSeveritySchema,
+  description: z
+    .string()
+    .trim()
+    .min(10, 'Décrivez la situation (au moins 10 caractères)')
+    .max(4000, 'Texte trop long'),
+  attachGeo: z.boolean(),
+});
+
+export type IncidentReportFormValues = z.infer<typeof incidentReportFormSchema>;

@@ -71,17 +71,20 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
    * Récupère tous les incidents avec filtres optionnels
    */
   async findAll(filters?: IncidentFilters): Promise<Incident[]> {
+    const vehicleSelect = filters?.fleet_id
+      ? 'vehicle:vehicules!inner(id, registration, brand, model, fleet_id)'
+      : 'vehicle:vehicules(id, registration, brand, model, fleet_id)';
+
     let query = supabase
       .from('incidents')
       .select(`
         *,
-        vehicle:vehicules(id, registration, brand, model, fleet_id),
+        ${vehicleSelect},
         driver:profils!incidents_driver_user_id_fkey(user_id, full_name)
       `)
       .order('created_at', { ascending: false });
 
     if (filters?.fleet_id) {
-      // Filtrer via la relation vehicle
       query = query.eq('vehicle.fleet_id', filters.fleet_id);
     }
 
