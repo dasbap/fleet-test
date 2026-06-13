@@ -155,11 +155,15 @@ export class AssignmentRepository {
       })
       .eq('id', assignmentId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error ending assignment:', error);
       throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error('Affectation introuvable ou accès refusé');
     }
 
     return data as AssignmentRow;

@@ -112,9 +112,6 @@ export class MaintenanceRepository {
       .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       this.throwRepositoryError('Error fetching maintenance by incident:', error);
     }
 
@@ -261,9 +258,6 @@ export class MaintenanceRepository {
       .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       this.throwRepositoryError('Error fetching maintenance job:', error);
     }
 
@@ -326,11 +320,15 @@ export class MaintenanceRepository {
         vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model),
         incident:incidents!travaux_maintenance_created_from_incident_id_fkey(id, description, severity)
       `)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating maintenance job:', error);
       throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error('Intervention introuvable ou accès refusé');
     }
 
     return data as MaintenanceJob;

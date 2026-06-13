@@ -12,6 +12,14 @@ describe("mapPushDataToDeepLinkPayload", () => {
     ).toEqual({ esambaUrl: "esamba://alerts/abc" });
   });
 
+  it("accepte url comme alias esambaUrl", () => {
+    expect(
+      mapPushDataToDeepLinkPayload({
+        url: "https://www.e-samba.com/dashboard/alerts",
+      }),
+    ).toEqual({ esambaUrl: "https://www.e-samba.com/dashboard/alerts" });
+  });
+
   it("accepte internalPath", () => {
     expect(
       mapPushDataToDeepLinkPayload({

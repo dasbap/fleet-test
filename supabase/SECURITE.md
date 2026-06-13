@@ -13,6 +13,16 @@ Le rapport de sÃ©curitÃ© Supabase peut signaler : **Leaked Password Protecti
 
 Cela empÃªche lâ€™utilisation de mots de passe connus comme compromis (fuites de donnÃ©es externes). Ã€ activer sur **tous les environnements** (staging, production).
 
+## MFA (authentification à deux facteurs)
+
+Le Security Advisor peut signaler : **Insufficient MFA Options**.
+
+**Action manuelle** :
+
+1. Dashboard Supabase → **Authentication** → **MFA**.
+2. Activer au minimum **TOTP** (authenticator app).
+3. Enregistrer. Optionnel : imposer le MFA pour les rôles admin via les politiques Auth.
+
 ## Migrations de sÃ©curitÃ© (RLS et fonctions)
 
 Les migrations suivantes corrigent les alertes de sÃ©curitÃ© liÃ©es Ã  la RLS et au `search_path` des fonctions :
@@ -20,6 +30,8 @@ Les migrations suivantes corrigent les alertes de sÃ©curitÃ© liÃ©es Ã  l
 - `20250223100000_enable_rls_all_tables.sql` â€” Activation de la RLS sur toutes les tables concernÃ©es.
 - `20250223110000_fix_rls_policies_restrictive.sql` â€” Politiques restrictives (organisations, flottes, flotte_adhesions, preuves_maintenance).
 - `20250223120000_fix_functions_search_path.sql` â€” `SET search_path = public` sur les fonctions RPC et triggers concernÃ©s.
+- `20260612120000_security_advisor_batch4.sql` â€” `REVOKE EXECUTE FROM PUBLIC`, allowlist `anon`, grants `service_role`, `search_path`, `pg_trgm` → schéma `extensions`, RLS `demo_requests` / `help_search_events`.
+- `20260612130000_storage_buckets_private.sql` â€” buckets privés + policies fleet-scoped.
 
 AprÃ¨s dÃ©ploiement, vÃ©rifier dans le rapport de sÃ©curitÃ© Supabase que les alertes correspondantes ont disparu.
 

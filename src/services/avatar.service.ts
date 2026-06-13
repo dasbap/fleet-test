@@ -1,5 +1,7 @@
 import { AvatarRepository } from '@/repositories/avatar.repository';
+import { extractStorageObjectPath } from '@/lib/storage/signedUrl';
 
+const BUCKET = 'avatars';
 const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024; // 2 Mo
 
 export class AvatarService {
@@ -18,10 +20,23 @@ export class AvatarService {
     const filePath = `${userId}/${fileName}`;
 
     await this.repository.upload(filePath, file, true);
-    const publicUrl = this.repository.getPublicUrl(filePath);
-    if (!publicUrl) throw new Error("URL introuvable après l'upload");
+    await this.repository.updateUserAvatarPath(filePath);
 
-    await this.repository.updateUserAvatarUrl(publicUrl);
-    return publicUrl;
+    const signedUrl = await this.repository.getSignedUrl(filePath);
+    if (!signedUrl) throw new Error("URL introuvable après l'upload");
+
+    return signedUrl;
+  }
+
+  /** Résout avatar_url / avatar_path (ancien format URL ou chemin storage). */
+  async resolveAvatarDisplayUrl(
+    avatarUrlOrPath: string | null | undefined,
+  ): Promise<string | null> {
+    if (!avatarUrlOrPath?.trim()) return null;
+    const path = extractStorageObjectPath(BUCKET, avatarUrlOrPath);
+    if (!path && avatarUrlOrPath.startsWith('http')) {
+      return avatarUrlOrPath;
+    }
+    return this.repository.getSignedUrl(path || avatarUrlOrPath);
   }
 }

@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getSignedStorageUrl, invalidateSignedStorageUrl } from '@/lib/storage/signedUrl';
 
 const BUCKET = 'avatars';
 
@@ -6,21 +7,23 @@ export class AvatarRepository {
   async upload(path: string, file: File, upsert: boolean = true): Promise<void> {
     const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert });
     if (error) throw error;
+    invalidateSignedStorageUrl(BUCKET, path);
   }
 
-  getPublicUrl(path: string): string {
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    return data.publicUrl;
+  async getSignedUrl(path: string): Promise<string | null> {
+    return getSignedStorageUrl(BUCKET, path);
   }
 
   async remove(paths: string[]): Promise<void> {
     const { error } = await supabase.storage.from(BUCKET).remove(paths);
     if (error) throw error;
+    paths.forEach((p) => invalidateSignedStorageUrl(BUCKET, p));
   }
 
-  async updateUserAvatarUrl(avatarUrl: string): Promise<void> {
+  /** Persiste le chemin storage (pas l'URL publique) dans les métadonnées auth. */
+  async updateUserAvatarPath(storagePath: string): Promise<void> {
     const { error } = await supabase.auth.updateUser({
-      data: { avatar_url: avatarUrl },
+      data: { avatar_path: storagePath, avatar_url: storagePath },
     });
     if (error) throw error;
   }

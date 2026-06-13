@@ -49,7 +49,7 @@ export class FleetReportRepository {
       membersResult,
       scoresResult,
     ] = await Promise.all([
-      supabase.from('flottes').select('name').eq('id', fleetId).single(),
+      supabase.from('flottes').select('name').eq('id', fleetId).maybeSingle(),
       supabase
         .from('vehicules')
         .select('id, registration, status, current_km')

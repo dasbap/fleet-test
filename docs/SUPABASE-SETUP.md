@@ -154,6 +154,10 @@ vercel env add VITE_SUPABASE_ANON_KEY
 - [Documentation Supabase](https://supabase.com/docs)
 - [Guide RLS](https://supabase.com/docs/guides/auth/row-level-security)
 - [API Reference](https://supabase.com/docs/reference/javascript/introduction)
+- [Sync Edge Functions](supabase-edge-functions-sync.md) — inventaire dépôt ↔ prod, `npm run deploy:edge-functions`
+- [Checklist backups](supabase-backups-checklist.md) — revue dashboard prod
+- [Validation plan Pro](supabase-pro-validation.md) — secrets, OTP, Sentry, alertes
+- [Runbook monitoring](supabase-monitoring-runbook.md) — Sentry, advisors, alertes
 
 ## ⚠️ Notes importantes
 
