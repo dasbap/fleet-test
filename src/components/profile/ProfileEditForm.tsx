@@ -26,6 +26,7 @@ import { Loader2, Camera, Save } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { mapSupabaseErrorToFrench } from "@/lib/mapSupabaseError";
 import { useAvatarUpload } from "@/hooks/useAvatarUpload";
+import { useAvatarDisplayUrl } from "@/hooks/useAvatarDisplayUrl";
 
 const profileSchema = z.object({
   fullName: z
@@ -41,32 +42,23 @@ interface ProfileEditFormProps {
   onUpdate: () => void;
 }
 
-// Vérifie la validité d'une URL (sécuriser l'affichage)
-const sanitizeUrl = (url: string | null): string | undefined => {
-  if (!url) return undefined;
-  try {
-    const parsed = new URL(url);
-    // Autoriser seulement http/https
-    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
-      return url;
-    }
-  } catch {
-    return undefined;
-  }
-  return undefined;
-};
-
 const ProfileEditForm = ({ user, onUpdate }: ProfileEditFormProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(
-    user.user_metadata?.avatar_url || null
+  const metadataAvatar =
+    (user.user_metadata?.avatar_url as string | undefined) ?? null;
+  const [freshSignedAvatarUrl, setFreshSignedAvatarUrl] = useState<string | null>(
+    null,
   );
+  const { data: resolvedAvatarUrl } = useAvatarDisplayUrl(
+    freshSignedAvatarUrl ? undefined : metadataAvatar,
+  );
+  const avatarDisplaySrc = freshSignedAvatarUrl ?? resolvedAvatarUrl ?? undefined;
 
   const { isUploading: isUploadingAvatar, uploadAvatar } = useAvatarUpload(
     user,
     {
       onAvatarUpdated: (url) => {
-        setAvatarUrl(url);
+        setFreshSignedAvatarUrl(url);
         onUpdate();
       },
     }
@@ -86,11 +78,9 @@ const ProfileEditForm = ({ user, onUpdate }: ProfileEditFormProps) => {
       .toUpperCase()
       .slice(0, 2) || "U";
 
-  // Resynchroniser l'URL de l'avatar lorsque le user change (ex. après refreshUser)
   useEffect(() => {
-    const meta = user.user_metadata || {};
-    setAvatarUrl(meta.avatar_url || null);
-  }, [user]);
+    setFreshSignedAvatarUrl(null);
+  }, [user.id, metadataAvatar]);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -169,7 +159,7 @@ const ProfileEditForm = ({ user, onUpdate }: ProfileEditFormProps) => {
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <Avatar className="h-24 w-24 border-4 border-primary/20">
-              <AvatarImage src={sanitizeUrl(avatarUrl)} />
+              <AvatarImage src={avatarDisplaySrc} />
               <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
                 {initials}
               </AvatarFallback>

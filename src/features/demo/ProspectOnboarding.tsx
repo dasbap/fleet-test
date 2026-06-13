@@ -108,7 +108,7 @@ function useDemoProfile() {
           flottes:fleet_id ( name )
         `)
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       if (data) {
         setProfile({

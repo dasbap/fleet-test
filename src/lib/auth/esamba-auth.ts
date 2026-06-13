@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { clearBiometricLockStorage } from "@/services/biometric-lock.service";
+import { clearPushTokenOnLogout } from "@/services/push-notification.service";
 import type { AppRole, AuthUser, FleetMembership } from "@/types/auth";
 
 export type EsambaRole = AppRole | "admin";
@@ -115,6 +116,11 @@ export async function signOut() {
     await clearBiometricLockStorage();
   } catch {
     // Non bloquant: la déconnexion Supabase doit continuer même si le nettoyage local échoue.
+  }
+  try {
+    await clearPushTokenOnLogout();
+  } catch {
+    // Non bloquant : token push peut être absent ou déjà révoqué.
   }
   return supabase.auth.signOut();
 }

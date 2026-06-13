@@ -8,8 +8,19 @@ import type {
 } from "@capacitor/push-notifications";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { deepLinkService, type PushNotificationDeepLinkPayload } from "@/services/deep-link.service";
+import { NotificationRepository } from "@/repositories/notification.repository";
+import { NotificationService } from "@/services/notification.service";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { isNativePlatform } from "@/lib/platform";
+
+let logoutNotificationService: NotificationService | null = null;
+
+function getLogoutNotificationService(): NotificationService {
+  if (!logoutNotificationService) {
+    logoutNotificationService = new NotificationService(new NotificationRepository());
+  }
+  return logoutNotificationService;
+}
 
 const LOG_TAG = "[Flotte E-Samba][Push]";
 
@@ -68,7 +79,7 @@ function sanitizeInternalPath(path: string): string | null {
  * Priorité : `esambaUrl` / `internalPath`, puis `category` + identifiants.
  */
 export function mapPushDataToDeepLinkPayload(data: Record<string, string>): PushNotificationDeepLinkPayload | null {
-  const esambaUrl = pickString(data, "esambaUrl", "esamba_url", "deep_link", "deepLink");
+  const esambaUrl = pickString(data, "esambaUrl", "esamba_url", "deep_link", "deepLink", "url");
   if (esambaUrl) {
     return { esambaUrl };
   }
@@ -290,3 +301,18 @@ export class PushNotificationService {
 }
 
 export const pushNotificationService = new PushNotificationService();
+
+/**
+ * Désactive le token FCM courant en base avant déconnexion (équivalent `clearFcmToken` RN).
+ * Non bloquant : les erreurs sont ignorées pour ne pas empêcher `signOut`.
+ */
+export async function clearPushTokenOnLogout(): Promise<void> {
+  const token = pushNotificationService.getLastToken();
+  if (!token) return;
+
+  try {
+    await getLogoutNotificationService().disableDeviceToken(token);
+  } catch {
+    // Non bloquant : la déconnexion Supabase doit continuer.
+  }
+}

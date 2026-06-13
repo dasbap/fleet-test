@@ -5,6 +5,7 @@ import { Mail, Shield, Calendar } from "lucide-react";
 import { getRoleLabel, getRoleBadgeClass } from "@/lib/roleUtils";
 import type { AppRole } from "@/hooks/useAuth";
 import type { User } from "@supabase/supabase-js";
+import { useAvatarDisplayUrl } from "@/hooks/useAvatarDisplayUrl";
 
 interface ProfileHeaderProps {
   user: User;
@@ -25,13 +26,17 @@ export default function ProfileHeader({
   createdAt,
 }: ProfileHeaderProps) {
   const userMetadata = user.user_metadata || {};
+  const avatarSource =
+    (userMetadata.avatar_path as string | undefined) ??
+    (userMetadata.avatar_url as string | undefined);
+  const { data: avatarDisplayUrl } = useAvatarDisplayUrl(avatarSource);
 
   return (
     <Card className="animate-fade-in border-border/80 shadow-sm">
       <CardContent className="pt-6 sm:pt-8">
         <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
           <Avatar className="h-24 w-24 border-4 border-primary/20 shadow-sm">
-            <AvatarImage src={userMetadata.avatar_url} />
+            <AvatarImage src={avatarDisplayUrl ?? undefined} />
             <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
               {initials}
             </AvatarFallback>

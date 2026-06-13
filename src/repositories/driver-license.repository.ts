@@ -85,10 +85,14 @@ export class DriverLicenseRepository {
       .update(updates)
       .eq('id', id)
       .select('*')
-      .single();
+      .maybeSingle();
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error('Permis introuvable ou accès refusé');
     }
 
     return data as DriverLicense;

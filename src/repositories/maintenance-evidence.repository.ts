@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getSignedStorageUrl, invalidateSignedStorageUrl } from '@/lib/storage/signedUrl';
 
 const BUCKET = 'maintenance-evidence';
 
@@ -24,15 +25,16 @@ export class MaintenanceEvidenceRepository {
       }
       throw new Error(error.message);
     }
+    invalidateSignedStorageUrl(BUCKET, filePath);
   }
 
-  getPublicUrl(filePath: string): string {
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
-    return data.publicUrl;
+  async getSignedUrl(pathOrUrl: string): Promise<string | null> {
+    return getSignedStorageUrl(BUCKET, pathOrUrl);
   }
 
   async removeFromStorage(paths: string[]): Promise<void> {
     await supabase.storage.from(BUCKET).remove(paths);
+    paths.forEach((p) => invalidateSignedStorageUrl(BUCKET, p));
   }
 
   async insertEvidence(job_id: string, kind: string, file_path: string, created_by: string): Promise<MaintenanceEvidenceRow> {

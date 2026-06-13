@@ -233,17 +233,14 @@ export class DriverShiftRepository {
         )
       `)
       .eq('id', shiftId)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       console.error('Error fetching shift:', error);
       throw new Error(error.message);
     }
 
-    return data as DriverShift;
+    return (data as DriverShift | null) ?? null;
   }
 
   /**
@@ -327,7 +324,7 @@ export class DriverShiftRepository {
         )
       `)
       .eq('id', shiftId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching vehicle ID:', error);
@@ -351,9 +348,6 @@ export class DriverShiftRepository {
       .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       console.error('Error fetching closure by shift:', error);
       throw new Error(error.message);
     }
@@ -413,11 +407,15 @@ export class DriverShiftRepository {
       .update(updates)
       .eq('id', closureId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating closure:', error);
       throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error('Clôture introuvable ou accès refusé');
     }
 
     return data as ShiftClosure;

@@ -1,5 +1,8 @@
 import { MaintenanceEvidenceRepository } from '@/repositories/maintenance-evidence.repository';
 import type { MaintenanceEvidenceRow } from '@/repositories/maintenance-evidence.repository';
+import { extractStorageObjectPath } from '@/lib/storage/signedUrl';
+
+const BUCKET = 'maintenance-evidence';
 
 export interface UploadEvidenceInput {
   job_id: string;
@@ -18,20 +21,23 @@ export class MaintenanceEvidenceService {
     const filePath = `maintenance/${fileName}`;
 
     await this.repository.uploadFile(filePath, file, false);
-    const publicUrl = this.repository.getPublicUrl(filePath);
 
     try {
-      return await this.repository.insertEvidence(job_id, kind, publicUrl, created_by);
+      return await this.repository.insertEvidence(job_id, kind, filePath, created_by);
     } catch (err) {
       await this.repository.removeFromStorage([filePath]);
       throw err;
     }
   }
 
+  async resolveDisplayUrl(pathOrUrl: string): Promise<string | null> {
+    return this.repository.getSignedUrl(pathOrUrl);
+  }
+
   async deleteEvidence(id: string, file_path: string, job_id: string): Promise<{ id: string; job_id: string }> {
-    const urlParts = file_path.split('/maintenance-evidence/');
-    if (urlParts.length > 1) {
-      await this.repository.removeFromStorage([urlParts[1]]);
+    const objectPath = extractStorageObjectPath(BUCKET, file_path) || file_path;
+    if (objectPath) {
+      await this.repository.removeFromStorage([objectPath]);
     }
     await this.repository.deleteEvidence(id);
     return { id, job_id };

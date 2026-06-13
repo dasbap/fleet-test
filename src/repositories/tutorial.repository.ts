@@ -4,6 +4,7 @@ import {
   type TutorialCatalogSeed,
 } from "@/data/tutorials/catalog.seed";
 import { resolveThumbPath } from "@/features/tutorials/lib/tutorialStorageAssets";
+import { getSignedStorageUrl } from "@/lib/storage/signedUrl";
 
 export type TutorialProvider = "storage" | "youtube" | "vimeo";
 
@@ -54,12 +55,15 @@ interface TutorialRow {
 }
 
 const BUCKET = "tutorials";
+const VIDEO_SIGNED_TTL = 86_400;
+const THUMB_SIGNED_TTL = 3_600;
 
-function storagePublicUrl(path: string): string {
-  return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+async function resolveStorageSignedUrl(path: string, ttlSeconds: number): Promise<string> {
+  const signed = await getSignedStorageUrl(BUCKET, path, ttlSeconds);
+  return signed ?? "";
 }
 
-function mapSeedToItem(seed: TutorialCatalogSeed): TutorialItem {
+function mapSeedToItemBase(seed: TutorialCatalogSeed): TutorialItem {
   return {
     id: seed.id,
     slug: seed.slug,
@@ -70,11 +74,8 @@ function mapSeedToItem(seed: TutorialCatalogSeed): TutorialItem {
     categorySlug: seed.categorySlug,
     categoryLabel: seed.categoryLabelFr,
     provider: seed.provider,
-    videoUrl:
-      seed.provider === "storage"
-        ? storagePublicUrl(seed.videoPath)
-        : seed.externalUrl ?? storagePublicUrl(seed.videoPath),
-    thumbUrl: storagePublicUrl(resolveThumbPath(seed.slug, seed.thumbPath)),
+    videoUrl: seed.provider === "storage" ? seed.videoPath : seed.externalUrl ?? seed.videoPath,
+    thumbUrl: resolveThumbPath(seed.slug, seed.thumbPath),
     videoPath: seed.videoPath,
     externalUrl: seed.externalUrl,
     tags: seed.tags,
@@ -84,7 +85,21 @@ function mapSeedToItem(seed: TutorialCatalogSeed): TutorialItem {
   };
 }
 
-function mapRowToItem(row: TutorialRow): TutorialItem {
+async function enrichSeedItem(item: TutorialItem): Promise<TutorialItem> {
+  if (item.provider === "storage") {
+    const videoUrl = item.videoPath
+      ? await resolveStorageSignedUrl(item.videoPath, VIDEO_SIGNED_TTL)
+      : item.videoUrl;
+    const thumbUrl = await resolveStorageSignedUrl(
+      resolveThumbPath(item.slug, item.thumbUrl),
+      THUMB_SIGNED_TTL,
+    );
+    return { ...item, videoUrl, thumbUrl };
+  }
+  return item;
+}
+
+function mapRowToItemBase(row: TutorialRow): TutorialItem {
   const categorySlug = row.tutorial_categories?.slug ?? "parametres";
   const categoryLabel = row.tutorial_categories?.label_fr ?? "Paramètres";
   const videoPath = row.video_path;
@@ -93,8 +108,8 @@ function mapRowToItem(row: TutorialRow): TutorialItem {
 
   const videoUrl =
     provider === "storage" && videoPath
-      ? storagePublicUrl(videoPath)
-      : row.external_url ?? (videoPath ? storagePublicUrl(videoPath) : "");
+      ? videoPath
+      : row.external_url ?? videoPath ?? "";
 
   return {
     id: row.slug,
@@ -107,7 +122,7 @@ function mapRowToItem(row: TutorialRow): TutorialItem {
     categoryLabel,
     provider,
     videoUrl,
-    thumbUrl: storagePublicUrl(thumbPath),
+    thumbUrl: thumbPath,
     videoPath,
     externalUrl: row.external_url,
     tags: row.tags ?? [],
@@ -117,11 +132,23 @@ function mapRowToItem(row: TutorialRow): TutorialItem {
   };
 }
 
+async function enrichRowItem(item: TutorialItem): Promise<TutorialItem> {
+  if (item.provider === "storage") {
+    const videoUrl = item.videoPath
+      ? await resolveStorageSignedUrl(item.videoPath, VIDEO_SIGNED_TTL)
+      : item.videoUrl;
+    const thumbUrl = await resolveStorageSignedUrl(item.thumbUrl, THUMB_SIGNED_TTL);
+    return { ...item, videoUrl, thumbUrl };
+  }
+  return item;
+}
+
 export class TutorialRepository {
-  listFromSeed(): TutorialItem[] {
-    return TUTORIAL_CATALOG_SEEDS.map(mapSeedToItem).sort(
+  async listFromSeed(): Promise<TutorialItem[]> {
+    const base = TUTORIAL_CATALOG_SEEDS.map(mapSeedToItemBase).sort(
       (a, b) => a.sortOrder - b.sortOrder,
     );
+    return Promise.all(base.map(enrichSeedItem));
   }
 
   async findAllFromDb(limit = 50, offset = 0): Promise<TutorialItem[]> {
@@ -154,7 +181,8 @@ export class TutorialRepository {
       return [];
     }
 
-    return ((data ?? []) as TutorialRow[]).map(mapRowToItem);
+    const items = ((data ?? []) as TutorialRow[]).map(mapRowToItemBase);
+    return Promise.all(items.map(enrichRowItem));
   }
 
   async findAll(limit = 50, offset = 0): Promise<TutorialItem[]> {
@@ -192,17 +220,19 @@ export class TutorialRepository {
       .maybeSingle();
 
     if (!error && data) {
-      return mapRowToItem(data as TutorialRow);
+      return enrichRowItem(mapRowToItemBase(data as TutorialRow));
     }
 
     const seed = TUTORIAL_CATALOG_SEEDS.find(
       (t) => t.id === normalized || t.slug === normalized,
     );
-    return seed ? mapSeedToItem(seed) : null;
+    return seed ? enrichSeedItem(mapSeedToItemBase(seed)) : null;
   }
 
   /** @deprecated Utiliser findAll — conservé pour compatibilité tests */
   list(): TutorialItem[] {
-    return this.listFromSeed();
+    return TUTORIAL_CATALOG_SEEDS.map(mapSeedToItemBase).sort(
+      (a, b) => a.sortOrder - b.sortOrder,
+    );
   }
 }

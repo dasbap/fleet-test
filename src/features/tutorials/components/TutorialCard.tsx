@@ -1,23 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Clock3, Play, Star, WifiOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
-import { thumbPathCandidates } from "@/features/tutorials/lib/tutorialStorageAssets";
-import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import type { TutorialWithUserState } from "@/services/tutorial.service";
 import { formatTutorialDuration } from "@/features/tutorials/lib/tutorialVideo";
-
-function buildThumbUrls(slug: string, primaryUrl: string): string[] {
-  const paths = thumbPathCandidates(slug);
-  const urls = paths.map(
-    (p) => supabase.storage.from("tutorials").getPublicUrl(p).data.publicUrl,
-  );
-  if (!urls.includes(primaryUrl)) urls.unshift(primaryUrl);
-  return urls;
-}
 
 export interface TutorialCardProps {
   tutorial: TutorialWithUserState;
@@ -31,15 +20,14 @@ export function TutorialCard({
   className,
 }: TutorialCardProps) {
   const detailPath = ROUTE_PATHS.dashboardTutorialDetail(tutorial.id);
-  const thumbCandidates = buildThumbUrls(tutorial.slug, tutorial.thumbUrl);
-  const [thumbIndex, setThumbIndex] = useState(0);
-  const thumbSrc = thumbCandidates[thumbIndex] ?? tutorial.thumbUrl;
+  const [thumbSrc, setThumbSrc] = useState(tutorial.thumbUrl);
+
+  useEffect(() => {
+    setThumbSrc(tutorial.thumbUrl);
+  }, [tutorial.thumbUrl]);
 
   const handleThumbError = () => {
-    setThumbIndex((i) => {
-      if (i + 1 < thumbCandidates.length) return i + 1;
-      return i;
-    });
+    setThumbSrc("");
   };
 
   return (

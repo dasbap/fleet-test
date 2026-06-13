@@ -130,17 +130,14 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
         driver:profils!incidents_driver_user_id_fkey(user_id, full_name)
       `)
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       console.error('Error fetching incident:', error);
       throw new Error(error.message);
     }
 
-    return data as Incident;
+    return (data ?? null) as Incident | null;
   }
 
   /**
@@ -196,11 +193,15 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
         vehicle:vehicules(id, registration, brand, model, fleet_id),
         driver:profils!incidents_driver_user_id_fkey(user_id, full_name)
       `)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating incident:', error);
       throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error('Incident introuvable ou accès refusé');
     }
 
     return data as Incident;

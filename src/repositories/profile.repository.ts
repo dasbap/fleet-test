@@ -17,10 +17,9 @@ export class ProfileRepository {
       .from('profils')
       .select('full_name')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') return null;
       console.error('Error fetching profile:', error);
       throw new Error(error.message);
     }

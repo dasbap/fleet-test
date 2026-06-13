@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TutorialRepository } from "@/repositories/tutorial.repository";
 import { TutorialService } from "@/services/tutorial.service";
 import { TUTORIAL_CATALOG_SEEDS } from "@/data/tutorials/catalog.seed";
+
+vi.mock("@/lib/storage/signedUrl", () => ({
+  getSignedStorageUrl: vi.fn(async (_bucket: string, path: string) => `https://signed.test/${path}`),
+  extractStorageObjectPath: vi.fn((_: string, stored: string) => stored),
+  invalidateSignedStorageUrl: vi.fn(),
+}));
 
 describe("TutorialService", () => {
   const repository = new TutorialRepository();
@@ -11,7 +17,7 @@ describe("TutorialService", () => {
     const items = await service.getTutorials();
     expect(items.length).toBe(TUTORIAL_CATALOG_SEEDS.length);
     expect(items[0]?.title).toBe("Ouvrir un créneau");
-    expect(items[0]?.thumbUrl).toContain("tuto-01.svg");
+    expect(items[0]?.thumbUrl).toContain("thumbs/tuto-01.svg");
   });
 
   it("rejette un id vide", async () => {
@@ -26,7 +32,7 @@ describe("TutorialService", () => {
   });
 
   it("fusionne progression et favoris", () => {
-    const items = repository.listFromSeed();
+    const items = repository.list();
     const merged = service.mergeUserState(
       items,
       { "tuto-01": { position_sec: 30, completed_at: "2026-01-01T00:00:00Z" } },

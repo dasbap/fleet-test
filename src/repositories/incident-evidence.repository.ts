@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getSignedStorageUrl, invalidateSignedStorageUrl } from "@/lib/storage/signedUrl";
 
 const BUCKET = "incident-evidence";
 
@@ -12,11 +13,11 @@ function parseDataUrl(dataUrl: string): { base64: string; mimeType: string } {
 }
 
 /**
- * Stockage des photos d’incident (bucket public Supabase).
+ * Stockage des photos d'incident (bucket privé, URLs signées à l'affichage).
  */
 export class IncidentEvidenceRepository {
   /**
-   * Téléverse une image et retourne l’URL publique à persister dans `incidents.evidence_path`.
+   * Téléverse une image et retourne le chemin objet à persister dans incidents.evidence_path.
    */
   async uploadFromDataUrl(
     fleetId: string,
@@ -47,7 +48,11 @@ export class IncidentEvidenceRepository {
       throw new Error(error.message);
     }
 
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(objectPath);
-    return data.publicUrl;
+    invalidateSignedStorageUrl(BUCKET, objectPath);
+    return objectPath;
+  }
+
+  async getSignedUrl(pathOrUrl: string): Promise<string | null> {
+    return getSignedStorageUrl(BUCKET, pathOrUrl);
   }
 }
