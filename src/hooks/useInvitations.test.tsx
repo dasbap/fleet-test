@@ -11,7 +11,7 @@
  * Flux de chaîne Supabase mockée :
  * - findAll : from().select().order().eq() → eq résout
  * - create : from().insert().select().single() → single résout
- * - delete : findById (from().select().eq().single) puis from().delete().eq() → eq résout
+ * - delete : findById (from().select().eq().maybeSingle) puis from().delete().eq() → eq résout
  *
  * Les tests couvrent :
  *   - Lecture d’invitations (useInvitations)
@@ -34,6 +34,7 @@ const fromChain = {
   insert: vi.fn().mockReturnThis(),
   delete: vi.fn().mockReturnThis(),
   single: vi.fn(),
+  maybeSingle: vi.fn(),
 };
 const fromMock = vi.fn((_table: string) => fromChain);
 const getUserMock = vi.fn();
@@ -278,11 +279,11 @@ describe("useDeleteInvitation", () => {
     fromChain.select.mockReturnValue(fromChain);
     fromChain.order.mockReturnValue(fromChain);
     fromChain.delete.mockReturnValue(fromChain);
-    // Service appelle findById puis delete : 1) findById = from().select().eq().single() ; 2) delete = from().delete().eq()
+    // Service appelle findById puis delete : 1) findById = from().select().eq().maybeSingle() ; 2) delete = from().delete().eq()
     fromChain.eq
       .mockReturnValueOnce(fromChain)
       .mockResolvedValueOnce({ data: null, error: null });
-    fromChain.single.mockResolvedValue({ data: invitationToDelete, error: null });
+    fromChain.maybeSingle.mockResolvedValue({ data: invitationToDelete, error: null });
   });
 
   afterEach(() => {
@@ -304,9 +305,9 @@ describe("useDeleteInvitation", () => {
   });
 
   it("throw si l'invitation est introuvable", async () => {
-    fromChain.single.mockResolvedValueOnce({
+    fromChain.maybeSingle.mockResolvedValueOnce({
       data: null,
-      error: { code: "PGRST116" },
+      error: null,
     });
 
     const { result } = renderHook(() => useDeleteInvitation(), {

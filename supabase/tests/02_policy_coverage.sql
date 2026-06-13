@@ -17,6 +17,8 @@ BEGIN
       'incidents',
       'travaux_maintenance',
       'preuves_maintenance',
+      'vehicle_documents',
+      'driver_licenses',
       'listes_verification_maintenance',
       'abonnements',
       'droits_vehicules',

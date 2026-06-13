@@ -3,6 +3,7 @@ import {
   getCurrentMemberships,
   getCurrentProfile,
   requireRole,
+  signOut,
 } from "@/lib/auth/esamba-auth";
 
 const {
@@ -20,6 +21,16 @@ const {
 vi.mock("@/services/biometric-lock.service", () => ({
   clearBiometricLockStorage: vi.fn().mockResolvedValue(undefined),
 }));
+
+const clearPushTokenOnLogoutMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
+vi.mock("@/services/push-notification.service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/push-notification.service")>();
+  return {
+    ...actual,
+    clearPushTokenOnLogout: clearPushTokenOnLogoutMock,
+  };
+});
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -136,6 +147,15 @@ describe("esamba-auth adapter", () => {
 
     expect(result.ok).toBe(false);
     expect(result.role).toBe("driver");
+  });
+
+  it("appelle clearPushTokenOnLogout avant signOut Supabase", async () => {
+    signOutMock.mockResolvedValue({ error: null });
+
+    await signOut();
+
+    expect(clearPushTokenOnLogoutMock).toHaveBeenCalledTimes(1);
+    expect(signOutMock).toHaveBeenCalledTimes(1);
   });
 
   it("retourne plusieurs flottes pour un organizer", async () => {

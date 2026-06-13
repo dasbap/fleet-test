@@ -89,17 +89,14 @@ export class InvitationRepository implements IRepository<FleetInvitation, Invita
         fleet:flottes(id, name)
       `)
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       console.error('Error fetching invitation:', error);
       throw new Error(error.message);
     }
 
-    return data as FleetInvitation;
+    return (data ?? null) as FleetInvitation | null;
   }
 
   /**
@@ -113,17 +110,14 @@ export class InvitationRepository implements IRepository<FleetInvitation, Invita
         fleet:flottes(id, name)
       `)
       .eq('code', code)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       console.error('Error fetching invitation by code:', error);
       throw new Error(error.message);
     }
 
-    return data as FleetInvitation;
+    return (data ?? null) as FleetInvitation | null;
   }
 
   /**
@@ -169,11 +163,15 @@ export class InvitationRepository implements IRepository<FleetInvitation, Invita
         *,
         fleet:flottes(id, name)
       `)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating invitation:', error);
       throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error('Invitation introuvable ou accès refusé');
     }
 
     return data as FleetInvitation;

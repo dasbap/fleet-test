@@ -46,8 +46,9 @@ export class GeofenceRepository {
       .update(input)
       .eq("id", id)
       .select()
-      .single();
+      .maybeSingle();
     if (error) throw new Error(error.message);
+    if (!data) throw new Error("Géofence introuvable ou accès refusé");
     return data as Geofence;
   }
 

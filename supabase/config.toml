@@ -154,13 +154,16 @@ additional_redirect_urls = [
   "esamba://auth/callback",
   "esamba://auth/update-password",
   "http://127.0.0.1:5173",
+  "http://localhost:3000/**",
   "http://localhost:5173",
   "http://localhost:8080/**",
   "http://localhost:8080/auth",
   "http://smart-fleet-africa.vercel.app/**",
   "https://127.0.0.1:3000",
+  "https://*.vercel.app/**",
   "https://app.e-samba.com/**",
   "https://e-samba.com/**",
+  "https://esamba-web.vercel.app/**",
   "https://www.e-samba.com/**",
   "https://www.e-samba.com/auth/callback",
   "https://www.e-samba.com/auth/callback/**",
@@ -299,8 +302,8 @@ max_enrolled_factors = 10
 
 # Contrôler la MFA via une application Authenticator (TOTP)
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 
 # Configurer la MFA via messagerie téléphonique
 [auth.mfa.phone]

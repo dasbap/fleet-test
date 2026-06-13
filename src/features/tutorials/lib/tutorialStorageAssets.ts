@@ -23,11 +23,9 @@ export function thumbPathCandidates(slug: string, primaryPath?: string | null): 
   return candidates;
 }
 
-export function buildStoragePublicUrl(
-  getPublicUrl: (path: string) => string,
-  path: string,
-): string {
-  return getPublicUrl(path);
+/** @deprecated Buckets privés — utiliser getSignedStorageUrl depuis @/lib/storage/signedUrl */
+export function buildStorageSignedPath(path: string): string {
+  return path.replace(/^\/+/, "");
 }
 
 export { BUCKET as TUTORIALS_BUCKET };

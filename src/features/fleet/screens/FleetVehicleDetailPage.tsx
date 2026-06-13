@@ -45,7 +45,7 @@ import {
   formatXaf,
   SEVERITY_UI,
 } from "@/features/fleet/lib/vehicleDetailFormatters";
-import { MaintenanceEvidenceRepository } from "@/repositories/maintenance-evidence.repository";
+import { useSignedStorageUrl } from "@/hooks/useSignedStorageUrl";
 import { shareContent, buildVehicleDocumentSharePayload } from "@/services/share.service";
 import { toast } from "@/hooks/use-toast";
 import { recordRecentVehicleView } from "@/lib/storage/flotteEsambaLocalCache";
@@ -54,13 +54,42 @@ import type { MaintenanceJob } from "@/repositories/maintenance.repository";
 import type { AlertDto } from "@/types/dto/alert.dto";
 import type { FuelEntry } from "@/repositories/fuel.repository";
 
-const maintenanceEvidenceRepository = new MaintenanceEvidenceRepository();
+function MaintenanceEvidenceDocLink({
+  filePath,
+  kind,
+}: {
+  filePath: string;
+  kind: string;
+}) {
+  const { data: href, isLoading } = useSignedStorageUrl("maintenance-evidence", filePath);
 
-function getMaintenanceEvidencePublicUrl(filePath: string): string {
-  if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
-    return filePath;
+  if (isLoading) {
+    return (
+      <span className="rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground">
+        Chargement…
+      </span>
+    );
   }
-  return maintenanceEvidenceRepository.getPublicUrl(filePath);
+
+  if (!href) {
+    return (
+      <span className="rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground">
+        Fichier indisponible
+      </span>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs hover:bg-muted"
+    >
+      <span aria-hidden>{kind === "before" ? "Avant" : "Après"}</span>
+      <span className="max-w-[140px] truncate">{filePath.split("/").pop() ?? filePath}</span>
+    </a>
+  );
 }
 
 
@@ -386,18 +415,11 @@ function MaintenanceTimeline({
                     ) : detailQuery.data?.evidence?.length ? (
                       <div className="flex flex-wrap gap-2 pt-2">
                         {detailQuery.data.evidence.map((doc) => (
-                          <a
+                          <MaintenanceEvidenceDocLink
                             key={doc.id}
-                            href={getMaintenanceEvidencePublicUrl(doc.file_path)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-xs hover:bg-muted"
-                          >
-                            <span aria-hidden>{doc.kind === "before" ? "Avant" : "Après"}</span>
-                            <span className="max-w-[140px] truncate">
-                              {doc.file_path.split("/").pop() ?? doc.id}
-                            </span>
-                          </a>
+                            filePath={doc.file_path}
+                            kind={doc.kind}
+                          />
                         ))}
                       </div>
                     ) : openId === job.id ? (

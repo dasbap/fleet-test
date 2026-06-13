@@ -56,7 +56,16 @@ Les variables **`VITE_*`** sont injectées **au moment du build** (`npm run buil
 |----------|--------|
 | `VITE_APP_URL` | `https://www.e-samba.com` |
 
-**Optionnel** : `VITE_SENTRY_DSN`, etc. (voir [`.env.example`](../.env.example)).
+**Recommandé prod** (plan Pro — observabilité) :
+
+| Variable | Rôle |
+|----------|------|
+| `VITE_SENTRY_DSN` | Erreurs JS — [`src/instrument.ts`](../src/instrument.ts) |
+| `VITE_APP_VERSION` | Regroupement releases Sentry |
+
+Ajout : `npx vercel env add VITE_SENTRY_DSN production` puis redeploy. Voir [`docs/supabase-pro-validation.md`](supabase-pro-validation.md) §4.
+
+**Optionnel** : `VITE_POSTHOG_KEY`, etc. (voir [`.env.example`](../.env.example)).
 
 **Chemin Vercel** : **Settings** → **Environment Variables** → affecter au moins à **Production** ; pour les previews, dupliquer les mêmes clés si les builds de branche doivent parler au même projet Supabase.
 

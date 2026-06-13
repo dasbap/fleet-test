@@ -13,6 +13,12 @@ globs:
 - Les hooks appellent les services (voir `architecture.mdc` pour les détails)
 - Centraliser la configuration Supabase dans `@/integrations/supabase/client`
 
+## Requêtes Supabase (PostgREST)
+
+- Préférer **`.maybeSingle()`** pour les lectures (`findById`, lookup) et les `update().select()` où 0 ligne est valide (RLS, introuvable).
+- Réserver **`.single()`** aux `insert().select()` (ou `upsert`) quand une ligne retournée est garantie.
+- Après `.maybeSingle()` sur une mutation : si `!data`, lever une erreur métier explicite (ex. « introuvable ou accès refusé »), pas `PGRST116` en console.
+
 ## Structure des hooks avec React Query
 
 ### Pattern useQuery

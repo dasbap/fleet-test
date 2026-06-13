@@ -63,7 +63,7 @@ async function fetchAccountStatus(): Promise<{
     .eq('user_id', user.id)
     .eq('is_active', true)
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!adhesion?.fleet_id) return { subscription: null, fleet: null };
 
@@ -84,7 +84,7 @@ async function fetchAccountStatus(): Promise<{
     .eq('fleet_id', fleetId)
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   // Métriques flotte
   const { count: totalVehicles } = await supabase

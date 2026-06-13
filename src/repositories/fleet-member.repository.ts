@@ -136,15 +136,14 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
         profile:profils!flotte_adhesions_user_id_fkey(full_name, phone)
       `)
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       console.error('Error fetching fleet member:', error);
       throw new Error(error.message);
     }
+
+    if (!data) return null;
 
     return {
       ...data,
@@ -203,11 +202,15 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
         created_at,
         profile:profils!flotte_adhesions_user_id_fkey(full_name, phone)
       `)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating fleet member:', error);
       throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error('Membre de flotte introuvable ou accès refusé');
     }
 
     return {
@@ -371,7 +374,7 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
       .from('flotte_adhesions')
       .select('user_id')
       .eq('id', membershipId)
-      .single();
+      .maybeSingle();
 
     if (membershipError || !membership?.user_id) return;
 

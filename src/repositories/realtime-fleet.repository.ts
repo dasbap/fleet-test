@@ -35,7 +35,7 @@ export class RealtimeFleetRepository {
       `,
       )
       .eq("id", shiftId)
-      .single();
+      .maybeSingle();
 
     if (error || !shift) return null;
 
@@ -49,7 +49,7 @@ export class RealtimeFleetRepository {
       .from("profils")
       .select("full_name")
       .eq("user_id", assignment.driver_user_id)
-      .single();
+      .maybeSingle();
 
     return {
       fleetId: assignment.fleet_id,
@@ -64,7 +64,7 @@ export class RealtimeFleetRepository {
       .from("vehicules")
       .select("registration, fleet_id")
       .eq("id", vehicleId)
-      .single();
+      .maybeSingle();
     if (error || !vehicle) return null;
     return vehicle as VehicleFleetRow;
   }
@@ -74,7 +74,7 @@ export class RealtimeFleetRepository {
       .from("vehicules")
       .select("registration")
       .eq("id", vehicleId)
-      .single();
+      .maybeSingle();
     if (error || !vehicle) return null;
     return (vehicle as { registration: string }).registration ?? null;
   }

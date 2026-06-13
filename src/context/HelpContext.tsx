@@ -26,6 +26,8 @@ import { useAuthOptional } from "@/hooks/useAuth";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import type { HelpLocale, HelpUserContext } from "@/types/help";
 import type { AppRole } from "@/types/auth";
+import { getSignedStorageUrl } from "@/lib/storage/signedUrl";
+import type { HelpVideo } from "@/hooks/useHelp";
 
 type PosthogWindow = Window & {
   posthog?: { capture: (event: string, props?: Record<string, unknown>) => void };
@@ -52,6 +54,26 @@ export function HelpProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchRaw] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [focusedSlug, setFocusedSlug] = useState<string | null>(null);
+  const [featuredVideos, setFeaturedVideos] = useState<HelpVideo[]>(FEATURED_VIDEOS);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const resolved = await Promise.all(
+        FEATURED_VIDEOS.map(async (video) => {
+          const match = video.thumbnailUrl.match(/\/tutorials\/(.+)$/);
+          const objectPath = match?.[1];
+          if (!objectPath) return video;
+          const signed = await getSignedStorageUrl("tutorials", decodeURIComponent(objectPath));
+          return signed ? { ...video, thumbnailUrl: signed } : video;
+        }),
+      );
+      if (!cancelled) setFeaturedVideos(resolved);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const currentPage = useMemo(
     () => routeToCategory(location.pathname),
@@ -192,7 +214,7 @@ export function HelpProvider({ children }: { children: ReactNode }) {
   const value = useMemo<UseHelpReturn>(
     () => ({
       contextualArticles,
-      featuredVideos: FEATURED_VIDEOS,
+      featuredVideos,
       allArticles: ALL_ARTICLES,
       searchQuery,
       setSearchQuery,
@@ -208,6 +230,7 @@ export function HelpProvider({ children }: { children: ReactNode }) {
     }),
     [
       contextualArticles,
+      featuredVideos,
       searchQuery,
       setSearchQuery,
       searchResults,

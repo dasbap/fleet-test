@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getSignedStorageUrl } from "@/lib/storage/signedUrl";
 import type { Location } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -328,6 +329,29 @@ export function useHelp(): UseHelpReturn {
   const [searchQuery, setSearchQueryRaw] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [focusedSlug] = useState<string | null>(null);
+  const [featuredVideos, setFeaturedVideos] = useState(FEATURED_VIDEOS_INTERNAL);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const resolved = await Promise.all(
+        FEATURED_VIDEOS_INTERNAL.map(async (video) => {
+          const match = video.thumbnailUrl.match(/\/tutorials\/(.+)$/);
+          const objectPath = match?.[1];
+          if (!objectPath) return video;
+          const signed = await getSignedStorageUrl(
+            "tutorials",
+            decodeURIComponent(objectPath),
+          );
+          return signed ? { ...video, thumbnailUrl: signed } : video;
+        }),
+      );
+      if (!cancelled) setFeaturedVideos(resolved);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const currentPage = useMemo(
     () => routeToCategory(location.pathname),
@@ -404,7 +428,7 @@ export function useHelp(): UseHelpReturn {
 
   return {
     contextualArticles,
-    featuredVideos: FEATURED_VIDEOS_INTERNAL,
+    featuredVideos,
     allArticles: ALL_HELP_ARTICLES,
     searchQuery,
     setSearchQuery,

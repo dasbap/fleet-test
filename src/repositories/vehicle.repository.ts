@@ -234,18 +234,14 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
       .from('vehicules')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // Aucun résultat trouvé
-        return null;
-      }
       console.error('Error fetching vehicle:', error);
       throw new Error(error.message);
     }
 
-    return data as VehicleDto;
+    return (data ?? null) as VehicleDto | null;
   }
 
   async findByRegistration(
@@ -410,11 +406,15 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
       .update(updates)
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating vehicle:', error);
       throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error('Véhicule introuvable ou accès refusé');
     }
 
     return data as VehicleDto;

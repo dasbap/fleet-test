@@ -1,7 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import ProfileHeader from "./ProfileHeader";
 import type { User } from "@supabase/supabase-js";
+
+vi.mock("@/hooks/useAvatarDisplayUrl", () => ({
+  useAvatarDisplayUrl: () => ({ data: undefined, isLoading: false }),
+}));
 
 /** Utilisateur minimal pour les tests */
 function mockUser(overrides: Partial<User> = {}): User {

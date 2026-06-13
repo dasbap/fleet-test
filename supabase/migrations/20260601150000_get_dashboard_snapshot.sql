@@ -26,13 +26,17 @@ AS $$
       (
         SELECT count(*)::int
         FROM public.incidents i
-        WHERE i.fleet_id = p_fleet_id
+        INNER JOIN public.vehicules veh ON veh.id = i.vehicle_id
+        WHERE veh.fleet_id = p_fleet_id
           AND i.created_at > now() - interval '30 days'
       ) AS pending_incidents,
       (
         SELECT count(*)::int
         FROM public.clotures_creneaux c
-        WHERE c.fleet_id = p_fleet_id AND c.status = 'pending'
+        INNER JOIN public.creneaux_conducteurs cc ON cc.id = c.shift_id
+        INNER JOIN public.affectations_vehicules av ON av.id = cc.assignment_id
+        WHERE av.fleet_id = p_fleet_id
+          AND c.status = 'pending'
       ) AS pending_closures,
       (
         SELECT count(*)::int
@@ -45,7 +49,9 @@ AS $$
   today_rev AS (
     SELECT coalesce(sum(c.revenue_declared), 0)::numeric AS today_revenue
     FROM public.clotures_creneaux c
-    WHERE c.fleet_id = p_fleet_id
+    INNER JOIN public.creneaux_conducteurs cc ON cc.id = c.shift_id
+    INNER JOIN public.affectations_vehicules av ON av.id = cc.assignment_id
+    WHERE av.fleet_id = p_fleet_id
       AND c.status = 'validated'
       AND c.created_at >= date_trunc('day', now())
   ),

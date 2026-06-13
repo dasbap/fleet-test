@@ -21,6 +21,7 @@ dist-ssr
 .env.*.local
 .env.local.bak
 .env.*.bak
+.env.vercel*
 
 # Editor directories and files
 .vscode/*
@@ -70,5 +71,9 @@ android/app/*.jks
 android/app/*.keystore
 android/.github-android-secrets.local.txt
 
+# Cache outillage local (Supabase CLI, etc.)
+.cache/
 
-.vercel
+# Skills agents locaux (non partagés)
+.agents/
+
