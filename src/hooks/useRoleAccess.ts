@@ -10,9 +10,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDemoSession } from "@/hooks/useDemoSession";
+import { AdminProfileRepository } from "@/repositories/admin-profile.repository";
+import { AdminProfileService } from "@/services/admin-profile.service";
 import type { Permission, PlatformRole, RbacCheckResult, RbacContext } from "@/types/rbac";
 import {
   buildClientRbacResult,
@@ -78,6 +79,9 @@ export interface UseRoleAccessReturn {
  */
 const adminCache = new Map<string, boolean>();
 
+const adminProfileRepository = new AdminProfileRepository();
+const adminProfileService = new AdminProfileService(adminProfileRepository);
+
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useRoleAccess(): UseRoleAccessReturn {
@@ -118,26 +122,20 @@ export function useRoleAccess(): UseRoleAccessReturn {
     // Requête DB
     setIsLoading(true);
 
-    supabase
-      .from("admin_profiles")
-      .select("user_id, is_active")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    void adminProfileService
+      .isPlatformAdmin(user.id)
+      .then((isAdmin) => {
         if (!mountedRef.current) return;
 
-        if (error) {
-          // Table inexistante (migration non appliquée) ou RLS → non-admin
-          console.warn("[useRoleAccess] admin_profiles inaccessible:", error.message);
-          adminCache.set(user.id, false);
-          setIsPlatformAdmin(false);
-        } else {
-          const adminStatus = !!data && !isDemo;
-          adminCache.set(user.id, !!data);
-          setIsPlatformAdmin(adminStatus);
-        }
-
+        adminCache.set(user.id, isAdmin);
+        setIsPlatformAdmin(isAdmin && !isDemo);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        if (!mountedRef.current) return;
+        console.warn("[useRoleAccess] admin_profiles inaccessible:", error);
+        adminCache.set(user.id, false);
+        setIsPlatformAdmin(false);
         setIsLoading(false);
       });
   }, [user?.id, isDemo]);

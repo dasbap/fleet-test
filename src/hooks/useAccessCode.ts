@@ -1,19 +1,12 @@
 /**
  * Hook React — validation et consommation de codes d'accès E-Samba.
- *
- * Cycle :
- *   idle → validating → validated → consuming → success | error
- *
- * La validation (validate) vérifie le code sans le consommer.
- * La consommation (consume) lie le code à l'utilisateur connecté et crée son profil.
  */
 
 import { useCallback, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { AccessCodeRepository } from "@/repositories/access-code.repository";
+import { AccessCodeService } from "@/services/access-code.service";
 import {
-  validateCodeFormat,
-  normalizeCode,
   guessRoleFromCode,
   guessUniverseFromCode,
   CODE_INPUT_MESSAGES,
@@ -24,8 +17,6 @@ import type {
   AccessCodeValidationSuccess,
 } from "@/types/access";
 
-// ─── Types locaux ─────────────────────────────────────────────────────────────
-
 type AccessCodeStatus =
   | "idle"
   | "validating"
@@ -35,40 +26,31 @@ type AccessCodeStatus =
   | "error";
 
 interface UseAccessCodeState {
-  status:        AccessCodeStatus;
-  /** Message d'erreur en français, ou null si pas d'erreur. */
-  errorMessage:  string | null;
-  /** Résultat de la validation serveur (après validate()). */
-  validation:    AccessCodeValidationSuccess | null;
-  /** Résultat de la consommation (après consume()). */
+  status: AccessCodeStatus;
+  errorMessage: string | null;
+  validation: AccessCodeValidationSuccess | null;
   consumeResult: AccessCodeConsumeResult | null;
-  /** Erreur de format locale (avant appel réseau). */
-  formatError:   string | null;
+  formatError: string | null;
 }
 
 interface UseAccessCodeReturn extends UseAccessCodeState {
-  /** Valide le code sans le consommer (pré-visualisation). */
   validate: (code: string) => Promise<AccessCodeValidationResult | null>;
-  /** Consomme le code et crée le profil de l'utilisateur connecté. */
-  consume:  (code: string) => Promise<AccessCodeConsumeResult | null>;
-  /** Réinitialise l'état du hook. */
-  reset:    () => void;
-  /** Rôle probable déduit du préfixe (avant validation serveur). */
-  guessedRole:    ReturnType<typeof guessRoleFromCode>;
+  consume: (code: string) => Promise<AccessCodeConsumeResult | null>;
+  reset: () => void;
+  guessedRole: ReturnType<typeof guessRoleFromCode>;
   guessedUniverse: ReturnType<typeof guessUniverseFromCode>;
 }
 
-// ─── État initial ─────────────────────────────────────────────────────────────
-
 const INITIAL_STATE: UseAccessCodeState = {
-  status:        "idle",
-  errorMessage:  null,
-  validation:    null,
+  status: "idle",
+  errorMessage: null,
+  validation: null,
   consumeResult: null,
-  formatError:   null,
+  formatError: null,
 };
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+const accessCodeRepository = new AccessCodeRepository();
+const accessCodeService = new AccessCodeService(accessCodeRepository);
 
 export function useAccessCode(): UseAccessCodeReturn {
   const { user } = useAuth();
@@ -80,81 +62,67 @@ export function useAccessCode(): UseAccessCodeReturn {
     setRawCode("");
   }, []);
 
-  // ── Validation (sans consommation) ──────────────────────────────────────────
+  const validate = useCallback(async (code: string): Promise<AccessCodeValidationResult | null> => {
+    setRawCode(accessCodeService.normalize(code));
 
-  const validate = useCallback(
-    async (code: string): Promise<AccessCodeValidationResult | null> => {
-      const normalized = normalizeCode(code);
-      setRawCode(normalized);
+    const formatErr = accessCodeService.getFormatError(code);
+    if (formatErr) {
+      setState((s) => ({ ...s, formatError: formatErr, status: "idle" }));
+      return null;
+    }
 
-      // Pré-validation locale de format
-      const formatErr = validateCodeFormat(normalized);
-      if (formatErr) {
-        setState((s) => ({ ...s, formatError: formatErr, status: "idle" }));
+    setState((s) => ({
+      ...s,
+      status: "validating",
+      errorMessage: null,
+      formatError: null,
+      validation: null,
+    }));
+
+    try {
+      const result = await accessCodeService.validateCode(code);
+      if (!result) {
+        setState((s) => ({ ...s, formatError: accessCodeService.getFormatError(code), status: "idle" }));
         return null;
       }
 
-      setState((s) => ({
-        ...s,
-        status:      "validating",
-        errorMessage: null,
-        formatError:  null,
-        validation:   null,
-      }));
-
-      try {
-        const { data, error } = await supabase.rpc("access_code_validate", {
-          p_code: normalized,
-        });
-
-        if (error) throw error;
-
-        const result = data as AccessCodeValidationResult;
-
-        if (result.valid) {
-          setState((s) => ({
-            ...s,
-            status:     "validated",
-            validation: result as AccessCodeValidationSuccess,
-          }));
-        } else {
-          setState((s) => ({
-            ...s,
-            status:       "error",
-            errorMessage: result.message,
-          }));
-        }
-
-        return result;
-      } catch {
+      if (result.valid) {
         setState((s) => ({
           ...s,
-          status:       "error",
-          errorMessage: CODE_INPUT_MESSAGES.networkError,
+          status: "validated",
+          validation: result as AccessCodeValidationSuccess,
         }));
-        return null;
+      } else {
+        setState((s) => ({
+          ...s,
+          status: "error",
+          errorMessage: result.message,
+        }));
       }
-    },
-    [],
-  );
 
-  // ── Consommation ────────────────────────────────────────────────────────────
+      return result;
+    } catch {
+      setState((s) => ({
+        ...s,
+        status: "error",
+        errorMessage: CODE_INPUT_MESSAGES.networkError,
+      }));
+      return null;
+    }
+  }, []);
 
   const consume = useCallback(
     async (code: string): Promise<AccessCodeConsumeResult | null> => {
       if (!user?.id) {
         setState((s) => ({
           ...s,
-          status:       "error",
+          status: "error",
           errorMessage: "Vous devez être connecté pour utiliser un code d'accès.",
         }));
         return null;
       }
 
-      const normalized = normalizeCode(code);
-
-      // Pré-validation locale
-      const formatErr = validateCodeFormat(normalized);
+      const formatErr = accessCodeService.getFormatError(code);
       if (formatErr) {
         setState((s) => ({ ...s, formatError: formatErr }));
         return null;
@@ -162,32 +130,29 @@ export function useAccessCode(): UseAccessCodeReturn {
 
       setState((s) => ({
         ...s,
-        status:       "consuming",
+        status: "consuming",
         errorMessage: null,
-        formatError:  null,
+        formatError: null,
       }));
 
       try {
-        const { data, error } = await supabase.rpc("access_code_consume", {
-          p_code:    normalized,
-          p_user_id: user.id,
-        });
-
-        if (error) throw error;
-
-        const result = data as AccessCodeConsumeResult;
+        const result = await accessCodeService.consumeCode(code, user.id);
+        if (!result) {
+          setState((s) => ({ ...s, formatError: accessCodeService.getFormatError(code) }));
+          return null;
+        }
 
         if (result.valid) {
           setState((s) => ({
             ...s,
-            status:        "success",
+            status: "success",
             consumeResult: result,
-            errorMessage:  null,
+            errorMessage: null,
           }));
         } else {
           setState((s) => ({
             ...s,
-            status:       "error",
+            status: "error",
             errorMessage: result.message,
           }));
         }
@@ -196,7 +161,7 @@ export function useAccessCode(): UseAccessCodeReturn {
       } catch {
         setState((s) => ({
           ...s,
-          status:       "error",
+          status: "error",
           errorMessage: CODE_INPUT_MESSAGES.networkError,
         }));
         return null;
@@ -210,7 +175,7 @@ export function useAccessCode(): UseAccessCodeReturn {
     validate,
     consume,
     reset,
-    guessedRole:     guessRoleFromCode(rawCode),
+    guessedRole: guessRoleFromCode(rawCode),
     guessedUniverse: guessUniverseFromCode(rawCode),
   };
 }

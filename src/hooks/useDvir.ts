@@ -4,26 +4,8 @@ import { toast } from "@/hooks/use-toast";
 import { DvirRepository, type DvirStatus } from "@/repositories/dvir.repository";
 import { DvirService, type DvirCreateInput, type DvirUpdateInput } from "@/services/dvir.service";
 import { OfflineQueueService } from "@/services/offlineQueue.service";
-import { supabase } from "@/integrations/supabase/client";
 
 const offlineQueueService = new OfflineQueueService();
-
-/** Upload une photo DVIR vers Storage et retourne l'URL publique signée (1h). */
-async function uploadDvirPhoto(
-  fleetId: string,
-  vehicleId: string,
-  file: File,
-): Promise<string> {
-  const ext = file.name.split(".").pop() ?? "jpg";
-  const path = `${fleetId}/${vehicleId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const { error } = await supabase.storage.from("dvir-photos").upload(path, file, {
-    cacheControl: "3600",
-    upsert: false,
-  });
-  if (error) throw new Error(`Upload photo DVIR : ${error.message}`);
-  const { data } = await supabase.storage.from("dvir-photos").createSignedUrl(path, 3600);
-  return data?.signedUrl ?? path;
-}
 
 const dvirRepository = new DvirRepository();
 const dvirService = new DvirService(dvirRepository);
@@ -137,7 +119,7 @@ export function useCreateDvir() {
       const photoUrls: string[] = [];
       for (const file of photoFiles.slice(0, 5)) {
         try {
-          const url = await uploadDvirPhoto(userFleetId, dvirInput.vehicleId, file);
+          const url = await dvirService.uploadPhoto(userFleetId, dvirInput.vehicleId, file);
           photoUrls.push(url);
         } catch {
           // Photo non bloquante : on continue sans elle

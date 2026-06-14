@@ -90,8 +90,6 @@ export const ROUTE_PATHS = {
   dashboardTransitCemac: "/dashboard/transit",
   /** Suivi GPS temps réel. */
   dashboardTracking: "/dashboard/tracking",
-  /** Hub rôles et permissions. */
-  dashboardRoles: "/dashboard/roles",
   /** Géofencing — zones géographiques + alertes entrée/sortie. */
   dashboardGeofencing: "/dashboard/geofencing",
   /** Rapports programmés — envoi automatique PDF/Excel. */

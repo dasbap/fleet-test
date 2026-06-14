@@ -43,13 +43,26 @@ export interface FindDriverScoresOptions {
   limit?: number;
 }
 
+/** Ligne retournée par RPC get_top_driver_scores (dashboard analytics). */
+export interface TopDriverScoreRow {
+  driver_user_id: string;
+  full_name: string | null;
+  phone: string | null;
+  score_total: number;
+  score_level: 'green' | 'yellow' | 'orange' | 'red';
+  financial_score: number;
+  incidents_score: number;
+  last_calculated_at: string | null;
+}
+
 export class DriverScoreRepository {
   async findByFleet(
     fleetId: string,
     options?: FindDriverScoresOptions,
   ): Promise<DriverScoreRow[]> {
     if (options?.limit && options.limit > 0) {
-      return this.findTopByFleet(fleetId, options.limit);
+      // RPC top scores : forme plate (full_name) ≠ jointure table scores_conducteurs
+      return this.findTopByFleet(fleetId, options.limit) as unknown as DriverScoreRow[];
     }
 
     const query = supabase
@@ -72,7 +85,7 @@ export class DriverScoreRepository {
     return (data || []) as DriverScoreRow[];
   }
 
-  async findTopByFleet(fleetId: string, limit: number): Promise<DriverScoreRow[]> {
+  async findTopByFleet(fleetId: string, limit: number): Promise<TopDriverScoreRow[]> {
     const { data, error } = await supabase.rpc('get_top_driver_scores', {
       p_fleet_id: fleetId,
       p_limit: limit,
@@ -82,7 +95,7 @@ export class DriverScoreRepository {
       throw new Error(error.message);
     }
 
-    return (data || []) as DriverScoreRow[];
+    return (data || []) as TopDriverScoreRow[];
   }
 
   async calculateScoreV2(
