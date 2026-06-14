@@ -53,18 +53,21 @@ DECLARE v_org_id uuid; v_fleet_starter uuid; v_fleet_pro uuid; v_fleet_org uuid;
 BEGIN
   SELECT id INTO v_org_id FROM public.organisations WHERE name='Organisation DEMO E-Samba' ORDER BY created_at ASC LIMIT 1;
   IF v_org_id IS NULL THEN
-    INSERT INTO public.organisations (name, country_code) VALUES ('Organisation DEMO E-Samba','CM') RETURNING id INTO v_org_id;
+    INSERT INTO public.organisations (name, country_code, is_demo) VALUES ('Organisation DEMO E-Samba','CM', true) RETURNING id INTO v_org_id;
     RAISE NOTICE 'Organisation créée : %', v_org_id;
   ELSE RAISE NOTICE 'Organisation existante : %', v_org_id; END IF;
 
   SELECT id INTO v_fleet_starter FROM public.flottes WHERE org_id=v_org_id AND name='Flotte DEMO Starter' LIMIT 1;
-  IF v_fleet_starter IS NULL THEN INSERT INTO public.flottes(org_id,name,collection_policy) VALUES(v_org_id,'Flotte DEMO Starter','mix') RETURNING id INTO v_fleet_starter; END IF;
+  IF v_fleet_starter IS NULL THEN INSERT INTO public.flottes(org_id,name,collection_policy,is_demo) VALUES(v_org_id,'Flotte DEMO Starter','mix',true) RETURNING id INTO v_fleet_starter; END IF;
 
   SELECT id INTO v_fleet_pro FROM public.flottes WHERE org_id=v_org_id AND name='Flotte DEMO Pro' LIMIT 1;
-  IF v_fleet_pro IS NULL THEN INSERT INTO public.flottes(org_id,name,collection_policy) VALUES(v_org_id,'Flotte DEMO Pro','mix') RETURNING id INTO v_fleet_pro; END IF;
+  IF v_fleet_pro IS NULL THEN INSERT INTO public.flottes(org_id,name,collection_policy,is_demo) VALUES(v_org_id,'Flotte DEMO Pro','mix',true) RETURNING id INTO v_fleet_pro; END IF;
 
   SELECT id INTO v_fleet_org FROM public.flottes WHERE org_id=v_org_id AND name='Flotte DEMO Entreprise' LIMIT 1;
-  IF v_fleet_org IS NULL THEN INSERT INTO public.flottes(org_id,name,collection_policy) VALUES(v_org_id,'Flotte DEMO Entreprise','mix') RETURNING id INTO v_fleet_org; END IF;
+  IF v_fleet_org IS NULL THEN INSERT INTO public.flottes(org_id,name,collection_policy,is_demo) VALUES(v_org_id,'Flotte DEMO Entreprise','mix',true) RETURNING id INTO v_fleet_org; END IF;
+
+  UPDATE public.organisations SET is_demo = true WHERE id = v_org_id AND COALESCE(is_demo, false) = false;
+  UPDATE public.flottes SET is_demo = true WHERE org_id = v_org_id AND COALESCE(is_demo, false) = false;
 
   RAISE NOTICE 'Flottes : starter=%, pro=%, org=%', v_fleet_starter, v_fleet_pro, v_fleet_org;
 END $$;
