@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import type { WorkerOutboundMessage } from "@/workers/realtime.worker";
 
 type MessageHandler = (msg: WorkerOutboundMessage) => void;
@@ -7,7 +7,7 @@ type MessageHandler = (msg: WorkerOutboundMessage) => void;
 let workerInstance: SharedWorker | null = null;
 let portRef: MessagePort | null = null;
 const globalHandlers = new Set<MessageHandler>();
-/** Nombre d’abonnés actifs ; à 0 on envoie UNSUBSCRIBE au worker. */
+/** Nombre d'abonnés actifs ; à 0 on envoie UNSUBSCRIBE au worker. */
 let subscriptionRefCount = 0;
 /** Empreinte alignée sur le build Vite du worker (`define` sur `self`). */
 let boundFingerprint: string | null = null;
@@ -29,7 +29,7 @@ function fnv1a32Hex(s: string): string {
 
 /**
  * URL du script avec paramètre stable : force une instance SharedWorker distincte
- * quand l’empreinte change (ex. HMR) sans mettre les clés dans `name`.
+ * quand l'empreinte change (ex. HMR) sans mettre les clés dans `name`.
  */
 function workerScriptUrlForFingerprint(fp: string): URL {
   const u = new URL("../workers/realtime.worker.ts", import.meta.url);
@@ -103,6 +103,8 @@ export interface UseRealtimeWorkerOptions {
 }
 
 export function useRealtimeWorker({ orgId, onMessage }: UseRealtimeWorkerOptions) {
+  const { session } = useAuth();
+  const accessToken = session?.access_token ?? null;
   const handlerRef = useRef(onMessage);
   handlerRef.current = onMessage;
 
@@ -111,7 +113,7 @@ export function useRealtimeWorker({ orgId, onMessage }: UseRealtimeWorkerOptions
   }, []);
 
   useEffect(() => {
-    if (!orgId) {
+    if (!orgId || !accessToken) {
       return;
     }
 
@@ -123,31 +125,10 @@ export function useRealtimeWorker({ orgId, onMessage }: UseRealtimeWorkerOptions
     subscriptionRefCount += 1;
     globalHandlers.add(stableHandler);
 
-    async function init() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        return;
-      }
-      workerCtx.port.postMessage({
-        type: "SUBSCRIBE",
-        orgId,
-        token: session.access_token,
-      });
-    }
-
-    void init();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_, session) => {
-      if (!session?.access_token) {
-        return;
-      }
-      workerCtx.port.postMessage({
-        type: "SUBSCRIBE",
-        orgId,
-        token: session.access_token,
-      });
+    workerCtx.port.postMessage({
+      type: "SUBSCRIBE",
+      orgId,
+      token: accessToken,
     });
 
     return () => {
@@ -160,14 +141,13 @@ export function useRealtimeWorker({ orgId, onMessage }: UseRealtimeWorkerOptions
         } catch {
           /* port fermé */
         }
-        // Recréation différée si l’empreinte a changé pendant la vie des abonnements (ex. HMR).
+        // Recréation différée si l'empreinte a changé pendant la vie des abonnements (ex. HMR).
         if (boundFingerprint !== null && boundFingerprint !== envFingerprint()) {
           disposeWorkerConnection();
         }
       }
-      listener.subscription.unsubscribe();
     };
-  }, [orgId, stableHandler]);
+  }, [orgId, accessToken, stableHandler]);
 }
 
 /**

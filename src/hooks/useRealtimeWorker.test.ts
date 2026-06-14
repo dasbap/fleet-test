@@ -2,20 +2,10 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRealtimeWorkerForTests, useRealtimeWorker } from "@/hooks/useRealtimeWorker";
 
-const { mockGetSession, mockAuthUnsubscribe } = vi.hoisted(() => ({
-  mockGetSession: vi.fn(),
-  mockAuthUnsubscribe: vi.fn(),
-}));
+const mockUseAuth = vi.fn();
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: {
-      getSession: mockGetSession,
-      onAuthStateChange: vi.fn(() => ({
-        data: { subscription: { unsubscribe: mockAuthUnsubscribe } },
-      })),
-    },
-  },
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => mockUseAuth(),
 }));
 
 describe("useRealtimeWorker", () => {
@@ -26,8 +16,8 @@ describe("useRealtimeWorker", () => {
     resetRealtimeWorkerForTests();
     postMessageSpy = vi.fn();
 
-    mockGetSession.mockResolvedValue({
-      data: { session: { access_token: "tok-1" } },
+    mockUseAuth.mockReturnValue({
+      session: { access_token: "tok-1" },
     });
 
     class MockSharedWorker {
@@ -64,6 +54,16 @@ describe("useRealtimeWorker", () => {
     });
   });
 
+  it("n'envoie pas SUBSCRIBE sans token de session", async () => {
+    mockUseAuth.mockReturnValue({ session: null });
+    const onMessage = vi.fn();
+    renderHook(() => useRealtimeWorker({ orgId: "org-1", onMessage }));
+
+    await waitFor(() => {
+      expect(postMessageSpy).not.toHaveBeenCalled();
+    });
+  });
+
   it("envoie UNSUBSCRIBE au démontage du dernier abonné", async () => {
     const onMessage = vi.fn();
     const { unmount } = renderHook(() => useRealtimeWorker({ orgId: "org-1", onMessage }));
@@ -78,10 +78,9 @@ describe("useRealtimeWorker", () => {
     await waitFor(() => {
       expect(postMessageSpy).toHaveBeenCalledWith({ type: "UNSUBSCRIBE" });
     });
-    expect(mockAuthUnsubscribe).toHaveBeenCalled();
   });
 
-  it("ne envoie pas UNSUBSCRIBE tant qu’un second hook est encore monté", async () => {
+  it("ne envoie pas UNSUBSCRIBE tant qu'un second hook est encore monté", async () => {
     const onMessage = vi.fn();
     const { unmount: u1 } = renderHook(() => useRealtimeWorker({ orgId: "org-1", onMessage }));
     const { unmount: u2 } = renderHook(() => useRealtimeWorker({ orgId: "org-1", onMessage }));

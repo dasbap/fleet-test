@@ -1,17 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { queryKeys } from '@/lib/cache/queryKeys';
+import { DriverScoreRepository } from '@/repositories/driver-score.repository';
+import { DriverScoreService, type TopDriverScoreRow } from '@/services/driver-score.service';
 
-export interface DriverScoreRow {
-  driver_user_id:     string;
-  full_name:          string | null;
-  phone:              string | null;
-  score_total:        number;
-  score_level:        'green' | 'yellow' | 'orange' | 'red';
-  financial_score:    number;
-  incidents_score:    number;
-  last_calculated_at: string | null;
-}
+export type { TopDriverScoreRow as DriverScoreRow };
+
+const driverScoreRepository = new DriverScoreRepository();
+const driverScoreService = new DriverScoreService(driverScoreRepository);
 
 /**
  * Top conducteurs par score sur 30j — via RPC get_top_driver_scores.
@@ -20,20 +15,13 @@ export interface DriverScoreRow {
  */
 export function useTopDriverScores(fleetId: string | null | undefined, limit = 10) {
   return useQuery({
-    queryKey:  queryKeys.drivers.topScores(fleetId ?? ''),
-    queryFn:   async (): Promise<DriverScoreRow[]> => {
-      const { data, error } = await supabase.rpc('get_top_driver_scores', {
-        p_fleet_id: fleetId,
-        p_limit:    limit,
-      });
-      if (error) throw new Error(error.message);
-      return (data as DriverScoreRow[]) ?? [];
-    },
-    enabled:              !!fleetId,
-    staleTime:            5 * 60 * 1000,
-    gcTime:               30 * 60 * 1000,
-    retry:                1,
-    placeholderData:      (prev) => prev,
+    queryKey: queryKeys.drivers.topScores(fleetId ?? ''),
+    queryFn: () => driverScoreService.getTopDriverScores(fleetId!, limit),
+    enabled: !!fleetId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: 1,
+    placeholderData: (prev) => prev,
     refetchOnWindowFocus: false,
   });
 }

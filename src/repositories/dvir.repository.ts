@@ -180,4 +180,23 @@ export class DvirRepository {
     const { error } = await supabase.from("controles_journaliers").update(payload).eq("id", id);
     if (error) this.fail("update", error);
   }
+
+  /** Upload une photo DVIR vers Storage et retourne l'URL signée (1h). */
+  async uploadPhoto(fleetId: string, vehicleId: string, file: File): Promise<string> {
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${fleetId}/${vehicleId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+    const { error } = await supabase.storage.from("dvir-photos").upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
+
+    if (error) {
+      console.error("Erreur upload photo DVIR:", error);
+      throw new Error(`Upload photo DVIR : ${error.message}`);
+    }
+
+    const { data } = await supabase.storage.from("dvir-photos").createSignedUrl(path, 3600);
+    return data?.signedUrl ?? path;
+  }
 }

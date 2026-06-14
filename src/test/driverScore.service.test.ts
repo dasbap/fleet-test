@@ -76,10 +76,26 @@ describe('driver-score.service', () => {
       findByFleet: vi.fn().mockResolvedValue([]),
       calculateScoreV2: vi.fn().mockResolvedValue('green'),
       findSnapshotsByDriver: vi.fn().mockResolvedValue([]),
+      findTopByFleet: vi.fn().mockResolvedValue([]),
     };
     const service = new DriverScoreService(repository as never);
 
     await expect(service.getDriverScoreSnapshots('', 'fleet-id')).resolves.toEqual([]);
     expect(repository.findSnapshotsByDriver).not.toHaveBeenCalled();
+  });
+
+  it('récupère le top conducteurs via findTopByFleet', async () => {
+    const repository = {
+      findByFleet: vi.fn().mockResolvedValue([]),
+      calculateScoreV2: vi.fn().mockResolvedValue('green'),
+      findSnapshotsByDriver: vi.fn().mockResolvedValue([]),
+      findTopByFleet: vi.fn().mockResolvedValue([{ driver_user_id: 'd1' }]),
+    };
+    const service = new DriverScoreService(repository as never);
+
+    const rows = await service.getTopDriverScores('fleet-id', 5);
+
+    expect(repository.findTopByFleet).toHaveBeenCalledWith('fleet-id', 5);
+    expect(rows).toHaveLength(1);
   });
 });

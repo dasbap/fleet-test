@@ -16,8 +16,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { ProspectDemoRepository } from "@/repositories/prospect-demo.repository";
+import { ProspectDemoService } from "@/services/prospect-demo.service";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,9 @@ const DEFAULT_INFO: ProspectInfo = {
   fleetId:       null,
 };
 
+const prospectDemoRepository = new ProspectDemoRepository();
+const prospectDemoService = new ProspectDemoService(prospectDemoRepository);
+
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useProspectDemo(): UseProspectDemoReturn {
@@ -129,61 +133,54 @@ export function useProspectDemo(): UseProspectDemoReturn {
 
     setLoading(true);
 
-    const { data, error } = await supabase.rpc("prospect_get_status");
+    try {
+      const result = await prospectDemoService.getStatus();
 
-    if (!mountedRef.current) return;
+      if (!mountedRef.current) return;
 
-    if (error) {
-      // RPC introuvable (migration non appliquée en dev) → non-prospect
-      if (error.code === "PGRST202") {
+      if (!result.ok) {
+        if (result.error === "not_a_prospect") {
+          setInfo({ ...DEFAULT_INFO, status: "not_prospect" });
+        } else {
+          setInfo({ ...DEFAULT_INFO, status: "error" });
+        }
+        setLoading(false);
+        return;
+      }
+
+      const mappedStatus: ProspectStatus =
+        result.status === "active"
+          ? "active"
+          : result.status === "expired"
+            ? "expired"
+            : result.status === "suspended"
+              ? "suspended"
+              : result.status === "converted"
+                ? "converted"
+                : "error";
+
+      setInfo({
+        status: mappedStatus,
+        trialStart: result.trial_start ?? null,
+        trialEnd: result.trial_end ?? null,
+        daysRemaining: result.days_remaining ?? 0,
+        isExpired: result.is_expired ?? false,
+        isActive: mappedStatus === "active" && !(result.is_expired ?? false),
+        fleetId: result.fleet_id ?? null,
+      });
+
+      setLoading(false);
+    } catch (error) {
+      if (!mountedRef.current) return;
+      const code = (error as { code?: string }).code;
+      if (code === "PGRST202") {
         setInfo({ ...DEFAULT_INFO, status: "not_prospect" });
       } else {
-        console.warn("[useProspectDemo] RPC error:", error.message);
+        console.warn("[useProspectDemo] RPC error:", error);
         setInfo({ ...DEFAULT_INFO, status: "error" });
       }
       setLoading(false);
-      return;
     }
-
-    const result = data as {
-      ok:             boolean;
-      error?:         string;
-      status?:        string;
-      trial_start?:   string;
-      trial_end?:     string;
-      fleet_id?:      string;
-      days_remaining?: number;
-      is_expired?:    boolean;
-    };
-
-    if (!result.ok) {
-      if (result.error === "not_a_prospect") {
-        setInfo({ ...DEFAULT_INFO, status: "not_prospect" });
-      } else {
-        setInfo({ ...DEFAULT_INFO, status: "error" });
-      }
-      setLoading(false);
-      return;
-    }
-
-    const mappedStatus: ProspectStatus =
-      result.status === "active"    ? "active"
-      : result.status === "expired"   ? "expired"
-      : result.status === "suspended" ? "suspended"
-      : result.status === "converted" ? "converted"
-      : "error";
-
-    setInfo({
-      status:        mappedStatus,
-      trialStart:    result.trial_start ?? null,
-      trialEnd:      result.trial_end   ?? null,
-      daysRemaining: result.days_remaining ?? 0,
-      isExpired:     result.is_expired ?? false,
-      isActive:      mappedStatus === "active" && !(result.is_expired ?? false),
-      fleetId:       result.fleet_id ?? null,
-    });
-
-    setLoading(false);
   }, [user?.id]);
 
   useEffect(() => {

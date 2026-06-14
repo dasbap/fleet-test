@@ -3,22 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSessionContext } from "@/hooks/useSessionContext";
 import type { FlotteContext, ProfilContext } from "@/hooks/useSessionContext";
 
-const mockGetSession = vi.fn();
 const mockRpc = vi.fn();
-const mockUnsubscribe = vi.fn();
-let authStateCallback: ((event: string) => void) | null = null;
+const mockUseAuth = vi.fn();
+
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => mockUseAuth(),
+}));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    auth: {
-      getSession: () => mockGetSession(),
-      onAuthStateChange: (cb: (event: string) => void) => {
-        authStateCallback = cb;
-        return {
-          data: { subscription: { unsubscribe: mockUnsubscribe } },
-        };
-      },
-    },
     rpc: (...args: unknown[]) => mockRpc(...args),
   },
 }));
@@ -46,9 +39,8 @@ function flotte(partial: Partial<FlotteContext> & { fleet_id: string }): FlotteC
 describe("useSessionContext", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authStateCallback = null;
-    mockGetSession.mockResolvedValue({
-      data: { session: { access_token: "t" } },
+    mockUseAuth.mockReturnValue({
+      session: { access_token: "t" },
     });
     mockRpc.mockResolvedValue({
       data: {
@@ -70,7 +62,7 @@ describe("useSessionContext", () => {
   });
 
   it("sans session : route auth, pas d'erreur RPC", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockUseAuth.mockReturnValue({ session: null });
 
     const { result } = renderHook(() => useSessionContext());
 
@@ -149,8 +141,8 @@ describe("useSessionContext", () => {
     expect(result.current.context.currentFleet?.fleet_id).toBe("f2");
   });
 
-  it("SIGNED_OUT réinitialise vers route auth", async () => {
-    const { result } = renderHook(() => useSessionContext());
+  it("perte de session réinitialise vers route auth", async () => {
+    const { result, rerender } = renderHook(() => useSessionContext());
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -158,15 +150,16 @@ describe("useSessionContext", () => {
 
     expect(result.current.context.route).toBe("dashboard");
 
-    act(() => {
-      authStateCallback?.("SIGNED_OUT");
-    });
+    mockUseAuth.mockReturnValue({ session: null });
+    rerender();
 
-    expect(result.current.context.route).toBe("auth");
+    await waitFor(() => {
+      expect(result.current.context.route).toBe("auth");
+    });
   });
 
-  it("SIGNED_IN déclenche un nouveau chargement", async () => {
-    const { result } = renderHook(() => useSessionContext());
+  it("nouvelle session déclenche un rechargement RPC", async () => {
+    const { result, rerender } = renderHook(() => useSessionContext());
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -174,9 +167,8 @@ describe("useSessionContext", () => {
 
     const callsAfterFirst = mockRpc.mock.calls.length;
 
-    act(() => {
-      authStateCallback?.("SIGNED_IN");
-    });
+    mockUseAuth.mockReturnValue({ session: { access_token: "t2" } });
+    rerender();
 
     await waitFor(() => {
       expect(mockRpc.mock.calls.length).toBeGreaterThan(callsAfterFirst);
@@ -185,17 +177,5 @@ describe("useSessionContext", () => {
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
-  });
-
-  it("démontage : désabonne onAuthStateChange", async () => {
-    const { unmount } = renderHook(() => useSessionContext());
-
-    await waitFor(() => {
-      expect(mockRpc).toHaveBeenCalled();
-    });
-
-    unmount();
-
-    expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
   });
 });
