@@ -30,4 +30,28 @@ export class ProfileService {
       return { success: false, error: message };
     }
   }
+
+  async updateProfileFullName(userId: string, fullName: string): Promise<void> {
+    const normalized = fullName.trim();
+
+    if (!userId) {
+      throw new Error("L'identifiant utilisateur est requis");
+    }
+
+    if (normalized.length < 2) {
+      throw new Error('Le nom doit contenir au moins 2 caractères');
+    }
+
+    if (normalized.length > 50) {
+      throw new Error('Le nom ne doit pas dépasser 50 caractères');
+    }
+
+    await this.repository.updateAuthFullName(normalized);
+
+    try {
+      await this.repository.updateFullName(userId, normalized);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du profil (table profils) :', error);
+    }
+  }
 }

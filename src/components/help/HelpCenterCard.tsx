@@ -25,7 +25,7 @@ import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
-const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER ?? "237641341857";
+import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
 
 interface HelpCenterCardProps {
   variant?: "compact" | "full";
@@ -66,9 +66,7 @@ export function HelpCenterCard({
 }: HelpCenterCardProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    "Bonjour E-Samba, j'ai besoin d'aide"
-  )}`;
+  const whatsappHref = buildWhatsAppUrl(SOCIAL.whatsappSupportMessage);
 
   if (variant === "compact") {
     return (

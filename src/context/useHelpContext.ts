@@ -1,13 +1,13 @@
 import { useContext } from "react";
-import { HelpContext } from "@/context/help.context.store";
+import { DEFAULT_HELP_CONTEXT, HelpContext } from "@/context/help.context.store";
 import type { UseHelpReturn } from "@/hooks/useHelp";
 
 export function useHelpContext(): UseHelpReturn {
-  const ctx = useContext(HelpContext);
-  if (!ctx) throw new Error("useHelpContext must be used within HelpProvider");
-  return ctx;
+  return useContext(HelpContext);
 }
 
+/** Retourne null si seul le contexte par défaut (no-op) est actif — hors HelpProvider. */
 export function useHelpContextOptional(): UseHelpReturn | null {
-  return useContext(HelpContext);
+  const ctx = useContext(HelpContext);
+  return ctx === DEFAULT_HELP_CONTEXT ? null : ctx;
 }

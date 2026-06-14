@@ -1,23 +1,19 @@
 /**
  * Bouton contact support WhatsApp E-Samba.
- * Numéro support Cameroun + message pré-rempli.
  */
 
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle } from "lucide-react";
+import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
 
-const WHATSAPP_NUMBER = '237641341857';
-const SUPPORT_HOURS   = 'Lun–Sam 7h–19h (WAT)';
+const SUPPORT_HOURS = "Lun–Sam 7h–19h (WAT)";
 
 interface WhatsAppSupportButtonProps {
-  compact?:    boolean;
-  className?:  string;
+  compact?: boolean;
+  className?: string;
 }
 
-export function WhatsAppSupportButton({ compact = false, className = '' }: WhatsAppSupportButtonProps) {
-  const message = encodeURIComponent(
-    'Bonjour E-Samba Support 👋\nJ\'ai besoin d\'aide avec :\n\n[décrivez votre problème]',
-  );
-  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+export function WhatsAppSupportButton({ compact = false, className = "" }: WhatsAppSupportButtonProps) {
+  const url = buildWhatsAppUrl(SOCIAL.whatsappSupportMessage);
 
   if (compact) {
     return (
@@ -37,7 +33,9 @@ export function WhatsAppSupportButton({ compact = false, className = '' }: Whats
   }
 
   return (
-    <div className={`rounded-xl border border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800 p-4 ${className}`}>
+    <div
+      className={`rounded-xl border border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800 p-4 ${className}`}
+    >
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500">
           <MessageCircle className="h-5 w-5 text-white" aria-hidden />

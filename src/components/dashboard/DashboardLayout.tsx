@@ -13,6 +13,7 @@ import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { isNativePlatform } from "@/lib/platform";
 import MobileLayout from "@/layouts/MobileLayout";
 import { OfflinePendingSyncBridge } from "@/components/OfflinePendingSyncBridge";
+import { SectionErrorBoundary } from "@/components/errors/SectionErrorBoundary";
 const NotificationsPermissionGate = lazy(() =>
   import("@/components/notifications/NotificationsPermissionGate").then((module) => ({
     default: module.NotificationsPermissionGate,
@@ -65,9 +66,11 @@ export default function DashboardLayout() {
             <Suspense fallback={null}>
               <NotificationsPermissionGate />
             </Suspense>
-            <Suspense fallback={<RoutePageFallback />}>
-              <Outlet />
-            </Suspense>
+            <SectionErrorBoundary sectionLabel="le tableau de bord">
+              <Suspense fallback={<RoutePageFallback />}>
+                <Outlet />
+              </Suspense>
+            </SectionErrorBoundary>
           </main>
           <HelpBubble />
         </SidebarInset>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const BANNER_DISMISS_PREFIX = "esamba.activation_banner_dismissed_";
 /** Durée pendant laquelle le bandeau checklist peut s’afficher après création du compte. */
@@ -33,11 +34,11 @@ export interface ActivationStep {
 }
 
 const STEPS_CONFIG: Omit<ActivationStep, "completed">[] = [
-  { id: "first_vehicle", icon: "🚐", label: "Ajouter un premier véhicule", description: "Enregistrez un véhicule pour démarrer le suivi.", impact: "Base activée", cta: "Ajouter un véhicule", href: "/dashboard/vehicles" },
-  { id: "first_creneau", icon: "🕒", label: "Créer un premier créneau", description: "Ouvrez un premier créneau opérationnel depuis le hub terrain.", impact: "Suivi activé", cta: "Ouvrir un créneau", href: "/terrain" },
-  { id: "first_alert", icon: "🚨", label: "Configurer vos alertes", description: "Activez une alerte clé de supervision.", impact: "Moins d'imprévus", cta: "Voir les alertes", href: "/dashboard/alerts" },
-  { id: "invite_member", icon: "👥", label: "Inviter votre équipe", description: "Ajoutez au moins un membre à la flotte.", impact: "Collaboration", cta: "Inviter l'équipe", href: "/dashboard/teams" },
-  { id: "first_report", icon: "📊", label: "Consulter un premier rapport", description: "Validez vos premiers KPI de flotte.", impact: "Pilotage data", cta: "Voir les rapports", href: "/dashboard/reports" },
+  { id: "first_vehicle", icon: "🚐", label: "Ajouter un premier véhicule", description: "Enregistrez un véhicule pour démarrer le suivi.", impact: "Base activée", cta: "Ajouter un véhicule", href: ROUTE_PATHS.dashboardVehicles },
+  { id: "first_creneau", icon: "🕒", label: "Créer un premier créneau", description: "Ouvrez un premier créneau opérationnel depuis le hub terrain.", impact: "Suivi activé", cta: "Ouvrir un créneau", href: ROUTE_PATHS.terrain },
+  { id: "first_alert", icon: "🚨", label: "Configurer vos alertes", description: "Activez une alerte clé de supervision.", impact: "Moins d'imprévus", cta: "Voir les alertes", href: ROUTE_PATHS.dashboardAlerts },
+  { id: "invite_member", icon: "👥", label: "Inviter votre équipe", description: "Ajoutez au moins un membre à la flotte.", impact: "Collaboration", cta: "Inviter l'équipe", href: ROUTE_PATHS.dashboardTeams },
+  { id: "first_report", icon: "📊", label: "Consulter un premier rapport", description: "Validez vos premiers KPI de flotte.", impact: "Pilotage data", cta: "Voir les rapports", href: ROUTE_PATHS.dashboardReports },
 ];
 
 function normalizeStepId(stepId: ActivationStepId): CanonicalStepId {

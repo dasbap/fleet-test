@@ -1,4 +1,5 @@
 import { LegalLayout, LegalSection } from "@/components/landing/LegalLayout";
+import { CONTACT } from "@/config/navigation";
 
 const MAJ = "11 mai 2026";
 
@@ -27,9 +28,9 @@ export default function ConditionsPage() {
           dont le siège social est situé à Douala, Cameroun.
         </p>
         <p>
-          E-mail : <a href="mailto:contact@e-samba.com" className="text-primary hover:underline">contact@e-samba.com</a>
+          E-mail : <a href={CONTACT.mailtoHref} className="text-primary hover:underline">{CONTACT.email}</a>
           {" — "}
-          Tél. : <a href="tel:+237641341857" className="text-primary hover:underline">+237 6 41 34 18 57</a>
+          Tél. : <a href={CONTACT.telHref} className="text-primary hover:underline">{CONTACT.phoneDisplay}</a>
         </p>
       </LegalSection>
 

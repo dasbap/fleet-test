@@ -3,11 +3,16 @@ import Providers from "@/components/Providers";
 import { PageSEO } from "@/components/PageSEO";
 import { BrowserRouter, Routes } from "react-router-dom";
 import { WebVitalsRouteSync } from "@/components/WebVitalsRouteSync";
-import { PostHogPageViewSync } from "@/components/analytics/PostHogPageViewSync";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { appRoutes } from "@/app/routes/app.routes";
 import { LazySentryErrorBoundary } from "@/components/errors/LazySentryErrorBoundary";
 import { HelpProvider } from "@/context/HelpContext";
+
+const PostHogPageViewSync = lazy(() =>
+  import("@/components/analytics/PostHogPageViewSync").then((module) => ({
+    default: module.PostHogPageViewSync,
+  })),
+);
 
 const DeepLinkListener = lazy(() =>
   import("@/components/navigation/DeepLinkListener").then((module) => ({
@@ -26,7 +31,9 @@ const AppContent = () => (
       >
         <HelpProvider>
           <WebVitalsRouteSync />
-          <PostHogPageViewSync />
+          <Suspense fallback={null}>
+            <PostHogPageViewSync />
+          </Suspense>
           <Suspense fallback={null}>
             <DeepLinkListener />
           </Suspense>

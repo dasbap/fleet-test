@@ -5,6 +5,7 @@ import { PublicPageLayout } from "@/components/landing/PublicPageLayout";
 import { PublicPageHero } from "@/components/landing/PublicPageHero";
 import { PublicCtaSection } from "@/components/landing/PublicCtaSection";
 import { ContactDemoForm } from "@/components/landing/ContactDemoForm";
+import { CONTACT } from "@/config/navigation";
 import { usePageSeo } from "@/hooks/usePageSeo";
 
 export default function ContactPage() {
@@ -33,22 +34,22 @@ export default function ContactPage() {
               <h2 className="text-2xl font-heading font-bold mb-6">Nous contacter</h2>
               <div className="space-y-4 mb-8">
                 <a
-                  href="mailto:contact@e-samba.com"
+                  href={CONTACT.mailtoHref}
                   className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors text-sm md:text-base"
                 >
                   <Mail className="w-5 h-5 shrink-0" />
-                  contact@e-samba.com
+                  {CONTACT.email}
                 </a>
                 <a
-                  href="tel:+237641341857"
+                  href={CONTACT.telHref}
                   className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors text-sm md:text-base"
                 >
                   <Phone className="w-5 h-5 shrink-0" />
-                  +237 6 41 34 18 57
+                  {CONTACT.phoneDisplay}
                 </a>
                 <div className="flex items-center gap-3 text-muted-foreground text-sm md:text-base">
                   <MapPin className="w-5 h-5 shrink-0" />
-                  Douala, Cameroun
+                  {CONTACT.city}
                 </div>
               </div>
               <p className="text-muted-foreground leading-relaxed text-sm md:text-base">

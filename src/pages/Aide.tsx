@@ -1,6 +1,7 @@
 import { useTranslation as useT2 } from "react-i18next";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
 import { HelpSearch, HelpFAQ } from "@/components/shared/HelpCenter";
 import { useHelpContext as useH2 } from "@/context/useHelpContext";
 
@@ -162,7 +163,7 @@ export default function AidePage() {
         <p className="text-sm text-slate-500 mb-3">Vous n&apos;avez pas trouvé la réponse ?</p>
         <div className="flex justify-center gap-3 flex-wrap">
           <a
-            href="https://wa.me/237641341857?text=Bonjour E-Samba, j'ai besoin d'aide"
+            href={buildWhatsAppUrl(SOCIAL.whatsappSupportMessage)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium transition-colors"

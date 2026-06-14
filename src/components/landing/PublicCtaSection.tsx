@@ -1,8 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PUBLIC_DEMO_HREF } from "@/data/marketing/public-nav";
-import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { getPrimaryAuthHref, PUBLIC_DEMO_HREF } from "@/config/navigation";
 
 /** CTA final unifié sur toutes les pages marketing publiques. */
 export function PublicCtaSection() {
@@ -17,7 +16,7 @@ export function PublicCtaSection() {
         </p>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4">
           <Button asChild className="w-full sm:w-auto shadow-glow gap-2">
-            <Link to={`${ROUTE_PATHS.auth}?mode=signup`}>
+            <Link to={getPrimaryAuthHref()}>
               Démarrer gratuitement
               <ArrowRight className="w-4 h-4" />
             </Link>

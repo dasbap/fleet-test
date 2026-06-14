@@ -1,5 +1,6 @@
 import { lazy } from "react";
-import { Route } from "react-router-dom";
+import { Navigate, Route } from "react-router-dom";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { RoleGuard } from "@/navigation/guards/RequireRole";
 import {
   DASHBOARD_BACKOFFICE_ROLES,
@@ -117,8 +118,28 @@ export const dashboardRoutes = (
   <Route path="/dashboard" element={<ProtectedRoute />}>
     <Route element={<DashboardLayout />}>
       <Route index element={<MobileHomePage />} />
+      <Route
+        path="vehicles/new"
+        element={<Navigate to={ROUTE_PATHS.dashboardVehiclesNew} replace />}
+      />
       <Route path="vehicles/:vehicleId" element={<FleetVehicleDetailPage />} />
       <Route path="vehicles" element={<MobileFleetPage />} />
+      <Route
+        path="drivers/scores"
+        element={
+          <RoleGuard allow={DASHBOARD_BACKOFFICE_ROLES}>
+            <DriverScoresPage />
+          </RoleGuard>
+        }
+      />
+      <Route
+        path="drivers/new"
+        element={<Navigate to={ROUTE_PATHS.dashboardInvitations} replace />}
+      />
+      <Route
+        path="drivers/:driverId"
+        element={<Navigate to={ROUTE_PATHS.dashboardDrivers} replace />}
+      />
       <Route
         path="drivers"
         element={
@@ -128,12 +149,8 @@ export const dashboardRoutes = (
         }
       />
       <Route
-        path="drivers/scores"
-        element={
-          <RoleGuard allow={DASHBOARD_BACKOFFICE_ROLES}>
-            <DriverScoresPage />
-          </RoleGuard>
-        }
+        path="documents"
+        element={<Navigate to={ROUTE_PATHS.dashboardAlerts} replace />}
       />
       <Route path="closure" element={<ShiftClosure />} />
       <Route path="incidents/declare" element={<DeclareIncidentPage />} />
@@ -216,7 +233,6 @@ export const dashboardRoutes = (
       />
       <Route path="my-vehicle" element={<MobileDriverFleetPage />} />
       <Route path="fuel" element={<FuelMonitoringPage />} />
-      <Route path="drivers/scores" element={<DriverScoresPage />} />
       <Route path="inspections" element={<DvirPage />} />
       <Route path="maintenance/predictive" element={<PredictiveMaintenancePage />} />
       <Route path="transit" element={<TransitCemacPage />} />

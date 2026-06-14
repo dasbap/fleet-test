@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Zap, Cookie } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
+import { CONTACT } from "@/config/navigation";
 
 interface SectionProps {
   titre: string;
@@ -178,17 +179,17 @@ export default function CookiesPage() {
               Pour toute question relative à l'usage des cookies sur E-Samba,
               contactez-nous à{" "}
               <a
-                href="mailto:contact@e-samba.com"
+                href={CONTACT.mailtoHref}
                 className="text-primary hover:underline"
               >
-                contact@e-samba.com
+                {CONTACT.email}
               </a>{" "}
               ou appelez le{" "}
               <a
-                href="tel:+237641341857"
+                href={CONTACT.telHref}
                 className="text-primary hover:underline"
               >
-                +237 6 41 34 18 57
+                {CONTACT.phoneDisplay}
               </a>
               .
             </p>
