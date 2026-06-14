@@ -70,31 +70,72 @@ function log(msg, kind = '') {
 }
 
 /**
- * Résout email → utilisateur en paginant listUsers jusqu’à couvrir tous les emails cibles ou épuiser les pages.
+ * Résout email → utilisateur : d’abord lookup REST par email, sinon pagination listUsers.
  */
-async function collectUsersByEmail(supabase, targetSet) {
+async function collectUsersByEmail(supabase, url, serviceRoleKey, emails) {
   const found = new Map();
+
+  for (const email of emails) {
+    try {
+      const user = await findUserByEmailRest(url, serviceRoleKey, email);
+      if (user) found.set(email, user);
+    } catch {
+      /* fallback pagination ci-dessous */
+    }
+  }
+
+  if (found.size === emails.length) {
+    return found;
+  }
+
+  const targetSet = new Set(emails.filter((e) => !found.has(e)));
   const perPage = 200;
   let page = 1;
   const maxPages = 5000;
 
-  while (found.size < targetSet.size && page <= maxPages) {
+  while (targetSet.size > 0 && page <= maxPages) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
     if (error) {
+      if (found.size > 0) return found;
       throw error;
     }
     for (const user of data.users) {
       if (user.email && targetSet.has(user.email)) {
         found.set(user.email, user);
+        targetSet.delete(user.email);
       }
     }
-    if (data.users.length < perPage) {
-      break;
-    }
+    if (data.users.length < perPage) break;
     page += 1;
   }
 
   return found;
+}
+
+async function findUserByEmailRest(url, serviceRoleKey, email) {
+  const endpoint = new URL('/auth/v1/admin/users', url);
+  endpoint.searchParams.set('page', '1');
+  endpoint.searchParams.set('per_page', '1');
+  endpoint.searchParams.set('filter', email);
+
+  const res = await fetch(endpoint, {
+    headers: {
+      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey,
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Admin lookup ${email} : ${res.status} ${body.slice(0, 120)}`);
+  }
+
+  const json = await res.json();
+  const users = json.users ?? json;
+  if (Array.isArray(users) && users.length > 0 && users[0].email === email) {
+    return users[0];
+  }
+  return null;
 }
 
 async function main() {
@@ -117,7 +158,7 @@ async function main() {
   const targetSet = new Set(DEMO_EMAILS);
   let found;
   try {
-    found = await collectUsersByEmail(supabase, targetSet);
+    found = await collectUsersByEmail(supabase, url, serviceRoleKey, DEMO_EMAILS);
   } catch (e) {
     log(e?.message ?? String(e), 'err');
     process.exit(1);
@@ -129,12 +170,29 @@ async function main() {
   }
 
   let failures = 0;
+  let skipped = 0;
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+  const probeClient = anonKey ? createClient(url, anonKey) : null;
+
   for (const email of DEMO_EMAILS) {
     const user = found.get(email);
     if (!user) {
       failures += 1;
       continue;
     }
+
+    if (probeClient) {
+      const { error: signErr } = await probeClient.auth.signInWithPassword({
+        email,
+        password: DEMO_PASSWORD,
+      });
+      if (!signErr) {
+        log(`Connexion OK — mot de passe inchangé : ${email}`, 'ok');
+        skipped += 1;
+        continue;
+      }
+    }
+
     const { error } = await supabase.auth.admin.updateUserById(user.id, {
       password: DEMO_PASSWORD,
     });
@@ -148,10 +206,16 @@ async function main() {
 
   if (failures > 0) {
     log(`${failures} compte(s) non mis à jour.`, 'err');
+    log('Alternative : exécuter supabase/scripts/setup/reset-demo-passwords.sql dans le SQL Editor.', 'warn');
     process.exit(1);
   }
 
-  log('Tous les comptes démo présents ont été mis à jour.', 'ok');
+  log(
+    skipped === DEMO_EMAILS.length
+      ? 'Tous les comptes démo se connectent déjà avec Demo2025! — aucune mise à jour nécessaire.'
+      : 'Tous les comptes démo présents ont été mis à jour.',
+    'ok',
+  );
 }
 
 main().catch((e) => {

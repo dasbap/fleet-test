@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
 
-const BASE_URL = "http://localhost:8081";
+const BASE_URL = process.env.E2E_BASE_URL?.trim() || "http://localhost:8080";
 const PASSWORD = "Demo2025!";
 
 const accounts = [
