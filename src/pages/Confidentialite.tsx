@@ -1,4 +1,5 @@
 import { LegalLayout, LegalSection } from "@/components/landing/LegalLayout";
+import { PRIVACY } from "@/config/navigation";
 
 const MAJ = "29 mai 2026";
 
@@ -79,8 +80,8 @@ export default function ConfidentialitePage() {
             Douala, Cameroun
             <br />
             Email :{" "}
-            <a href="mailto:privacy@e-samba.com" className="text-primary hover:underline">
-              privacy@e-samba.com
+            <a href={PRIVACY.mailtoHref} className="text-primary hover:underline">
+              {PRIVACY.email}
             </a>
             <br />
             Réponse garantie sous <strong className="text-foreground">30 jours ouvrables</strong>.
@@ -325,8 +326,8 @@ export default function ConfidentialitePage() {
           Un conducteur peut, depuis ses paramètres de compte, consulter
           l'historique de ses propres positions. Il peut demander la suppression
           de ses données GPS personnelles (positions hors créneaux actifs) via{" "}
-          <a href="mailto:privacy@e-samba.com" className="text-primary hover:underline">
-            privacy@e-samba.com
+          <a href={PRIVACY.mailtoHref} className="text-primary hover:underline">
+            {PRIVACY.email}
           </a>
           . La collecte GPS pendant un créneau d'exploitation actif est nécessaire
           à l'exécution du contrat de service.
@@ -623,8 +624,8 @@ export default function ConfidentialitePage() {
 
         <h3 className="font-semibold text-foreground mt-4 mb-2">12.2 Voie formelle (par e-mail)</h3>
         <p>Envoyez votre demande à{" "}
-          <a href="mailto:privacy@e-samba.com" className="text-primary hover:underline">
-            privacy@e-samba.com
+          <a href={PRIVACY.mailtoHref} className="text-primary hover:underline">
+            {PRIVACY.email}
           </a>{" "}
           en indiquant :
         </p>
@@ -746,8 +747,8 @@ export default function ConfidentialitePage() {
         <p>
           Si vous estimez qu'un mineur a créé un compte sur E-Samba, contactez-nous
           immédiatement à{" "}
-          <a href="mailto:privacy@e-samba.com" className="text-primary hover:underline">
-            privacy@e-samba.com
+          <a href={PRIVACY.mailtoHref} className="text-primary hover:underline">
+            {PRIVACY.email}
           </a>
           . Les données seront supprimées dans un délai de 72 heures.
         </p>
@@ -771,8 +772,8 @@ export default function ConfidentialitePage() {
         </p>
         <p>
           L'historique des versions est disponible sur demande à{" "}
-          <a href="mailto:privacy@e-samba.com" className="text-primary hover:underline">
-            privacy@e-samba.com
+          <a href={PRIVACY.mailtoHref} className="text-primary hover:underline">
+            {PRIVACY.email}
           </a>
           .
         </p>
@@ -792,8 +793,8 @@ export default function ConfidentialitePage() {
           <p>📍 Douala, Cameroun</p>
           <p>
             📧{" "}
-            <a href="mailto:privacy@e-samba.com" className="text-primary hover:underline">
-              privacy@e-samba.com
+            <a href={PRIVACY.mailtoHref} className="text-primary hover:underline">
+              {PRIVACY.email}
             </a>
           </p>
           <p>
@@ -826,7 +827,7 @@ export default function ConfidentialitePage() {
             },
             {
               q: "Comment supprimer mon compte ?",
-              a: "Vous pouvez supprimer votre compte depuis Paramètres → Sécurité → Supprimer mon compte. La suppression est effective sous 30 jours. Certaines données (comptables, audit) sont conservées pour des obligations légales. Vous pouvez aussi envoyer une demande à privacy@e-samba.com avec une copie de votre pièce d'identité.",
+              a: `Vous pouvez supprimer votre compte depuis Paramètres → Sécurité → Supprimer mon compte. La suppression est effective sous 30 jours. Certaines données (comptables, audit) sont conservées pour des obligations légales. Vous pouvez aussi envoyer une demande à ${PRIVACY.email} avec une copie de votre pièce d'identité.`,
             },
             {
               q: "Les paiements Mobile Money sont-ils sécurisés ?",

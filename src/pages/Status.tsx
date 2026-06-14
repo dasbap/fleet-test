@@ -1,6 +1,7 @@
 import { CheckCircle2, AlertTriangle, XCircle, RefreshCw } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
+import { buildMailtoHref, DEPARTMENT_EMAILS } from "@/config/navigation";
 
 type ServiceStatus = "operational" | "degraded" | "outage";
 
@@ -157,7 +158,9 @@ export default function StatusPage() {
               interruption ou dégradation de service.
             </p>
             <a
-              href="mailto:status@e-samba.com?subject=Abonnement alertes statut"
+              href={buildMailtoHref(DEPARTMENT_EMAILS.status, {
+                subject: "Abonnement alertes statut",
+              })}
               className="inline-flex items-center gap-2 border border-border rounded-xl px-5 py-2.5 text-sm font-medium hover:border-primary/40 hover:text-primary transition-colors"
             >
               S'abonner aux alertes

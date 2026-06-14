@@ -25,6 +25,7 @@ import { useBillingCheckout } from "@/hooks/useBillingCheckout";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { formatPublicPriceXaf } from "@/lib/public-pricing";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { buildSupportMailto } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 
 // ─── Constantes pricing ───────────────────────────────────────────────────
@@ -170,7 +171,10 @@ export default function PricingPage() {
 
   async function handlePay(plan: PlanConfig) {
     if (plan.code === "enterprise") {
-      window.location.href = `mailto:support@e-samba.com?subject=Devis%20Organizer%20E-Samba&body=Bonjour%2C%20je%20souhaite%20un%20devis%20pour%20le%20plan%20Organizer.`;
+      window.location.href = buildSupportMailto(
+        "Devis Organizer E-Samba",
+        "Bonjour, je souhaite un devis pour le plan Organizer.",
+      );
       return;
     }
     if (plan.code === "free") {
@@ -517,7 +521,7 @@ function PlanCard({
           </Button>
         ) : isEnterprise ? (
           <Button variant="outline" className="w-full" asChild>
-            <a href="mailto:support@e-samba.com?subject=Devis%20Organizer">
+            <a href={buildSupportMailto("Devis Organizer")}>
               {plan.ctaLabel}
               <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
             </a>
@@ -538,7 +542,7 @@ function PlanCard({
           </Button>
         ) : !bffAvailable ? (
           <Button variant="outline" className="w-full" asChild>
-            <a href={`mailto:support@e-samba.com?subject=Abonnement%20E-Samba%20${plan.name}`}>
+            <a href={buildSupportMailto(`Abonnement E-Samba ${plan.name}`)}>
               Nous contacter
             </a>
           </Button>

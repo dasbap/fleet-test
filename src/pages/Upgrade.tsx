@@ -17,10 +17,9 @@ import {
 } from "@/lib/public-pricing";
 import { cn } from "@/lib/utils";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { buildSupportMailto } from "@/config/navigation";
 import { MoMoPaymentDialog } from "@/components/billing/MoMoPaymentDialog";
 import { isBffConfigured } from "@/lib/bff-config";
-
-const SUPPORT_EMAIL = "support@e-samba.com";
 
 type PlanKey = "free" | "starter" | "pro";
 
@@ -41,8 +40,7 @@ function buildRenewalMailto(plan: PlanKey, fleetLabel: string): string {
     .filter(Boolean)
     .join("\n");
 
-  const params = new URLSearchParams({ subject: subjects[plan], body });
-  return `mailto:${SUPPORT_EMAIL}?${params.toString()}`;
+  return buildSupportMailto(subjects[plan], body);
 }
 
 const DEFAULT_VEHICLE_COUNTS: Record<PlanKey, number> = {

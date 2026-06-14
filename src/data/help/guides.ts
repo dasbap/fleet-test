@@ -1,4 +1,5 @@
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { SUPPORT } from "@/config/navigation";
 
 /**
  * Contenu — Guides par rôle + Tutoriels rapides + Onboarding.
@@ -337,7 +338,7 @@ export const GUIDES: Guide[] = [
     steps: [
       { title: 'Moyens acceptés', body: 'E-Samba accepte Mobile Money (MTN, Orange) et les cartes bancaires via Notch Pay.' },
       { title: 'Renouveler l\'abonnement', body: 'Dashboard → Abonnement → « Renouveler » pour choisir votre mode de paiement préféré.' },
-      { title: 'En cas d\'échec', body: 'Vérifiez votre solde Mobile Money et réessayez. Contactez support@e-samba.com si le problème persiste après 24 h.' },
+      { title: 'En cas d\'échec', body: `Vérifiez votre solde Mobile Money et réessayez. Contactez ${SUPPORT.email} si le problème persiste après 24 h.` },
     ],
   },
 

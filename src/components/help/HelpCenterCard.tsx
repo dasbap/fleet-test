@@ -22,10 +22,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { ACCOUNT_EXTERNAL_LINKS } from "@/features/account/config/accountLinks";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { buildWhatsAppUrl, SOCIAL, SUPPORT } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-
-import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
 
 interface HelpCenterCardProps {
   variant?: "compact" | "full";
@@ -104,7 +103,7 @@ export function HelpCenterCard({
               </a>
             </Button>
             <Button asChild variant="outline" size="sm" className="flex-1">
-              <a href="mailto:support@e-samba.com" aria-label="Support Email">
+              <a href={SUPPORT.mailtoHref} aria-label="Support Email">
                 <Mail className="h-4 w-4 mr-1 text-blue-500" aria-hidden />
                 Email
               </a>
@@ -182,12 +181,12 @@ export function HelpCenterCard({
           WhatsApp
         </a>
         <a
-          href="mailto:support@e-samba.com"
+          href={SUPPORT.mailtoHref}
           className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border text-muted-foreground text-xs font-medium py-2 hover:bg-muted/50 transition-colors"
           aria-label="Contacter le support par email"
         >
           <Mail className="h-3.5 w-3.5" aria-hidden />
-          support@e-samba.com
+          {SUPPORT.email}
         </a>
       </div>
     </div>

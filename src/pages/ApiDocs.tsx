@@ -1,6 +1,7 @@
 import { Code2, Key, Lock, Zap } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
+import { buildMailtoHref, DEPARTMENT_EMAILS } from "@/config/navigation";
 
 const ENDPOINTS = [
   { methode: "GET", path: "/v1/fleets/{fleetId}/vehicles", description: "Liste des véhicules de la flotte" },
@@ -129,7 +130,9 @@ export default function ApiDocsPage() {
               Contactez-nous pour obtenir votre clé de test sandbox.
             </p>
             <a
-              href="mailto:api@e-samba.com?subject=Demande acces API E-Samba"
+              href={buildMailtoHref(DEPARTMENT_EMAILS.api, {
+                subject: "Demande acces API E-Samba",
+              })}
               className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-5 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm"
             >
               <Code2 className="w-4 h-4" />

@@ -1,4 +1,5 @@
 import { getBffBaseUrl, isBffConfigured } from "@/lib/bff-config";
+import { SUPPORT } from "@/config/navigation";
 import { supabase } from "@/integrations/supabase/client";
 import {
   PaymentTransactionRepository,
@@ -37,7 +38,7 @@ function buildInstructions(
         `Entrez le montant : ${amountXaf.toLocaleString("fr-FR")} FCFA`,
         `Saisissez votre code PIN Orange Money`,
         `Gardez la capture du SMS de confirmation — référence : ${reference}`,
-        `Envoyez la capture par WhatsApp ou email à support@e-samba.com`,
+        `Envoyez la capture par WhatsApp ou email à ${SUPPORT.email}`,
       ],
     };
   }
@@ -55,7 +56,7 @@ function buildInstructions(
       `Entrez le montant : ${amountXaf.toLocaleString("fr-FR")} FCFA`,
       `Saisissez votre code PIN MoMo`,
       `Gardez la capture du SMS de confirmation — référence : ${reference}`,
-      `Envoyez la capture par WhatsApp ou email à support@e-samba.com`,
+      `Envoyez la capture par WhatsApp ou email à ${SUPPORT.email}`,
     ],
   };
 }

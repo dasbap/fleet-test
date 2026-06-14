@@ -27,7 +27,7 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
+    <section className="relative min-h-[100dvh] sm:min-h-screen flex items-center pt-20 pb-8 sm:pb-0 overflow-hidden">
       <div className="absolute inset-0 z-0">
         <picture>
           <source
@@ -65,13 +65,13 @@ const HeroSection = () => {
             <span className="text-sm font-medium">Smart Mobility Africa</span>
           </div>
 
-          <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold leading-tight mb-6 animate-fade-in-up">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold leading-tight mb-6 animate-fade-in-up">
             Gérez votre flotte avec{" "}
             <span className="text-gradient">intelligence</span>
           </h1>
 
           <p
-            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in-up"
+            className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in-up"
             style={{ animationDelay: "0.1s" }}
           >
             E-Samba est la plateforme SaaS de gestion de flotte conçue pour

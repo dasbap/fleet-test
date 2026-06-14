@@ -14,6 +14,7 @@
  */
 
 import type { FaqRegistry } from '@/types/faq';
+import { SUPPORT } from '@/config/navigation';
 
 // ─── Mapping URL → clé FAQ ────────────────────────────────────────────────────
 // Ordre important : les patterns les plus spécifiques en premier.
@@ -561,7 +562,7 @@ export const faqRegistry: FaqRegistry = {
         id: 'gen-support',
         question: 'Comment contacter le support E-Samba ?',
         answer:
-          'Le support est disponible via le chat en ligne (lundi–vendredi, 8h–18h WAT), par email à support@e-samba.com, ou par WhatsApp au +237 6XX XXX XXX.',
+          `Le support est disponible via le chat en ligne (lundi–vendredi, 8h–18h WAT), par email à ${SUPPORT.email}, ou par WhatsApp au +237 6XX XXX XXX.`,
         tags: ['support', 'contact', 'aide', 'chat', 'email'],
       },
       {
@@ -591,7 +592,7 @@ export const faqRegistry: FaqRegistry = {
         id: 'gen-support',
         question: 'How do I contact E-Samba support?',
         answer:
-          'Support is available via live chat (Mon–Fri, 8am–6pm WAT), email at support@e-samba.com, or WhatsApp at +237 6XX XXX XXX.',
+          `Support is available via live chat (Mon–Fri, 8am–6pm WAT), email at ${SUPPORT.email}, or WhatsApp at +237 6XX XXX XXX.`,
         tags: ['support', 'contact', 'help', 'chat', 'email'],
       },
       {

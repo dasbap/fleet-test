@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { WhatsAppSupportButton } from '@/components/help/WhatsAppSupportButton';
+import { buildSupportMailto, SUPPORT } from '@/config/navigation';
 import { useCreateSupportTicket, useCreateSupportCallback } from '@/hooks/useSupportTicket';
 import { useLocation } from 'react-router-dom';
 import { useAuthOptional } from '@/hooks/useAuth';
@@ -25,10 +26,8 @@ export function SupportPanel({ compact = false }: { compact?: boolean }) {
   const createTicket = useCreateSupportTicket();
   const createCallback = useCreateSupportCallback();
 
-  const emailSubject = encodeURIComponent(
-    `[E-Samba Support] ${location.pathname} (${role ?? 'visiteur'})`,
-  );
-  const emailHref = `mailto:support@e-samba.com?subject=${emailSubject}`;
+  const emailSubject = `[E-Samba Support] ${location.pathname} (${role ?? 'visiteur'})`;
+  const emailHref = buildSupportMailto(emailSubject);
 
   const trackSupportClick = (channel: string) => {
     try {
@@ -96,7 +95,7 @@ export function SupportPanel({ compact = false }: { compact?: boolean }) {
             className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-muted/50 transition-colors"
           >
             <Mail className="h-4 w-4 text-muted-foreground" aria-hidden />
-            support@e-samba.com
+            {SUPPORT.email}
           </a>
           <div className="flex gap-2">
             <Button

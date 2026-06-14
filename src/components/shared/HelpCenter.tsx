@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
+import { buildWhatsAppUrl, SOCIAL, SUPPORT } from "@/config/navigation";
 import type { HelpArticle, HelpCategory } from "@/hooks/useHelp";
 import { useHelpContext as useHelp } from "@/context/useHelpContext";
 
@@ -456,10 +456,10 @@ function HelpPanelInternal() {
             size="sm"
             className="w-full text-muted-foreground hover:text-foreground text-xs"
             onClick={() => {
-              window.location.href = "mailto:support@e-samba.com";
+              window.location.href = SUPPORT.mailtoHref;
             }}
           >
-            {t("contact_support")} — support@e-samba.com
+            {t("contact_support")} — {SUPPORT.email}
           </Button>
         </div>
       </SheetContent>
