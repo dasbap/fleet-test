@@ -1,6 +1,7 @@
 import { Handshake, Globe, TrendingUp, ArrowRight } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
+import { buildMailtoHref, DEPARTMENT_EMAILS } from "@/config/navigation";
 
 const TYPES_PARTENAIRES = [
   {
@@ -67,7 +68,9 @@ export default function PartenairesPage() {
                     ))}
                   </ul>
                   <a
-                    href={`mailto:partenaires@e-samba.com?subject=Programme ${titre}`}
+                    href={buildMailtoHref(DEPARTMENT_EMAILS.partenaires, {
+                      subject: `Programme ${titre}`,
+                    })}
                     className="inline-flex items-center gap-1 text-sm text-primary font-medium hover:gap-2 transition-all"
                   >
                     Devenir partenaire <ArrowRight className="w-4 h-4" />
@@ -88,7 +91,7 @@ export default function PartenairesPage() {
               d'usage et construire une proposition sur mesure.
             </p>
             <a
-              href="mailto:partenaires@e-samba.com"
+              href={buildMailtoHref(DEPARTMENT_EMAILS.partenaires)}
               className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors text-sm"
             >
               Contacter l'équipe partenariats

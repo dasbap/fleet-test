@@ -3,6 +3,7 @@
  */
 
 import type { FaqRegistry } from '@/types/faq';
+import { SUPPORT } from '@/config/navigation';
 
 export const faqEn: FaqRegistry = {
   dashboard: {
@@ -233,7 +234,7 @@ export const faqEn: FaqRegistry = {
         id: 'gen-support',
         question: 'How do I contact E-Samba support?',
         answer:
-          'Support is available via live chat (Mon–Fri, 8am–6pm WAT), email at support@e-samba.com, or WhatsApp.',
+          `Support is available via live chat (Mon–Fri, 8am–6pm WAT), email at ${SUPPORT.email}, or WhatsApp.`,
         tags: ['support', 'contact', 'help', 'chat', 'email'],
       },
       {

@@ -18,6 +18,7 @@ import { useContextualFaq } from '@/hooks/useContextualFaq';
 import { FaqAccordion } from './FaqAccordion';
 import { FaqSearch } from './FaqSearch';
 import { FAQ_ROUTE_LABELS } from './faqLabels';
+import { SUPPORT } from '@/config/navigation';
 
 export function FaqDrawer() {
   const { items, filteredItems, query, setQuery, route } = useContextualFaq();
@@ -29,7 +30,7 @@ export function FaqDrawer() {
       <Sheet>
         <SheetTrigger asChild>
           <button
-            className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all"
+            className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 min-h-[44px] text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all"
             aria-label="Ouvrir la FAQ"
           >
             <HelpCircle className="h-5 w-5" aria-hidden />
@@ -58,7 +59,7 @@ export function FaqDrawer() {
           </div>
 
           <a
-            href="mailto:support@e-samba.com"
+            href={SUPPORT.mailtoHref}
             className="text-center text-sm text-blue-600 hover:underline py-2"
           >
             Contacter le support →

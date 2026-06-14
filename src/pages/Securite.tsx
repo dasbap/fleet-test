@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Zap, Shield, Lock, Server, Eye, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
+import { DEPARTMENT_EMAILS, buildMailtoHref } from "@/config/navigation";
 
 const PILIERS = [
   {
@@ -130,11 +131,11 @@ export default function SecuritePage() {
               sécurité directement — nous nous engageons à répondre sous 48h.
             </p>
             <a
-              href="mailto:security@e-samba.com"
+              href={buildMailtoHref(DEPARTMENT_EMAILS.security)}
               className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors"
             >
               <Shield className="w-4 h-4" />
-              security@e-samba.com
+              {DEPARTMENT_EMAILS.security}
             </a>
           </div>
         </section>

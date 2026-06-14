@@ -10,6 +10,7 @@
  */
 
 import type { FaqRegistry } from '@/types/faq';
+import { SUPPORT } from '@/config/navigation';
 
 export const faqLn: FaqRegistry = {
   dashboard: {
@@ -89,7 +90,7 @@ export const faqLn: FaqRegistry = {
         id: 'gen-support',
         question: 'Nakoki kosangana na support E-Samba ndenge nini ?',
         answer:
-          'Support ezali na chat en ligne (lundi–vendredi, 8h–18h WAT), na email support@e-samba.com, to na WhatsApp.',
+          `Support ezali na chat en ligne (lundi–vendredi, 8h–18h WAT), na email ${SUPPORT.email}, to na WhatsApp.`,
         tags: ['support', 'contact', 'mabe', 'chat'],
       },
     ],

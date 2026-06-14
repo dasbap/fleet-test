@@ -4,6 +4,7 @@
  */
 
 import type { HelpArticleInsert } from '@/types/help';
+import { SUPPORT } from '@/config/navigation';
 
 /** Articles FR complets (v1). */
 export const HELP_ARTICLES_SEED_FR: HelpArticleInsert[] = [
@@ -336,7 +337,7 @@ export const HELP_ARTICLES_SEED_FR: HelpArticleInsert[] = [
     category: 'billing',
     role: ['organizer', 'manager'],
     keywords: ['paiement', 'échec', 'retry', 'abonnement'],
-    content: 'Si votre paiement échoue, vérifiez votre solde Mobile Money et réessayez depuis Abonnement.\n\nContactez support@e-samba.com si le problème persiste après 24h.',
+    content: `Si votre paiement échoue, vérifiez votre solde Mobile Money et réessayez depuis Abonnement.\n\nContactez ${SUPPORT.email} si le problème persiste après 24h.`,
     error_codes: ['billing/payment_failed'],
     route_context: ['/dashboard/billing'],
     sort_order: 51,

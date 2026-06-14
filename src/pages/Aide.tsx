@@ -1,7 +1,7 @@
 import { useTranslation as useT2 } from "react-i18next";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
+import { buildWhatsAppUrl, SOCIAL, SUPPORT } from "@/config/navigation";
 import { HelpSearch, HelpFAQ } from "@/components/shared/HelpCenter";
 import { useHelpContext as useH2 } from "@/context/useHelpContext";
 
@@ -171,7 +171,7 @@ export default function AidePage() {
             💬 {t("contact_whatsapp")}
           </a>
           <a
-            href="mailto:support@e-samba.com"
+            href={SUPPORT.mailtoHref}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm hover:border-slate-300 transition-colors"
           >
             ✉️ {t("contact_support")}

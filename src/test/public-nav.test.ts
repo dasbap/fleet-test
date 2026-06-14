@@ -3,11 +3,15 @@ import { FONCTIONNALITES } from "@/data/marketing/fonctionnalites";
 import { MODULES } from "@/data/marketing/modules";
 import {
   AUTH_NAV,
+  buildMailtoHref,
+  buildSupportMailto,
   CONTACT,
+  DEPARTMENT_EMAILS,
   DASHBOARD_NAV,
   FOOTER_SUPPORT_LINKS,
   isDashboardNavActive,
   isPublicNavActive,
+  PRIVACY,
   PUBLIC_DEMO_HREF,
   PUBLIC_NAV,
   PUBLIC_NAV_LINKS,
@@ -128,5 +132,22 @@ describe("données marketing publiques", () => {
   it("centralise l'email support produit", () => {
     expect(SUPPORT.email).toContain("@");
     expect(SUPPORT.mailtoHref).toMatch(/^mailto:/);
+  });
+
+  it("centralise l'email confidentialité", () => {
+    expect(PRIVACY.email).toContain("@");
+    expect(PRIVACY.mailtoHref).toMatch(/^mailto:/);
+  });
+
+  it("centralise les emails département", () => {
+    expect(Object.values(DEPARTMENT_EMAILS).every((e) => e.includes("@"))).toBe(true);
+  });
+
+  it("construit des liens mailto avec sujet et corps", () => {
+    const href = buildSupportMailto("Test sujet", "Corps du message");
+    expect(href).toContain(SUPPORT.email);
+    expect(href).toContain("subject=Test");
+    expect(href).toContain("body=Corps");
+    expect(buildMailtoHref(CONTACT.email)).toBe(CONTACT.mailtoHref);
   });
 });

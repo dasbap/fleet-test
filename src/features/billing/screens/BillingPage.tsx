@@ -41,7 +41,7 @@ import { isBffConfigured } from "@/lib/bff-config";
 import { formatPublicPriceXaf } from "@/lib/public-pricing";
 import { cn } from "@/lib/utils";
 import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
-import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
+import { buildWhatsAppUrl, buildSupportMailto, SOCIAL, SUPPORT } from "@/config/navigation";
 import { STATUS_CONFIG } from "@/features/billing/constants/billingStatusConfig";
 import { useNotchPayCallback } from "@/features/billing/hooks/useNotchPayCallback";
 import type { FleetBillingContext } from "@/types/fleet-billing";
@@ -294,7 +294,7 @@ export default function BillingPage() {
           )}
           {canManageBilling && ctx.billingStatus === "enterprise" && (
             <Button asChild size="sm" variant="outline">
-              <a href="mailto:support@e-samba.com?subject=Renouvellement%20Enterprise">
+              <a href={buildSupportMailto("Renouvellement Enterprise")}>
                 <ArrowUpRight className="mr-1.5 h-4 w-4" />
                 Renouveler (Enterprise)
               </a>
@@ -313,7 +313,7 @@ export default function BillingPage() {
             </a>
           </Button>
           <Button asChild size="sm" variant="outline">
-            <a href="mailto:support@e-samba.com?subject=Support%20facturation%20E-Samba">
+            <a href={buildSupportMailto("Support facturation E-Samba")}>
               <ExternalLink className="mr-1.5 h-4 w-4" />
               Email support
             </a>
@@ -504,7 +504,7 @@ function downloadReceipt(p: PaymentRecord) {
     `Montant     : ${p.amount.toLocaleString("fr-FR")} ${p.currency}`,
     `Statut      : ${PAYMENT_STATUS_LABELS[p.status] ?? p.status}`,
     "─".repeat(40),
-    "E-Samba · support@e-samba.com · https://e-samba.com",
+    `E-Samba · ${SUPPORT.email} · https://e-samba.com`,
   ].join("\n");
 
   const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });

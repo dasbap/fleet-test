@@ -18,6 +18,7 @@ import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { buildSupportMailto } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 import type { PlanAccessResult, PlanCode } from "@/lib/billing/planGuards";
 
@@ -32,7 +33,7 @@ const PLAN_HREF: Record<PlanCode, string> = {
   free:       ROUTE_PATHS.pricing,
   starter:    ROUTE_PATHS.pricing,
   pro:        ROUTE_PATHS.pricing,
-  enterprise: "mailto:support@e-samba.com?subject=Devis%20Organizer",
+  enterprise: buildSupportMailto("Devis Organizer"),
 };
 
 interface PaywallOverlayProps {
