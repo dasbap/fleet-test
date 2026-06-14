@@ -109,6 +109,12 @@ async function verifyApiAccounts() {
   return allOk;
 }
 
+function expectedPostLoginUrlPattern(expectedRole) {
+  if (expectedRole === "driver") return /\/terrain/;
+  if (expectedRole === "mechanic") return /\/dashboard\/maintenance/;
+  return /\/dashboard/;
+}
+
 async function verifyUiLogin() {
   const { chromium } = await import("playwright");
   const base = process.env.E2E_BASE_URL?.trim() || DEFAULT_BASE;
@@ -133,7 +139,14 @@ async function verifyUiLogin() {
       await passwordInput.fill(DEMO_PASSWORD);
 
       await page.locator('form button[type="submit"]').first().click();
-      await page.waitForURL(/\/dashboard/, { timeout: 45_000 });
+      const urlPattern = expectedPostLoginUrlPattern(acc.expectedRole);
+      await page.waitForURL(urlPattern, { timeout: 45_000 });
+
+      if (page.url().includes("/start")) {
+        fail(`${acc.role} — redirection tenant bootstrap (/start) au lieu de l'espace métier`);
+        allOk = false;
+        continue;
+      }
 
       const bodyText = (await page.locator("body").innerText()).slice(0, 4000);
       if (bodyText.includes("Une erreur est survenue")) {
@@ -143,7 +156,7 @@ async function verifyUiLogin() {
         fail(`${acc.role} — erreur runtime : ${pageErrors.join(" | ")}`);
         allOk = false;
       } else {
-        ok(`${acc.role} — UI connexion → dashboard (${page.url()})`);
+        ok(`${acc.role} — UI connexion → espace métier (${page.url()})`);
       }
     } catch (e) {
       fail(`${acc.role} — UI : ${e instanceof Error ? e.message : String(e)}`);
