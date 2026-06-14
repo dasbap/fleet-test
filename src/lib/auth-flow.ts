@@ -7,6 +7,9 @@ export const AUTH_FLOW_FIRST_LOGIN_WINDOW_MS = 60_000;
 /** Délai max d’attente org/flotte/billing avant navigation forcée (réseau lent). */
 export const AUTH_FLOW_MAX_WAIT_MS = 4_000;
 
+/** Délai max pour getSession / getUser / adhésions au démarrage (évite spinner infini). */
+export const AUTH_INIT_TIMEOUT_MS = 15_000;
+
 export type AuthFlowReason =
   | "auth_required"
   | "tenant_bootstrap"
