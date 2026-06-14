@@ -30,7 +30,9 @@ import {
   devLog,
   devWarn,
   mapSupabaseUserToAuthUser,
+  withPromiseTimeout,
 } from "@/features/auth/lib/authProviderUtils";
+import { AUTH_INIT_TIMEOUT_MS } from "@/lib/auth-flow";
 
 const fleetMemberRepository = new FleetMemberRepository();
 const fleetMemberService = new FleetMemberService(fleetMemberRepository);
@@ -156,7 +158,11 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       try {
         const {
           data: { session: localSession },
-        } = await supabase.auth.getSession();
+        } = await withPromiseTimeout(
+          supabase.auth.getSession(),
+          AUTH_INIT_TIMEOUT_MS,
+          "AUTH_GET_SESSION",
+        );
 
         if (cancelled) return;
 
@@ -164,7 +170,11 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           const {
             data: { user: serverUser },
             error: userError,
-          } = await supabase.auth.getUser();
+          } = await withPromiseTimeout(
+            supabase.auth.getUser(),
+            AUTH_INIT_TIMEOUT_MS,
+            "AUTH_GET_USER",
+          );
 
           if (cancelled) return;
 
@@ -183,16 +193,32 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
           setSession(localSession);
           setUser(serverUser);
-          await fetchMemberships(serverUser);
+          await withPromiseTimeout(
+            fetchMemberships(serverUser),
+            AUTH_INIT_TIMEOUT_MS,
+            "AUTH_MEMBERSHIPS",
+          );
         } else {
           setSession(localSession);
           setUser(null);
         }
       } catch (e) {
-        console.error("Erreur lors de l’initialisation de session :", e);
+        const message = e instanceof Error ? e.message : String(e);
+        if (message.includes("_TIMEOUT")) {
+          devWarn(
+            "[Auth] Initialisation session expirée — nettoyage et redirection connexion.",
+          );
+          await supabase.auth.signOut().catch(() => undefined);
+          setSession(null);
+          setUser(null);
+        } else {
+          console.error("Erreur lors de l’initialisation de session :", e);
+        }
         setRole(null);
         setMemberships([]);
         setOrgId(null);
+        setActiveFleetIdState(null);
+        setTenantOptions([]);
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -236,9 +262,13 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       // setTimeout(0) laisse la transition auth se terminer avant de requêter la DB.
       setTimeout(() => {
         if (nextSession?.user) {
-          fetchMemberships(nextSession.user)
+          withPromiseTimeout(
+            fetchMemberships(nextSession.user),
+            AUTH_INIT_TIMEOUT_MS,
+            "AUTH_MEMBERSHIPS",
+          )
             .catch((e) =>
-              console.error("Erreur memberships (onAuthStateChange):", e)
+              console.error("Erreur memberships (onAuthStateChange):", e),
             )
             .finally(() => setIsLoading(false));
         } else {

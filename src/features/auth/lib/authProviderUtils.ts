@@ -22,3 +22,26 @@ export function mapSupabaseUserToAuthUser(user: User | null): AuthUser | null {
     app_metadata: user.app_metadata as Record<string, unknown>,
   };
 }
+
+/** Évite un spinner infini si Supabase Auth ne répond pas (réseau, VPN, session corrompue). */
+export function withPromiseTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(`${label}_TIMEOUT`));
+    }, ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}

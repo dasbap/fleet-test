@@ -63,8 +63,8 @@ BEGIN
   SELECT id INTO v_fleet_pro FROM public.flottes WHERE org_id=v_org_id AND name='Flotte DEMO Pro' LIMIT 1;
   IF v_fleet_pro IS NULL THEN INSERT INTO public.flottes(org_id,name,collection_policy) VALUES(v_org_id,'Flotte DEMO Pro','mix') RETURNING id INTO v_fleet_pro; END IF;
 
-  SELECT id INTO v_fleet_org FROM public.flottes WHERE org_id=v_org_id AND name='Flotte DEMO Organisateur' LIMIT 1;
-  IF v_fleet_org IS NULL THEN INSERT INTO public.flottes(org_id,name,collection_policy) VALUES(v_org_id,'Flotte DEMO Organisateur','mix') RETURNING id INTO v_fleet_org; END IF;
+  SELECT id INTO v_fleet_org FROM public.flottes WHERE org_id=v_org_id AND name='Flotte DEMO Entreprise' LIMIT 1;
+  IF v_fleet_org IS NULL THEN INSERT INTO public.flottes(org_id,name,collection_policy) VALUES(v_org_id,'Flotte DEMO Entreprise','mix') RETURNING id INTO v_fleet_org; END IF;
 
   RAISE NOTICE 'Flottes : starter=%, pro=%, org=%', v_fleet_starter, v_fleet_pro, v_fleet_org;
 END $$;
@@ -202,27 +202,27 @@ BEGIN
   INSERT INTO public.flotte_adhesions(fleet_id,user_id,role,is_active)
   SELECT f.id, u.id, 'organizer'::public.role_type, true FROM auth.users u
     CROSS JOIN (SELECT unnest(ARRAY[v_fleet_starter,v_fleet_pro,v_fleet_org]) AS id) f
-  WHERE u.email='demo.organizer@esamba.test' ON CONFLICT(fleet_id,user_id,role) DO UPDATE SET is_active=true;
+  WHERE u.email='demo.organizer@esamba.test' ON CONFLICT (fleet_id, user_id) DO UPDATE SET is_active=true, role='organizer'::public.role_type;
 
   -- Manager1 → Starter
   INSERT INTO public.flotte_adhesions(fleet_id,user_id,role,is_active)
-  SELECT v_fleet_starter, u.id, 'manager'::public.role_type, true FROM auth.users u WHERE u.email='demo.manager1@esamba.test' ON CONFLICT(fleet_id,user_id,role) DO UPDATE SET is_active=true;
+  SELECT v_fleet_starter, u.id, 'manager'::public.role_type, true FROM auth.users u WHERE u.email='demo.manager1@esamba.test' ON CONFLICT (fleet_id, user_id) DO UPDATE SET is_active=true, role='manager'::public.role_type;
 
   -- Manager2 → Pro
   INSERT INTO public.flotte_adhesions(fleet_id,user_id,role,is_active)
-  SELECT v_fleet_pro, u.id, 'manager'::public.role_type, true FROM auth.users u WHERE u.email='demo.manager2@esamba.test' ON CONFLICT(fleet_id,user_id,role) DO UPDATE SET is_active=true;
+  SELECT v_fleet_pro, u.id, 'manager'::public.role_type, true FROM auth.users u WHERE u.email='demo.manager2@esamba.test' ON CONFLICT (fleet_id, user_id) DO UPDATE SET is_active=true, role='manager'::public.role_type;
 
   -- Driver1 → Starter
   INSERT INTO public.flotte_adhesions(fleet_id,user_id,role,is_active)
-  SELECT v_fleet_starter, u.id, 'driver'::public.role_type, true FROM auth.users u WHERE u.email='demo.driver1@esamba.test' ON CONFLICT(fleet_id,user_id,role) DO UPDATE SET is_active=true;
+  SELECT v_fleet_starter, u.id, 'driver'::public.role_type, true FROM auth.users u WHERE u.email='demo.driver1@esamba.test' ON CONFLICT (fleet_id, user_id) DO UPDATE SET is_active=true, role='driver'::public.role_type;
 
   -- Driver2 → Pro
   INSERT INTO public.flotte_adhesions(fleet_id,user_id,role,is_active)
-  SELECT v_fleet_pro, u.id, 'driver'::public.role_type, true FROM auth.users u WHERE u.email='demo.driver2@esamba.test' ON CONFLICT(fleet_id,user_id,role) DO UPDATE SET is_active=true;
+  SELECT v_fleet_pro, u.id, 'driver'::public.role_type, true FROM auth.users u WHERE u.email='demo.driver2@esamba.test' ON CONFLICT (fleet_id, user_id) DO UPDATE SET is_active=true, role='driver'::public.role_type;
 
-  -- Mechanic1 → Organisateur
+  -- Mechanic1 → Entreprise
   INSERT INTO public.flotte_adhesions(fleet_id,user_id,role,is_active)
-  SELECT v_fleet_org, u.id, 'mechanic'::public.role_type, true FROM auth.users u WHERE u.email='demo.mechanic1@esamba.test' ON CONFLICT(fleet_id,user_id,role) DO UPDATE SET is_active=true;
+  SELECT v_fleet_org, u.id, 'mechanic'::public.role_type, true FROM auth.users u WHERE u.email='demo.mechanic1@esamba.test' ON CONFLICT (fleet_id, user_id) DO UPDATE SET is_active=true, role='mechanic'::public.role_type;
 
   RAISE NOTICE 'Adhésions démo configurées.';
 END $$;
