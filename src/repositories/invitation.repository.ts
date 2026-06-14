@@ -145,6 +145,14 @@ export class InvitationRepository implements IRepository<FleetInvitation, Invita
       if (error.code === '23505') {
         throw new Error('Ce code d\'invitation existe déjà. Veuillez en choisir un autre.');
       }
+      if (
+        error.code === '42501' ||
+        error.message?.includes('row-level security')
+      ) {
+        throw new Error(
+          'Vous n\'avez pas les permissions pour créer une invitation. Assurez-vous d\'être manager ou organizer de la flotte.',
+        );
+      }
       throw new Error(error.message);
     }
 

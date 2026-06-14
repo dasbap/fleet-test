@@ -54,6 +54,7 @@ export function useCreateInvitation() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['invitations', variables.fleet_id] });
+      queryClient.invalidateQueries({ queryKey: ['invitations'] });
       toast({
         title: 'Invitation créée',
         description: 'L\'invitation a été créée avec succès.',

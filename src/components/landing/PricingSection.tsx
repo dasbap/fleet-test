@@ -11,6 +11,7 @@ import {
   formatPublicPriceXaf,
 } from "@/lib/public-pricing";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { getPrimaryAuthHref } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 
 type PricingPlan = {
@@ -179,7 +180,7 @@ const PricingSection = () => {
                 variant={plan.popular ? "default" : "outline"}
                 asChild
               >
-                <Link to={plan.ctaTo ?? "/auth?mode=signup"}>{plan.cta}</Link>
+                <Link to={plan.ctaTo ?? getPrimaryAuthHref()}>{plan.cta}</Link>
               </Button>
             </div>
           ))}

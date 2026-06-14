@@ -8,9 +8,7 @@
  * Données : demo_profiles via service_role (hook dédié).
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,32 +32,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RefreshCw, UserX, UserCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
-type AccountType = "investor" | "prospect" | "internal" | "dev";
-
-interface DemoProfile {
-  user_id:       string;
-  email:         string;
-  account_type:  AccountType;
-  is_active:     boolean;
-  expires_at:    string | null;
-  notified_at:   string | null;
-  deactivated_at: string | null;
-  created_at:    string;
-}
+import { useDemoLegacyProfiles } from "@/hooks/useDemoLegacyProfiles";
+import type { DemoProfileAccountType } from "@/repositories/demo-profile.repository";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const TYPE_LABELS: Record<AccountType, string> = {
+const TYPE_LABELS: Record<DemoProfileAccountType, string> = {
   investor: "Investisseur",
   prospect: "Prospect",
   internal: "Interne",
   dev:      "Dev",
 };
 
-const TYPE_COLORS: Record<AccountType, string> = {
+const TYPE_COLORS: Record<DemoProfileAccountType, string> = {
   investor: "bg-purple-100 text-purple-800",
   prospect: "bg-blue-100 text-blue-800",
   internal: "bg-emerald-100 text-emerald-800",
@@ -88,31 +73,6 @@ function expiryBadgeClass(expiresAt: string | null, isActive: boolean): string {
   return "bg-emerald-100 text-emerald-800";
 }
 
-// ─── Hook data ────────────────────────────────────────────────────────────────
-
-function useDemoProfiles() {
-  const [profiles, setProfiles] = useState<DemoProfile[]>([]);
-  const [isLoading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  const load = useCallback(async () => {
-    setLoading(true);
-
-    const { data, error } = await supabase.rpc("list_demo_profiles");
-
-    if (error) {
-      toast({ title: "Erreur chargement", description: error.message, variant: "destructive" });
-    } else {
-      setProfiles((data ?? []) as DemoProfile[]);
-    }
-    setLoading(false);
-  }, [toast]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  return { profiles, isLoading, reload: load };
-}
-
 // ─── Panel principal ──────────────────────────────────────────────────────────
 
 interface DemoAccountsPanelProps {
@@ -120,56 +80,18 @@ interface DemoAccountsPanelProps {
 }
 
 export function DemoAccountsPanel({ currentAdminId }: DemoAccountsPanelProps) {
-  const { profiles, isLoading, reload } = useDemoProfiles();
-  const { toast } = useToast();
+  const { profiles, isLoading, reload, reactivate, deactivate } = useDemoLegacyProfiles();
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
-  async function reactivate(userId: string, extendHours?: number) {
+  async function handleReactivate(userId: string, extendHours?: number) {
     setActionInProgress(userId);
-
-    const { data, error } = await supabase.rpc("reactivate_demo_account", {
-      p_user_id:        userId,
-      p_reactivated_by: currentAdminId,
-      p_extend_hours:   extendHours ?? null,
-    });
-
-    if (error) {
-      toast({ title: "Erreur réactivation", description: error.message, variant: "destructive" });
-    } else {
-      const res = data as { ok: boolean; expires_at?: string };
-      if (res.ok) {
-        toast({
-          title: "Compte réactivé",
-          description: res.expires_at
-            ? `Expire le ${new Date(res.expires_at).toLocaleString("fr-FR")}`
-            : "Accès permanent rétabli",
-        });
-        void reload();
-      } else {
-        toast({ title: "Réactivation impossible", variant: "destructive" });
-      }
-    }
+    await reactivate(userId, currentAdminId, extendHours);
     setActionInProgress(null);
   }
 
-  async function deactivate(userId: string) {
+  async function handleDeactivate(userId: string) {
     setActionInProgress(userId);
-
-    const { data, error } = await supabase.rpc("deactivate_demo_account", {
-      p_user_id:        userId,
-      p_deactivated_by: currentAdminId,
-      p_reason:         "désactivation manuelle depuis DemoAccountsPanel",
-    });
-
-    if (error) {
-      toast({ title: "Erreur désactivation", description: error.message, variant: "destructive" });
-    } else {
-      const res = data as { ok: boolean };
-      if (res.ok) {
-        toast({ title: "Compte désactivé" });
-        void reload();
-      }
-    }
+    await deactivate(userId, currentAdminId);
     setActionInProgress(null);
   }
 
@@ -274,7 +196,7 @@ export function DemoAccountsPanel({ currentAdminId }: DemoAccountsPanelProps) {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Annuler</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => void reactivate(profile.user_id)}>
+                            <AlertDialogAction onClick={() => void handleReactivate(profile.user_id)}>
                               Réactiver
                             </AlertDialogAction>
                           </AlertDialogFooter>
@@ -306,7 +228,7 @@ export function DemoAccountsPanel({ currentAdminId }: DemoAccountsPanelProps) {
                             <AlertDialogCancel>Annuler</AlertDialogCancel>
                             <AlertDialogAction
                               className="bg-destructive hover:bg-destructive/90"
-                              onClick={() => void deactivate(profile.user_id)}
+                              onClick={() => void handleDeactivate(profile.user_id)}
                             >
                               Désactiver
                             </AlertDialogAction>

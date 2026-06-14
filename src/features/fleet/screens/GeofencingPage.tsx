@@ -23,6 +23,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 import {
   useGeofences, useRecentGeofenceEvents,
   useCreateGeofence, useToggleGeofence, useDeleteGeofence,
@@ -296,7 +297,7 @@ export default function GeofencingPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/tracking")}>
+          <Button variant="outline" size="sm" onClick={() => navigate(ROUTE_PATHS.dashboardTracking)}>
             <MapPin className="h-4 w-4 mr-2" />
             Carte live
           </Button>

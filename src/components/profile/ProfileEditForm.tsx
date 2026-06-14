@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,7 +23,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Camera, Save } from "lucide-react";
 import { User } from "@supabase/supabase-js";
-import { mapSupabaseErrorToFrench } from "@/lib/mapSupabaseError";
+import { useUpdateProfileFullName } from "@/hooks/useUpdateProfileFullName";
 import { useAvatarUpload } from "@/hooks/useAvatarUpload";
 import { useAvatarDisplayUrl } from "@/hooks/useAvatarDisplayUrl";
 
@@ -43,7 +42,7 @@ interface ProfileEditFormProps {
 }
 
 const ProfileEditForm = ({ user, onUpdate }: ProfileEditFormProps) => {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const updateProfile = useUpdateProfileFullName();
   const metadataAvatar =
     (user.user_metadata?.avatar_url as string | undefined) ?? null;
   const [freshSignedAvatarUrl, setFreshSignedAvatarUrl] = useState<string | null>(
@@ -97,54 +96,19 @@ const ProfileEditForm = ({ user, onUpdate }: ProfileEditFormProps) => {
   };
 
   const onSubmit = async (values: ProfileFormValues) => {
-    setIsLoading(true);
-
     try {
-      // Validation par le schéma zod déjà assurée côté react-hook-form
-
-      const { error } = await supabase.auth.updateUser({
-        data: { full_name: values.fullName },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      // Synchroniser également la table profils pour assurer la cohérence métier
-      const { error: profileError } = await supabase
-        .from("profils")
-        .update({ full_name: values.fullName })
-        .eq("user_id", user.id);
-
-      if (profileError) {
-        console.error(
-          "Erreur lors de la mise à jour du profil (table profils) :",
-          profileError
-        );
-      }
-
-      toast({
-        title: "Succès",
-        description: "Votre profil a été mis à jour",
+      await updateProfile.mutateAsync({
+        userId: user.id,
+        fullName: values.fullName,
       });
       onUpdate();
       form.reset({ fullName: values.fullName });
-    } catch (error: unknown) {
-      console.error("Erreur lors de la mise à jour profil :", error);
-      const rawMessage =
-        error instanceof Error ? error.message : undefined;
-      toast({
-        title: "Erreur",
-        description:
-          rawMessage
-            ? mapSupabaseErrorToFrench(rawMessage)
-            : "Impossible de mettre à jour le profil",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    } catch {
+      // Toast géré par useUpdateProfileFullName
     }
   };
+
+  const isLoading = updateProfile.isPending;
 
   return (
     <Card className="animate-fade-in">

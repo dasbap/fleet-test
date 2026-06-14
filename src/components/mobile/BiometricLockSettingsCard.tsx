@@ -27,7 +27,6 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import {
   disableBiometricLock,
@@ -122,11 +121,7 @@ export function BiometricLockSettingsCard() {
       });
       return;
     }
-    let refreshToken = session?.refresh_token ?? null;
-    if (!refreshToken) {
-      const { data } = await supabase.auth.getSession();
-      refreshToken = data.session?.refresh_token ?? null;
-    }
+    const refreshToken = session?.refresh_token ?? null;
     if (!refreshToken) {
       toast({
         title: "Session introuvable",

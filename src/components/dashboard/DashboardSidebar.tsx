@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
+import type { LucideIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -40,6 +41,13 @@ import { signOut } from "@/lib/auth-actions";
 import { toast } from "@/hooks/use-toast";
 import { hasModuleAccess } from "@/auth/permissions";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import {
+  DASHBOARD_NAV,
+  DASHBOARD_SIDEBAR_FOOTER,
+  filterDashboardNavByPlan,
+  isDashboardNavActive,
+  type DashboardNavItem,
+} from "@/config/navigation";
 import type { AppRole } from "@/types/auth";
 import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
 import { useAuth } from "@/hooks/useAuth";
@@ -49,100 +57,77 @@ interface DashboardSidebarProps {
   userRole: AppRole;
 }
 
-const organizerNavCore = [
-  { icon: LayoutDashboard, label: "Tableau de bord", href: ROUTE_PATHS.dashboard },
-  { icon: Car, label: "Véhicules", href: ROUTE_PATHS.dashboardVehicles },
-  { icon: Wrench, label: "Incidents", href: ROUTE_PATHS.dashboardIncidents },
-  { icon: Fuel, label: "Maintenance", href: ROUTE_PATHS.dashboardMaintenance },
-  { icon: LayoutGrid, label: "Opérations", href: ROUTE_PATHS.dashboardOperations },
-  { icon: Users, label: "Équipes", href: ROUTE_PATHS.dashboardTeams },
-  { icon: Users, label: "Scores conducteurs", href: ROUTE_PATHS.dashboardDriverScores },
-  { icon: Ticket, label: "Invitations", href: ROUTE_PATHS.dashboardInvitations },
-  { icon: BarChart3, label: "Rapports", href: ROUTE_PATHS.dashboardReports },
-  { icon: Map, label: "Suivi GPS", href: "/dashboard/tracking" },
-  { icon: MapPin, label: "Géofencing", href: ROUTE_PATHS.dashboardGeofencing },
-  { icon: CalendarClock, label: "Rapports auto", href: ROUTE_PATHS.dashboardScheduledReports },
-  { icon: DollarSign, label: "Finances", href: ROUTE_PATHS.dashboardFinances },
-  { icon: CreditCard, label: "Abonnement", href: ROUTE_PATHS.dashboardBilling },
-  { icon: Bell, label: "Alertes", href: ROUTE_PATHS.dashboardAlerts },
-  { icon: Mic, label: "Coaching vocal", href: ROUTE_PATHS.dashboardCoaching },
-  { icon: Video, label: "Dashcam AI", href: ROUTE_PATHS.dashboardDashcam },
-] as const;
+interface SidebarNavItem extends DashboardNavItem {
+  icon: LucideIcon;
+}
 
-const organizerRetentionLink = {
-  icon: LineChart,
-  label: "Rétention",
-  href: ROUTE_PATHS.dashboardRetentionAnalytics,
-} as const;
+const DASHBOARD_NAV_ICONS: Record<string, LucideIcon> = {
+  [ROUTE_PATHS.dashboard]: LayoutDashboard,
+  [ROUTE_PATHS.dashboardVehicles]: Car,
+  [ROUTE_PATHS.dashboardIncidents]: Wrench,
+  [ROUTE_PATHS.dashboardMaintenance]: Fuel,
+  [ROUTE_PATHS.dashboardOperations]: LayoutGrid,
+  [ROUTE_PATHS.dashboardTeams]: Users,
+  [ROUTE_PATHS.dashboardDrivers]: Users,
+  [ROUTE_PATHS.dashboardDriverScores]: Users,
+  [ROUTE_PATHS.dashboardInvitations]: Ticket,
+  [ROUTE_PATHS.dashboardReports]: BarChart3,
+  [ROUTE_PATHS.dashboardTracking]: Map,
+  [ROUTE_PATHS.dashboardGeofencing]: MapPin,
+  [ROUTE_PATHS.dashboardScheduledReports]: CalendarClock,
+  [ROUTE_PATHS.dashboardFinances]: DollarSign,
+  [ROUTE_PATHS.dashboardCollections]: DollarSign,
+  [ROUTE_PATHS.dashboardBilling]: CreditCard,
+  [ROUTE_PATHS.dashboardAlerts]: Bell,
+  [ROUTE_PATHS.dashboardCoaching]: Mic,
+  [ROUTE_PATHS.dashboardDashcam]: Video,
+  [ROUTE_PATHS.dashboardMyVehicle]: Car,
+  [ROUTE_PATHS.dashboardShiftClosure]: DollarSign,
+  [ROUTE_PATHS.dashboardHistory]: Fuel,
+  [ROUTE_PATHS.dashboardRetentionAnalytics]: LineChart,
+  [ROUTE_PATHS.dashboardRoles]: Shield,
+};
 
-const organizerRolesLink = {
-  icon: Shield,
-  label: "Rôles",
-  href: "/dashboard/roles",
-} as const;
+function withIcons(items: readonly DashboardNavItem[]): SidebarNavItem[] {
+  return items.map((item) => ({
+    ...item,
+    icon: DASHBOARD_NAV_ICONS[item.href] ?? LayoutDashboard,
+  }));
+}
 
-const FINANCE_NAV_HREFS = new Set(["/dashboard/finances", "/dashboard/collections"]);
-const REPORTS_NAV_HREFS = new Set(["/dashboard/reports"]);
+function buildOrganizerMenu(userRole: AppRole, planOptions: {
+  financeEnabled: boolean;
+  reportsEnabled: boolean;
+}): SidebarNavItem[] {
+  const core = filterDashboardNavByPlan(DASHBOARD_NAV.organizer, planOptions);
+  const extras: DashboardNavItem[] = [];
+
+  if (hasModuleAccess(userRole, "retention_analytics")) {
+    extras.push(DASHBOARD_NAV.organizerExtras.retention);
+  }
+  if (hasModuleAccess(userRole, "roles_sidebar_link")) {
+    extras.push(DASHBOARD_NAV.organizerExtras.roles);
+  }
+
+  return withIcons([...core, ...extras]);
+}
 
 const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
   const location = useLocation();
   const { userFleetId } = useAuth();
   const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
-  const financeNavAllowed =
-    billingQuery.isError || billingQuery.data?.financeEnabled !== false;
-  const reportsNavAllowed =
-    billingQuery.isError || billingQuery.data?.reportsEnabled !== false;
+  const planOptions = {
+    financeEnabled:
+      billingQuery.isError || billingQuery.data?.financeEnabled !== false,
+    reportsEnabled:
+      billingQuery.isError || billingQuery.data?.reportsEnabled !== false,
+  };
 
-  const filterByPlan = <T extends { href: string }>(items: readonly T[]): T[] =>
-    items.filter((item) => {
-      if (FINANCE_NAV_HREFS.has(item.href)) {
-        return financeNavAllowed;
-      }
-      if (REPORTS_NAV_HREFS.has(item.href)) {
-        return reportsNavAllowed;
-      }
-      return true;
-    });
-
-  const menuItems = {
-    organizer: [
-      ...filterByPlan(organizerNavCore),
-      ...(hasModuleAccess(userRole, "retention_analytics") ? [organizerRetentionLink] : []),
-      ...(hasModuleAccess(userRole, "roles_sidebar_link") ? [organizerRolesLink] : []),
-    ],
-    manager: filterByPlan([
-      { icon: LayoutDashboard, label: "Tableau de bord", href: ROUTE_PATHS.dashboard },
-      { icon: Car, label: "Véhicules", href: ROUTE_PATHS.dashboardVehicles },
-      { icon: Wrench, label: "Incidents", href: ROUTE_PATHS.dashboardIncidents },
-      { icon: Fuel, label: "Maintenance", href: ROUTE_PATHS.dashboardMaintenance },
-      { icon: LayoutGrid, label: "Opérations", href: ROUTE_PATHS.dashboardOperations },
-      { icon: Users, label: "Équipes", href: ROUTE_PATHS.dashboardTeams },
-      { icon: Users, label: "Chauffeurs", href: ROUTE_PATHS.dashboardDrivers },
-      { icon: Users, label: "Scores conducteurs", href: ROUTE_PATHS.dashboardDriverScores },
-      { icon: Ticket, label: "Invitations", href: ROUTE_PATHS.dashboardInvitations },
-      { icon: BarChart3, label: "Rapports", href: ROUTE_PATHS.dashboardReports },
-      { icon: Map, label: "Suivi GPS", href: "/dashboard/tracking" },
-      { icon: MapPin, label: "Géofencing", href: ROUTE_PATHS.dashboardGeofencing },
-      { icon: CalendarClock, label: "Rapports auto", href: ROUTE_PATHS.dashboardScheduledReports },
-      { icon: DollarSign, label: "Encaissements", href: ROUTE_PATHS.dashboardCollections },
-      { icon: CreditCard, label: "Abonnement", href: ROUTE_PATHS.dashboardBilling },
-      { icon: Bell, label: "Alertes", href: ROUTE_PATHS.dashboardAlerts },
-      { icon: Mic, label: "Coaching vocal", href: ROUTE_PATHS.dashboardCoaching },
-      { icon: Video, label: "Dashcam AI", href: ROUTE_PATHS.dashboardDashcam },
-    ]),
-    driver: [
-      { icon: LayoutDashboard, label: "Mon tableau", href: "/dashboard" },
-      { icon: Car, label: "Mon véhicule", href: "/dashboard/my-vehicle" },
-      { icon: DollarSign, label: "Clôture", href: "/dashboard/closure" },
-      { icon: Wrench, label: "Signaler", href: "/dashboard/incidents" },
-      { icon: Mic, label: "Coaching vocal", href: ROUTE_PATHS.dashboardCoaching },
-    ],
-    mechanic: [
-      { icon: LayoutDashboard, label: "Interventions", href: "/dashboard/maintenance" },
-      { icon: Wrench, label: "Incidents", href: "/dashboard/incidents" },
-      { icon: Car, label: "Véhicules", href: "/dashboard/vehicles" },
-      { icon: Fuel, label: "Historique", href: "/dashboard/history" },
-    ],
+  const menuItems: Record<AppRole, SidebarNavItem[]> = {
+    organizer: buildOrganizerMenu(userRole, planOptions),
+    manager: withIcons(filterDashboardNavByPlan(DASHBOARD_NAV.manager, planOptions)),
+    driver: withIcons(DASHBOARD_NAV.driver),
+    mechanic: withIcons(DASHBOARD_NAV.mechanic),
   };
 
   const items = menuItems[userRole];
@@ -179,9 +164,9 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
             <SidebarMenu>
               <motion.div variants={containerVariants} initial="hidden" animate="show">
                 {items.map((item) => {
-                  const isActive = location.pathname === item.href;
+                  const isActive = isDashboardNavActive(location.pathname, item.href);
                   return (
-                    <motion.div key={item.href} variants={itemVariants}>
+                    <motion.div key={`${item.href}-${item.label}`} variants={itemVariants}>
                       <SidebarMenuItem>
                         <SidebarMenuButton
                           asChild
@@ -221,40 +206,23 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
 
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={location.pathname === "/dashboard/profile"}
-            >
-              <Link
-                to="/dashboard/profile"
-                aria-current={
-                  location.pathname === "/dashboard/profile" ? "page" : undefined
-                }
-              >
-                <User className="w-5 h-5" />
-                <span>Mon profil</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={location.pathname === "/dashboard/settings"}
-            >
-              <Link
-                to="/dashboard/settings"
-                aria-current={
-                  location.pathname === "/dashboard/settings"
-                    ? "page"
-                    : undefined
-                }
-              >
-                <Settings className="w-5 h-5" />
-                <span>Paramètres</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {DASHBOARD_SIDEBAR_FOOTER.map((link) => {
+            const isActive = location.pathname === link.href;
+            const Icon = link.href === ROUTE_PATHS.dashboardProfile ? User : Settings;
+            return (
+              <SidebarMenuItem key={link.href}>
+                <SidebarMenuButton asChild isActive={isActive}>
+                  <Link
+                    to={link.href}
+                    aria-current={isActive ? "page" : undefined}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span>{link.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={async () => {

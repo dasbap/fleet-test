@@ -23,10 +23,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Ticket, Copy, Check, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useQueryClient } from "@tanstack/react-query";
+import { useCreateInvitation } from "@/hooks/useInvitations";
+import { generateInvitationCode } from "@/lib/invitation-code";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const invitationFormSchema = z.object({
   code: z.string().min(3, "Le code doit contenir au moins 3 caractères").max(50, "Le code est trop long"),
@@ -61,15 +62,13 @@ interface CreateInvitationDialogProps {
   onSuccess?: () => void;
 }
 
-// Fonction pour générer un code d'invitation aléatoire
-function generateInvitationCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Exclut les caractères ambigus
-  let code = "INV-";
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
+const defaultFormValues = (): InvitationFormValues => ({
+  code: generateInvitationCode(),
+  hasExpiration: false,
+  expirationDays: 30,
+  hasLimit: false,
+  maxUses: 1,
+});
 
 export function CreateInvitationDialog({
   open,
@@ -79,8 +78,7 @@ export function CreateInvitationDialog({
 }: CreateInvitationDialogProps) {
   const { toast } = useToast();
   const { user, role } = useAuth();
-  const queryClient = useQueryClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createInvitation = useCreateInvitation();
   const [createdInvitation, setCreatedInvitation] = useState<{
     code: string;
     expiresAt: string | null;
@@ -88,7 +86,6 @@ export function CreateInvitationDialog({
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Vérifier que fleetId est fourni quand le dialog s'ouvre
   useEffect(() => {
     if (open && !fleetId) {
       console.warn("CreateInvitationDialog: fleetId is missing");
@@ -103,13 +100,7 @@ export function CreateInvitationDialog({
 
   const form = useForm<InvitationFormValues>({
     resolver: zodResolver(invitationFormSchema),
-    defaultValues: {
-      code: generateInvitationCode(),
-      hasExpiration: false,
-      expirationDays: 30,
-      hasLimit: false,
-      maxUses: 1,
-    },
+    defaultValues: defaultFormValues(),
   });
 
   const generateNewCode = () => {
@@ -125,7 +116,7 @@ export function CreateInvitationDialog({
         description: "Le code d'invitation a été copié dans le presse-papiers.",
       });
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
+    } catch {
       toast({
         title: "Erreur",
         description: "Impossible de copier le code.",
@@ -144,98 +135,44 @@ export function CreateInvitationDialog({
       return;
     }
 
-    setIsSubmitting(true);
-
-    try {
-      // Calculer la date d'expiration si nécessaire
-      const expiresAt = values.hasExpiration && values.expirationDays
+    const expiresAt =
+      values.hasExpiration && values.expirationDays
         ? new Date(Date.now() + values.expirationDays * 24 * 60 * 60 * 1000).toISOString()
         : null;
 
-      // Préparer les données
-      const invitationData: {
-        fleet_id: string;
-        code: string;
-        expires_at?: string | null;
-        max_uses?: number | null;
-        created_by: string;
-      } = {
+    const maxUses = values.hasLimit && values.maxUses ? values.maxUses : null;
+
+    try {
+      const data = await createInvitation.mutateAsync({
         fleet_id: fleetId,
-        code: values.code.toUpperCase().trim(),
-        created_by: user.id,
-      };
+        code: values.code,
+        expires_at: expiresAt,
+        max_uses: maxUses,
+      });
 
-      if (expiresAt) {
-        invitationData.expires_at = expiresAt;
-      } else {
-        invitationData.expires_at = null;
-      }
-
-      if (values.hasLimit && values.maxUses) {
-        invitationData.max_uses = values.maxUses;
-      } else {
-        invitationData.max_uses = null;
-      }
-
-      // Créer l'invitation
-      const { data, error } = await supabase
-        .from("flotte_invitations")
-        .insert(invitationData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Supabase error creating invitation:", error);
-        if (error.code === "23505") {
-          // Violation de contrainte unique (code déjà utilisé)
-          throw new Error("Ce code d'invitation existe déjà. Veuillez en choisir un autre.");
-        }
-        if (error.message?.includes("row-level security")) {
-          throw new Error("Vous n'avez pas les permissions pour créer une invitation. Assurez-vous d'être manager ou organizer de la flotte.");
-        }
-        throw new Error(error.message || "Impossible de créer l'invitation. Vérifiez vos permissions.");
-      }
-
-      // Afficher le résultat
       setCreatedInvitation({
         code: data.code,
         expiresAt: data.expires_at,
         maxUses: data.max_uses,
       });
 
-      // Invalider les queries pour rafraîchir les données
-      queryClient.invalidateQueries({ queryKey: ['invitations'] });
-
-      toast({
-        title: "Invitation créée",
-        description: "L'invitation a été créée avec succès.",
-      });
-
       onSuccess?.();
-    } catch (error: unknown) {
-      console.error("Error creating invitation:", error);
-      const message =
-        error instanceof Error ? error.message : "Impossible de créer l'invitation.";
-      toast({
-        title: "Erreur",
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+    } catch {
+      // Erreur utilisateur gérée par useCreateInvitation (toast)
     }
   };
 
+  const isSubmitting = createInvitation.isPending;
+
   const handleClose = () => {
     if (!isSubmitting) {
-      form.reset();
+      form.reset(defaultFormValues());
       setCreatedInvitation(null);
       setCopied(false);
       onOpenChange(false);
     }
   };
 
-  // Si l'invitation a été créée, afficher le résultat
   if (createdInvitation) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
@@ -299,11 +236,7 @@ export function CreateInvitationDialog({
               onClick={() => {
                 setCreatedInvitation(null);
                 form.reset({
-                  code: generateInvitationCode(),
-                  hasExpiration: false,
-                  expirationDays: 30,
-                  hasLimit: false,
-                  maxUses: 1,
+                  ...defaultFormValues(),
                 });
               }}
             >
@@ -318,8 +251,6 @@ export function CreateInvitationDialog({
     );
   }
 
-  // Formulaire de création
-  // Si pas de fleetId, proposer de créer une flotte pour les organisateurs
   if (!fleetId) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
@@ -345,10 +276,13 @@ export function CreateInvitationDialog({
               Annuler
             </Button>
             {(role === "organizer" || role === null) && (
-              <Button type="button" onClick={() => {
-                handleClose();
-                window.location.href = "/dashboard/create-fleet";
-              }}>
+              <Button
+                type="button"
+                onClick={() => {
+                  handleClose();
+                  window.location.href = ROUTE_PATHS.dashboardCreateFleet;
+                }}
+              >
                 Créer une flotte
               </Button>
             )}

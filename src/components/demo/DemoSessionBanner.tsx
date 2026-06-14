@@ -9,6 +9,7 @@
 import { AlertTriangle, Clock, Eye, Info } from "lucide-react";
 import { useDemoSession } from "@/hooks/useDemoSession";
 import { demoRoleLabel } from "@/lib/demo/demoGuard";
+import { CONTACT } from "@/config/navigation";
 
 // ─── Sous-composant : badge temps restant ──────────────────────────────────
 
@@ -49,7 +50,7 @@ function ExpiredBanner() {
       <span>
         Votre session démo a expiré.{" "}
         <a
-          href="mailto:contact@e-samba.com"
+          href={CONTACT.mailtoHref}
           className="underline underline-offset-2 hover:no-underline"
         >
           Contactez-nous
@@ -69,7 +70,7 @@ function AccountExpiredBanner() {
       <span>
         Votre période de démonstration est terminée.{" "}
         <a
-          href="mailto:contact@e-samba.com"
+          href={CONTACT.mailtoHref}
           className="underline underline-offset-2 hover:no-underline"
         >
           Passez à un abonnement

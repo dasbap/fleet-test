@@ -2,10 +2,10 @@
  * Bouton WhatsApp flottant — visible sur toute la landing page.
  * Masqué sur mobile en mode app (hash #app).
  */
+import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
+
 export function WhatsAppButton() {
-  const number = import.meta.env.VITE_WHATSAPP_NUMBER || "237641341857";
-  const message = encodeURIComponent("Bonjour, je souhaite en savoir plus sur E-Samba.");
-  const url = `https://wa.me/${number}?text=${message}`;
+  const url = buildWhatsAppUrl(SOCIAL.whatsappLandingMessage);
 
   return (
     <a

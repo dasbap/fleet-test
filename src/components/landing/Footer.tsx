@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { Zap, Mail, Phone, MapPin } from "lucide-react";
-import { FOOTER_PRODUCT_LINKS } from "@/data/marketing/public-nav";
-import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { FOOTER_PRODUCT_LINKS, FOOTER_SUPPORT_LINKS, CONTACT } from "@/config/navigation";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -27,22 +26,22 @@ const Footer = () => {
             </p>
             <div className="space-y-2">
               <a
-                href="mailto:contact@e-samba.com"
+                href={CONTACT.mailtoHref}
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 <Mail className="w-4 h-4" />
-                contact@e-samba.com
+                {CONTACT.email}
               </a>
               <a
-                href="tel:+237641341857"
+                href={CONTACT.telHref}
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                +237 6 41 34 18 57
+                {CONTACT.phoneDisplay}
               </a>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="w-4 h-4" />
-                Douala, Cameroun
+                {CONTACT.city}
               </div>
             </div>
           </div>
@@ -97,12 +96,7 @@ const Footer = () => {
           <div>
             <h4 className="font-heading font-semibold mb-4">Support</h4>
             <ul className="space-y-2">
-              {[
-                { name: "Centre d'aide", to: ROUTE_PATHS.help },
-                { name: "Documentation", to: "/documentation" },
-                { name: "API", to: "/api" },
-                { name: "Status", to: "/status" },
-              ].map((link) => (
+              {FOOTER_SUPPORT_LINKS.map((link) => (
                 <li key={link.name}>
                   <Link
                     to={link.to}

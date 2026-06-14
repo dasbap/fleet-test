@@ -1,3 +1,5 @@
+import { ROUTE_PATHS } from "@/navigation/routePaths";
+
 /**
  * Contenu — Guides par rôle + Tutoriels rapides + Onboarding.
  * Optimisé 2G/3G : pas d'images, texte concis, accordéons.
@@ -377,21 +379,21 @@ export const GUIDES: Guide[] = [
 
 export const ONBOARDING_STEPS: Record<GuideRole, OnboardingStep[]> = {
   chauffeur: [
-    { id: 'o1', title: 'Bienvenue !',       body: 'E-Samba vous accompagne chaque jour sur la route. Voici les 3 actions essentielles.',                          action: 'Commencer',             route: '/profile' },
-    { id: 'o2', title: 'Votre profil',      body: 'Ajoutez votre photo et vos informations de permis. C\'est obligatoire pour valider vos DVIR.',                action: 'Compléter mon profil',  route: '/profile' },
-    { id: 'o3', title: 'Scanner votre véhicule', body: 'Scannez le QR code de votre véhicule principal pour l\'associer à votre compte.',                       action: 'Scanner le QR',         route: '/scan' },
-    { id: 'o4', title: 'Premier contrôle', body: 'Effectuez votre premier contrôle pré-départ (DVIR). Ça prend 3 minutes et protège votre responsabilité.',     action: 'Faire le contrôle',     route: '/dvir/new' },
+    { id: 'o1', title: 'Bienvenue !',       body: 'E-Samba vous accompagne chaque jour sur la route. Voici les 3 actions essentielles.',                          action: 'Commencer',             route: ROUTE_PATHS.dashboardProfile },
+    { id: 'o2', title: 'Votre profil',      body: 'Ajoutez votre photo et vos informations de permis. C\'est obligatoire pour valider vos DVIR.',                action: 'Compléter mon profil',  route: ROUTE_PATHS.dashboardProfile },
+    { id: 'o3', title: 'Scanner votre véhicule', body: 'Scannez le QR code de votre véhicule principal pour l\'associer à votre compte.',                       action: 'Scanner le QR',         route: ROUTE_PATHS.dashboardScan },
+    { id: 'o4', title: 'Premier contrôle', body: 'Effectuez votre premier contrôle pré-départ (DVIR). Ça prend 3 minutes et protège votre responsabilité.',     action: 'Faire le contrôle',     route: ROUTE_PATHS.inspectionsNew },
   ],
   gestionnaire: [
-    { id: 'o1', title: 'Bienvenue !',         body: 'Configurez votre flotte E-Samba en quelques étapes.',                                                       action: 'Commencer',             route: '/dashboard' },
-    { id: 'o2', title: 'Ajoutez vos véhicules', body: 'Commencez par enregistrer au moins un véhicule avec son immatriculation et ses documents.',                action: 'Ajouter un véhicule',  route: '/vehicles/new' },
-    { id: 'o3', title: 'Invitez votre équipe', body: 'Envoyez les invitations à vos chauffeurs par SMS. Ils peuvent s\'inscrire en 2 minutes.',                   action: 'Inviter des chauffeurs', route: '/team/invite' },
-    { id: 'o4', title: 'Activez les alertes', body: 'Configurez vos préférences d\'alerte pour rester informé des événements critiques de votre flotte.',         action: 'Configurer les alertes', route: '/settings/alerts' },
+    { id: 'o1', title: 'Bienvenue !',         body: 'Configurez votre flotte E-Samba en quelques étapes.',                                                       action: 'Commencer',             route: ROUTE_PATHS.dashboard },
+    { id: 'o2', title: 'Ajoutez vos véhicules', body: 'Commencez par enregistrer au moins un véhicule avec son immatriculation et ses documents.',                action: 'Ajouter un véhicule',  route: ROUTE_PATHS.dashboardVehiclesNew },
+    { id: 'o3', title: 'Invitez votre équipe', body: 'Envoyez les invitations à vos chauffeurs par SMS. Ils peuvent s\'inscrire en 2 minutes.',                   action: 'Inviter des chauffeurs', route: ROUTE_PATHS.dashboardInvitations },
+    { id: 'o4', title: 'Activez les alertes', body: 'Configurez vos préférences d\'alerte pour rester informé des événements critiques de votre flotte.',         action: 'Configurer les alertes', route: ROUTE_PATHS.dashboardSettings },
   ],
   mécanicien: [
-    { id: 'o1', title: 'Bienvenue !',       body: 'E-Samba vous permet de gérer vos ordres de travail depuis votre téléphone.',                                  action: 'Commencer',             route: '/maintenance' },
-    { id: 'o2', title: 'Vos outils',       body: 'Familiarisez-vous avec la liste des ordres de travail. En rouge = urgent, en orange = planifié, en vert = terminé.', action: 'Voir les ordres',  route: '/maintenance' },
-    { id: 'o3', title: 'Diagnostic IA',    body: 'Consultez le module de diagnostic prédictif pour anticiper les pannes sur votre parc.',                        action: 'Voir le diagnostic',    route: '/maintenance/diagnostic' },
+    { id: 'o1', title: 'Bienvenue !',       body: 'E-Samba vous permet de gérer vos ordres de travail depuis votre téléphone.',                                  action: 'Commencer',             route: ROUTE_PATHS.dashboardMaintenance },
+    { id: 'o2', title: 'Vos outils',       body: 'Familiarisez-vous avec la liste des ordres de travail. En rouge = urgent, en orange = planifié, en vert = terminé.', action: 'Voir les ordres',  route: ROUTE_PATHS.dashboardMaintenance },
+    { id: 'o3', title: 'Diagnostic IA',    body: 'Consultez le module de diagnostic prédictif pour anticiper les pannes sur votre parc.',                        action: 'Voir le diagnostic',    route: ROUTE_PATHS.dashboardPredictiveMaintenance },
   ],
   organisateur: [],
   general: [],

@@ -123,6 +123,34 @@ vi.mock("@/pages/public/FonctionnalitesPage", () => ({
   default: () => <div data-testid="fonctionnalites-page">Fonctionnalites</div>,
 }));
 
+vi.mock("@/pages/public/FaqPage", () => ({
+  default: () => <div data-testid="faq-page">FAQ</div>,
+}));
+
+vi.mock("@/pages/public/ContactPage", () => ({
+  default: () => <div data-testid="contact-page">Contact</div>,
+}));
+
+vi.mock("@/features/help/screens/HelpQuickStartPage", () => ({
+  default: () => <div data-testid="help-quickstart-page">Quickstart</div>,
+}));
+
+vi.mock("@/pages/Confidentialite", () => ({
+  default: () => <div data-testid="confidentialite-page">Confidentialite</div>,
+}));
+
+vi.mock("@/pages/Conditions", () => ({
+  default: () => <div data-testid="conditions-page">Conditions</div>,
+}));
+
+vi.mock("@/features/help/components/HelpPublicLayout", () => ({
+  HelpPublicLayout: () => <Outlet />,
+}));
+
+vi.mock("@/features/help/screens/HelpHomePage", () => ({
+  default: () => <div data-testid="help-home-page">Help</div>,
+}));
+
 function renderRoutes(initialPath: string) {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
@@ -140,6 +168,61 @@ describe("app.routes redirections critiques", () => {
   it("redirige /connexion vers /auth", async () => {
     renderRoutes("/connexion");
     expect(await screen.findByTestId("auth-page")).toBeInTheDocument();
+  });
+
+  it("redirige /inscription vers /auth?mode=signup", async () => {
+    renderRoutes("/inscription");
+    expect(await screen.findByTestId("auth-page")).toBeInTheDocument();
+  });
+
+  it("redirige /privacy vers /confidentialite", async () => {
+    renderRoutes("/privacy");
+    expect(await screen.findByTestId("confidentialite-page")).toBeInTheDocument();
+  });
+
+  it("redirige /terms vers /conditions", async () => {
+    renderRoutes("/terms");
+    expect(await screen.findByTestId("conditions-page")).toBeInTheDocument();
+  });
+
+  it("redirige /documentation vers /help", async () => {
+    renderRoutes("/documentation");
+    expect(await screen.findByTestId("help-home-page")).toBeInTheDocument();
+  });
+
+  it("redirige /api vers /help", async () => {
+    renderRoutes("/api");
+    expect(await screen.findByTestId("help-home-page")).toBeInTheDocument();
+  });
+
+  it("redirige /demo vers /contact#demo", async () => {
+    renderRoutes("/demo");
+    expect(await screen.findByTestId("contact-page")).toBeInTheDocument();
+  });
+
+  it("redirige /help/faq vers /faq", async () => {
+    renderRoutes("/help/faq");
+    expect(await screen.findByTestId("faq-page")).toBeInTheDocument();
+  });
+
+  it("redirige /help/guides vers /help/quickstart", async () => {
+    renderRoutes("/help/guides");
+    expect(await screen.findByTestId("help-quickstart-page")).toBeInTheDocument();
+  });
+
+  it("redirige /guides vers /help", async () => {
+    renderRoutes("/guides");
+    expect(await screen.findByTestId("help-home-page")).toBeInTheDocument();
+  });
+
+  it("redirige /features vers /fonctionnalites", async () => {
+    renderRoutes("/features");
+    expect(await screen.findByTestId("fonctionnalites-page")).toBeInTheDocument();
+  });
+
+  it("redirige /vehicles/new vers le dashboard véhicules", async () => {
+    renderRoutes("/vehicles/new");
+    expect(await screen.findByTestId("dashboard-fallback")).toBeInTheDocument();
   });
 
   it("redirige /tarifs vers /pricing", async () => {

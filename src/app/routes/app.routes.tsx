@@ -6,8 +6,8 @@ import { dashboardRoutes } from "@/app/routes/dashboard.routes";
 import { authPublicRoutes } from "@/features/auth/routes";
 import { RoleGuard } from "@/navigation/guards/RequireRole";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { LANDING_CTA, PUBLIC_DEMO_HREF } from "@/config/navigation";
 import { LegacyAideVideoRedirect } from "@/app/routes/LegacyAideVideoRedirect";
-import { AccesRestreint } from "@/components/layout/AccesRestreint";
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -70,8 +70,6 @@ const UseCaseHubPage = lazy(() => import('@/pages/UseCaseHub'));
 const UseCaseDetailPage = lazy(() => import('@/pages/UseCaseDetail'));
 const CarrieresPage = lazy(() => import('@/pages/Carrieres'));
 const PartenairesPage = lazy(() => import('@/pages/Partenaires'));
-const DocumentationPage = lazy(() => import('@/pages/Documentation'));
-const ApiDocsPage = lazy(() => import('@/pages/ApiDocs'));
 const StatusPage = lazy(() => import('@/pages/Status'));
 const PredictiveMaintenancePage = lazy(
   () => import("@/features/maintenance/screens/PredictiveMaintenancePage")
@@ -102,6 +100,8 @@ export const appRoutes = (
     <Route element={<HelpPublicLayout />}>
       <Route path="/help" element={<HelpHomePage />} />
       <Route path="/help/quickstart" element={<HelpQuickStartPage />} />
+      <Route path="/help/faq" element={<Navigate to={ROUTE_PATHS.faq} replace />} />
+      <Route path="/help/guides" element={<Navigate to={ROUTE_PATHS.helpQuickstart} replace />} />
       <Route path="/help/search" element={<HelpSearchPage />} />
       <Route path="/help/:category/:slug" element={<HelpArticlePage />} />
       <Route path="/help/:category" element={<HelpCategoryPage />} />
@@ -131,12 +131,17 @@ export const appRoutes = (
     <Route path="/fonctionnalites" element={<FonctionnalitesPage />} />
     <Route path="/modules" element={<ModulesPage />} />
     <Route path="/faq" element={<FaqPage />} />
+    <Route path="/guides" element={<Navigate to={ROUTE_PATHS.help} replace />} />
+    <Route path="/features" element={<Navigate to={ROUTE_PATHS.fonctionnalites} replace />} />
     <Route path="/contact" element={<ContactPage />} />
+    <Route path="/demo" element={<Navigate to={PUBLIC_DEMO_HREF} replace />} />
     <Route path="/pricing" element={<PricingPage />} />
     <Route path="/tarifs" element={<Navigate to={ROUTE_PATHS.pricing} replace />} />
     <Route path="/cookies" element={<CookiesPage />} />
     <Route path="/confidentialite" element={<ConfidentialitePage />} />
+    <Route path="/privacy" element={<Navigate to="/confidentialite" replace />} />
     <Route path="/conditions" element={<ConditionsPage />} />
+    <Route path="/terms" element={<Navigate to="/conditions" replace />} />
     <Route path="/apropos" element={<AproposPage />} />
     <Route path="/blog" element={<BlogPage />} />
     <Route path="/ressources" element={<ResourcesIndexPage />} />
@@ -146,17 +151,29 @@ export const appRoutes = (
     <Route path="/use-case/:slug" element={<UseCaseDetailPage />} />
     <Route path="/carrieres" element={<CarrieresPage />} />
     <Route path="/partenaires" element={<PartenairesPage />} />
-    <Route path="/documentation" element={<AccesRestreint><DocumentationPage /></AccesRestreint>} />
-    <Route path="/api" element={<AccesRestreint><ApiDocsPage /></AccesRestreint>} />
+    <Route path="/documentation" element={<Navigate to={ROUTE_PATHS.help} replace />} />
+    <Route path="/api" element={<Navigate to={ROUTE_PATHS.help} replace />} />
+    <Route
+      path="/vehicles/new"
+      element={<Navigate to={ROUTE_PATHS.dashboardVehiclesNew} replace />}
+    />
+    <Route
+      path="/team/invite"
+      element={<Navigate to={ROUTE_PATHS.dashboardInvitations} replace />}
+    />
     <Route path="/status" element={<StatusPage />} />
-    <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
+    <Route path="/settings" element={<Navigate to={ROUTE_PATHS.dashboardSettings} replace />} />
     <Route
       path="/signup"
-      element={<Navigate to="/auth?mode=signup" replace />}
+      element={<Navigate to={LANDING_CTA.signupHref} replace />}
     />
     <Route
       path="/register"
-      element={<Navigate to="/auth?mode=signup" replace />}
+      element={<Navigate to={LANDING_CTA.signupHref} replace />}
+    />
+    <Route
+      path="/inscription"
+      element={<Navigate to={LANDING_CTA.signupHref} replace />}
     />
     <Route path="/connexion" element={<Navigate to={ROUTE_PATHS.auth} replace />} />
     <Route element={<AuthProviderLayout />}>

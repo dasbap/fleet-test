@@ -41,6 +41,7 @@ import { isBffConfigured } from "@/lib/bff-config";
 import { formatPublicPriceXaf } from "@/lib/public-pricing";
 import { cn } from "@/lib/utils";
 import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
+import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
 import { STATUS_CONFIG } from "@/features/billing/constants/billingStatusConfig";
 import { useNotchPayCallback } from "@/features/billing/hooks/useNotchPayCallback";
 import type { FleetBillingContext } from "@/types/fleet-billing";
@@ -303,7 +304,7 @@ export default function BillingPage() {
           {/* Support — visible par tous */}
           <Button asChild size="sm" variant="outline">
             <a
-              href="https://wa.me/237641341857?text=Bonjour%2C%20je%20souhaite%20de%20l%27aide%20sur%20mon%20abonnement%20E-Samba"
+              href={buildWhatsAppUrl(SOCIAL.whatsappBillingMessage)}
               target="_blank"
               rel="noopener noreferrer"
             >
