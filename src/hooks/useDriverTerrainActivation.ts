@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { DriverTerrainRepository } from '@/repositories/driver-terrain.repository';
+import { DriverTerrainService } from '@/services/driver-terrain.service';
 import { isValidCameroonMobileInput } from '@/lib/cameroonPhone';
 import { isTerrainPath } from '@/navigation/routePaths';
 import {
@@ -17,32 +18,13 @@ import {
 /** Durée de cache : 30 s — évite de re-interroger à chaque navigation */
 const STALE_TIME_MS = 30_000;
 
+const driverTerrainRepository = new DriverTerrainRepository();
+const driverTerrainService = new DriverTerrainService(driverTerrainRepository);
+
 function readSnoozeState(userId: string): DriverTerrainSnoozeState {
   if (typeof window === 'undefined') return { until: null, count: 0 };
   const raw = window.localStorage.getItem(`${DRIVER_TERRAIN_SNOOZE_KEY_PREFIX}${userId}`);
   return parseDriverTerrainSnoozeStored(raw);
-}
-
-/**
- * Interroge le RPC `driver_terrain_self_check` en un seul round-trip Supabase.
- * Remplace les deux appels parallèles (profileRepo + shiftRepo) pour réduire la latence 2G/3G.
- */
-async function fetchDriverTerrainSelf(
-  userId: string,
-  fleetId: string,
-): Promise<{ phone: string | null; hasEverShift: boolean }> {
-  const { data, error } = await supabase.rpc('driver_terrain_self_check', {
-    p_user_id: userId,
-    p_fleet_id: fleetId,
-  });
-
-  if (error) throw new Error(error.message);
-
-  const result = data as { phone: string | null; has_ever_shift: boolean } | null;
-  return {
-    phone: result?.phone ?? null,
-    hasEverShift: result?.has_ever_shift ?? false,
-  };
 }
 
 export function useDriverTerrainActivation() {
@@ -63,7 +45,7 @@ export function useDriverTerrainActivation() {
 
   const query = useQuery({
     queryKey: ['driver-terrain-self', userId, userFleetId],
-    queryFn: () => fetchDriverTerrainSelf(userId!, userFleetId!),
+    queryFn: () => driverTerrainService.getSelfCheck(userId!, userFleetId!),
     enabled: Boolean(isDriver && userId && userFleetId && !onTerrainHub),
     staleTime: STALE_TIME_MS,
   });

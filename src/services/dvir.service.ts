@@ -117,4 +117,11 @@ export class DvirService {
     const trimmed = value.trim().replace(/\s+/g, " ");
     return trimmed.length > 0 ? trimmed.slice(0, maxLength) : null;
   }
+
+  async uploadPhoto(fleetId: string, vehicleId: string, file: File): Promise<string> {
+    if (!fleetId || !vehicleId) {
+      throw new Error("La flotte et le véhicule sont requis pour l'upload photo");
+    }
+    return this.repository.uploadPhoto(fleetId, vehicleId, file);
+  }
 }

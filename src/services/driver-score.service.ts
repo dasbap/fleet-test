@@ -1,8 +1,12 @@
 import { DriverScoreRepository } from '@/repositories/driver-score.repository';
-import type { DriverScoreLevel, DriverScoreRow } from '@/repositories/driver-score.repository';
-import type { DriverScoreSnapshotRow } from '@/repositories/driver-score.repository';
+import type {
+  DriverScoreLevel,
+  DriverScoreRow,
+  DriverScoreSnapshotRow,
+  TopDriverScoreRow,
+} from '@/repositories/driver-score.repository';
 
-export type { DriverScoreLevel };
+export type { DriverScoreLevel, TopDriverScoreRow };
 
 export interface GetDriverScoresOptions {
   limit?: number;
@@ -41,5 +45,11 @@ export class DriverScoreService {
   async getDriverScoreSnapshots(driverUserId: string, fleetId: string): Promise<DriverScoreSnapshotRow[]> {
     if (!driverUserId || !fleetId) return [];
     return this.repository.findSnapshotsByDriver(driverUserId, fleetId);
+  }
+
+  async getTopDriverScores(fleetId: string, limit = 10): Promise<TopDriverScoreRow[]> {
+    if (!fleetId) return [];
+    const safeLimit = sanitizeLimit(limit) ?? 10;
+    return this.repository.findTopByFleet(fleetId, safeLimit);
   }
 }

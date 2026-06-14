@@ -3,7 +3,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { SessionContextRepository } from '@/repositories/session-context.repository';
 import {
   SessionContextService,
@@ -29,6 +29,7 @@ const INITIAL: SessionContext = {
 };
 
 export function useSessionContext() {
+  const { session } = useAuth();
   const [context, setContext] = useState<SessionContext>(INITIAL);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,9 +39,6 @@ export function useSessionContext() {
     setError(null);
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
       if (!session) {
         setContext({ ...INITIAL, route: 'auth' });
         return;
@@ -56,7 +54,7 @@ export function useSessionContext() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session]);
 
   const setActiveFleet = useCallback((fleetId: string) => {
     setContext((prev) => {
@@ -67,14 +65,6 @@ export function useSessionContext() {
 
   useEffect(() => {
     void fetchContext();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') void fetchContext();
-      if (event === 'SIGNED_OUT') setContext({ ...INITIAL, route: 'auth' });
-    });
-    return () => subscription.unsubscribe();
   }, [fetchContext]);
 
   return { context, loading, error, refetch: fetchContext, setActiveFleet };

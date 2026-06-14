@@ -4,22 +4,12 @@ import { useDashboard } from "@/hooks/useDashboard";
 import type { DashboardAlert } from "@/types/dashboard";
 import { createQueryClientWrapper } from "@/test/utils";
 
-const { mockGetSession, mockAuthUnsubscribe } = vi.hoisted(() => ({
-  mockGetSession: vi.fn().mockResolvedValue({
-    data: { session: { access_token: "test-token" } },
-  }),
-  mockAuthUnsubscribe: vi.fn(),
+const { mockUseAuth } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
 }));
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: {
-      getSession: mockGetSession,
-      onAuthStateChange: vi.fn(() => ({
-        data: { subscription: { unsubscribe: mockAuthUnsubscribe } },
-      })),
-    },
-  },
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => mockUseAuth(),
 }));
 
 const {
@@ -82,6 +72,9 @@ describe("useDashboard", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({
+      session: { access_token: "test-token" },
+    });
     mockGetActiveAlerts.mockResolvedValue([baseAlert]);
     mockResolveAlert.mockResolvedValue(undefined);
     mockSubscribeToAlerts.mockReturnValue({ id: "channel-1" });

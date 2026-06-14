@@ -8,8 +8,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { DemoSessionRepository } from "@/repositories/demo-session.repository";
+import { DemoSessionService } from "@/services/demo-session.service";
 import {
   type DemoAction,
   type DemoGuardResult,
@@ -52,6 +53,9 @@ const COUNTDOWN_INTERVAL_MS = 30_000;
 /** Intervalle de heartbeat pour `last_seen_at` côté serveur (ms). */
 const HEARTBEAT_INTERVAL_MS = 15 * 60_000;
 
+const demoSessionRepository = new DemoSessionRepository();
+const demoSessionService = new DemoSessionService(demoSessionRepository);
+
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
 export function useDemoSession(): UseDemoSessionReturn {
@@ -74,53 +78,49 @@ export function useDemoSession(): UseDemoSessionReturn {
 
     setStatus("loading");
 
-    const { data, error } = await supabase.rpc("demo_upsert_session", {
-      p_ip_address: null,
-      p_user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-    });
+    try {
+      const data = await demoSessionService.upsertSession(
+        typeof navigator !== "undefined" ? navigator.userAgent : null,
+      );
 
-    if (error) {
-      // Erreur réseau ou RPC inconnue → utilisateur probablement non-démo
-      if (error.code === "PGRST202") {
-        // RPC introuvable (migration non appliquée en dev)
+      if (!data.ok) {
+        if (
+          data.error === "not_demo_user" ||
+          data.error === "no_policy_for_role"
+        ) {
+          setStatus("not_demo");
+        } else if (
+          data.error === "demo_account_expired" ||
+          data.error === "demo_period_expired"
+        ) {
+          setStatus("account_expired");
+        } else {
+          setStatus("error");
+        }
+        setSession(null);
+        return;
+      }
+
+      const nextSession: DemoSession = {
+        sessionId: data.session_id as string,
+        expiresAt: data.expires_at as string,
+        fleetId: data.fleet_id as string,
+        demoRole: data.demo_role as DemoSession["demoRole"],
+        policy: data.policy as DemoSession["policy"],
+      };
+
+      setSession(nextSession);
+      setStatus(isSessionExpired(nextSession) ? "session_expired" : "active");
+      setMinutes(sessionMinutesRemaining(nextSession));
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code === "PGRST202") {
         setStatus("not_demo");
       } else {
-        console.error("[useDemoSession] RPC error:", error.message);
+        console.error("[useDemoSession] RPC error:", error);
         setStatus("error");
       }
-      return;
     }
-
-    if (!data.ok) {
-      // Codes retournés par demo_upsert_session
-      if (
-        data.error === "not_demo_user" ||
-        data.error === "no_policy_for_role"
-      ) {
-        setStatus("not_demo");
-      } else if (
-        data.error === "demo_account_expired" ||
-        data.error === "demo_period_expired"
-      ) {
-        setStatus("account_expired");
-      } else {
-        setStatus("error");
-      }
-      setSession(null);
-      return;
-    }
-
-    const nextSession: DemoSession = {
-      sessionId: data.session_id as string,
-      expiresAt: data.expires_at as string,
-      fleetId:   data.fleet_id  as string,
-      demoRole:  data.demo_role as DemoSession["demoRole"],
-      policy:    data.policy    as DemoSession["policy"],
-    };
-
-    setSession(nextSession);
-    setStatus(isSessionExpired(nextSession) ? "session_expired" : "active");
-    setMinutes(sessionMinutesRemaining(nextSession));
   }, [user?.id]);
 
   // Déclenchement initial + sur changement d'utilisateur
@@ -161,17 +161,18 @@ export function useDemoSession(): UseDemoSessionReturn {
     }
 
     const beat = async (): Promise<void> => {
-      // Un simple appel demo_upsert_session met à jour last_seen_at
-      const { data } = await supabase.rpc("demo_upsert_session", {
-        p_ip_address: null,
-        p_user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-      });
+      try {
+        const data = await demoSessionService.upsertSession(
+          typeof navigator !== "undefined" ? navigator.userAgent : null,
+        );
 
-      // Si la session a expiré entre deux heartbeats, mettre à jour l'état
-      if (data && !data.ok && data.error?.includes("expired")) {
-        setStatus("session_expired");
-        setSession(null);
-        if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+        if (!data.ok && data.error?.includes("expired")) {
+          setStatus("session_expired");
+          setSession(null);
+          if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+        }
+      } catch {
+        /* heartbeat non bloquant */
       }
     };
 
