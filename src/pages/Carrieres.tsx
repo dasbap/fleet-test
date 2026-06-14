@@ -1,6 +1,7 @@
 import { MapPin, Clock, ArrowRight } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
+import { buildMailtoHref, DEPARTMENT_EMAILS } from "@/config/navigation";
 
 const POSTES = [
   {
@@ -77,7 +78,9 @@ export default function CarrieresPage() {
                     {poste.description}
                   </p>
                   <a
-                    href={`mailto:rh@e-samba.com?subject=Candidature — ${poste.titre}`}
+                    href={buildMailtoHref(DEPARTMENT_EMAILS.rh, {
+                      subject: `Candidature — ${poste.titre}`,
+                    })}
                     className="inline-flex items-center gap-1 text-sm text-primary font-medium hover:gap-2 transition-all"
                   >
                     Postuler <ArrowRight className="w-4 h-4" />
@@ -120,7 +123,9 @@ export default function CarrieresPage() {
               se présente.
             </p>
             <a
-              href="mailto:rh@e-samba.com?subject=Candidature spontanée"
+              href={buildMailtoHref(DEPARTMENT_EMAILS.rh, {
+                subject: "Candidature spontanée",
+              })}
               className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors text-sm"
             >
               Envoyer ma candidature

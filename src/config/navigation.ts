@@ -88,6 +88,38 @@ export const SUPPORT = {
   mailtoHref: "mailto:support@e-samba.com",
 } as const;
 
+/** Contact confidentialité / RGPD. */
+export const PRIVACY = {
+  email: "privacy@e-samba.com",
+  mailtoHref: "mailto:privacy@e-samba.com",
+} as const;
+
+/** Emails métier par département (pages publiques spécialisées). */
+export const DEPARTMENT_EMAILS = {
+  api: "api@e-samba.com",
+  security: "security@e-samba.com",
+  rh: "rh@e-samba.com",
+  partenaires: "partenaires@e-samba.com",
+  status: "status@e-samba.com",
+} as const;
+
+/** Construit un lien mailto avec sujet et corps optionnels. */
+export function buildMailtoHref(
+  email: string,
+  options?: { subject?: string; body?: string },
+): string {
+  const params = new URLSearchParams();
+  if (options?.subject) params.set("subject", options.subject);
+  if (options?.body) params.set("body", options.body);
+  const qs = params.toString();
+  return qs ? `mailto:${email}?${qs}` : `mailto:${email}`;
+}
+
+/** Lien mailto vers le support produit. */
+export function buildSupportMailto(subject?: string, body?: string): string {
+  return buildMailtoHref(SUPPORT.email, { subject, body });
+}
+
 /** Liens support footer (pages publiques stables uniquement). */
 export const FOOTER_SUPPORT_LINKS: readonly FooterLink[] = [
   { name: "Centre d'aide", to: ROUTE_PATHS.help },

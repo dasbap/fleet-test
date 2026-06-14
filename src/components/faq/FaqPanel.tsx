@@ -16,6 +16,7 @@ import { FaqAccordion } from './FaqAccordion';
 import { FaqSearch } from './FaqSearch';
 import { FaqSchemaOrg } from './FaqSchemaOrg';
 import { FAQ_ROUTE_LABELS } from './faqLabels';
+import { SUPPORT } from '@/config/navigation';
 
 interface FaqPanelProps {
   /** Largeur du panneau (Tailwind class) */
@@ -54,7 +55,7 @@ export function FaqPanel({ width = 'w-72' }: FaqPanelProps) {
 
           {/* Lien vers le support */}
           <a
-            href="mailto:support@e-samba.com"
+            href={SUPPORT.mailtoHref}
             className="mt-1 flex items-center justify-between text-xs text-blue-600 hover:text-blue-700 hover:underline"
           >
             <span>Contacter le support</span>
