@@ -93,6 +93,9 @@ export function useRouteAccess(): RouteAccessResult {
   }
 
   if (!orgId || !fleetId) {
+    if (timedOut) {
+      return { state: "tenant_bootstrap", orgId: null };
+    }
     return { state: "loading", orgId: null };
   }
 
