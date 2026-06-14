@@ -7,8 +7,7 @@ const AUDIO_URL =
   import.meta.env.VITE_DEMO_AUDIO_URL ||
   "/audio/E-SAMBA_dompte_le_chaos_logistique.m4a";
 
-const WHATSAPP_NUMBER =
-  import.meta.env.VITE_WHATSAPP_NUMBER || "237641341857";
+import { buildWhatsAppUrl, LANDING_CTA, SOCIAL } from "@/config/navigation";
 
 const stats = [
   { value: "500+", label: "Véhicules gérés" },
@@ -237,16 +236,14 @@ export function DemoVideoSection() {
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
             <Button size="lg" className="shadow-glow" asChild>
-              <Link to="/auth?mode=signup">
-                Démarrer gratuitement
+              <Link to={LANDING_CTA.signupHref}>
+                {LANDING_CTA.signupLabel}
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
               <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                  "Bonjour, je souhaite une démo live de E-Samba.",
-                )}`}
+                href={buildWhatsAppUrl(SOCIAL.whatsappLiveDemoMessage)}
                 target="_blank"
                 rel="noopener noreferrer"
               >

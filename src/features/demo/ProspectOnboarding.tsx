@@ -28,6 +28,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CONTACT } from "@/config/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -312,10 +313,10 @@ export function ProspectOnboarding() {
               <p className="text-xs text-muted-foreground">
                 Des questions ? Contacte{" "}
                 <a
-                  href="mailto:contact@e-samba.com"
+                  href={CONTACT.mailtoHref}
                   className="underline hover:text-foreground"
                 >
-                  contact@e-samba.com
+                  {CONTACT.email}
                 </a>
               </p>
             </div>

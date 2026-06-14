@@ -8,8 +8,11 @@ import { DemoRequestSection } from "@/components/landing/DemoRequestSection";
 import { FaqSection } from "@/components/landing/FaqSection";
 import { WhatsAppButton } from "@/components/landing/WhatsAppButton";
 import Footer from "@/components/landing/Footer";
+import { useLandingHashScroll } from "@/hooks/useLandingHashScroll";
 
 const Index = () => {
+  useLandingHashScroll();
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />

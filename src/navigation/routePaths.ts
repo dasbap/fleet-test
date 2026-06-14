@@ -42,6 +42,8 @@ export const ROUTE_PATHS = {
   dashboardVehicles: "/dashboard/vehicles",
   dashboardVehicleDetail: (vehicleId: string) =>
     `/dashboard/vehicles/${vehicleId}` as const,
+  /** Alias création véhicule (redirige vers la liste flotte). */
+  dashboardVehiclesNew: "/dashboard/vehicles/new",
   dashboardMyVehicle: "/dashboard/my-vehicle",
   dashboardAlerts: "/dashboard/alerts",
   dashboardTutorials: "/dashboard/tutorials",
@@ -86,6 +88,10 @@ export const ROUTE_PATHS = {
   dashboardPredictiveMaintenance: "/dashboard/maintenance/predictive",
   /** Transits CEMAC — passages frontières Zone CEMAC. */
   dashboardTransitCemac: "/dashboard/transit",
+  /** Suivi GPS temps réel. */
+  dashboardTracking: "/dashboard/tracking",
+  /** Hub rôles et permissions. */
+  dashboardRoles: "/dashboard/roles",
   /** Géofencing — zones géographiques + alertes entrée/sortie. */
   dashboardGeofencing: "/dashboard/geofencing",
   /** Rapports programmés — envoi automatique PDF/Excel. */

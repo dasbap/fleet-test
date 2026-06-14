@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CONTACT } from "@/config/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -163,7 +164,7 @@ export default function DemoMagicLinkPage() {
               <Button
                 variant="ghost"
                 className="w-full"
-                onClick={() => window.location.href = "mailto:contact@e-samba.com"}
+                onClick={() => { window.location.href = CONTACT.mailtoHref; }}
               >
                 Contacter le support
               </Button>

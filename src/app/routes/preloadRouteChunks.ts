@@ -1,10 +1,15 @@
+import { ROUTE_PATHS } from "@/navigation/routePaths";
+
 type RoutePreloadTask = {
   test: (pathname: string) => boolean;
   preload: () => Promise<unknown>;
 };
 
 const isDashboardPath = (pathname: string) => pathname.startsWith("/dashboard");
-const heavyDashboardPaths = ["/dashboard/reports", "/dashboard/tracking"] as const;
+const heavyDashboardPaths = [
+  ROUTE_PATHS.dashboardReports,
+  ROUTE_PATHS.dashboardTracking,
+] as const;
 
 const dashboardLeafTasks: RoutePreloadTask[] = [
   { test: (p) => p === "/dashboard" || p === "/dashboard/", preload: () => import("@/features/home/screens/MobileHomePage") },

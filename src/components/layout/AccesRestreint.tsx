@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Lock, ArrowLeft, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CONTACT } from "@/config/navigation";
 
 const CLE_PREVIEW = "esamba_dev_preview";
 const CODE_PREVIEW = "esamba2026dev";
@@ -56,7 +57,7 @@ export function AccesRestreint({ children }: AccesRestreintProps) {
             </Link>
           </Button>
           <Button asChild>
-            <a href="mailto:contact@e-samba.com">
+            <a href={CONTACT.mailtoHref}>
               <Mail className="w-4 h-4 mr-2" />
               Nous contacter
             </a>

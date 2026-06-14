@@ -34,4 +34,27 @@ export class ProfileRepository {
     }
     return data as EnsureProfileRpcResult | null;
   }
+
+  async updateAuthFullName(fullName: string): Promise<void> {
+    const { error } = await supabase.auth.updateUser({
+      data: { full_name: fullName },
+    });
+
+    if (error) {
+      console.error('Error updating auth profile metadata:', error);
+      throw new Error(error.message);
+    }
+  }
+
+  async updateFullName(userId: string, fullName: string): Promise<void> {
+    const { error } = await supabase
+      .from('profils')
+      .update({ full_name: fullName })
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error updating profile row:', error);
+      throw new Error(error.message);
+    }
+  }
 }

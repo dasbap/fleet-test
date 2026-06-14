@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import DashboardSidebar from "./DashboardSidebar";
+import { DASHBOARD_NAV } from "@/config/navigation";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const signOutMock = vi.fn();
 
@@ -36,6 +38,7 @@ vi.mock("@/hooks/useFleetBillingContext", () => ({
       maxVehicles: 999,
       financeEnabled: true,
       aiEnabled: true,
+      reportsEnabled: true,
     },
     isSuccess: true,
     isError: false,
@@ -45,31 +48,21 @@ vi.mock("@/hooks/useFleetBillingContext", () => ({
 
 function renderSidebar(
   userRole: "organizer" | "manager" | "driver" | "mechanic" = "organizer",
-  initialRoute = "/dashboard"
+  initialRoute = "/dashboard",
 ) {
   return render(
     <MemoryRouter initialEntries={[initialRoute]}>
       <SidebarProvider>
         <DashboardSidebar userRole={userRole} />
       </SidebarProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
 describe("DashboardSidebar", () => {
   const organizerLinks = [
-    { name: /Tableau de bord/i, href: "/dashboard" },
-    { name: /Véhicules/i, href: "/dashboard/vehicles" },
-    { name: /Incidents/i, href: "/dashboard/incidents" },
-    { name: /Maintenance/i, href: "/dashboard/maintenance" },
-    { name: /Équipes/i, href: "/dashboard/teams" },
-    { name: /Scores conducteurs/i, href: "/dashboard/drivers/scores" },
-    { name: /Invitations/i, href: "/dashboard/invitations" },
-    { name: /Rapports/i, href: "/dashboard/reports" },
-    { name: /Suivi GPS/i, href: "/dashboard/tracking" },
-    { name: /Finances/i, href: "/dashboard/finances" },
-    { name: /Alertes/i, href: "/dashboard/alerts" },
-    { name: /Rôles/i, href: "/dashboard/roles" },
+    ...DASHBOARD_NAV.organizer,
+    DASHBOARD_NAV.organizerExtras.roles,
   ] as const;
 
   beforeEach(() => {
@@ -82,7 +75,6 @@ describe("DashboardSidebar", () => {
     async () => {
       const { container } = renderSidebar("organizer");
 
-      // Attendre un seul lien d'ancrage puis valider le menu complet.
       await screen.findByRole("link", { name: /Tableau de bord/i });
 
       for (const organizerLink of organizerLinks) {
@@ -90,7 +82,7 @@ describe("DashboardSidebar", () => {
         expect(link).not.toBeNull();
       }
     },
-    20000
+    20000,
   );
 
   it(
@@ -101,7 +93,18 @@ describe("DashboardSidebar", () => {
       const linkVehicles = screen.getByRole("link", { name: /Véhicules/i });
       expect(linkVehicles).toHaveAttribute("aria-current", "page");
     },
-    15000
+    15000,
+  );
+
+  it(
+    "marque Véhicules actif sur une fiche véhicule",
+    () => {
+      renderSidebar("organizer", "/dashboard/vehicles/veh-123");
+
+      const linkVehicles = screen.getByRole("link", { name: /Véhicules/i });
+      expect(linkVehicles).toHaveAttribute("aria-current", "page");
+    },
+    15000,
   );
 
   it(
@@ -111,14 +114,14 @@ describe("DashboardSidebar", () => {
 
       expect(await screen.findByRole("link", { name: /Mon profil/i })).toHaveAttribute(
         "href",
-        "/dashboard/profile"
+        ROUTE_PATHS.dashboardProfile,
       );
       expect(await screen.findByRole("link", { name: /Paramètres/i })).toHaveAttribute(
         "href",
-        "/dashboard/settings"
+        ROUTE_PATHS.dashboardSettings,
       );
     },
-    20000
+    20000,
   );
 
   it(
@@ -129,7 +132,7 @@ describe("DashboardSidebar", () => {
       const linkProfil = screen.getByRole("link", { name: /Mon profil/i });
       expect(linkProfil).toHaveAttribute("aria-current", "page");
     },
-    15000
+    15000,
   );
 
   it(
@@ -144,7 +147,7 @@ describe("DashboardSidebar", () => {
         expect(signOutMock).toHaveBeenCalledTimes(1);
       });
     },
-    20000
+    20000,
   );
 
   it(
@@ -152,23 +155,13 @@ describe("DashboardSidebar", () => {
     async () => {
       renderSidebar("driver");
 
-      expect(await screen.findByRole("link", { name: /Mon tableau/i })).toHaveAttribute(
-        "href",
-        "/dashboard"
-      );
-      expect(await screen.findByRole("link", { name: /Mon véhicule/i })).toHaveAttribute(
-        "href",
-        "/dashboard/my-vehicle"
-      );
-      expect(await screen.findByRole("link", { name: /Clôture/i })).toHaveAttribute(
-        "href",
-        "/dashboard/closure"
-      );
-      expect(await screen.findByRole("link", { name: /Signaler/i })).toHaveAttribute(
-        "href",
-        "/dashboard/incidents"
-      );
+      for (const item of DASHBOARD_NAV.driver) {
+        expect(await screen.findByRole("link", { name: new RegExp(item.label, "i") })).toHaveAttribute(
+          "href",
+          item.href,
+        );
+      }
     },
-    20000
+    20000,
   );
 });

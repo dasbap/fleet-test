@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Zap, Target, Globe, Users, TrendingUp } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
+import { LANDING_CTA } from "@/config/navigation";
 
 const VALEURS = [
   { icon: Target, titre: "Mission", texte: "Rendre la gestion de flotte professionnelle accessible à toutes les entreprises d'Afrique Centrale, quelle que soit leur taille." },
@@ -110,11 +111,11 @@ export default function AproposPage() {
               leur mobilité en Afrique Centrale.
             </p>
             <Link
-              to="/auth?mode=signup"
+              to={LANDING_CTA.signupHref}
               className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors"
             >
               <Zap className="w-4 h-4" />
-              Démarrer gratuitement
+              {LANDING_CTA.signupLabel}
             </Link>
           </div>
         </section>

@@ -28,10 +28,13 @@ const NotFound = () => {
             <Link to={ROUTE_PATHS.home}>Accueil</Link>
           </Button>
           <Button variant="secondary" asChild>
+            <Link to={ROUTE_PATHS.dashboard}>Dashboard</Link>
+          </Button>
+          <Button variant="secondary" asChild>
             <Link to={ROUTE_PATHS.auth}>Se connecter</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link to="/help">Aide</Link>
+            <Link to={ROUTE_PATHS.help}>Aide</Link>
           </Button>
         </div>
       </div>

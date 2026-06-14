@@ -10,10 +10,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CheckCircle2, ArrowRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
+import { useSubmitDemoRequest } from "@/hooks/useSubmitDemoRequest";
 
-const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || "237641341857";
-export const DEMO_WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Bonjour, je souhaite demander une démo de E-Samba pour ma flotte.")}`;
+export const DEMO_WHATSAPP_URL = buildWhatsAppUrl(SOCIAL.whatsappDemoMessage);
 
 interface ContactDemoFormProps {
   className?: string;
@@ -23,27 +23,21 @@ interface ContactDemoFormProps {
 export function ContactDemoForm({ className }: ContactDemoFormProps) {
   const [form, setForm] = useState({ name: "", company: "", phone: "", fleet_size: "" });
   const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const submitDemoRequest = useSubmitDemoRequest();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     try {
-      await supabase
-        .from("demo_requests")
-        .insert({
-          full_name: form.name,
-          company: form.company,
-          phone: form.phone,
-          fleet_size: form.fleet_size ? parseInt(form.fleet_size, 10) : null,
-        })
-        .throwOnError();
+      await submitDemoRequest.mutateAsync({
+        name: form.name,
+        company: form.company,
+        phone: form.phone,
+        fleetSize: form.fleet_size,
+      });
       setSent(true);
     } catch {
       window.open(DEMO_WHATSAPP_URL, "_blank");
       setSent(true);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -51,12 +45,10 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     return (
       <div className={className}>
         <div className="text-center py-8">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="h-8 w-8 text-green-600" />
-          </div>
-          <h3 className="text-xl font-bold mb-2">Demande envoyée !</h3>
-          <p className="text-muted-foreground mb-6">
-            Nous vous contactons sous 24h pour fixer le créneau.
+          <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-4" />
+          <h3 className="text-xl font-heading font-bold mb-2">Demande envoyée !</h3>
+          <p className="text-muted-foreground text-sm mb-6">
+            Notre équipe vous contactera sous 24h ouvrées pour planifier votre démo.
           </p>
           <Button asChild variant="outline" className="w-full">
             <a href={DEMO_WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
@@ -69,74 +61,64 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
   }
 
   return (
-    <div className={className}>
-      <h3 className="text-xl font-bold mb-1">Réserver une démo gratuite</h3>
-      <p className="text-sm text-muted-foreground mb-6">Réponse sous 24h · Sans engagement</p>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className={className}>
+      <h3 className="text-xl font-heading font-bold mb-6">Planifier ma démo gratuite</h3>
+      <div className="space-y-4">
         <div>
           <Label htmlFor="demo-name">Nom complet *</Label>
           <Input
             id="demo-name"
-            placeholder="Jean Dupont"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             required
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Jean Dupont"
+            className="mt-1"
           />
         </div>
         <div>
-          <Label htmlFor="demo-company">Entreprise / Organisation</Label>
+          <Label htmlFor="demo-company">Entreprise</Label>
           <Input
             id="demo-company"
-            placeholder="Trans-Afrique SARL"
             value={form.company}
-            onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
+            onChange={(e) => setForm({ ...form, company: e.target.value })}
+            placeholder="TransCam SARL"
+            className="mt-1"
           />
         </div>
         <div>
-          <Label htmlFor="demo-phone">Téléphone (WhatsApp) *</Label>
+          <Label htmlFor="demo-phone">Téléphone *</Label>
           <Input
             id="demo-phone"
-            type="tel"
-            placeholder="+237 6XX XXX XXX"
-            value={form.phone}
-            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
             required
+            type="tel"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            placeholder="+237 6 XX XX XX XX"
+            className="mt-1"
           />
         </div>
         <div>
-          <Label htmlFor="demo-fleet">Taille de votre flotte</Label>
+          <Label htmlFor="demo-fleet">Taille de flotte</Label>
           <Select
-            value={form.fleet_size || undefined}
-            onValueChange={(v) => setForm((f) => ({ ...f, fleet_size: v }))}
+            value={form.fleet_size}
+            onValueChange={(v) => setForm({ ...form, fleet_size: v })}
           >
-            <SelectTrigger id="demo-fleet">
-              <SelectValue placeholder="Nombre de véhicules" />
+            <SelectTrigger id="demo-fleet" className="mt-1">
+              <SelectValue placeholder="Sélectionner" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="3">1 – 3 véhicules</SelectItem>
-              <SelectItem value="10">4 – 10 véhicules</SelectItem>
-              <SelectItem value="25">11 – 25 véhicules</SelectItem>
-              <SelectItem value="50">26 – 50 véhicules</SelectItem>
-              <SelectItem value="100">50+ véhicules</SelectItem>
+              <SelectItem value="1">1–5 véhicules</SelectItem>
+              <SelectItem value="10">6–20 véhicules</SelectItem>
+              <SelectItem value="50">21–100 véhicules</SelectItem>
+              <SelectItem value="200">100+ véhicules</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <Button type="submit" className="w-full shadow-glow" disabled={loading}>
-          {loading ? "Envoi..." : "Demander ma démo gratuite"}
-          <ArrowRight className="ml-2 h-4 w-4" />
+        <Button type="submit" className="w-full gap-2" disabled={submitDemoRequest.isPending}>
+          {submitDemoRequest.isPending ? "Envoi..." : "Demander ma démo"}
+          <ArrowRight className="h-4 w-4" />
         </Button>
-        <p className="text-xs text-center text-muted-foreground">
-          Ou directement sur{" "}
-          <a
-            href={DEMO_WHATSAPP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-          >
-            WhatsApp →
-          </a>
-        </p>
-      </form>
-    </div>
+      </div>
+    </form>
   );
 }

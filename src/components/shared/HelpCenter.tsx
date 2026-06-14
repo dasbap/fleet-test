@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
 import type { HelpArticle, HelpCategory } from "@/hooks/useHelp";
 import { useHelpContext as useHelp } from "@/context/useHelpContext";
 
@@ -443,10 +444,7 @@ function HelpPanelInternal() {
             size="sm"
             className="w-full gap-2 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
             onClick={() => {
-              window.open(
-                "https://wa.me/237641341857?text=Bonjour E-Samba, j'ai besoin d'aide",
-                "_blank",
-              );
+              window.open(buildWhatsAppUrl(SOCIAL.whatsappSupportMessage), "_blank");
             }}
           >
             <IconWhatsApp className="w-4 h-4" />
