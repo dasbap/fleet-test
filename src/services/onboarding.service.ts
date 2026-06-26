@@ -64,8 +64,8 @@ export class OnboardingService {
     return this.repository.createVehicleForFleet({
       fleet_id: fleetId,
       registration: data.plate.toUpperCase().trim().replace(/\s+/g, ' '),
-      brand: data.brand.trim(),
-      model: data.model.trim(),
+      brand: data.brand?.trim() ?? '',
+      model: data.model?.trim() ?? '',
       current_km: data.km,
     });
   }
@@ -80,12 +80,6 @@ export class OnboardingService {
   private validateStep1(data: OnboardingStep1Data): void {
     if (!data.plate?.trim()) {
       throw new Error("La plaque d'immatriculation est requise.");
-    }
-    if (!data.brand?.trim()) {
-      throw new Error('La marque est requise.');
-    }
-    if (!data.type) {
-      throw new Error('Le type de véhicule est requis.');
     }
     if (data.km < 0) {
       throw new Error('Le kilométrage ne peut pas être négatif.');

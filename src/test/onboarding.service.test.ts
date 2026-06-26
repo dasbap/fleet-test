@@ -36,6 +36,53 @@ describe('OnboardingService', () => {
     ).rejects.toThrow("La plaque d'immatriculation est requise.");
   });
 
+  it('accepte une étape 1 avec la plaque seule', async () => {
+    const repo = createRepositoryMock();
+    repo.getAuthenticatedUserId = vi.fn<OnboardingRepository['getAuthenticatedUserId']>().mockResolvedValue('user-1');
+    repo.findByOrgId = vi.fn<OnboardingRepository['findByOrgId']>().mockResolvedValue(null);
+    repo.upsertProgress = vi.fn<OnboardingRepository['upsertProgress']>().mockImplementation(async payload => payload);
+
+    const svc = new OnboardingService(repo as unknown as OnboardingRepository);
+
+    await svc.saveStep1('org-1', { plate: 'LT 456 A', km: 0 });
+
+    expect(repo.upsertProgress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        steps_data: { step1: { plate: 'LT 456 A', km: 0 } },
+      }),
+    );
+  });
+
+  it('crée le premier véhicule avec la plaque seule si la flotte est vide', async () => {
+    const repo = createRepositoryMock();
+    repo.findFleetIdByOrgId = vi.fn<OnboardingRepository['findFleetIdByOrgId']>().mockResolvedValue('fleet-1');
+    repo.findFirstVehicleByFleetId = vi.fn<OnboardingRepository['findFirstVehicleByFleetId']>().mockResolvedValue(null);
+    repo.createVehicleForFleet = vi.fn<OnboardingRepository['createVehicleForFleet']>().mockResolvedValue({
+      id: 'veh-1',
+      fleet_id: 'fleet-1',
+      registration: 'LT 456 A',
+      brand: '',
+      model: '',
+      year: null,
+      current_km: 0,
+      status: 'ok',
+      blocked_reason: null,
+      created_at: '2026-04-10T00:00:00Z',
+    });
+
+    const svc = new OnboardingService(repo as unknown as OnboardingRepository);
+
+    await svc.createFirstVehicleForOrg('org-1', { plate: 'LT 456 A', km: 0 });
+
+    expect(repo.createVehicleForFleet).toHaveBeenCalledWith({
+      fleet_id: 'fleet-1',
+      registration: 'LT 456 A',
+      brand: '',
+      model: '',
+      current_km: 0,
+    });
+  });
+
   it('fusionne les données step par step dans saveStep', async () => {
     const repo = createRepositoryMock();
     repo.findByOrgId = vi
