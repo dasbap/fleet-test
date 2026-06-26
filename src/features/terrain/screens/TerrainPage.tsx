@@ -1,15 +1,17 @@
 import { FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ClipboardCheck, Clock, Fuel, Loader2, QrCode } from "lucide-react";
+import { Fuel, Loader2, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FicheCreneauActif } from "@/components/terrain/FicheCreneauActif";
+import { ClotureCreneau } from "@/components/terrain/ClotureCreneau";
+import { OuvertureCreneau } from "@/components/terrain/OuvertureCreneau";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveAssignments, type Assignment } from "@/hooks/useAssignments";
+import { useActiveShift } from "@/hooks/useDriverShifts";
 import { useCreateFuelEntry } from "@/hooks/useFuel";
-import { useActiveShift, useStartShift } from "@/hooks/useDriverShifts";
-import { useUpcomingPlannedShift } from "@/hooks/usePlannedShifts";
 import { cn } from "@/lib/utils";
 import {
   mobileScreenRootList,
@@ -28,39 +30,19 @@ function parsePositiveNumber(raw: string): number | null {
 /** Hub terrain conducteur : créneau, carburant, lien scan. */
 export default function TerrainPage() {
   const { user, userFleetId } = useAuth();
-  const { data: rawAssignments, isPending: assignmentsPending } = useActiveAssignments(
-    userFleetId ?? undefined,
-  );
-  const assignments: Assignment[] = rawAssignments ?? [];
-  const myAssignment = useMemo(
-    () => (user ? assignments.find((a) => a.driver_user_id === user.id) : null),
-    [assignments, user],
-  );
+  const { data: rawAssignments } = useActiveAssignments(userFleetId ?? undefined);
+  const myAssignment = useMemo(() => {
+    const list = rawAssignments ?? [];
+    return user ? list.find((a) => a.driver_user_id === user.id) : null;
+  }, [rawAssignments, user]);
   const vehicleId = myAssignment?.vehicle_id ?? null;
-  const { data: activeShift, isPending: shiftPending } = useActiveShift();
-  const { data: upcomingPlanned } = useUpcomingPlannedShift();
-  const startShift = useStartShift();
+  const { data: creneauActif } = useActiveShift();
   const createFuel = useCreateFuelEntry();
-
-  const [kmDepart, setKmDepart] = useState("");
   const [liters, setLiters] = useState("");
   const [amountXof, setAmountXof] = useState("");
   const [odometerKm, setOdometerKm] = useState("");
   const [stationName, setStationName] = useState("");
   const [receiptRef, setReceiptRef] = useState("");
-
-  const hasOpenShift = Boolean(activeShift?.id);
-  const loading = assignmentsPending || shiftPending;
-
-  const handleOpenShift = () => {
-    if (!myAssignment) return;
-    const km = parsePositiveNumber(kmDepart);
-    if (km === null) return;
-    startShift.mutate({
-      assignment_id: myAssignment.id,
-      km_start: Math.round(km),
-    });
-  };
 
   const handleFuelSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -78,13 +60,6 @@ export default function TerrainPage() {
       receiptRef: receiptRef.trim() || null,
     });
   };
-
-  const kmDepartOk = parsePositiveNumber(kmDepart);
-  const canOpenShift =
-    Boolean(myAssignment) &&
-    !hasOpenShift &&
-    kmDepartOk !== null &&
-    !startShift.isPending;
 
   const fuelLiters = parsePositiveNumber(liters);
   const fuelAmount = parsePositiveNumber(amountXof);
@@ -107,104 +82,13 @@ export default function TerrainPage() {
         </p>
       </div>
 
-      {!hasOpenShift && upcomingPlanned ? (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
-              <div>
-                <p className="font-medium">Créneau prévu</p>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(upcomingPlanned.planned_start).toLocaleTimeString("fr-FR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                  {upcomingPlanned.vehicle?.registration
-                    ? ` · ${upcomingPlanned.vehicle.registration}`
-                    : ""}
-                </p>
-              </div>
-            </div>
-            {myAssignment && kmDepartOk !== null ? (
-              <Button
-                type="button"
-                size="sm"
-                disabled={startShift.isPending}
-                onClick={handleOpenShift}
-              >
-                Ouvrir maintenant
-              </Button>
-            ) : null}
-          </CardContent>
-        </Card>
+      <OuvertureCreneau />
+      {creneauActif ? (
+        <>
+          <FicheCreneauActif creneauId={creneauActif.id} />
+          <ClotureCreneau activeShift={creneauActif} successRedirect={ROUTE_PATHS.terrain} />
+        </>
       ) : null}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-heading text-base">Créneau</CardTitle>
-          <CardDescription>
-            Démarrez ou terminez votre service sur le véhicule affecté.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Chargement…
-            </div>
-          ) : null}
-
-          {!loading && !myAssignment ? (
-            <p className="text-sm text-muted-foreground">
-              Aucun véhicule assigné. Contactez votre gestionnaire de flotte pour une affectation.
-            </p>
-          ) : null}
-
-          {!loading && myAssignment && hasOpenShift && activeShift ? (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Un créneau est en cours
-                {activeShift.assignment?.vehicle?.registration
-                  ? ` (${activeShift.assignment.vehicle.registration})`
-                  : ""}
-                .
-              </p>
-              <Button className="w-full sm:w-auto" asChild>
-                <Link to={ROUTE_PATHS.dashboardShiftClosure}>
-                  <ClipboardCheck className="mr-2 h-4 w-4" aria-hidden />
-                  Clôturer le créneau
-                </Link>
-              </Button>
-            </div>
-          ) : null}
-
-          {!loading && myAssignment && !hasOpenShift ? (
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="terrain-km-depart">Kilométrage départ</Label>
-                <Input
-                  id="terrain-km-depart"
-                  inputMode="decimal"
-                  placeholder="Ex. 45230"
-                  value={kmDepart}
-                  onChange={(ev) => setKmDepart(ev.target.value)}
-                />
-              </div>
-              <Button
-                type="button"
-                className="w-full sm:w-auto"
-                disabled={!canOpenShift}
-                onClick={handleOpenShift}
-              >
-                {startShift.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                ) : null}
-                Ouvrir créneau
-              </Button>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>

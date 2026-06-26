@@ -1,3 +1,5 @@
+import { FicheCreneauActif } from "@/components/terrain/FicheCreneauActif";
+import { ClotureCreneau } from "@/components/terrain/ClotureCreneau";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +12,7 @@ import { ReportProblemCard } from "@/components/operations/ReportProblemCard";
 import { OperationsViewSkeleton } from "@/components/operations/OperationsViewSkeleton";
 import { OperationsQueryMessage } from "@/components/operations/OperationsQueryMessage";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveShift } from "@/hooks/useDriverShifts";
 import { useDriverOperations } from "@/hooks/useOperations";
 import { useDriverOperationalChecklists } from "@/hooks/useDriverOperationalChecklists";
 import type { MockDriverDay } from "@/features/operations/mocks/operationsMock";
@@ -59,6 +62,7 @@ function DriverOperationsContent({
 }) {
   const { departure, arrival, toggleDepartureItem, toggleArrivalItem } =
     useDriverOperationalChecklists(day);
+  const { data: activeShift } = useActiveShift();
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -75,9 +79,9 @@ function DriverOperationsContent({
           </CardHeader>
           <CardContent>
             {hasActiveShift ? (
-              <Button asChild>
-                <Link to={ROUTE_PATHS.dashboardShiftClosure}>Accéder à la clôture</Link>
-              </Button>
+              <p className="text-sm text-muted-foreground">
+                Complétez la clôture dans le formulaire ci-dessous.
+              </p>
             ) : hasVehicleAssignment ? (
               <Button asChild>
                 <Link to={ROUTE_PATHS.terrain}>Ouvrir un créneau sur le terrain</Link>
@@ -90,6 +94,18 @@ function DriverOperationsContent({
           </CardContent>
         </Card>
       </OperationSection>
+
+      {day.activeShiftId ? (
+        <>
+          <FicheCreneauActif creneauId={day.activeShiftId} />
+          {activeShift ? (
+            <ClotureCreneau
+              activeShift={activeShift}
+              successRedirect={ROUTE_PATHS.dashboardOperations}
+            />
+          ) : null}
+        </>
+      ) : null}
 
       <OperationSection title="Mon véhicule" description="Matériel assigné pour cette mission.">
         <Card>
