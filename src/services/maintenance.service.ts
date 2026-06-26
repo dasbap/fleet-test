@@ -153,6 +153,16 @@ export class MaintenanceService {
   }
 
   /**
+   * Vérifie les prérequis de clôture (photos avant/après, statut en cours).
+   */
+  async assertCanCloseMaintenance(jobId: string): Promise<void> {
+    const result = await this.repository.verifyClosureReadiness(jobId);
+    if (!result.peut_cloturer) {
+      throw new Error(result.message_blocage ?? 'Impossible de clôturer cette intervention.');
+    }
+  }
+
+  /**
    * Met à jour un travail de maintenance avec validation métier
    */
   async updateMaintenanceJob(id: string, updates: MaintenanceJobUpdate): Promise<MaintenanceJob> {
@@ -174,6 +184,10 @@ export class MaintenanceService {
       if (!validStatuses.includes(updates.status)) {
         throw new Error('Statut invalide');
       }
+    }
+
+    if (updates.status === 'ready') {
+      await this.assertCanCloseMaintenance(id);
     }
 
     return this.repository.update(id, updates);

@@ -25,6 +25,18 @@ vi.mock("@/hooks/useMaintenanceEvidence", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useSignedStorageUrl", () => ({
+  useSignedStorageUrl: (_bucket: string, pathOrUrl: string | null | undefined) => ({
+    data:
+      pathOrUrl && (pathOrUrl.startsWith("http") || pathOrUrl.startsWith("blob:"))
+        ? pathOrUrl
+        : pathOrUrl
+          ? `https://signed.test/${pathOrUrl}`
+          : null,
+    isLoading: false,
+  }),
+}));
+
 const { useEvidenceUpload } = await import("@/hooks/useEvidenceUpload");
 
 const defaultUploadReturn = {
