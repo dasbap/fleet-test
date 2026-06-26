@@ -52,3 +52,37 @@ describe("MaintenanceService.createFromIncident", () => {
     });
   });
 });
+
+describe("MaintenanceService.updateMaintenanceJob", () => {
+  it("vérifie la recette avant passage au statut ready", async () => {
+    const verifyClosureReadiness = vi.fn().mockResolvedValue({
+      peut_cloturer: false,
+      message_blocage: "Ajoutez au moins une photo avant intervention.",
+    });
+    const update = vi.fn();
+    const repository = { verifyClosureReadiness, update } as unknown as MaintenanceRepository;
+    const service = new MaintenanceService(repository);
+
+    await expect(
+      service.updateMaintenanceJob("job-1", { status: "ready" }),
+    ).rejects.toThrow("Ajoutez au moins une photo avant intervention.");
+    expect(verifyClosureReadiness).toHaveBeenCalledWith("job-1");
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("met à jour le statut ready quand la recette est valide", async () => {
+    const updatedJob = { ...existingJob, status: "ready" as const };
+    const verifyClosureReadiness = vi.fn().mockResolvedValue({
+      peut_cloturer: true,
+      message_blocage: null,
+    });
+    const update = vi.fn().mockResolvedValue(updatedJob);
+    const repository = { verifyClosureReadiness, update } as unknown as MaintenanceRepository;
+    const service = new MaintenanceService(repository);
+
+    const result = await service.updateMaintenanceJob("job-1", { status: "ready" });
+
+    expect(result).toBe(updatedJob);
+    expect(update).toHaveBeenCalledWith("job-1", { status: "ready" });
+  });
+});

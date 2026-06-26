@@ -4,6 +4,10 @@ import { extractStorageObjectPath } from '@/lib/storage/signedUrl';
 
 const BUCKET = 'maintenance-evidence';
 
+function evidenceFolderForKind(kind: 'before' | 'after'): 'avant' | 'apres' {
+  return kind === 'before' ? 'avant' : 'apres';
+}
+
 export interface UploadEvidenceInput {
   job_id: string;
   kind: 'before' | 'after';
@@ -16,9 +20,10 @@ export class MaintenanceEvidenceService {
 
   async uploadEvidence(input: UploadEvidenceInput): Promise<MaintenanceEvidenceRow> {
     const { job_id, kind, file, created_by } = input;
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${job_id}/${kind}_${Date.now()}.${fileExt}`;
-    const filePath = `maintenance/${fileName}`;
+    const fileExt = file.name.split('.').pop() ?? 'jpg';
+    const folder = evidenceFolderForKind(kind);
+    const nextIndex = (await this.repository.countEvidenceByKind(job_id, kind)) + 1;
+    const filePath = `maintenance/${job_id}/${folder}/photo_${nextIndex}.${fileExt}`;
 
     await this.repository.uploadFile(filePath, file, false);
 

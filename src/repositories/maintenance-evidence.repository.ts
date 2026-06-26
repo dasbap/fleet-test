@@ -52,4 +52,18 @@ export class MaintenanceEvidenceRepository {
     const { error } = await supabase.from('preuves_maintenance').delete().eq('id', id);
     if (error) throw new Error(error.message);
   }
+
+  async countEvidenceByKind(jobId: string, kind: 'before' | 'after'): Promise<number> {
+    const { count, error } = await supabase
+      .from('preuves_maintenance')
+      .select('*', { count: 'exact', head: true })
+      .eq('job_id', jobId)
+      .eq('kind', kind);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return count ?? 0;
+  }
 }

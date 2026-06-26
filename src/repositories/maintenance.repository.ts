@@ -416,6 +416,31 @@ export class MaintenanceRepository {
     }
     return row as MaintenanceChecklist;
   }
+
+  /**
+   * Vérifie si une intervention peut être clôturée (recette maintenance).
+   */
+  async verifyClosureReadiness(jobId: string): Promise<MaintenanceClosureCheck> {
+    const { data, error } = await supabase.rpc('verifier_recette_maintenance', {
+      p_job_id: jobId,
+    });
+
+    if (error) {
+      console.error('Error verifying maintenance closure:', error);
+      throw new Error(error.message);
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row || typeof row !== 'object') {
+      throw new Error('Réponse invalide lors de la vérification de clôture.');
+    }
+
+    const check = row as { peut_cloturer?: boolean; message_blocage?: string | null };
+    return {
+      peut_cloturer: Boolean(check.peut_cloturer),
+      message_blocage: check.message_blocage ?? null,
+    };
+  }
 }
 
 export interface MaintenanceEvidence {
@@ -446,4 +471,9 @@ export interface MaintenanceChecklistInsert {
   job_id: string;
   items: Record<string, boolean>;
   signed_by: string;
+}
+
+export interface MaintenanceClosureCheck {
+  peut_cloturer: boolean;
+  message_blocage: string | null;
 }
