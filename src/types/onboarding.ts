@@ -2,10 +2,10 @@ export type VehicleType = 'berline' | 'pickup' | '4x4' | 'camionnette' | 'bus' |
 
 export interface OnboardingStep1Data {
   plate: string;
-  brand: string;
-  model: string;
+  brand?: string;
+  model?: string;
   km: number;
-  type: VehicleType;
+  type?: VehicleType;
 }
 
 export interface OnboardingStep2Alerts {
