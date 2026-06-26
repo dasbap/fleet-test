@@ -79,6 +79,12 @@ const mockJobWithPlanning = {
   parts: [{ designation: "Filtre à huile", quantity: 1 }],
 };
 
+const mockJobInProgress = {
+  ...mockJobQueued,
+  status: "in_progress" as const,
+  evidence: [],
+};
+
 function renderDialog(
   props: { open?: boolean; jobId?: string; onOpenChange?: (open: boolean) => void } = {}
 ) {
@@ -288,6 +294,26 @@ describe("MaintenanceDetailDialog", () => {
     });
     expect(screen.getByDisplayValue("Contrôle effectué.")).toBeInTheDocument();
     expect(screen.getByText(/Filtre à huile × 1/)).toBeInTheDocument();
+    },
+    15000
+  );
+
+  it(
+    "désactive le bouton Terminée sans photos avant et après",
+    async () => {
+    vi.mocked(useMaintenanceModule.useMaintenanceJob).mockReturnValue({
+      data: mockJobInProgress,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: mockRefetch,
+    } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
+
+    renderDialog();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Passer en "Terminée"/i })).toBeDisabled();
+    });
     },
     15000
   );

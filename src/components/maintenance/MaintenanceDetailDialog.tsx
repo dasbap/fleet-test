@@ -193,6 +193,15 @@ export function MaintenanceDetailDialog({
   };
 
   const nextStatuses = getNextStatuses(job.status as JobStatus);
+  const evidence = job.evidence ?? [];
+  const hasBeforePhoto = evidence.some((item) => item.kind === "before");
+  const hasAfterPhoto = evidence.some((item) => item.kind === "after");
+  const canCloseFromEvidence = hasBeforePhoto && hasAfterPhoto;
+  const closureBlockMessage = !hasBeforePhoto
+    ? "Ajoutez au moins une photo avant intervention."
+    : !hasAfterPhoto
+      ? "Ajoutez au moins une photo après intervention."
+      : undefined;
 
   const handleStatusChange = async (newStatus: JobStatus) => {
     await updateStatus.mutateAsync({ id: jobId, status: newStatus });
@@ -448,7 +457,10 @@ export function MaintenanceDetailDialog({
                       key={s}
                       variant={s === "ready" ? "default" : s === "blocked" ? "destructive" : "outline"}
                       onClick={() => handleStatusChange(s)}
-                      disabled={updateStatus.isPending}
+                      disabled={
+                        updateStatus.isPending || (s === "ready" && !canCloseFromEvidence)
+                      }
+                      title={s === "ready" && !canCloseFromEvidence ? closureBlockMessage : undefined}
                     >
                       {updateStatus.isPending ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
