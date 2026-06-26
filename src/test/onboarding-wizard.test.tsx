@@ -60,9 +60,7 @@ describe('OnboardingWizard', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByPlaceholderText('AB 123 CD'), { target: { value: 'AB 123 CD' } });
-    fireEvent.change(screen.getByDisplayValue('Sélectionner'), { target: { value: 'Toyota' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Pick-up' }));
+    fireEvent.change(screen.getByPlaceholderText('ex: LT 456 A CM'), { target: { value: 'LT 456 A' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continuer' }));
 
     await waitFor(() => expect(mockSaveStep1).toHaveBeenCalledOnce());

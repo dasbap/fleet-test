@@ -15,7 +15,7 @@ interface Props {
   onSkip: () => void;
 }
 
-const VEHICLE_TYPES: Array<{ label: string; value: Data['type'] }> = [
+const VEHICLE_TYPES: Array<{ label: string; value: NonNullable<Data['type']> }> = [
   { label: 'Berline', value: 'berline' },
   { label: 'Pick-up', value: 'pickup' },
   { label: '4x4', value: '4x4' },
@@ -39,23 +39,25 @@ function normalizePlate(value: string): string {
   return value.toUpperCase().trim().replace(/\s+/g, ' ');
 }
 
+function OptionalHint() {
+  return <span className="font-normal normal-case text-slate-400">(optionnel)</span>;
+}
+
 export function StepFlotte({ orgId, initial, onNext, onSkip }: Props) {
   const [form, setForm] = useState<Partial<Data>>(initial ?? {});
   const { saveStep1, isSaving } = useOnboarding(orgId);
 
-  const isValid = useMemo(() => {
-    return Boolean(form.plate?.trim() && form.brand && form.type);
-  }, [form.brand, form.plate, form.type]);
+  const isValid = useMemo(() => Boolean(form.plate?.trim()), [form.plate]);
 
   async function handleSubmit() {
     if (!isValid || isSaving) return;
     try {
       const payload: Data = {
         plate: normalizePlate(form.plate ?? ''),
-        brand: form.brand ?? '',
-        model: (form.model ?? '').trim(),
         km: form.km ?? 0,
-        type: form.type as Data['type'],
+        ...(form.brand?.trim() ? { brand: form.brand.trim() } : {}),
+        ...(form.model?.trim() ? { model: form.model.trim() } : {}),
+        ...(form.type ? { type: form.type } : {}),
       };
       await saveStep1(payload);
       onNext(payload);
@@ -81,12 +83,13 @@ export function StepFlotte({ orgId, initial, onNext, onSkip }: Props) {
       <div className="space-y-4">
         <div>
           <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
-            Plaque d'immatriculation
+            Plaque d'immatriculation <span className="text-destructive">*</span>
           </label>
           <input
             type="text"
-            placeholder="AB 123 CD"
-            maxLength={10}
+            required
+            placeholder="ex: LT 456 A CM"
+            maxLength={15}
             value={form.plate ?? ''}
             onChange={e => setForm(prev => ({ ...prev, plate: e.target.value }))}
             className="h-9 w-full rounded-md border border-surface-raised bg-surface px-3 text-sm font-mono tracking-widest uppercase focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/20"
@@ -96,7 +99,7 @@ export function StepFlotte({ orgId, initial, onNext, onSkip }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Marque
+              Marque <OptionalHint />
             </label>
             <select
               value={form.brand ?? ''}
@@ -113,14 +116,13 @@ export function StepFlotte({ orgId, initial, onNext, onSkip }: Props) {
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Kilométrage
+              Modèle <OptionalHint />
             </label>
             <input
-              type="number"
-              min={0}
-              placeholder="45 000"
-              value={form.km ?? ''}
-              onChange={e => setForm(prev => ({ ...prev, km: Math.max(0, Number(e.target.value) || 0) }))}
+              type="text"
+              placeholder="Hilux"
+              value={form.model ?? ''}
+              onChange={e => setForm(prev => ({ ...prev, model: e.target.value }))}
               className="h-9 w-full rounded-md border border-surface-raised bg-surface px-3 text-sm focus:border-brand focus:outline-none"
             />
           </div>
@@ -128,7 +130,21 @@ export function StepFlotte({ orgId, initial, onNext, onSkip }: Props) {
 
         <div>
           <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
-            Type de véhicule
+            Kilométrage <OptionalHint />
+          </label>
+          <input
+            type="number"
+            min={0}
+            placeholder="45 000"
+            value={form.km ?? ''}
+            onChange={e => setForm(prev => ({ ...prev, km: Math.max(0, Number(e.target.value) || 0) }))}
+            className="h-9 w-full rounded-md border border-surface-raised bg-surface px-3 text-sm focus:border-brand focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
+            Type de véhicule <OptionalHint />
           </label>
           <div className="grid grid-cols-3 gap-2">
             {VEHICLE_TYPES.map(vehicleType => (
@@ -158,6 +174,8 @@ export function StepFlotte({ orgId, initial, onNext, onSkip }: Props) {
         isSubmitDisabled={!isValid}
         className="justify-end"
       />
+
+      <p className="mt-3 text-center text-xs text-slate-500">Vous pourrez compléter les détails plus tard.</p>
     </div>
   );
 }
