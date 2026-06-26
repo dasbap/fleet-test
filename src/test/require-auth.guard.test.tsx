@@ -13,6 +13,15 @@ vi.mock("@/lib/authMode", () => ({
   isMockAuthEnabled: () => false,
 }));
 
+vi.mock("@/hooks/useWaitForProfileReady", () => ({
+  useWaitForProfileReady: () => ({
+    status: "ready",
+    isPending: false,
+    isReady: true,
+    timedOut: false,
+  }),
+}));
+
 describe("RequireAuth", () => {
   it("redirige vers /auth quand l'utilisateur n'est pas connecté", () => {
     useAuthMock.mockReturnValue({

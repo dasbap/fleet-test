@@ -1,4 +1,7 @@
+import { pollUntil, type PollUntilOptions } from '@/lib/pollUntil';
 import { ProfileRepository } from '@/repositories/profile.repository';
+
+export type ProfileReadyStatus = 'ready' | 'timeout';
 
 export interface EnsureProfileResult {
   success: boolean;
@@ -9,6 +12,44 @@ export interface EnsureProfileResult {
 
 export class ProfileService {
   constructor(private repository: ProfileRepository) {}
+
+  /**
+   * Attend que le profil DB soit prêt (trigger post-inscription) avec repli assurer_profil_utilisateur.
+   */
+  async waitUntilProfileReady(
+    userId: string,
+    options?: PollUntilOptions,
+  ): Promise<ProfileReadyStatus> {
+    const checkReady = async (): Promise<boolean> => {
+      try {
+        return await this.repository.isProfileReadyRpc();
+      } catch {
+        return false;
+      }
+    };
+
+    const ready = await pollUntil(checkReady, {
+      timeout: 5000,
+      interval: 500,
+      ...options,
+    });
+
+    if (ready) {
+      return 'ready';
+    }
+
+    console.warn(
+      '[ProfileService] Timeout profil_est_pret — tentative assurer_profil_utilisateur',
+    );
+    await this.ensureProfile(userId);
+
+    try {
+      const afterFallback = await this.repository.isProfileReadyRpc();
+      return afterFallback ? 'ready' : 'timeout';
+    } catch {
+      return 'timeout';
+    }
+  }
 
   async ensureProfile(userId: string): Promise<EnsureProfileResult | null> {
     const existing = await this.repository.findByUserId(userId);

@@ -9,6 +9,15 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
+vi.mock("@/hooks/useWaitForProfileReady", () => ({
+  useWaitForProfileReady: () => ({
+    status: "ready",
+    isPending: false,
+    isReady: true,
+    timedOut: false,
+  }),
+}));
+
 vi.mock("@/pages/CreateFleet", () => ({
   default: () => <div data-testid="create-fleet" />,
 }));

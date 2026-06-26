@@ -35,6 +35,15 @@ export class ProfileRepository {
     return data as EnsureProfileRpcResult | null;
   }
 
+  async isProfileReadyRpc(): Promise<boolean> {
+    const { data, error } = await supabase.rpc('profil_est_pret');
+    if (error) {
+      console.error('Error checking profile readiness:', error);
+      throw new Error(error.message);
+    }
+    return Boolean(data);
+  }
+
   async updateAuthFullName(fullName: string): Promise<void> {
     const { error } = await supabase.auth.updateUser({
       data: { full_name: fullName },
