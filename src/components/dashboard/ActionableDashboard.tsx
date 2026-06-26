@@ -2,10 +2,10 @@ import { lazy, Suspense, useState } from "react";
 import { Banknote, Bell, Droplets, Truck, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
 import type { VehicleDto } from "@/types/dto/vehicle.dto";
 import type { DashboardAlert, KpiSummary } from "@/types/dashboard";
 import type { MaintenanceJob } from "@/hooks/useMaintenance";
-import { useAuth } from "@/hooks/useAuth";
 
 /** Chargé à la demande (INP : évite le coût du planificateur sur le premier rendu du dashboard). */
 const MaintenancePlannerModal = lazy(() =>
@@ -189,14 +189,14 @@ export function ActionableDashboard({
   onNavigateMaintenance,
   onResolveAlert,
 }: ActionableDashboardProps) {
-  const { userFleetId } = useAuth();
+  const { userFleetId: fleetActuelleId } = useAuth();
   const [plannerVehicle, setPlannerVehicle] = useState<
     Pick<VehicleDto, "id" | "fleet_id" | "registration" | "brand" | "model"> | null
   >(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
 
   const openPlannerForAlert = (alert: DashboardAlert) => {
-    if (!userFleetId) {
+    if (!fleetActuelleId) {
       onNavigateMaintenance();
       return;
     }
@@ -205,7 +205,7 @@ export function ActionableDashboard({
     const model = parts.length > 1 ? parts.slice(1).join(" ") : null;
     setPlannerVehicle({
       id: alert.vehicleId,
-      fleet_id: userFleetId,
+      fleet_id: fleetActuelleId,
       registration: alert.plate,
       brand,
       model,
@@ -214,7 +214,7 @@ export function ActionableDashboard({
   };
 
   const openPlannerForJob = (job: MaintenanceJob) => {
-    if (!userFleetId) {
+    if (!fleetActuelleId) {
       onNavigateMaintenance();
       return;
     }
@@ -225,7 +225,7 @@ export function ActionableDashboard({
     }
     setPlannerVehicle({
       id: job.vehicle_id,
-      fleet_id: userFleetId,
+      fleet_id: fleetActuelleId,
       registration: v.registration,
       brand: v.brand,
       model: v.model,

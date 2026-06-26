@@ -89,6 +89,14 @@ export function useDriverShifts() {
   });
 }
 
+export function useDriverShift(creneauId: string | undefined) {
+  return useQuery({
+    queryKey: ['driver-shift', creneauId],
+    queryFn: () => driverShiftService.getShiftById(creneauId!),
+    enabled: Boolean(creneauId),
+  });
+}
+
 export function useStartShift() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -244,6 +252,7 @@ export function useReviewClosure() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['shift-closures'] });
       queryClient.invalidateQueries({ queryKey: ['fleet-pending-closures'] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-validation'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['operations'] });
       toast({

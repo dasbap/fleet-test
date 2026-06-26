@@ -26,6 +26,7 @@ import ProofUpload, { ProofType } from "./ProofUpload";
 import { useNavigate } from "react-router-dom";
 import { useCloseShift } from "@/hooks/useDriverShifts";
 import { useActivation } from "@/hooks/useActivation";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const closureFormSchema = shiftClosureFormSchema;
 type ClosureFormValues = ShiftClosureFormValues;
@@ -33,6 +34,7 @@ type ClosureFormValues = ShiftClosureFormValues;
 interface ShiftClosureFormProps {
   shiftId: string;
   kmStart: number;
+  successRedirect?: string;
 }
 
 const collectionModes: { value: CollectionMode; label: string; icon: typeof Banknote }[] = [
@@ -41,7 +43,7 @@ const collectionModes: { value: CollectionMode; label: string; icon: typeof Bank
   { value: "mix", label: COLLECTION_MODE_LABELS.mix, icon: CreditCard },
 ];
 
-const ShiftClosureForm = ({ shiftId, kmStart }: ShiftClosureFormProps) => {
+const ShiftClosureForm = ({ shiftId, kmStart, successRedirect = ROUTE_PATHS.dashboard }: ShiftClosureFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [proofType, setProofType] = useState<ProofType>('photo');
   const [proofValue, setProofValue] = useState('');
@@ -138,7 +140,7 @@ const ShiftClosureForm = ({ shiftId, kmStart }: ShiftClosureFormProps) => {
         description: "Votre clôture journalière a été soumise pour validation.",
       });
       
-      navigate('/dashboard');
+      navigate(successRedirect);
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Une erreur est survenue. Veuillez réessayer.";

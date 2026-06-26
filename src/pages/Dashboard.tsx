@@ -20,7 +20,10 @@ import {
   ActionableDashboard,
   ActionableDashboardSkeleton,
 } from "@/components/dashboard/ActionableDashboard";
+import { KpisFlotte } from "@/components/dashboard/KpisFlotte";
+import { TableauValidations } from "@/components/dashboard/TableauValidations";
 import { useActionableDashboard } from "@/hooks/useActionableDashboard";
+import { useCurrentRole } from "@/hooks/useCurrentRole";
 import { useActivation } from "@/hooks/useActivation";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -108,6 +111,8 @@ function KpiDegradedBanner({
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, userFleetId: currentFleetId } = useAuth();
+  const { isManager, isOrganizer } = useCurrentRole();
+  const canValidateClosures = isManager || isOrganizer;
   const isOnline = useNetworkOnline();
   const { steps, completedCount, loading } = useActivation();
   const {
@@ -227,6 +232,15 @@ export default function DashboardPage() {
                     void refetchKpis().finally(() => setIsKpiRetrying(false));
                   }}
                 />
+              ) : null}
+              {canValidateClosures && currentFleetId ? (
+                <section className="space-y-4" aria-labelledby="flotte-validations-titre">
+                  <h2 id="flotte-validations-titre" className="text-sm font-medium text-muted-foreground">
+                    Validations flotte
+                  </h2>
+                  <KpisFlotte fleetId={currentFleetId} />
+                  <TableauValidations fleetId={currentFleetId} />
+                </section>
               ) : null}
               <ActionableDashboard
                 kpis={kpis}
