@@ -43,6 +43,8 @@ export const SEO_ROUTE_KEYS = {
   pricing: "pricing",
   /** Centre d'aide public. */
   help: "help",
+  /** Page carrières publique. */
+  carrieres: "carrieres",
   notFound: "notFound",
 } as const;
 
@@ -162,6 +164,12 @@ export const SEO_BY_ROUTE_KEY: Record<SeoRouteKey, SeoRouteConfig> = {
       "Guides, tutoriels et articles pour démarrer avec E-Samba : flotte, maintenance, conducteurs et facturation.",
     canonicalPath: "/help",
   },
+  carrieres: {
+    title: "Carrières - E-Samba",
+    description:
+      "Rejoignez E-Samba : mobile Android, commercial terrain CEMAC, customer success et data/IA. Télétravail et impact transport Afrique Centrale.",
+    canonicalPath: "/carrieres",
+  },
   notFound: {
     title: "E-Samba",
     description:
@@ -201,6 +209,7 @@ const PATH_TO_ROUTE_KEY: Record<string, SeoRouteKey> = {
   "/contact": SEO_ROUTE_KEYS.contact,
   "/pricing": SEO_ROUTE_KEYS.pricing,
   "/help": SEO_ROUTE_KEYS.help,
+  "/carrieres": SEO_ROUTE_KEYS.carrieres,
 };
 
 export function getCanonicalUrlFromPath(path: string): string {
