@@ -144,6 +144,19 @@ vi.mock("@/hooks/useFleetCompliance", () => ({
 
 vi.mock("@/hooks/useDriverShifts", () => ({
   useReviewClosure: () => ({ mutate: vi.fn(), isPending: false }),
+  useActiveShift: () => ({ data: null, isPending: false }),
+}));
+
+vi.mock("@/components/dashboard/TableauValidations", () => ({
+  TableauValidations: () => <div data-testid="tableau-validations">Tableau validations</div>,
+}));
+
+vi.mock("@/components/terrain/ClotureCreneau", () => ({
+  ClotureCreneau: () => <div data-testid="cloture-creneau">Clôture</div>,
+}));
+
+vi.mock("@/components/terrain/FicheCreneauActif", () => ({
+  FicheCreneauActif: () => <div data-testid="fiche-creneau-actif">Fiche validations</div>,
 }));
 
 function wrap(ui: React.ReactElement) {
@@ -168,10 +181,8 @@ describe("Vues Opérations (UI par rôle)", () => {
       "href",
       "/dashboard/closure",
     );
-    expect(screen.getByRole("link", { name: /Accéder à la clôture/i })).toHaveAttribute(
-      "href",
-      "/dashboard/closure",
-    );
+    expect(screen.getByTestId("fiche-creneau-actif")).toBeInTheDocument();
+    expect(screen.getByText(/Complétez la clôture/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Checklist départ" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Checklist arrivée" })).toBeInTheDocument();
     expect(screen.getByText("Feux, essuie-glaces et signalisation")).toBeInTheDocument();

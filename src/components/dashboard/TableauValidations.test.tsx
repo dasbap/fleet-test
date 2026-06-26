@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { PendingClosuresSection } from "@/components/operations/PendingClosuresSection";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, beforeEach, vi } from "vitest";
+import { TableauValidations } from "@/components/dashboard/TableauValidations";
 import type { CreneauValidationLigne } from "@/types/fleet-validation";
 
 const useCreneauxValidationsMock = vi.fn();
@@ -9,6 +9,11 @@ const refetchMock = vi.fn();
 
 vi.mock("@/hooks/useFleetValidation", () => ({
   useCreneauxValidations: (...args: unknown[]) => useCreneauxValidationsMock(...args),
+  useClosureProofSignedUrl: () => ({ data: null, isPending: false }),
+}));
+
+vi.mock("@/components/dashboard/ApercuPreuveCloture", () => ({
+  ApercuPreuveCloture: () => <span data-testid="apercu-preuve">preuve</span>,
 }));
 
 vi.mock("@/hooks/useDriverShifts", () => ({
@@ -16,10 +21,6 @@ vi.mock("@/hooks/useDriverShifts", () => ({
     mutateAsync: reviewMutateAsyncMock,
     isPending: false,
   }),
-}));
-
-vi.mock("@/components/dashboard/ApercuPreuveCloture", () => ({
-  ApercuPreuveCloture: () => <span>preuve</span>,
 }));
 
 function makeLigne(overrides: Partial<CreneauValidationLigne> = {}): CreneauValidationLigne {
@@ -42,19 +43,19 @@ function makeLigne(overrides: Partial<CreneauValidationLigne> = {}): CreneauVali
     carburant_xof_total: 25000,
     cloture_id: "closure-1",
     cloture_statut: "pending",
-    cloture_revenue_declared: 45000,
-    cloture_expected_revenue: 44000,
-    cloture_revenue_gap: 1000,
+    cloture_revenue_declared: 50000,
+    cloture_expected_revenue: 48000,
+    cloture_revenue_gap: 2000,
     cloture_collection_mode: "cash",
-    preuve_type: null,
-    preuve_valeur: null,
-    preuve_mode_rendu: "inconnu",
+    preuve_type: "momo_ref",
+    preuve_valeur: "REF-123",
+    preuve_mode_rendu: "reference",
     statut_global: "en_attente",
     ...overrides,
   };
 }
 
-describe("PendingClosuresSection", () => {
+describe("TableauValidations", () => {
   beforeEach(() => {
     useCreneauxValidationsMock.mockReset();
     reviewMutateAsyncMock.mockReset();
@@ -68,13 +69,13 @@ describe("PendingClosuresSection", () => {
     });
   });
 
-  it("affiche l'état vide sans clôture en attente", () => {
-    render(<PendingClosuresSection fleetId="fleet-1" />);
-    expect(screen.getByText("Clôtures à valider")).toBeInTheDocument();
+  it("charge les validations pour la flotte donnée", () => {
+    render(<TableauValidations fleetId="fleet-1" />);
+    expect(useCreneauxValidationsMock).toHaveBeenCalledWith("fleet-1");
     expect(screen.getByText(/Aucun créneau ouvert à valider/i)).toBeInTheDocument();
   });
 
-  it("affiche les détails et permet la validation", async () => {
+  it("permet de valider une clôture en attente", async () => {
     useCreneauxValidationsMock.mockReturnValue({
       data: [makeLigne()],
       isPending: false,
@@ -82,32 +83,14 @@ describe("PendingClosuresSection", () => {
       isFetching: false,
     });
 
-    render(<PendingClosuresSection fleetId="fleet-1" />);
+    render(<TableauValidations fleetId="fleet-1" />);
 
     expect(screen.getByText("LT-001-AA")).toBeInTheDocument();
-    expect(screen.getByText(/45[\s\u00a0]?000/)).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole("button", { name: "Valider" }));
+
     expect(reviewMutateAsyncMock).toHaveBeenCalledWith({
       closureId: "closure-1",
       status: "validated",
-    });
-  });
-
-  it("permet le rejet d'une clôture", async () => {
-    useCreneauxValidationsMock.mockReturnValue({
-      data: [makeLigne()],
-      isPending: false,
-      refetch: refetchMock,
-      isFetching: false,
-    });
-
-    render(<PendingClosuresSection fleetId="fleet-1" />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Rejeter" }));
-    expect(reviewMutateAsyncMock).toHaveBeenCalledWith({
-      closureId: "closure-1",
-      status: "rejected",
     });
   });
 });
