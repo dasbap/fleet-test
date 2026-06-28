@@ -2,6 +2,8 @@
 
 Sous-projet mobile Expo pour les tutoriels vidéo terrain.
 
+> **Contexte projet** : l’app store production reste **Capacitor** (`com.esamba.flotte`, dashboard complet). Ce dossier est un prototype natif ciblé. Voir [`docs/mobile-capacitor-vs-react-native.md`](../../docs/mobile-capacitor-vs-react-native.md).
+
 ## Démarrage
 
 1. Installer les dépendances : `npm install`

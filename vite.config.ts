@@ -60,6 +60,7 @@ export default defineConfig(({ mode }) => {
   // Build Capacitor : chemins relatifs pour le chargement depuis le WebView.
   base: mode === "capacitor" ? "./" : "/",
   build: {
+    outDir: "dist",
     target: "es2020",
     // xlsx / jspdf / charts : import() dynamique uniquement ; seuil relevé pour éviter le bruit au build.
     chunkSizeWarningLimit: 520,
@@ -442,6 +443,15 @@ export default defineConfig(({ mode }) => {
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@esamba/offline-contracts": path.resolve(
+        __dirname,
+        "./packages/offline-contracts/src/index.ts",
+      ),
+      "@esamba/domain-validation": path.resolve(
+        __dirname,
+        "./packages/domain-validation/src/index.ts",
+      ),
+      "@esamba/domain-sync": path.resolve(__dirname, "./packages/domain-sync/src/index.ts"),
     },
     // Une seule instance de React pour le bundler (évite « useState » sur dispatcher null).
     dedupe: ["react", "react-dom", "react/jsx-runtime"],

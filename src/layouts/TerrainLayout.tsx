@@ -4,6 +4,7 @@ import { ArrowLeft, User } from "lucide-react";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { ActivationBanner } from "@/components/shared/ActivationBanner";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
+import { TerrainConflictBridge } from "@/components/offline/TerrainConflictBridge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativePlatform } from "@/lib/platform";
@@ -33,6 +34,7 @@ export default function TerrainLayout() {
     <div className="flex min-h-screen flex-col bg-background">
       <ActivationBanner />
       <OfflineBanner />
+      <TerrainConflictBridge />
       <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2">

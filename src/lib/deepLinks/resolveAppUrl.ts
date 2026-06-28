@@ -1,4 +1,5 @@
 import { ESAMBA_DEEP_LINK_PREFIX, ESAMBA_DEEP_LINK_SCHEME } from "@/lib/deepLinks/deepLinkConfig";
+import { tryParseMobileCustomSchemePath } from "@/mobile/deepLinks";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 /** Hôtes HTTPS autorisés pour ouvrir l’app (App Links / Universal Links). */
@@ -105,6 +106,11 @@ export function resolveIncomingAppUrl(rawUrl: string): ResolvedAppUrl {
   const trimmed = rawUrl.trim();
   if (!trimmed) {
     return { kind: "unsupported", reason: "URL vide" };
+  }
+
+  const mobileSchemePath = tryParseMobileCustomSchemePath(trimmed);
+  if (mobileSchemePath) {
+    return { kind: "spa", path: mobileSchemePath };
   }
 
   const authPath = tryParseEsambaAuthSpaPath(trimmed);

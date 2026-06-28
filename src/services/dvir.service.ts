@@ -19,6 +19,7 @@ export interface DvirCreateInput {
   notes?: string | null;
   odometerKm?: number | null;
   photoUrls?: string[];
+  clientIdempotencyKey?: string | null;
 }
 
 export interface DvirUpdateInput {
@@ -64,6 +65,7 @@ export class DvirService {
       notes: this.sanitizeText(input.notes, MAX_NOTES_LENGTH),
       odometer_km: input.odometerKm ?? null,
       photo_urls: photoUrls.length > 0 ? photoUrls : undefined,
+      client_idempotency_key: input.clientIdempotencyKey ?? null,
     });
   }
 

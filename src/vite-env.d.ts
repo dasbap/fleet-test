@@ -34,6 +34,8 @@ interface ImportMetaEnv {
   readonly VITE_TUTORIAL_QUOTA_PRO?: string;
   /** Nombre de tutoriels accessibles sur le plan Enterprise (-1 = illimité). */
   readonly VITE_TUTORIAL_QUOTA_ENTERPRISE?: string;
+  /** UUID flottes pilotes Expo terrain (séparés par virgule). */
+  readonly VITE_TERRAIN_EXPO_FLEET_IDS?: string;
 }
 
 interface ImportMeta {

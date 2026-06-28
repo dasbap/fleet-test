@@ -9,6 +9,8 @@ import { IncidentEvidenceRepository } from '@/repositories/incident-evidence.rep
 import { MaintenanceService } from '@/services/maintenance.service';
 import { MaintenanceRepository } from '@/repositories/maintenance.repository';
 import type { IncidentCategory } from '@/types/incident-declaration';
+import { isOfflineMode } from '@/lib/network/networkStatus';
+import { prepareOfflineMediaFromDataUrl } from '@/lib/offline/prepare-offline-media';
 
 // Instances singleton des services et repositories
 const incidentRepository = new IncidentRepository();
@@ -114,7 +116,7 @@ export function useCreateIncident() {
     mutationFn: async (incident: IncidentInsert) => {
       if (!user) throw new Error('Utilisateur non connecté');
 
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (typeof navigator !== 'undefined' && isOfflineMode()) {
         if (!userFleetId) {
           throw new Error(
             'Contexte flotte indisponible : reconnectez-vous pour signaler hors ligne.',
@@ -189,8 +191,7 @@ export function useDeclareIncident() {
       const evidence = input.evidenceDataUrl?.trim() ?? null;
       if (
         evidence &&
-        typeof navigator !== 'undefined' &&
-        !navigator.onLine &&
+        !isOfflineMode() &&
         evidence.length > MAX_OFFLINE_PHOTO_CHARS
       ) {
         throw new Error(
@@ -200,13 +201,19 @@ export function useDeclareIncident() {
 
       const base = buildIncidentInsertFromDeclare(input, user.id);
 
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (isOfflineMode()) {
         const hasGeo =
           input.attachGeo &&
           input.latitude != null &&
           input.longitude != null &&
           Number.isFinite(input.latitude) &&
           Number.isFinite(input.longitude);
+
+        let evidenceMediaRef = null;
+        if (evidence) {
+          evidenceMediaRef = await prepareOfflineMediaFromDataUrl(evidence);
+        }
+
         const draft = storageService.saveIncidentDeclarationDraft({
           fleetId: userFleetId,
           vehicleId: input.vehicle_id,
@@ -229,7 +236,7 @@ export function useDeclareIncident() {
           incidentCategory: input.incident_category,
           latitude: hasGeo ? input.latitude! : null,
           longitude: hasGeo ? input.longitude! : null,
-          evidenceDataUrl: evidence,
+          evidenceMediaRef,
         });
         return { kind: 'queued' as const, draftId: draft.id };
       }

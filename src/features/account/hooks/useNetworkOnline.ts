@@ -1,20 +1,21 @@
 import { useEffect, useState } from "react";
+import {
+  getNetworkState,
+  initNetworkStatus,
+  subscribeNetworkStatus,
+} from "@/lib/network/networkStatus";
 
-/** État réseau navigateur (en ligne / hors ligne). */
+/** État réseau fiable (Capacitor Network + fallback navigateur). */
 export function useNetworkOnline(): boolean {
-  const [online, setOnline] = useState(() =>
-    typeof navigator !== "undefined" ? navigator.onLine : true
-  );
+  const [online, setOnline] = useState(() => getNetworkState().isOnline);
 
   useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
-    return () => {
-      window.removeEventListener("online", on);
-      window.removeEventListener("offline", off);
-    };
+    let unsub = () => {};
+    void initNetworkStatus().then(() => {
+      setOnline(getNetworkState().isOnline);
+      unsub = subscribeNetworkStatus((state) => setOnline(state.isOnline));
+    });
+    return () => unsub();
   }, []);
 
   return online;

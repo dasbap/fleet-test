@@ -7,6 +7,7 @@ Ce dossier transforme la checklist Go/No-Go en artefacts actionnables pour une e
 - Cible produit : convergence vers une stack unique pilotée côté front par `e-samba-web`.
 - Socle sécurité/data : migrations et politiques RLS issues de `smart-fleet-africa`.
 - Priorités : auth unifiée, OTP, QR, billing guards, mobile Expo.
+- Choix Capacitor vs Expo : [mobile-capacitor-vs-react-native.md](../mobile-capacitor-vs-react-native.md).
 
 ## Utilisation
 
