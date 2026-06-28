@@ -50,6 +50,7 @@ export interface ShiftClosure {
 export interface ShiftInsert {
   assignment_id: string;
   km_start: number;
+  client_idempotency_key?: string | null;
 }
 
 export interface ShiftClosureInsert {
@@ -59,6 +60,7 @@ export interface ShiftClosureInsert {
   collection_mode: CollectionMode;
   proof_type: string;
   proof_value: string;
+  client_idempotency_key?: string | null;
 }
 
 export interface ShiftClosureUpdate {
@@ -253,6 +255,7 @@ export class DriverShiftRepository {
         assignment_id: shift.assignment_id,
         km_start: shift.km_start,
         status: 'open',
+        client_idempotency_key: shift.client_idempotency_key ?? null,
       })
       .select(`
         *,
@@ -290,6 +293,7 @@ export class DriverShiftRepository {
       p_mode_collecte: closure.collection_mode,
       p_type_preuve: closure.proof_type,
       p_valeur_preuve: closure.proof_value,
+      p_idempotency_key: closure.client_idempotency_key ?? null,
     });
 
     if (error) {

@@ -149,6 +149,8 @@ npm run test:integration:supabase:linked
 
 ### App mobile (Capacitor)
 
+Guide de choix Capacitor vs React Native : [`docs/mobile-capacitor-vs-react-native.md`](docs/mobile-capacitor-vs-react-native.md). Prototype Expo (tutoriels) : [`apps/mobile/README.md`](apps/mobile/README.md).
+
 Pour préparer l’app mobile (Android/iOS) :
 
 - `npm run build:capacitor` — build web avec `base: './'` (dossier `dist/` utilisé par Capacitor)

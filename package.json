@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "workspaces": [
-    "packages/db"
+    "packages/db",
+    "packages/offline-contracts",
+    "packages/domain-validation",
+    "packages/domain-sync"
   ],
   "publishConfig": {
     "access": "public",
@@ -59,6 +62,7 @@
     "supabase:enable-auth-security": "node scripts/enable-supabase-auth-security.mjs",
     "cap:cli": "npx -y node@22 node_modules/@capacitor/cli/bin/capacitor",
     "cap:sync": "npm run cap:doctor && npm run cap:cli -- sync",
+    "cap:sync:android": "npm run cap:doctor && npm run cap:cli -- sync android",
     "cap:copy": "npm run cap:doctor && npm run cap:cli -- copy",
     "mobile:prepare": "npm run build:capacitor && npm run cap:sync",
     "android:assemble-release": "node scripts/android-assemble-release.mjs",
@@ -70,6 +74,9 @@
     "cap:open:android": "npm run cap:doctor && npm run cap:cli -- open android",
     "cap:open:ios": "npm run cap:doctor && npm run cap:cli -- open ios",
     "android": "npm run mobile:prepare && npm run cap:open:android",
+    "android:run": "npm run mobile:prepare && npm run cap:doctor && npm run cap:cli -- run android",
+    "android:clean": "node scripts/android-gradle.mjs clean",
+    "mobile:rebuild": "npm run android:clean && npm run mobile:prepare",
     "ios": "npm run mobile:prepare && npm run cap:open:ios",
     "mobile:expo:start": "npm --prefix apps/mobile run start",
     "mobile:expo:android": "npm --prefix apps/mobile run android",
@@ -197,10 +204,12 @@
     "@capacitor/camera": "^8.0.2",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
+    "@capacitor/device": "^8.0.2",
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/geolocation": "^8.1.0",
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/ios": "^8.3.0",
+    "@capacitor/network": "^8.0.1",
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.0.3",
     "@capacitor/share": "^8.0.1",

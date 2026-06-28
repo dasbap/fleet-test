@@ -5,7 +5,7 @@ export interface QueueJob<TType extends string = string, TPayload = Record<strin
   schemaVersion: number;
   idempotencyKey: string;
   entityRef: string | null;
-  status: "pending" | "syncing" | "succeeded" | "failed";
+  status: "pending" | "syncing" | "succeeded" | "failed" | "conflict";
   attemptCount: number;
   nextRetryAt: string | null;
   lastError: string | null;

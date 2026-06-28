@@ -12,8 +12,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 
 const MOBILE_REDIRECT_URLS = [
+  "esamba://**",
   "esamba://auth/callback",
   "esamba://auth/update-password",
+  "com.esamba.flotte://**",
+  "com.esamba.flotte://auth/callback",
+  "com.esamba.flotte://auth/update-password",
   "https://www.e-samba.com/auth/callback",
   "https://www.e-samba.com/auth/callback/**",
   "https://www.e-samba.com/auth/update-password",

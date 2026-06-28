@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseAuthStorage } from '@/lib/auth/supabaseAuthStorage';
 
 // Récupération des variables d'environnement avec typage explicite
 const SUPABASE_URL: string | undefined = import.meta.env.VITE_SUPABASE_URL;
@@ -31,7 +32,7 @@ export const supabase: SupabaseClient = createClient(
   SUPABASE_ANON_KEY,
   {
     auth: {
-      storage: localStorage,
+      storage: getSupabaseAuthStorage(),
       // Clé namespaced — évite les collisions si plusieurs apps sur le même domaine
       storageKey: "sfa_auth_token",
       persistSession: true,

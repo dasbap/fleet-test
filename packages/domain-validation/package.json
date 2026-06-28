@@ -1,0 +1,15 @@
+{
+  "name": "@esamba/domain-validation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Règles de validation métier offline E-Samba",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

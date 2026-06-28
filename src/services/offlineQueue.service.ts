@@ -1,5 +1,12 @@
 import * as offlineStorage from "@/lib/storage/offline-queue.storage";
+import { appendActionJournalEntry } from "@/lib/offline/action-journal";
 import { createQueueManager } from "../../packages/offline-core/src/queue-manager";
+import {
+  OFFLINE_QUEUE_MAX_ATTEMPTS,
+  OFFLINE_QUEUE_MAX_SIZE,
+  OFFLINE_QUEUE_SCHEMA_VERSION,
+  SYNCING_STUCK_THRESHOLD_MS,
+} from "@esamba/offline-contracts";
 import type {
   OfflineDvirCreateJob,
   OfflineDvirCreatePayload,
@@ -8,17 +15,12 @@ import type {
   OfflineIncidentCreateJob,
   OfflineIncidentCreatePayload,
   OfflineJob,
-  OfflineJobStatus,
   OfflineJobType,
   OfflineShiftCloseJob,
   OfflineShiftClosePayload,
   OfflineShiftStartJob,
   OfflineShiftStartPayload,
 } from "@/types/offline-queue";
-
-const MAX_ATTEMPTS = 5;
-const MAX_QUEUE_SIZE = 200;
-const OFFLINE_QUEUE_SCHEMA_VERSION = 1;
 
 function buildQueueManager() {
   return createQueueManager<OfflineJob>(
@@ -27,12 +29,22 @@ function buildQueueManager() {
       write: (jobs) => offlineStorage.writeOfflineJobs(jobs),
     },
     {
-      maxAttempts: MAX_ATTEMPTS,
-      maxQueueSize: MAX_QUEUE_SIZE,
+      maxAttempts: OFFLINE_QUEUE_MAX_ATTEMPTS,
+      maxQueueSize: OFFLINE_QUEUE_MAX_SIZE,
       schemaVersion: OFFLINE_QUEUE_SCHEMA_VERSION,
     },
   );
 }
+
+const JOB_SUMMARY: Record<OfflineJobType, string> = {
+  "incident:create": "Incident signalé hors ligne",
+  "shift:start": "Ouverture créneau hors ligne",
+  "shift:close": "Clôture créneau hors ligne",
+  "fuel:create": "Saisie carburant hors ligne",
+  "dvir:create": "DVIR hors ligne",
+  "maintenance:note": "Note maintenance hors ligne",
+  "scan:log": "Scan QR hors ligne",
+};
 
 export class OfflineQueueService {
   private async enqueueJob<TType extends OfflineJobType, TPayload>(
@@ -44,6 +56,11 @@ export class OfflineQueueService {
       type,
       payload,
       entityRef,
+    });
+    appendActionJournalEntry({
+      jobType: type,
+      jobId: job.id,
+      summary: JOB_SUMMARY[type],
     });
     return job;
   }
@@ -89,6 +106,14 @@ export class OfflineQueueService {
     await buildQueueManager().markFailed(jobId, errorMessage);
   }
 
+  async markConflict(jobId: string, errorMessage: string): Promise<void> {
+    await buildQueueManager().markConflict(jobId, errorMessage);
+  }
+
+  async recoverStuckJobs(): Promise<number> {
+    return buildQueueManager().recoverStuckSyncingJobs(SYNCING_STUCK_THRESHOLD_MS);
+  }
+
   async getQueueStats(): Promise<{
     pending: number;
     syncing: number;
@@ -98,4 +123,3 @@ export class OfflineQueueService {
     return buildQueueManager().getQueueStats();
   }
 }
-

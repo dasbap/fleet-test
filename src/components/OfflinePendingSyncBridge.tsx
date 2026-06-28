@@ -1,30 +1,33 @@
 import { useEffect } from "react";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { OfflineQueueService } from "@/services/offlineQueue.service";
 import { runOfflineSyncOnce } from "@/services/offlineSyncOrchestrator.service";
 import { migrateLegacyIncidentDraftsToQueue } from "@/services/offlineSyncOrchestrator.service";
+import { hydratePendingMediaStore } from "@/services/offline-media-storage.service";
+import { initNetworkStatus, isNetworkOnline } from "@/lib/network/networkStatus";
+
+const queueService = new OfflineQueueService();
 
 /**
  * Composant sans rendu : orchestre la synchro hors-ligne au démarrage
  * et à chaque retour de connectivité.
- *
- * À monter une seule fois dans DashboardLayout ou TerrainLayout.
  */
 export function OfflinePendingSyncBridge() {
   const { isOnline } = useOfflineQueue();
 
-  // Synchro initiale au mount (si en ligne)
   useEffect(() => {
     async function init() {
+      await initNetworkStatus();
+      hydratePendingMediaStore();
+      await queueService.recoverStuckJobs();
       await migrateLegacyIncidentDraftsToQueue();
-      if (navigator.onLine) {
+      if (isNetworkOnline()) {
         await runOfflineSyncOnce();
       }
     }
     void init();
   }, []);
 
-  // isOnline change → le hook useOfflineQueue gère déjà le flush auto
-  // Ce composant sert uniquement à garantir que le hook est monté
   void isOnline;
 
   return null;

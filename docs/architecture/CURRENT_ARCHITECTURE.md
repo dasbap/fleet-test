@@ -11,7 +11,7 @@ Ce document est la **référence canonique** pour la stack et les flux technique
 | UI | React, **Tailwind CSS**, **shadcn/ui** (Radix) |
 | Données temps réel | **Supabase** (PostgreSQL + Auth + API REST générée + RLS) |
 | État serveur client | **TanStack Query** (React Query) |
-| Mobile embarqué | **Capacitor** (scripts `build:capacitor`, `mobile:prepare`, etc.) ; dépôt monorepo avec workspace `packages/db` |
+| Mobile embarqué | **Capacitor** (scripts `build:capacitor`, `mobile:prepare`, etc.) ; prototype Expo dans `apps/mobile` — voir [mobile-capacitor-vs-react-native.md](../mobile-capacitor-vs-react-native.md) |
 | Schéma SQL effectif | Migrations sous `supabase/migrations/` et baseline |
 
 ## Flux applicatif (couches)

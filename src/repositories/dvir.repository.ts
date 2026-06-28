@@ -61,6 +61,7 @@ export interface DvirInsertInput {
   notes?: string | null;
   odometer_km?: number | null;
   photo_urls?: string[];
+  client_idempotency_key?: string | null;
 }
 
 /** Ligne lue seule (liste ou détail sans clé `items` dérivée côté client). */

@@ -24,7 +24,10 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@esamba/offline-contracts": ["./packages/offline-contracts/src/index.ts"],
+      "@esamba/domain-validation": ["./packages/domain-validation/src/index.ts"],
+      "@esamba/domain-sync": ["./packages/domain-sync/src/index.ts"]
     }
   },
   "include": ["src"]
