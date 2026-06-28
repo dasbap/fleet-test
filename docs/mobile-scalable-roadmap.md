@@ -1,5 +1,7 @@
 # Roadmap Mobile Scalable e-samba
 
+> Stratégie globale Capacitor vs Expo : [`mobile-capacitor-vs-react-native.md`](mobile-capacitor-vs-react-native.md).
+
 ## Portée
 Ce document prépare la phase post-MVP (`Mon véhicule + historique` et `scan`) sur l’app mobile Capacitor.
 

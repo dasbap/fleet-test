@@ -2,6 +2,8 @@
 
 Guide opérationnel pour **Flotte E-Samba** (`com.esamba.flotte`).
 
+**Checklist Android Studio complète** : [android-studio-capacitor-checklist.md](./android-studio-capacitor-checklist.md)
+
 ## Prérequis
 
 - Node.js **22+**

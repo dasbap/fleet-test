@@ -9,7 +9,7 @@ import {
   type EsambaDeepLinkEventDetail,
   type EsambaInternalPathEventDetail,
 } from "@/lib/deepLinks/deepLinkConfig";
-import { navigateFromAppUrl } from "@/lib/deepLinks/deepLinkNavigation";
+import { handleMobileDeepLink } from "@/mobile/deepLinks";
 import { consumePendingDeepLink } from "@/lib/deepLinks/pendingDeepLink";
 /**
  * Écoute les liens profonds natifs (Capacitor) et les événements push / bridge (`window`).
@@ -31,7 +31,7 @@ export function DeepLinkListener() {
       const ce = event as CustomEvent<EsambaDeepLinkEventDetail>;
       const url = ce.detail?.url;
       if (!url) return;
-      navigateFromAppUrl(url, navigate, { replace: true });
+      handleMobileDeepLink(url, navigate, { replace: true });
     };
 
     const onInternalPath = (event: Event) => {
@@ -63,7 +63,7 @@ export function DeepLinkListener() {
 
     const handleUrl = (url: string, source: string) => {
       deepLinkLogInfo("URL entrante", { url, source, ...deepLinkLogContext() });
-      navigateFromAppUrl(url, navigate, { replace: true });
+      handleMobileDeepLink(url, navigate, { replace: true });
     };
 
     void App.addListener("appUrlOpen", ({ url }) => {

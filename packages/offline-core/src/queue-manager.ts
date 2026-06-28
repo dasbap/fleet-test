@@ -98,13 +98,49 @@ export function createQueueManager<TJob extends QueueJob>(
     await storage.write(next);
   }
 
+  async function markConflict(jobId: string, errorMessage: string): Promise<void> {
+    const jobs = await storage.read();
+    const next = jobs.map((job) => {
+      if (job.id !== jobId) return job;
+      return {
+        ...job,
+        status: "conflict",
+        lastError: errorMessage,
+        updatedAt: nowIso(),
+      } as TJob;
+    });
+    await storage.write(next);
+  }
+
+  /** Repasse en pending les jobs bloqués en syncing après crash. */
+  async function recoverStuckSyncingJobs(stuckThresholdMs = 60_000): Promise<number> {
+    const jobs = await storage.read();
+    const now = Date.now();
+    let recovered = 0;
+    const next = jobs.map((job) => {
+      if (job.status !== "syncing") return job;
+      const age = now - new Date(job.updatedAt).getTime();
+      if (age <= stuckThresholdMs) return job;
+      recovered += 1;
+      return {
+        ...job,
+        status: "pending",
+        updatedAt: nowIso(),
+      } as TJob;
+    });
+    if (recovered > 0) {
+      await storage.write(next);
+    }
+    return recovered;
+  }
+
   async function getQueueStats(): Promise<QueueStats> {
     const jobs = await storage.read();
     const now = Date.now();
     let oldestPendingAgeMs: number | null = null;
 
     for (const job of jobs) {
-      if (job.status !== "pending" && job.status !== "failed") continue;
+      if (job.status !== "pending" && job.status !== "failed" && job.status !== "conflict") continue;
       const age = now - new Date(job.createdAt).getTime();
       oldestPendingAgeMs = oldestPendingAgeMs == null ? age : Math.max(oldestPendingAgeMs, age);
     }
@@ -113,7 +149,7 @@ export function createQueueManager<TJob extends QueueJob>(
       (acc, job) => {
         if (job.status === "pending") acc.pending += 1;
         if (job.status === "syncing") acc.syncing += 1;
-        if (job.status === "failed") acc.failed += 1;
+        if (job.status === "failed" || job.status === "conflict") acc.failed += 1;
         return acc;
       },
       { pending: 0, syncing: 0, failed: 0, oldestPendingAgeMs },
@@ -146,6 +182,8 @@ export function createQueueManager<TJob extends QueueJob>(
     markSyncing,
     markSucceeded,
     markFailed,
+    markConflict,
+    recoverStuckSyncingJobs,
     getQueueStats,
     flush,
   };

@@ -3,6 +3,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { DvirRepository, type DvirStatus } from "@/repositories/dvir.repository";
 import { DvirService, type DvirCreateInput, type DvirUpdateInput } from "@/services/dvir.service";
+import { isOfflineMode } from "@/lib/network/networkStatus";
+import { compressImageFile } from "@/services/image-compression.service";
+import { savePendingOfflineMedia } from "@/services/offline-media-storage.service";
 import { OfflineQueueService } from "@/services/offlineQueue.service";
 
 const offlineQueueService = new OfflineQueueService();
@@ -87,20 +90,14 @@ export function useCreateDvir() {
       if (!userFleetId) throw new Error("Aucune flotte active");
 
       const { photoFiles = [], ...dvirInput } = input;
-      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      const isOffline = isOfflineMode();
 
       if (isOffline) {
-        // Sérialisation photos en base64 pour la queue locale
-        const photoDataUrls = await Promise.all(
-          photoFiles.slice(0, 5).map(
-            (f) =>
-              new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(f);
-              }),
-          ),
+        const photoMediaRefs = await Promise.all(
+          photoFiles.slice(0, 5).map(async (file) => {
+            const compressed = await compressImageFile(file);
+            return savePendingOfflineMedia(compressed.dataUrl, compressed.mimeType, compressed.sizeBytes);
+          }),
         );
         await offlineQueueService.enqueueDvirCreate({
           fleetId: userFleetId,
@@ -110,7 +107,7 @@ export function useCreateDvir() {
           items: dvirInput.items,
           notes: dvirInput.notes ?? null,
           odometerKm: dvirInput.odometerKm ?? null,
-          photoDataUrls,
+          photoMediaRefs,
         });
         return { kind: "queued" };
       }

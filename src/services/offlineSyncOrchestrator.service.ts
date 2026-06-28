@@ -1,6 +1,14 @@
+import { classifySyncError } from "@esamba/domain-sync";
 import { countPendingIncidentDrafts, getIncidentDrafts } from "@/lib/storage/flotteEsambaLocalCache";
 import { patchLocalSyncState } from "@/lib/storage/flotteEsambaLocalCache";
-import { getLocalSyncMetrics, patchLocalSyncMetrics } from "@/lib/storage/flotteEsambaLocalCache";
+import { updateActionJournalStatus } from "@/lib/offline/action-journal";
+import {
+  resolveDvirPhotoDataUrls,
+  resolveEvidenceDataUrl,
+  resolveProofValue,
+} from "@/lib/offline/prepare-offline-media";
+import { recordOfflineSyncTelemetry } from "@/lib/offline/offline-telemetry";
+import { deletePendingOfflineMedia } from "@/services/offline-media-storage.service";
 import { OfflineQueueService } from "@/services/offlineQueue.service";
 import { IncidentRepository } from "@/repositories/incident.repository";
 import { IncidentEvidenceRepository } from "@/repositories/incident-evidence.repository";
@@ -17,7 +25,49 @@ import type {
   OfflineIncidentCreatePayload,
   OfflineJob,
   OfflineJobType,
+  OfflineMediaRef,
 } from "@/types/offline-queue";
+
+async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  return new File([blob], fileName, { type: blob.type || "image/jpeg" });
+}
+
+async function cleanupMediaRefs(refs: Array<OfflineMediaRef | null | undefined>): Promise<void> {
+  for (const ref of refs) {
+    if (!ref) continue;
+    try {
+      await deletePendingOfflineMedia(ref);
+    } catch {
+      // Nettoyage best-effort
+    }
+  }
+}
+
+async function handleJobError(
+  job: OfflineJob,
+  error: unknown,
+): Promise<boolean> {
+  const message = error instanceof Error ? error.message : "Erreur inconnue";
+  const classification = classifySyncError(job.type, message);
+
+  if (classification.isConflict) {
+    await offlineQueueService.markConflict(job.id, classification.userMessage);
+    updateActionJournalStatus(job.id, "conflict", classification.userMessage);
+    return false;
+  }
+
+  if (!classification.isRetryable) {
+    await offlineQueueService.markSucceeded(job.id);
+    updateActionJournalStatus(job.id, "synced");
+    return true;
+  }
+
+  await offlineQueueService.markFailed(job.id, classification.userMessage);
+  updateActionJournalStatus(job.id, "failed", classification.userMessage);
+  return false;
+}
 
 const offlineQueueService = new OfflineQueueService();
 const incidentRepository = new IncidentRepository();
@@ -93,16 +143,7 @@ export async function runOfflineSyncOnce(): Promise<SyncResultSummary> {
       patchLocalSyncState({ displayStatus: "synced", lastSyncError: null });
     }
 
-    const endedAtIso = new Date().toISOString();
-    const previous = getLocalSyncMetrics();
-    patchLocalSyncMetrics({
-      runs: previous.runs + 1,
-      processedJobs: previous.processedJobs + processed,
-      succeededJobs: previous.succeededJobs + succeeded,
-      failedJobs: previous.failedJobs + failed,
-      lastRunAt: endedAtIso,
-      lastDurationMs: Date.now() - startedAt,
-    });
+    recordOfflineSyncTelemetry({ processed, succeeded, failed, durationMs: Date.now() - startedAt });
 
     return { processed, succeeded, failed };
   } finally {
@@ -118,6 +159,7 @@ async function processIncidentCreateJob(job: OfflineIncidentCreateJob): Promise<
 
   try {
     const payload: OfflineIncidentCreatePayload = marked.payload;
+    const evidenceDataUrl = await resolveEvidenceDataUrl(payload);
     await incidentService.declareIncidentWithOptionalEvidence({
       fleetId: payload.fleetId,
       incident: {
@@ -128,16 +170,17 @@ async function processIncidentCreateJob(job: OfflineIncidentCreateJob): Promise<
         incident_category: payload.incidentCategory ?? null,
         latitude: payload.latitude ?? null,
         longitude: payload.longitude ?? null,
+        client_idempotency_key: marked.idempotencyKey,
       },
-      evidenceDataUrl: payload.evidenceDataUrl ?? null,
+      evidenceDataUrl,
     });
 
     await offlineQueueService.markSucceeded(marked.id);
+    updateActionJournalStatus(marked.id, "synced");
+    await cleanupMediaRefs([payload.evidenceMediaRef]);
     return true;
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Erreur inconnue";
-    await offlineQueueService.markFailed(marked.id, message);
-    return false;
+    return handleJobError(marked, e);
   }
 }
 
@@ -149,13 +192,13 @@ async function processShiftStartJob(job: OfflineJob): Promise<boolean> {
     await driverShiftService.startShift({
       assignment_id: payload.assignmentId,
       km_start: payload.kmStart,
+      client_idempotency_key: marked.idempotencyKey,
     });
     await offlineQueueService.markSucceeded(marked.id);
+    updateActionJournalStatus(marked.id, "synced");
     return true;
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Erreur inconnue";
-    await offlineQueueService.markFailed(marked.id, message);
-    return false;
+    return handleJobError(marked, e);
   }
 }
 
@@ -164,20 +207,22 @@ async function processShiftCloseJob(job: OfflineJob): Promise<boolean> {
   if (!marked || marked.type !== "shift:close") return false;
   try {
     const payload = marked.payload;
+    const proofValue = await resolveProofValue(payload);
     await driverShiftService.closeShift({
       shift_id: payload.shiftId,
       km_end: payload.kmEnd,
       revenue_declared: payload.revenueDeclared,
       collection_mode: payload.collectionMode,
       proof_type: payload.proofType,
-      proof_value: payload.proofValue,
+      proof_value: proofValue,
+      client_idempotency_key: marked.idempotencyKey,
     });
     await offlineQueueService.markSucceeded(marked.id);
+    updateActionJournalStatus(marked.id, "synced");
+    await cleanupMediaRefs([payload.proofMediaRef]);
     return true;
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Erreur inconnue";
-    await offlineQueueService.markFailed(marked.id, message);
-    return false;
+    return handleJobError(marked, e);
   }
 }
 
@@ -201,11 +246,10 @@ async function processFuelCreateJob(job: OfflineJob): Promise<boolean> {
       marked.idempotencyKey,
     );
     await offlineQueueService.markSucceeded(marked.id);
+    updateActionJournalStatus(marked.id, "synced");
     return true;
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Erreur inconnue";
-    await offlineQueueService.markFailed(marked.id, message);
-    return false;
+    return handleJobError(marked, e);
   }
 }
 
@@ -214,6 +258,18 @@ async function processDvirCreateJob(job: OfflineJob): Promise<boolean> {
   if (!marked || marked.type !== "dvir:create") return false;
   try {
     const payload = marked.payload;
+    const photoDataUrls = await resolveDvirPhotoDataUrls(payload);
+    const photoUrls: string[] = [];
+    for (let i = 0; i < photoDataUrls.length; i++) {
+      try {
+        const file = await dataUrlToFile(photoDataUrls[i], `dvir-offline-${i}.jpg`);
+        const url = await dvirService.uploadPhoto(payload.fleetId, payload.vehicleId, file);
+        photoUrls.push(url);
+      } catch {
+        // Photo non bloquante
+      }
+    }
+
     await dvirService.create(
       {
         fleetId: payload.fleetId,
@@ -223,21 +279,20 @@ async function processDvirCreateJob(job: OfflineJob): Promise<boolean> {
         items: payload.items,
         notes: payload.notes ?? null,
         odometerKm: payload.odometerKm ?? null,
+        clientIdempotencyKey: marked.idempotencyKey,
       },
-      // Les photos base64 sont ignorées à la synchro — la saisie hors ligne
-      // ne supporte pas l'upload de photos pour l'instant.
-      [],
+      photoUrls,
     );
     await offlineQueueService.markSucceeded(marked.id);
+    updateActionJournalStatus(marked.id, "synced");
+    await cleanupMediaRefs(payload.photoMediaRefs ?? []);
     return true;
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Erreur inconnue";
-    await offlineQueueService.markFailed(marked.id, message);
-    return false;
+    return handleJobError(marked, e);
   }
 }
 
-const jobHandlers: Record<OfflineJobType, (job: OfflineJob) => Promise<boolean>> = {
+const jobHandlers: Partial<Record<OfflineJobType, (job: OfflineJob) => Promise<boolean>>> = {
   "incident:create": (job) => processIncidentCreateJob(job as OfflineIncidentCreateJob),
   "shift:start": processShiftStartJob,
   "shift:close": processShiftCloseJob,

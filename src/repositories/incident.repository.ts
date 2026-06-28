@@ -40,6 +40,7 @@ export interface IncidentInsert {
   evidence_path?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  client_idempotency_key?: string | null;
 }
 
 export interface IncidentUpdate {
@@ -161,6 +162,7 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
           incident.longitude !== undefined && incident.longitude !== null
             ? incident.longitude
             : null,
+        client_idempotency_key: incident.client_idempotency_key ?? null,
         status: 'open',
         resolved_at: null,
         resolved_by: null,

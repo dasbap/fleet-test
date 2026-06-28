@@ -4,6 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { OfflineQueueService } from "@/services/offlineQueue.service";
 import { FuelRepository } from "@/repositories/fuel.repository";
 import { FuelService, type FuelEntryInput } from "@/services/fuel.service";
+import { isOfflineMode } from "@/lib/network/networkStatus";
 
 const offlineQueueService = new OfflineQueueService();
 const fuelRepository = new FuelRepository();
@@ -37,7 +38,7 @@ export function useCreateFuelEntry() {
         driverUserId: user.id,
       });
 
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
+      if (isOfflineMode()) {
         await offlineQueueService.enqueueFuelCreate(payload);
         return { kind: "queued" as const };
       }

@@ -1,4 +1,6 @@
 import { ScanRepository } from "@/repositories/scan.repository";
+import { cacheQrLicense, getCachedQrLicense } from "@/lib/offline/qr-license-cache";
+import { isOfflineMode } from "@/lib/network/networkStatus";
 
 const ESAMBA_PUBLIC_HOST = "e-samba.com";
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -134,10 +136,27 @@ export class ScanService {
     }
 
     if (target.vehicleId) {
+      if (isOfflineMode()) {
+        const cached = getCachedQrLicense(target.vehicleId);
+        if (cached && cached.fleetId === fleetId) {
+          return {
+            kind: "vehicle",
+            route: `/dashboard/vehicles/${cached.vehicleId}`,
+            label: cached.registration,
+          };
+        }
+      }
+
       const vehicle = await this.repository.findVehicleById(target.vehicleId, fleetId);
       if (!vehicle) {
         throw new Error("Véhicule introuvable dans votre flotte.");
       }
+      cacheQrLicense({
+        vehicleId: vehicle.id,
+        fleetId,
+        registration: vehicle.registration,
+        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      });
       return {
         kind: "vehicle",
         route: `/dashboard/vehicles/${vehicle.id}`,

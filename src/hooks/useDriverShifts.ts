@@ -8,6 +8,8 @@ import { VehicleRepository } from '@/repositories/vehicle.repository';
 import { OfflineQueueService } from '@/services/offlineQueue.service';
 import { linkPlannedShiftOnStart } from '@/hooks/usePlannedShifts';
 import { operationsQueryKeys } from '@/hooks/useOperations';
+import { isOfflineMode } from '@/lib/network/networkStatus';
+import { prepareOfflineMediaFromDataUrl } from '@/lib/offline/prepare-offline-media';
 import type { CollectionMode } from '@/domain/constants/collectionMode';
 
 // Instances singleton des services et repositories
@@ -111,7 +113,7 @@ export function useStartShift() {
       km_start: number;
     }) => {
       const payload = driverShiftService.buildOfflineShiftStartPayload({ assignment_id, km_start });
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (isOfflineMode()) {
         await offlineQueueService.enqueueShiftStart(payload);
         return { kind: 'queued' as const };
       }
@@ -180,8 +182,12 @@ export function useCloseShift() {
 
   return useMutation({
     mutationFn: async (closure: ShiftClosureInsert) => {
-      const payload = driverShiftService.buildOfflineShiftClosePayload(closure);
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      let payload = driverShiftService.buildOfflineShiftClosePayload(closure);
+      if (isOfflineMode()) {
+        if (closure.proof_type === 'photo' && closure.proof_value.startsWith('data:')) {
+          const proofMediaRef = await prepareOfflineMediaFromDataUrl(closure.proof_value);
+          payload = { ...payload, proofValue: '', proofMediaRef };
+        }
         await offlineQueueService.enqueueShiftClose(payload);
         return { success: true, kind: 'queued' as const };
       }
