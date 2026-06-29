@@ -25,5 +25,17 @@ export const CARRIERES_COMMERCIAL_SYNTHESIS_ROWS: readonly CommercialSynthesisRo
   { criterion: "Urgence", posteA: "Immédiat", posteB: "Immédiat ou M+1" },
 ];
 
-export const CARRIERES_COMMERCIAL_RECOMMENDATION =
-  "Recommandation : recruter 1 Poste A + 1 Poste B simultanément. Le Poste A génère du volume et des preuves sociales rapidement (10+ clients en 3 mois), le Poste B construit les contrats à forte valeur qui financent la croissance.";
+export const CARRIERES_COMMERCIAL_POSTE_A = {
+  id: "commercial-taxis-yaounde",
+  label: "Poste A — Taxis/VTC",
+  tagline: "Volume & terrain",
+} as const;
+
+export const CARRIERES_COMMERCIAL_POSTE_B = {
+  id: "commercial-pme-yaounde",
+  label: "Poste B — PME/Institutions",
+  tagline: "Contrats à forte valeur",
+} as const;
+
+export const CARRIERES_COMMERCIAL_RECOMMENDATION_HIGHLIGHT =
+  "Recruter 1 Poste A + 1 Poste B en parallèle pour combiner volume terrain et contrats institutionnels.";
