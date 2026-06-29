@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
-import { ChevronDown, MapPin, Clock, ArrowRight } from "lucide-react";
+import { ChevronDown, Lock, Mail, MapPin, Clock, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { buildMailtoHref, DEPARTMENT_EMAILS } from "@/config/navigation";
+import { buildJobCvMailtoHref } from "@/lib/carrieres-detail-access";
 import type { JobPosting, JobTargetTable } from "@/types/carrieres";
 
 interface JobPostingCardProps {
   posting: JobPosting;
   open: boolean;
+  unlocked: boolean;
   onToggle: () => void;
+  onCvSendIntent: () => void;
 }
 
 function DetailSection({ title, children }: { title: string; children: ReactNode }) {
@@ -72,23 +74,30 @@ function TargetTable({ table }: { table: JobTargetTable }) {
   );
 }
 
-export function JobPostingCard({ posting, open, onToggle }: JobPostingCardProps) {
-  const mailtoHref = buildMailtoHref(DEPARTMENT_EMAILS.rh, {
-    subject: `Candidature — ${posting.title}`,
-  });
+export function JobPostingCard({
+  posting,
+  open,
+  unlocked,
+  onToggle,
+  onCvSendIntent,
+}: JobPostingCardProps) {
+  const mailtoHref = buildJobCvMailtoHref(posting);
+
+  const handleCvClick = () => {
+    onCvSendIntent();
+  };
+
+  const handleToggleDetail = () => {
+    if (!unlocked) return;
+    onToggle();
+  };
 
   return (
     <article
       id={posting.id}
       className="relative scroll-mt-28 bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 transition-colors"
     >
-      <button
-        type="button"
-        className="w-full text-left p-6"
-        onClick={onToggle}
-        aria-expanded={open}
-        aria-controls={`${posting.id}-detail`}
-      >
+      <div className="p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
           <h3 className="font-heading font-semibold text-base pr-4">{posting.title}</h3>
           <div className="flex flex-wrap gap-2 shrink-0">
@@ -117,23 +126,60 @@ export function JobPostingCard({ posting, open, onToggle }: JobPostingCardProps)
           </span>
         </div>
 
-        <p className="text-sm text-muted-foreground leading-relaxed">{posting.mission}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed mb-5">{posting.mission}</p>
 
-        <div className="flex items-center justify-between mt-4">
-          <span className="text-xs text-primary font-medium">
-            {open ? "Masquer le détail" : "Voir le détail"}
-          </span>
-          <ChevronDown
-            className={cn(
-              "h-5 w-5 text-muted-foreground transition-transform duration-200",
-              open && "rotate-180",
-            )}
-            aria-hidden
-          />
+        <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 mb-4">
+          <p className="text-sm text-foreground font-medium mb-1">
+            Étape 1 — Envoyer votre CV
+          </p>
+          <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+            Ouvrez votre messagerie, joignez votre CV et envoyez l&apos;e-mail. Le message
+            contient le lien d&apos;accès à la fiche détaillée du poste.
+          </p>
+          <a
+            href={mailtoHref}
+            onClick={handleCvClick}
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-lg hover:bg-primary/90 transition-colors text-sm"
+          >
+            <Mail className="w-4 h-4" aria-hidden />
+            Envoyer mon CV par e-mail
+          </a>
         </div>
-      </button>
 
-      {open ? (
+        {unlocked ? (
+          <button
+            type="button"
+            className="w-full flex items-center justify-between text-left pt-2 border-t border-border"
+            onClick={handleToggleDetail}
+            aria-expanded={open}
+            aria-controls={`${posting.id}-detail`}
+          >
+            <span className="text-xs text-primary font-medium">
+              {open ? "Masquer la fiche détaillée" : "Voir la fiche détaillée"}
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-5 w-5 text-muted-foreground transition-transform duration-200",
+                open && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+        ) : (
+          <div
+            className="flex items-start gap-2 pt-2 border-t border-border text-xs text-muted-foreground"
+            role="status"
+          >
+            <Lock className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
+            <p>
+              La fiche détaillée se débloque après l&apos;envoi de votre CV (lien inclus dans
+              l&apos;e-mail) ou via le lien reçu de l&apos;équipe RH.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {unlocked && open ? (
         <div
           id={`${posting.id}-detail`}
           className="px-6 pb-6 space-y-5 border-t border-border pt-5"
@@ -221,9 +267,10 @@ export function JobPostingCard({ posting, open, onToggle }: JobPostingCardProps)
 
           <a
             href={mailtoHref}
+            onClick={handleCvClick}
             className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:gap-2 transition-all"
           >
-            Postuler <ArrowRight className="w-4 h-4" aria-hidden />
+            Envoyer mon CV <ArrowRight className="w-4 h-4" aria-hidden />
           </a>
         </div>
       ) : null}
