@@ -60,10 +60,8 @@ function buildMobileMenuItems(
     }
   }
 
-  return uniqueMenuItems([
-    ...baseByRole[effectiveRole],
     ...(isAdmin
-      ? [{ label: "Admin comptes", href: ROUTE_PATHS.dashboardAdminUsers }]
+      ? [{ label: "Admin comptes", href: "/dashboard/admin/users" }]
       : []),
     { label: "Guides", href: ROUTE_PATHS.dashboardTutorials },
     ...extras,
