@@ -185,7 +185,7 @@ export function BottomTabBar({ userRole }: BottomTabBarProps) {
                 "relative flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-lg transition-all",
                 scanActive && "ring-2 ring-primary/50 ring-offset-2 ring-offset-background",
               )}
-              aria-label="Scanner un code QR vehicule"
+              aria-label="Scanner un code QR véhicule"
             >
               <QrCode className="h-6 w-6" aria-hidden />
               <span className="absolute -bottom-1 -right-1">
