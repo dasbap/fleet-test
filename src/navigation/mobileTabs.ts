@@ -1,9 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Bell,
-  Car,
-  GraduationCap,
   Home,
+  Menu,
   User,
 } from "lucide-react";
 import type { AppRole } from "@/hooks/useAuth";
@@ -11,9 +10,8 @@ import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 export type MobileTabId =
   | "home"
-  | "fleet"
   | "alerts"
-  | "tutorials"
+  | "menu"
   | "account";
 
 export interface MobileTabDefinition {
@@ -24,17 +22,10 @@ export interface MobileTabDefinition {
 }
 
 /** Chemin de l’onglet Flotte selon le rôle (conducteur → mon véhicule). */
-export function getFleetPathForRole(role: AppRole | null): string {
-  return role === "driver"
-    ? ROUTE_PATHS.dashboardMyVehicle
-    : ROUTE_PATHS.dashboardVehicles;
-}
-
 /** Onglets principaux Flotte E-Samba (ordre fixe). */
 export function getMobileTabsForRole(
-  role: AppRole | null
+  _role: AppRole | null
 ): MobileTabDefinition[] {
-  const fleetPath = getFleetPathForRole(role);
   return [
     {
       id: "home",
@@ -42,18 +33,17 @@ export function getMobileTabsForRole(
       to: ROUTE_PATHS.dashboard,
       icon: Home,
     },
-    { id: "fleet", label: "Flotte", to: fleetPath, icon: Car },
+    {
+      id: "menu",
+      label: "Menu",
+      to: "#mobile-menu",
+      icon: Menu,
+    },
     {
       id: "alerts",
       label: "Alertes",
       to: ROUTE_PATHS.dashboardAlerts,
       icon: Bell,
-    },
-    {
-      id: "tutorials",
-      label: "Guides",
-      to: ROUTE_PATHS.dashboardTutorials,
-      icon: GraduationCap,
     },
     {
       id: "account",
@@ -75,17 +65,32 @@ export function isTabActive(
   if (tab.id === "home") {
     return pathname === dash || pathname === `${dash}/`;
   }
-  if (tab.id === "fleet") {
-    return (
-      pathname.startsWith("/dashboard/vehicles") ||
-      pathname.startsWith("/dashboard/my-vehicle")
-    );
-  }
   if (tab.id === "alerts") {
     return pathname.startsWith("/dashboard/alerts");
   }
-  if (tab.id === "tutorials") {
-    return pathname.startsWith("/dashboard/tutorials");
+  if (tab.id === "menu") {
+    return (
+      pathname.startsWith("/dashboard/vehicles") ||
+      pathname.startsWith("/dashboard/my-vehicle") ||
+      pathname.startsWith("/dashboard/tutorials") ||
+      pathname.startsWith("/dashboard/reports") ||
+      pathname.startsWith("/dashboard/maintenance") ||
+      pathname.startsWith("/dashboard/operations") ||
+      pathname.startsWith("/dashboard/teams") ||
+      pathname.startsWith("/dashboard/drivers") ||
+      pathname.startsWith("/dashboard/invitations") ||
+      pathname.startsWith("/dashboard/tracking") ||
+      pathname.startsWith("/dashboard/geofencing") ||
+      pathname.startsWith("/dashboard/finances") ||
+      pathname.startsWith("/dashboard/collections") ||
+      pathname.startsWith("/dashboard/billing") ||
+      pathname.startsWith("/dashboard/coaching") ||
+      pathname.startsWith("/dashboard/dashcam") ||
+      pathname.startsWith("/dashboard/history") ||
+      pathname.startsWith("/dashboard/admin/users") ||
+      pathname.startsWith("/dashboard/roles") ||
+      pathname.startsWith("/dashboard/analytics/retention")
+    );
   }
   if (tab.id === "account") {
     return (
