@@ -69,27 +69,33 @@ export function isTabActive(
     return pathname.startsWith("/dashboard/alerts");
   }
   if (tab.id === "menu") {
-    return (
-      pathname.startsWith("/dashboard/vehicles") ||
-      pathname.startsWith("/dashboard/my-vehicle") ||
-      pathname.startsWith("/dashboard/tutorials") ||
-      pathname.startsWith("/dashboard/reports") ||
-      pathname.startsWith("/dashboard/maintenance") ||
-      pathname.startsWith("/dashboard/operations") ||
-      pathname.startsWith("/dashboard/teams") ||
-      pathname.startsWith("/dashboard/drivers") ||
-      pathname.startsWith("/dashboard/invitations") ||
-      pathname.startsWith("/dashboard/tracking") ||
-      pathname.startsWith("/dashboard/geofencing") ||
-      pathname.startsWith("/dashboard/finances") ||
-      pathname.startsWith("/dashboard/collections") ||
-      pathname.startsWith("/dashboard/billing") ||
-      pathname.startsWith("/dashboard/coaching") ||
-      pathname.startsWith("/dashboard/dashcam") ||
-      pathname.startsWith("/dashboard/history") ||
-      pathname.startsWith("/dashboard/admin/users") ||
-      pathname.startsWith("/dashboard/roles") ||
-      pathname.startsWith("/dashboard/analytics/retention")
+    const prefixes = [
+      ROUTE_PATHS.dashboardVehicles,
+      ROUTE_PATHS.dashboardMyVehicle,
+      ROUTE_PATHS.dashboardTutorials,
+      ROUTE_PATHS.dashboardReports,
+      ROUTE_PATHS.dashboardMaintenance,
+      ROUTE_PATHS.dashboardOperations,
+      ROUTE_PATHS.dashboardTeams,
+      ROUTE_PATHS.dashboardDrivers,
+      ROUTE_PATHS.dashboardInvitations,
+      ROUTE_PATHS.dashboardTracking,
+      ROUTE_PATHS.dashboardGeofencing,
+      ROUTE_PATHS.dashboardFinances,
+      ROUTE_PATHS.dashboardCollections,
+      ROUTE_PATHS.dashboardBilling,
+      ROUTE_PATHS.dashboardCoaching,
+      ROUTE_PATHS.dashboardDashcam,
+      ROUTE_PATHS.dashboardHistory,
+      ROUTE_PATHS.dashboardIncidents,
+      ROUTE_PATHS.dashboardShiftClosure,
+      "/dashboard/admin/users",
+      ROUTE_PATHS.dashboardRoles,
+      ROUTE_PATHS.dashboardRetentionAnalytics,
+    ];
+
+    return prefixes.some((prefix) =>
+      pathname === prefix || pathname.startsWith(`${prefix}/`),
     );
   }
   if (tab.id === "account") {
