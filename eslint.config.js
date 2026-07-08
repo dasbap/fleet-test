@@ -20,6 +20,7 @@ export default tseslint.config(
       "dev-dist/**",
       "test-results/**",
       "playwright-report/**",
+      "docs/bootstrap/**",
       "android/**",
       "ios/**",
       "store-assets/**",

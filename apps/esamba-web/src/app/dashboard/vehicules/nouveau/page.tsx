@@ -228,7 +228,6 @@ export default function NouveauVehiculePage() {
             <label className="group cursor-pointer">
               <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-muted/30 transition-colors group-hover:border-primary/50">
                 {preview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={preview}
                     alt=""
