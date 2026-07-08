@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useCurrentRole } from "@/hooks/useCurrentRole";
 import { useNetworkOnline } from "@/features/account/hooks/useNetworkOnline";
 import { WifiOff } from "lucide-react";
 import { EmptyStateDashboard } from "@/components/dashboard/EmptyStateDashboard";
@@ -134,7 +133,7 @@ export default function DashboardPage() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const { missingCount } = useMissingPhoneCount(currentFleetId);
-  const { data: topDriverScores = [] } = useDriverScores(currentFleetId, {
+  const { data: topDriverScores = [] } = useDriverScores(currentFleetId ?? undefined, {
     enabled: !!currentFleetId,
     limit: 5,
   });
