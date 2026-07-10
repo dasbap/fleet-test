@@ -36,7 +36,7 @@ export async function seedTenant(
   // Organisation
   const { data: org, error: orgErr } = await admin
     .from("organisations")
-    .insert({ name: `Test Org ${tag}`, country: "CM", email: `${tag}@test.e-samba.com` })
+    .insert({ name: `Test Org ${tag}`, country_code: "CM" })
     .select("id")
     .single();
   if (orgErr) throw new Error(`seedTenant org: ${orgErr.message}`);
@@ -44,7 +44,7 @@ export async function seedTenant(
   // Flotte
   const { data: fleet, error: fleetErr } = await admin
     .from("flottes")
-    .insert({ org_id: org.id, name: `Flotte ${tag}`, country: "CM" })
+    .insert({ org_id: org.id, name: `Flotte ${tag}`, collection_policy: "mix" })
     .select("id")
     .single();
   if (fleetErr) throw new Error(`seedTenant fleet: ${fleetErr.message}`);
@@ -52,10 +52,10 @@ export async function seedTenant(
   // Véhicules
   const vehicleRows = Array.from({ length: vehicleCount }, (_, i) => ({
     fleet_id: fleet.id,
-    immatriculation: `LT-${tag}-${i + 1}`,
-    marque: "Toyota",
-    modele: "Hilux",
-    statut: "actif",
+    registration: `LT-${tag}-${i + 1}`,
+    brand: "Toyota",
+    model: "Hilux",
+    status: "ok",
   }));
 
   const { data: vehicles, error: vErr } = await admin
@@ -220,14 +220,32 @@ export async function seedQrToken(
   }
 
   const token = `QR-TEST-${crypto.randomUUID()}`;
+  const { data: vehicle, error: vehicleErr } = await admin
+    .from("vehicules")
+    .select("fleet_id")
+    .eq("id", vehicleId)
+    .single();
+  if (vehicleErr) throw new Error(`seedQrToken vehicle: ${vehicleErr.message}`);
+
+  const { data: userData, error: userErr } = await admin.auth.admin.createUser({
+    email: `qr-${crypto.randomUUID()}@example.test`,
+    password: `Qr-${crypto.randomUUID()}-test`,
+    email_confirm: true,
+  });
+  if (userErr || !userData.user) {
+    throw new Error(`seedQrToken auth user: ${userErr?.message ?? "user absent"}`);
+  }
 
   const { data, error } = await admin
     .from("jetons_qr")
     .insert({
+      fleet_id: vehicle.fleet_id,
       vehicle_id: vehicleId,
-      token,
+      code: token,
+      token_hash: token,
       expires_at: expiresAt.toISOString(),
-      is_active: true,
+      status: "active",
+      created_by: userData.user.id,
     })
     .select("id")
     .single();
@@ -295,15 +313,16 @@ export async function getActiveSubscription(
   admin: SupabaseClient,
   fleetId: string,
 ): Promise<{ id: string; status: string; ends_at: string; plan_code: string } | null> {
-  const { data } = await admin
+  const { data, error } = await admin
     .from("abonnements")
     .select("id, status, ends_at, plans(code)")
     .eq("fleet_id", fleetId)
     .in("status", ["trial", "active", "grace_period"])
-    .order("created_at", { ascending: false })
+    .order("starts_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
+  if (error) throw new Error(`getActiveSubscription: ${error.message}`);
   if (!data) return null;
   return {
     id: data.id,
@@ -339,5 +358,12 @@ export async function getPlanAccess(
 ): Promise<Record<string, unknown>> {
   const { data, error } = await admin.rpc("get_plan_access", { p_fleet_id: fleetId });
   if (error) throw new Error(`get_plan_access RPC: ${error.message}`);
-  return data as Record<string, unknown>;
+  const access = data as Record<string, unknown>;
+  return {
+    ...access,
+    can_add_vehicle: access.can_add_vehicle ?? access.canCreateVehicle,
+    ai_enabled: access.ai_enabled ?? access.canUsePulse,
+    reports_enabled: access.reports_enabled ?? access.canExportReports,
+    finance_enabled: access.finance_enabled ?? access.canUseFinance,
+  };
 }

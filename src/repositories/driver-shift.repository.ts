@@ -84,7 +84,78 @@ export interface PendingFleetClosure {
 /**
  * Repository pour l'accès aux données des créneaux conducteurs
  */
+const SHIFT_ASSIGNMENT_SELECT = `
+  *,
+  assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
+    id,
+    fleet_id,
+    vehicle_id,
+    driver_user_id,
+    vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(
+      id,
+      registration,
+      brand,
+      model
+    )
+  )
+`;
+
 export class DriverShiftRepository {
+  private async attachDriverProfiles<T extends DriverShift>(shifts: T[]): Promise<T[]> {
+    const driverIds = Array.from(
+      new Set(
+        shifts
+          .map((shift) => shift.assignment?.driver_user_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+
+    if (driverIds.length === 0) {
+      return shifts;
+    }
+
+    const { data, error } = await supabase
+      .from('profils')
+      .select('user_id, full_name')
+      .in('user_id', driverIds);
+
+    if (error) {
+      console.warn('Unable to enrich shifts with driver profiles:', error);
+      return shifts;
+    }
+
+    const profilesById = new Map(
+      (data || []).map((profile: { user_id: string; full_name: string | null }) => [
+        profile.user_id,
+        profile,
+      ]),
+    );
+
+    return shifts.map((shift) => {
+      const driverUserId = shift.assignment?.driver_user_id;
+      const profile = driverUserId ? profilesById.get(driverUserId) : null;
+      if (!shift.assignment || !profile) {
+        return shift;
+      }
+
+      return {
+        ...shift,
+        assignment: {
+          ...shift.assignment,
+          driver: profile,
+        },
+      };
+    });
+  }
+
+  private async attachDriverProfile<T extends DriverShift>(shift: T | null): Promise<T | null> {
+    if (!shift) {
+      return null;
+    }
+
+    const [enriched] = await this.attachDriverProfiles([shift]);
+    return enriched ?? shift;
+  }
   /**
    * Indique si le conducteur a au moins un créneau (toute flotte confondue).
    */
@@ -128,25 +199,7 @@ export class DriverShiftRepository {
     // Récupérer le créneau actif pour cette affectation
     const { data, error } = await supabase
       .from('creneaux_conducteurs')
-      .select(`
-        *,
-        assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
-          id,
-          fleet_id,
-          vehicle_id,
-          driver_user_id,
-          vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(
-            id,
-            registration,
-            brand,
-            model
-          ),
-          driver:profils!affectations_vehicules_driver_user_id_fkey(
-            user_id,
-            full_name
-          )
-        )
-      `)
+      .select(SHIFT_ASSIGNMENT_SELECT)
       .eq('assignment_id', assignmentData.id)
       .eq('status', 'open')
       .maybeSingle();
@@ -156,7 +209,7 @@ export class DriverShiftRepository {
       throw new Error(error.message);
     }
 
-    return data as DriverShift | null;
+    return this.attachDriverProfile(data as DriverShift | null);
   }
 
   /**
@@ -178,25 +231,7 @@ export class DriverShiftRepository {
     // Récupérer les créneaux pour ces affectations
     const { data, error } = await supabase
       .from('creneaux_conducteurs')
-      .select(`
-        *,
-        assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
-          id,
-          fleet_id,
-          vehicle_id,
-          driver_user_id,
-          vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(
-            id,
-            registration,
-            brand,
-            model
-          ),
-          driver:profils!affectations_vehicules_driver_user_id_fkey(
-            user_id,
-            full_name
-          )
-        )
-      `)
+      .select(SHIFT_ASSIGNMENT_SELECT)
       .in('assignment_id', assignmentIds)
       .order('started_at', { ascending: false })
       .limit(limit);
@@ -206,7 +241,7 @@ export class DriverShiftRepository {
       throw new Error(error.message);
     }
 
-    return (data || []) as DriverShift[];
+    return this.attachDriverProfiles((data || []) as DriverShift[]);
   }
 
   /**
@@ -215,25 +250,7 @@ export class DriverShiftRepository {
   async findById(shiftId: string): Promise<DriverShift | null> {
     const { data, error } = await supabase
       .from('creneaux_conducteurs')
-      .select(`
-        *,
-        assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
-          id,
-          fleet_id,
-          vehicle_id,
-          driver_user_id,
-          vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(
-            id,
-            registration,
-            brand,
-            model
-          ),
-          driver:profils!affectations_vehicules_driver_user_id_fkey(
-            user_id,
-            full_name
-          )
-        )
-      `)
+      .select(SHIFT_ASSIGNMENT_SELECT)
       .eq('id', shiftId)
       .maybeSingle();
 
@@ -242,7 +259,7 @@ export class DriverShiftRepository {
       throw new Error(error.message);
     }
 
-    return (data as DriverShift | null) ?? null;
+    return this.attachDriverProfile((data as DriverShift | null) ?? null);
   }
 
   /**
@@ -465,25 +482,7 @@ export class DriverShiftRepository {
   async findOpenShiftsByFleetId(fleetId: string): Promise<DriverShift[]> {
     const { data, error } = await supabase
       .from('creneaux_conducteurs')
-      .select(`
-        *,
-        assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
-          id,
-          fleet_id,
-          vehicle_id,
-          driver_user_id,
-          vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(
-            id,
-            registration,
-            brand,
-            model
-          ),
-          driver:profils!affectations_vehicules_driver_user_id_fkey(
-            user_id,
-            full_name
-          )
-        )
-      `)
+      .select(SHIFT_ASSIGNMENT_SELECT)
       .eq('status', 'open')
       .order('started_at', { ascending: false });
 
@@ -492,7 +491,7 @@ export class DriverShiftRepository {
       throw new Error(error.message);
     }
 
-    const rows = (data || []) as DriverShift[];
+    const rows = await this.attachDriverProfiles((data || []) as DriverShift[]);
     return rows.filter((s) => s.assignment?.fleet_id === fleetId);
   }
 
@@ -524,9 +523,7 @@ export class DriverShiftRepository {
         km_end,
         assignment:affectations_vehicules!creneaux_conducteurs_assignment_id_fkey(
           vehicle_id,
-          driver:profils!affectations_vehicules_driver_user_id_fkey(
-            full_name
-          )
+          driver_user_id
         )
       `)
       .in('assignment_id', assignmentIds);
@@ -550,6 +547,24 @@ export class DriverShiftRepository {
       );
 
     const regByVehicleId = new Map((vehicles || []).map((v: { id: string; registration: string }) => [v.id, v.registration]));
+    const driverIds = Array.from(
+      new Set(
+        (shifts || [])
+          .map((s) => (s as { assignment?: { driver_user_id?: string } | null }).assignment?.driver_user_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const { data: profiles, error: profileError } = driverIds.length > 0
+      ? await supabase.from('profils').select('user_id, full_name').in('user_id', driverIds)
+      : { data: [], error: null };
+
+    if (profileError) {
+      console.warn('Unable to enrich pending closures with driver profiles:', profileError);
+    }
+
+    const profileById = new Map(
+      (profiles || []).map((p: { user_id: string; full_name: string | null }) => [p.user_id, p]),
+    );
 
     type ShiftRow = {
       id: string;
@@ -558,7 +573,7 @@ export class DriverShiftRepository {
       km_end: number | null;
       assignment?: {
         vehicle_id: string;
-        driver?: { full_name: string | null } | null;
+        driver_user_id: string;
       } | null;
     };
 
@@ -580,7 +595,9 @@ export class DriverShiftRepository {
         vehicleRegistration: vid ? regByVehicleId.get(vid) ?? null : null,
         kmStart: s.km_start,
         kmEnd: s.km_end,
-        driverName: s.assignment?.driver?.full_name ?? null,
+        driverName: s.assignment?.driver_user_id
+          ? profileById.get(s.assignment.driver_user_id)?.full_name ?? null
+          : null,
       });
     });
 

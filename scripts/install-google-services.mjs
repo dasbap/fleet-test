@@ -36,13 +36,20 @@ try {
 }
 
 const projectId = parsed?.project_info?.project_id ?? "";
-const pkg = parsed?.client?.[0]?.client_info?.android_client_info?.package_name ?? "";
+const clients = Array.isArray(parsed?.client) ? parsed.client : [];
+const packageNames = clients
+  .map((client) => client?.client_info?.android_client_info?.package_name)
+  .filter(Boolean);
 
 if (projectId !== "taxis-flotte") {
   console.warn(`ATTENTION: project_id=${projectId} (attendu taxis-flotte)`);
 }
-if (pkg !== "com.esamba.flotte") {
-  console.warn(`ATTENTION: package=${pkg} (attendu com.esamba.flotte)`);
+if (!packageNames.includes("com.esamba.flotte")) {
+  console.error(
+    `Package Android com.esamba.flotte absent de google-services.json (trouves: ${packageNames.join(", ") || "aucun"})`,
+  );
+  console.error("Telechargez le fichier depuis l'app Firebase Android com.esamba.flotte.");
+  process.exit(1);
 }
 
 copyFileSync(src, dest);

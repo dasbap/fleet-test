@@ -6,22 +6,23 @@ export interface AdminProfileRow {
 }
 
 /**
- * Accès table admin_profiles (statut admin plateforme).
+ * Statut admin plateforme cote client.
+ *
+ * Le schema runtime actuel n'expose pas `admin_profiles` au client. Les routes
+ * sensibles gardent leurs controles serveur/RPC, et l'UI traite donc
+ * l'utilisateur comme non-admin plateforme quand cette table n'est pas
+ * disponible.
  */
 export class AdminProfileRepository {
   async findActiveByUserId(userId: string): Promise<AdminProfileRow | null> {
-    const { data, error } = await supabase
-      .from("admin_profiles")
-      .select("user_id, is_active")
-      .eq("user_id", userId)
-      .eq("is_active", true)
-      .maybeSingle();
+    if (!userId) return null;
+
+    const { data, error } = await supabase.rpc("is_platform_admin");
 
     if (error) {
-      console.error("Erreur admin_profiles:", error);
       throw new Error(error.message);
     }
 
-    return (data as AdminProfileRow | null) ?? null;
+    return data === true ? { user_id: userId, is_active: true } : null;
   }
 }

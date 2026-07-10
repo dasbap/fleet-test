@@ -12,6 +12,10 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION?: string;
   /** Session mockée locale (sans Supabase). Valeur attendue : "true". */
   readonly VITE_USE_MOCK_AUTH?: string;
+  /** Active les acces et sessions demo hors build production. Valeur attendue : "true". */
+  readonly VITE_ENABLE_DEMO_UI?: string;
+  /** Mot de passe injecte uniquement pour les acces demo locaux/staging. */
+  readonly VITE_DEMO_PASSWORD?: string;
   /** Mode E2E Playwright onboarding : expose le wizard mock avec orgId stable. */
   readonly VITE_E2E_ONBOARDING?: string;
   /** UUID organisation mockée pour les scénarios E2E onboarding. */
@@ -36,6 +40,8 @@ interface ImportMetaEnv {
   readonly VITE_TUTORIAL_QUOTA_ENTERPRISE?: string;
   /** UUID flottes pilotes Expo terrain (séparés par virgule). */
   readonly VITE_TERRAIN_EXPO_FLEET_IDS?: string;
+  /** "true" when native push can safely call Firebase-backed registration. */
+  readonly VITE_NATIVE_PUSH_CONFIGURED?: string;
 }
 
 interface ImportMeta {

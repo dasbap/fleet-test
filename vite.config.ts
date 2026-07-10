@@ -40,6 +40,29 @@ function radixUiMainEntryPlugin(): Plugin {
   };
 }
 
+function hasAndroidFirebaseClient(expectedPackageName: string): boolean {
+  const googleServicesPath = path.resolve(__dirname, "android/app/google-services.json");
+  try {
+    const parsed = JSON.parse(fs.readFileSync(googleServicesPath, "utf8")) as {
+      client?: Array<{
+        client_info?: {
+          android_client_info?: {
+            package_name?: string;
+          };
+        };
+      }>;
+    };
+    return (
+      parsed.client?.some(
+        (client) =>
+          client?.client_info?.android_client_info?.package_name === expectedPackageName,
+      ) === true
+    );
+  } catch {
+    return false;
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -53,6 +76,9 @@ export default defineConfig(({ mode }) => {
     : (env.VITE_SUPABASE_ANON_KEY ?? "");
   const isProd = mode === "production" || mode === "capacitor";
   const isAnalyze = mode === "analyze" || process.env.ANALYZE === "true";
+  const nativePushConfigured =
+    env.VITE_NATIVE_PUSH_CONFIGURED === "true" ||
+    (mode === "capacitor" && hasAndroidFirebaseClient("com.esamba.flotte"));
   /** Quand `npm run dev:local` lance Vite : pas d’ouverture auto ici (évite `vite --open false` → URL `/false`). */
   const skipServerOpen = process.env.ESAMBA_MANAGED_OPEN === "1";
 
@@ -67,7 +93,7 @@ export default defineConfig(({ mode }) => {
     sourcemap: isProd ? "hidden" : true,
     modulePreload: {
       resolveDependencies(_filename, deps) {
-        const heavy = /vendor-charts|chunk-map|vendor-analytics|jspdf|xlsx/i;
+        const heavy = /vendor-charts|chunk-dashboard|chunk-map|vendor-analytics|jspdf|xlsx/i;
         return deps.filter((d) => !heavy.test(d));
       },
     },
@@ -478,6 +504,9 @@ export default defineConfig(({ mode }) => {
   define: {
     "self.SUPABASE_URL": JSON.stringify(supabaseUrl),
     "self.SUPABASE_ANON_KEY": JSON.stringify(supabaseAnon),
+    "import.meta.env.VITE_NATIVE_PUSH_CONFIGURED": JSON.stringify(
+      nativePushConfigured ? "true" : "false",
+    ),
   },
 };
 });

@@ -61,8 +61,7 @@ function subscribe(orgId: string, token: string) {
       {
         event: "INSERT",
         schema: "public",
-        table: "dashboard_alerts",
-        filter: `org_id=eq.${orgId}`,
+        table: "alertes_automatiques",
       },
       (payload) => {
         broadcast({ type: "ALERT_INSERT", payload: payload.new });
@@ -73,8 +72,7 @@ function subscribe(orgId: string, token: string) {
       {
         event: "UPDATE",
         schema: "public",
-        table: "dashboard_alerts",
-        filter: `org_id=eq.${orgId}`,
+        table: "alertes_automatiques",
       },
       (payload) => {
         broadcast({ type: "ALERT_UPDATE", payload: payload.new });

@@ -135,41 +135,15 @@ describe("AuthPage", () => {
   it("en mode ?mode=signup affiche le formulaire d’inscription", () => {
     renderAuth("/auth?mode=signup");
 
-    expect(screen.getByRole("heading", { name: /créer un compte/i })).toBeInTheDocument();
-    expect(screen.getByLabelText("Organisation")).toBeInTheDocument();
-    expect(screen.getByTestId("invitation-code-stub")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /bon retour/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Organisation")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("invitation-code-stub")).not.toBeInTheDocument();
   });
 
-  it("accès démo rapide : signIn avec le compte sélectionné puis navigation post-login", async () => {
-    const { DEMO_QUICK_ACCOUNTS } = await import("@/features/auth/data/demoQuickAccess");
-    const firstDemo = DEMO_QUICK_ACCOUNTS[0]!;
+  it("ne montre plus les accès démo", async () => {
     renderAuth("/auth");
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", {
-          name: new RegExp(`Démo.*${firstDemo.role}`, "i"),
-        }),
-      ).toBeInTheDocument();
-    });
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: new RegExp(`Démo.*${firstDemo.role}`, "i"),
-      }),
-    );
-
-    await waitFor(() => {
-      expect(authActions.signIn).toHaveBeenCalledWith(
-        firstDemo.email,
-        "demo-test-password",
-        undefined,
-      );
-    });
-    await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith(
-        `/post-login?next=${encodeURIComponent(ROUTE_PATHS.dashboard)}`,
-      );
-    });
+    expect(screen.queryByText(/accès démo/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /démo/i })).not.toBeInTheDocument();
   });
 });

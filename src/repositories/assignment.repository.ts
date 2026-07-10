@@ -48,16 +48,9 @@ export interface AssignmentHistoryRow {
  */
 export class AssignmentRepository {
   async getDriversByFleet(fleetId: string): Promise<DriverRow[]> {
-    const { data, error } = await supabase
+    const { data: memberships, error } = await supabase
       .from('flotte_adhesions')
-      .select(
-        `
-        user_id,
-        role,
-        is_active,
-        profile:profils!flotte_adhesions_user_id_fkey(user_id, full_name, phone)
-      `
-      )
+      .select('user_id, role, is_active')
       .eq('fleet_id', fleetId)
       .eq('role', 'driver')
       .eq('is_active', true);
@@ -67,10 +60,28 @@ export class AssignmentRepository {
       throw new Error(error.message);
     }
 
-    return (data || []).map((d: { user_id: string; role: string; is_active: boolean; profile?: { full_name: string | null; phone: string | null } | null }) => ({
+    const rows = memberships ?? [];
+    const userIds = rows.map((row) => row.user_id);
+    const { data: profiles, error: profilesError } = userIds.length
+      ? await supabase
+          .from('profils')
+          .select('user_id, full_name, phone')
+          .in('user_id', userIds)
+      : { data: [], error: null };
+
+    if (profilesError) {
+      console.error('Error fetching driver profiles:', profilesError);
+      throw new Error(profilesError.message);
+    }
+
+    const profileByUserId = new Map(
+      (profiles ?? []).map((profile) => [profile.user_id, profile]),
+    );
+
+    return rows.map((d) => ({
       user_id: d.user_id,
-      full_name: d.profile?.full_name ?? null,
-      phone: d.profile?.phone ?? null,
+      full_name: profileByUserId.get(d.user_id)?.full_name ?? null,
+      phone: profileByUserId.get(d.user_id)?.phone ?? null,
       role: d.role,
       is_active: d.is_active,
     }));
@@ -79,13 +90,7 @@ export class AssignmentRepository {
   async getActiveAssignments(fleetId?: string): Promise<AssignmentRow[]> {
     let query = supabase
       .from('affectations_vehicules')
-      .select(
-        `
-        *,
-        vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(id, registration, brand, model),
-        driver:profils!affectations_vehicules_driver_user_id_fkey(user_id, full_name)
-      `
-      )
+      .select('*')
       .eq('is_active', true)
       .order('created_at', { ascending: false });
 
@@ -100,7 +105,38 @@ export class AssignmentRepository {
       throw new Error(error.message);
     }
 
-    return (data || []) as AssignmentRow[];
+    const assignments = (data || []) as AssignmentRow[];
+    if (assignments.length === 0) return [];
+
+    const vehicleIds = [...new Set(assignments.map((row) => row.vehicle_id))];
+    const driverIds = [...new Set(assignments.map((row) => row.driver_user_id))];
+    const [{ data: vehicles, error: vehiclesError }, { data: profiles, error: profilesError }] =
+      await Promise.all([
+        vehicleIds.length
+          ? supabase
+              .from('vehicules')
+              .select('id, registration, brand, model')
+              .in('id', vehicleIds)
+          : Promise.resolve({ data: [], error: null }),
+        driverIds.length
+          ? supabase
+              .from('profils')
+              .select('user_id, full_name')
+              .in('user_id', driverIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+    if (vehiclesError) throw new Error(vehiclesError.message);
+    if (profilesError) throw new Error(profilesError.message);
+
+    const vehicleById = new Map((vehicles ?? []).map((vehicle) => [vehicle.id, vehicle]));
+    const profileByUserId = new Map((profiles ?? []).map((profile) => [profile.user_id, profile]));
+
+    return assignments.map((assignment) => ({
+      ...assignment,
+      vehicle: vehicleById.get(assignment.vehicle_id) ?? null,
+      driver: profileByUserId.get(assignment.driver_user_id) ?? null,
+    }));
   }
 
   async getDriverAssignmentHistory(driverUserId: string): Promise<AssignmentHistoryRow[]> {
@@ -147,15 +183,9 @@ export class AssignmentRepository {
   }
 
   async endAssignment(assignmentId: string): Promise<AssignmentRow> {
-    const { data, error } = await supabase
-      .from('affectations_vehicules')
-      .update({
-        is_active: false,
-        ends_at: new Date().toISOString(),
-      })
-      .eq('id', assignmentId)
-      .select()
-      .maybeSingle();
+    const { data, error } = await supabase.rpc('delier_vehicule_chauffeur', {
+      p_assignment_id: assignmentId,
+    });
 
     if (error) {
       console.error('Error ending assignment:', error);

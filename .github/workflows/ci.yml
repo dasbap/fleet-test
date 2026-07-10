@@ -218,7 +218,33 @@ jobs:
         if: always()
         shell: bash
         run: |
-          node -e "const fs=require('fs');const path=require('path');const dir='ci-metrics';const files=['lint.json','unit.json','integration.json','e2e.json'];const layers=files.map((f)=>{const p=path.join(dir,f);if(!fs.existsSync(p)){return {layer:f.replace('.json',''),status:'failed',duration_ms:0,test_count:null,flaky_count:null}}return JSON.parse(fs.readFileSync(p,'utf8'));});const payload={generated_at:new Date().toISOString(),layers};fs.writeFileSync('ci-metrics.json',JSON.stringify(payload,null,2));const rows=layers.map((l)=>`| ${l.layer} | ${l.status} | ${l.duration_ms} | ${l.test_count ?? 'n/a'} | ${l.flaky_count ?? 'n/a'} |`).join('\n');const md=['## CI metrics','', '| Couche | Statut | Duree (ms) | Tests | Flaky E2E |','|---|---:|---:|---:|---:|',rows,''].join('\n');fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,md);"
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const dir = 'ci-metrics';
+          const files = ['lint.json', 'unit.json', 'integration.json', 'e2e.json'];
+          const layers = files.map((file) => {
+            const p = path.join(dir, file);
+            if (!fs.existsSync(p)) {
+              return { layer: file.replace('.json', ''), status: 'failed', duration_ms: 0, test_count: null, flaky_count: null };
+            }
+            return JSON.parse(fs.readFileSync(p, 'utf8'));
+          });
+          const payload = { generated_at: new Date().toISOString(), layers };
+          fs.writeFileSync('ci-metrics.json', JSON.stringify(payload, null, 2));
+          const rows = layers
+            .map((layer) => `| ${layer.layer} | ${layer.status} | ${layer.duration_ms} | ${layer.test_count ?? 'n/a'} | ${layer.flaky_count ?? 'n/a'} |`)
+            .join('\n');
+          const md = [
+            '## CI metrics',
+            '',
+            '| Couche | Statut | Duree (ms) | Tests | Flaky E2E |',
+            '|---|---:|---:|---:|---:|',
+            rows,
+            '',
+          ].join('\n');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
+          NODE
 
       - name: Upload metrics artifact
         if: always()

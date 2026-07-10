@@ -65,10 +65,53 @@ export class DashboardAlertService {
 
   /** Mappe une ligne Realtime (postgres_changes) vers le domaine applicatif. */
   mapRealtimePayloadToAlert(payload: unknown): DashboardAlert {
-    const row = payload as DashboardAlertRow;
+    const row = payload as DashboardAlertRow & {
+      fleet_id?: string;
+      alert_type?: string | null;
+      vehicle_id?: string | null;
+      created_at?: string;
+      resolved_at?: string | null;
+    };
     if (!row || typeof row.id !== "string") {
       throw new Error("Payload Realtime alerte invalide");
     }
+
+    if (!row.action) {
+      return {
+        id: row.id,
+        vehicleId: row.vehicle_id ?? row.id,
+        plate: "Vehicule",
+        vehicleName: "Vehicule",
+        severity:
+          row.severity === "critical"
+            ? "critical"
+            : row.severity === "warning" || row.severity === "high" || row.severity === "medium"
+              ? "warning"
+              : "info",
+        type:
+          row.alert_type === "vehicle_blocked"
+            ? "brakes"
+            : row.alert_type === "maintenance_due" || row.alert_type === "failure_risk"
+              ? "revision"
+              : row.alert_type === "document_expired"
+                ? "ct"
+                : "custom",
+        message: row.message ?? "Alerte flotte a traiter",
+        createdAt: row.created_at ?? new Date().toISOString(),
+        resolvedAt: row.resolved_at ?? null,
+        action: {
+          kind: row.alert_type === "vehicle_blocked" ? "immobilize" : "schedule",
+          label: "Traiter ->",
+          payload: {
+            alertId: row.id,
+            fleetId: row.fleet_id,
+            vehicleId: row.vehicle_id,
+            type: row.alert_type,
+          },
+        },
+      };
+    }
+
     return mapDashboardAlertRowToDomain(row);
   }
 

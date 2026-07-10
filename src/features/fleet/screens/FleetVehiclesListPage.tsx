@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Car, UserPlus } from "lucide-react";
+import { Search, Car, UserMinus, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale/fr";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEndAssignment } from "@/hooks/useAssignments";
 import { useVehicleList, type VehicleStatusApi } from "@/hooks/useVehicles";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ export default function FleetVehiclesListPage() {
   const canAssignDriver = can("vehicle.assign_driver");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const endAssignment = useEndAssignment();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
@@ -55,6 +57,18 @@ export default function FleetVehiclesListPage() {
   const openAssignDialog = (vehicleId: string) => {
     setSelectedVehicleId(vehicleId);
     setAssignDialogOpen(true);
+  };
+
+  const handleEndAssignment = async (assignmentId: string, driverName?: string) => {
+    const confirmed = window.confirm(
+      `Delier ${driverName || "ce chauffeur"} de ce vehicule ?`,
+    );
+    if (!confirmed) return;
+    try {
+      await endAssignment.mutateAsync(assignmentId);
+    } catch {
+      // Toast handled by the mutation.
+    }
   };
 
   const listFilters = useMemo(
@@ -200,7 +214,21 @@ export default function FleetVehiclesListPage() {
                           : "Non planifié"}
                       </p>
                     </div>
-                    {canAssignDriver && v.status === "ok" ? (
+                    {canAssignDriver && v.status === "ok" && v.active_assignment ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-2 border-destructive/30 text-destructive hover:text-destructive"
+                        disabled={endAssignment.isPending}
+                        onClick={() =>
+                          handleEndAssignment(v.active_assignment!.id, driverName || undefined)
+                        }
+                      >
+                        <UserMinus className="h-4 w-4" aria-hidden />
+                        Delier le chauffeur
+                      </Button>
+                    ) : canAssignDriver && v.status === "ok" ? (
                       <Button
                         type="button"
                         variant="outline"
@@ -209,7 +237,7 @@ export default function FleetVehiclesListPage() {
                         onClick={() => openAssignDialog(v.id)}
                       >
                         <UserPlus className="h-4 w-4" aria-hidden />
-                        {driverName ? "Changer le chauffeur" : "Affecter un chauffeur"}
+                        Affecter un chauffeur
                       </Button>
                     ) : null}
                   </CardContent>

@@ -41,7 +41,7 @@ async function checkMigrationsList() {
 
 async function checkFermerCreneauDefinition() {
   const { data, error } = await supabase.rpc('exec_sql_readonly', {
-    query: `SELECT pg_get_functiondef('public.fermer_creneau(uuid,integer,integer,text,text,text)'::regprocedure) AS def`,
+    query: `SELECT pg_get_functiondef('public.fermer_creneau(uuid,integer,integer,text,text,text,text)'::regprocedure) AS def`,
   });
 
   if (error?.code === 'PGRST202' || error?.message?.includes('Could not find the function')) {
@@ -51,7 +51,9 @@ async function checkFermerCreneauDefinition() {
 
   const row = Array.isArray(data) ? data[0] : data;
   const def = String(row?.def ?? '').toLowerCase();
-  if (!def.includes('update vehicules') || !def.includes('greatest')) {
+  const updatesVehicles =
+    def.includes('update vehicules') || def.includes('update public.vehicules');
+  if (!updatesVehicles || !def.includes('greatest')) {
     return { ok: false, reason: 'corps fermer_creneau sans UPDATE vehicules/GREATEST' };
   }
   return { ok: true };

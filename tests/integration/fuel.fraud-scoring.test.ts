@@ -14,9 +14,9 @@ import {
 } from "./helpers/testUsers";
 
 const canRunSuite = canRunSupabaseIntegrationTests();
-const describeIfReady = canRunSuite ? describe : describe.skip;
+const describeIntegration = canRunSuite ? describe : describe.skip;
 
-describeIfReady("Fuel fraud scoring", () => {
+describeIntegration("Fuel fraud scoring", () => {
   let clients: IntegrationClients;
   let context: TestFleetContext;
   let vehicleId: string;
@@ -26,7 +26,11 @@ describeIfReady("Fuel fraud scoring", () => {
     context = await createFleetContextForUser(clients.admin, clients.userId, {
       role: "organizer",
     });
-    vehicleId = await createVehicleForFleet(clients.admin, context.fleetId, "FUEL");
+    vehicleId = await createVehicleForFleet(
+      clients.admin,
+      context.fleetId,
+      "FUEL"
+    );
   });
 
   afterAll(async () => {
@@ -39,32 +43,38 @@ describeIfReady("Fuel fraud scoring", () => {
     const lowPriceKey = randomUUID();
     const highPriceKey = randomUUID();
 
-    const { error: firstFuelError } = await clients.user.rpc("enregistrer_carburant_offline", {
-      p_fleet_id: context.fleetId,
-      p_vehicle_id: vehicleId,
-      p_driver_user_id: clients.userId,
-      p_liters: 40,
-      p_amount_xof: 20000,
-      p_odometer_km: 1500,
-      p_purchased_at: new Date().toISOString(),
-      p_station_name: "Station Test A",
-      p_receipt_ref: "REC-LOW",
-      p_idempotency_key: lowPriceKey,
-    });
+    const { error: firstFuelError } = await clients.user.rpc(
+      "enregistrer_carburant_offline",
+      {
+        p_fleet_id: context.fleetId,
+        p_vehicle_id: vehicleId,
+        p_driver_user_id: clients.userId,
+        p_liters: 40,
+        p_amount_xof: 20000,
+        p_odometer_km: 1500,
+        p_purchased_at: new Date().toISOString(),
+        p_station_name: "Station Test A",
+        p_receipt_ref: "REC-LOW",
+        p_idempotency_key: lowPriceKey,
+      }
+    );
     expect(firstFuelError).toBeNull();
 
-    const { error: secondFuelError } = await clients.user.rpc("enregistrer_carburant_offline", {
-      p_fleet_id: context.fleetId,
-      p_vehicle_id: vehicleId,
-      p_driver_user_id: clients.userId,
-      p_liters: 10,
-      p_amount_xof: 15000,
-      p_odometer_km: 1510,
-      p_purchased_at: new Date().toISOString(),
-      p_station_name: "Station Test B",
-      p_receipt_ref: "REC-HIGH",
-      p_idempotency_key: highPriceKey,
-    });
+    const { error: secondFuelError } = await clients.user.rpc(
+      "enregistrer_carburant_offline",
+      {
+        p_fleet_id: context.fleetId,
+        p_vehicle_id: vehicleId,
+        p_driver_user_id: clients.userId,
+        p_liters: 10,
+        p_amount_xof: 15000,
+        p_odometer_km: 1510,
+        p_purchased_at: new Date().toISOString(),
+        p_station_name: "Station Test B",
+        p_receipt_ref: "REC-HIGH",
+        p_idempotency_key: highPriceKey,
+      }
+    );
     expect(secondFuelError).toBeNull();
 
     const { data, error } = await clients.user.rpc("predict_failure_risk", {
@@ -86,6 +96,8 @@ describeIfReady("Fuel fraud scoring", () => {
 
 if (!canRunSuite) {
   console.warn(
-    `[tests/integration] Suite ignoree: variables manquantes (${getMissingSupabaseIntegrationEnv().join(", ")})`,
+    `[tests/integration] Suite ignoree: variables manquantes (${getMissingSupabaseIntegrationEnv().join(
+      ", "
+    )})`
   );
 }

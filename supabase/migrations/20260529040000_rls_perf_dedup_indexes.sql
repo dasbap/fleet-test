@@ -1,44 +1,75 @@
 -- ============================================================
--- PERF + CLEANUP — 2026-05-29
--- 1. auth_rls_initplan : (select auth.uid()) sur ~80 policies
--- 2. Drop policies Clerk-era + doublons exacts
--- 3. Drop index dupliqués (sans CONCURRENTLY — transaction OK)
+-- PERF + CLEANUP - 2026-05-29
+-- Fresh DB safe replay: each advisor statement is best effort.
 -- ============================================================
 
+CREATE OR REPLACE FUNCTION pg_temp.run_advisor_statement(p_sql text)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  EXECUTE p_sql;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Advisor statement ignore: % [%]', SQLERRM, left(p_sql, 160);
+END;
+$$;
 
--- ============================================================
--- PARTIE 1 : auth_rls_initplan — (select auth.uid())
--- ============================================================
-
--- access_codes
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "access_codes_select_admin" ON public.access_codes;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "access_codes_select_admin" ON public.access_codes
   FOR SELECT TO authenticated
   USING (is_platform_admin() OR (created_by = (SELECT auth.uid())));
+$advisor$);
 
--- activation_progress
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "Lecture propre ligne" ON public.activation_progress;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "Lecture propre ligne" ON public.activation_progress
   FOR SELECT
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "Insertion propre ligne" ON public.activation_progress;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "Insertion propre ligne" ON public.activation_progress
   FOR INSERT
   WITH CHECK ((SELECT auth.uid()) = user_id);
+$advisor$);
 
-DROP POLICY IF EXISTS "Mise à jour propre ligne" ON public.activation_progress;
-CREATE POLICY "Mise à jour propre ligne" ON public.activation_progress
+SELECT pg_temp.run_advisor_statement($advisor$
+DROP POLICY IF EXISTS "Mise Ã  jour propre ligne" ON public.activation_progress;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
+CREATE POLICY "Mise Ã  jour propre ligne" ON public.activation_progress
   FOR UPDATE
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
--- affectations_vehicules
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "affectations_lecture_conducteur_soi" ON public.affectations_vehicules;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "affectations_lecture_conducteur_soi" ON public.affectations_vehicules
   FOR SELECT
   USING (driver_user_id = (SELECT auth.uid()));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "affectations_select_fleet" ON public.affectations_vehicules;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "affectations_select_fleet" ON public.affectations_vehicules
   FOR SELECT TO authenticated
   USING (
@@ -50,8 +81,13 @@ CREATE POLICY "affectations_select_fleet" ON public.affectations_vehicules
     OR (driver_user_id = (SELECT auth.uid()))
     OR is_platform_admin()
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "affectations_insert_manager" ON public.affectations_vehicules;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "affectations_insert_manager" ON public.affectations_vehicules
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -62,9 +98,13 @@ CREATE POLICY "affectations_insert_manager" ON public.affectations_vehicules
         AND (fa.role)::text = ANY (ARRAY['organizer'::text, 'manager'::text])))
     OR is_platform_admin()
   );
+$advisor$);
 
--- alertes_automatiques
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "alertes_automatiques_select_roles" ON public.alertes_automatiques;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "alertes_automatiques_select_roles" ON public.alertes_automatiques
   FOR SELECT TO authenticated
   USING (
@@ -73,9 +113,13 @@ CREATE POLICY "alertes_automatiques_select_roles" ON public.alertes_automatiques
     OR has_role(fleet_id, 'organizer'::role_type)
     OR has_role(fleet_id, 'mechanic'::role_type)
   );
+$advisor$);
 
--- api_keys
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "api_keys_org_owner" ON public.api_keys;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "api_keys_org_owner" ON public.api_keys
   FOR ALL
   USING (
@@ -85,15 +129,23 @@ CREATE POLICY "api_keys_org_owner" ON public.api_keys
         AND om.is_active = true
         AND om.role = ANY (ARRAY['org_owner'::text, 'org_admin'::text]))
   );
+$advisor$);
 
--- billing_events
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "billing_events_insert_service" ON public.billing_events;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "billing_events_insert_service" ON public.billing_events
   FOR INSERT
   WITH CHECK (((SELECT auth.jwt()) ->> 'role'::text) = 'service_role'::text);
+$advisor$);
 
--- clotures_creneaux
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "clotures_insertion_conducteur" ON public.clotures_creneaux;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "clotures_insertion_conducteur" ON public.clotures_creneaux
   FOR INSERT
   WITH CHECK (
@@ -102,8 +154,13 @@ CREATE POLICY "clotures_insertion_conducteur" ON public.clotures_creneaux
       WHERE c.id = clotures_creneaux.shift_id
         AND a.driver_user_id = (SELECT auth.uid()))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "clotures_insert_driver" ON public.clotures_creneaux;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "clotures_insert_driver" ON public.clotures_creneaux
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -112,8 +169,13 @@ CREATE POLICY "clotures_insert_driver" ON public.clotures_creneaux
       WHERE cc.id = clotures_creneaux.shift_id
         AND av.driver_user_id = (SELECT auth.uid()))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "clotures_select_driver" ON public.clotures_creneaux;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "clotures_select_driver" ON public.clotures_creneaux
   FOR SELECT TO authenticated
   USING (
@@ -130,8 +192,13 @@ CREATE POLICY "clotures_select_driver" ON public.clotures_creneaux
         AND (fa.role)::text = ANY (ARRAY['organizer'::text, 'manager'::text])))
     OR is_platform_admin()
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "clotures_update_manager" ON public.clotures_creneaux;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "clotures_update_manager" ON public.clotures_creneaux
   FOR UPDATE TO authenticated
   USING (
@@ -144,15 +211,23 @@ CREATE POLICY "clotures_update_manager" ON public.clotures_creneaux
         AND (fa.role)::text = ANY (ARRAY['organizer'::text, 'manager'::text])))
     OR is_platform_admin()
   );
+$advisor$);
 
--- coaching_sessions
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "coaching_driver_select" ON public.coaching_sessions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "coaching_driver_select" ON public.coaching_sessions
   FOR SELECT
   USING ((SELECT auth.uid()) = driver_user_id);
+$advisor$);
 
--- controles_journaliers
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "fleet_members_read_controles" ON public.controles_journaliers;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "fleet_members_read_controles" ON public.controles_journaliers
   FOR SELECT
   USING (
@@ -161,8 +236,13 @@ CREATE POLICY "fleet_members_read_controles" ON public.controles_journaliers
         AND fa.user_id = (SELECT auth.uid())
         AND fa.is_active = true)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "fleet_members_create_controles" ON public.controles_journaliers;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "fleet_members_create_controles" ON public.controles_journaliers
   FOR INSERT
   WITH CHECK (
@@ -172,14 +252,24 @@ CREATE POLICY "fleet_members_create_controles" ON public.controles_journaliers
         AND fa.user_id = (SELECT auth.uid())
         AND fa.is_active = true))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "fleet_members_update_controles" ON public.controles_journaliers;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "fleet_members_update_controles" ON public.controles_journaliers
   FOR UPDATE
   USING (inspected_by = (SELECT auth.uid()) AND inspected_at > (now() - '24:00:00'::interval))
   WITH CHECK (inspected_by = (SELECT auth.uid()));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "fleet_managers_update_controles" ON public.controles_journaliers;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "fleet_managers_update_controles" ON public.controles_journaliers
   FOR UPDATE
   USING (
@@ -196,8 +286,13 @@ CREATE POLICY "fleet_managers_update_controles" ON public.controles_journaliers
         AND fa.is_active = true
         AND fa.role = ANY (ARRAY['manager'::role_type, 'organizer'::role_type]))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "fleet_managers_delete_controles" ON public.controles_journaliers;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "fleet_managers_delete_controles" ON public.controles_journaliers
   FOR DELETE
   USING (
@@ -207,20 +302,33 @@ CREATE POLICY "fleet_managers_delete_controles" ON public.controles_journaliers
         AND fa.is_active = true
         AND fa.role = ANY (ARRAY['organizer'::role_type, 'manager'::role_type]))
   );
+$advisor$);
 
--- conversion_events
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "Select propre" ON public.conversion_events;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "Select propre" ON public.conversion_events
   FOR SELECT
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "Insert propre" ON public.conversion_events;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "Insert propre" ON public.conversion_events
   FOR INSERT
   WITH CHECK ((SELECT auth.uid()) = user_id);
+$advisor$);
 
--- creneaux_conducteurs
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "creneaux_lecture_conducteur" ON public.creneaux_conducteurs;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "creneaux_lecture_conducteur" ON public.creneaux_conducteurs
   FOR SELECT
   USING (
@@ -228,8 +336,13 @@ CREATE POLICY "creneaux_lecture_conducteur" ON public.creneaux_conducteurs
       WHERE a.id = creneaux_conducteurs.assignment_id
         AND a.driver_user_id = (SELECT auth.uid()))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "creneaux_insertion_conducteur" ON public.creneaux_conducteurs;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "creneaux_insertion_conducteur" ON public.creneaux_conducteurs
   FOR INSERT
   WITH CHECK (
@@ -238,8 +351,13 @@ CREATE POLICY "creneaux_insertion_conducteur" ON public.creneaux_conducteurs
         AND a.driver_user_id = (SELECT auth.uid())
         AND a.is_active = true)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "creneaux_select_driver" ON public.creneaux_conducteurs;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "creneaux_select_driver" ON public.creneaux_conducteurs
   FOR SELECT TO authenticated
   USING (
@@ -254,8 +372,13 @@ CREATE POLICY "creneaux_select_driver" ON public.creneaux_conducteurs
         AND (fa.role)::text = ANY (ARRAY['organizer'::text, 'manager'::text])))
     OR is_platform_admin()
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "creneaux_insert_driver" ON public.creneaux_conducteurs;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "creneaux_insert_driver" ON public.creneaux_conducteurs
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -264,8 +387,13 @@ CREATE POLICY "creneaux_insert_driver" ON public.creneaux_conducteurs
         AND av.driver_user_id = (SELECT auth.uid())
         AND av.is_active = true)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "creneaux_update_driver" ON public.creneaux_conducteurs;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "creneaux_update_driver" ON public.creneaux_conducteurs
   FOR UPDATE TO authenticated
   USING (
@@ -273,9 +401,13 @@ CREATE POLICY "creneaux_update_driver" ON public.creneaux_conducteurs
       WHERE av.id = creneaux_conducteurs.assignment_id
         AND av.driver_user_id = (SELECT auth.uid()))
   );
+$advisor$);
 
--- dashcam_alerts
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "dashcam_alerts_fleet_select" ON public.dashcam_alerts;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "dashcam_alerts_fleet_select" ON public.dashcam_alerts
   FOR SELECT
   USING (
@@ -284,21 +416,33 @@ CREATE POLICY "dashcam_alerts_fleet_select" ON public.dashcam_alerts
     OR has_role(fleet_id, 'mechanic'::role_type)
     OR (has_role(fleet_id, 'driver'::role_type) AND ((SELECT auth.uid()) = driver_user_id))
   );
+$advisor$);
 
--- demo_onboarding_logs
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "demo_onboarding_logs_insert" ON public.demo_onboarding_logs;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "demo_onboarding_logs_insert" ON public.demo_onboarding_logs
   FOR INSERT TO authenticated
   WITH CHECK ((SELECT auth.uid()) = user_id);
+$advisor$);
 
--- demo_sessions
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "demo_sessions_own_read" ON public.demo_sessions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "demo_sessions_own_read" ON public.demo_sessions
   FOR SELECT
   USING (user_id = (SELECT auth.uid()));
+$advisor$);
 
--- failure_predictions
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "failure_predictions_select_member" ON public.failure_predictions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "failure_predictions_select_member" ON public.failure_predictions
   FOR SELECT TO authenticated
   USING (
@@ -307,8 +451,13 @@ CREATE POLICY "failure_predictions_select_member" ON public.failure_predictions
         AND fa.user_id = (SELECT auth.uid())
         AND fa.is_active = true)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "failure_pred_fleet_access" ON public.failure_predictions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "failure_pred_fleet_access" ON public.failure_predictions
   FOR ALL
   USING (
@@ -318,14 +467,23 @@ CREATE POLICY "failure_pred_fleet_access" ON public.failure_predictions
         AND fa.is_active = true
         AND fa.role = ANY (ARRAY['organizer'::role_type, 'manager'::role_type, 'mechanic'::role_type]))
   );
+$advisor$);
 
--- feedback
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "feedback_select_own" ON public.feedback;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "feedback_select_own" ON public.feedback
   FOR SELECT TO authenticated
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "feedback_insert_own" ON public.feedback;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "feedback_insert_own" ON public.feedback
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -335,8 +493,13 @@ CREATE POLICY "feedback_insert_own" ON public.feedback
         AND fa.user_id = (SELECT auth.uid())
         AND fa.is_active = true))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "feedback_select_manager_admin" ON public.feedback;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "feedback_select_manager_admin" ON public.feedback
   FOR SELECT TO authenticated
   USING (
@@ -346,19 +509,33 @@ CREATE POLICY "feedback_select_manager_admin" ON public.feedback
         AND fa.is_active = true
         AND fa.role = ANY (ARRAY['manager'::role_type, 'organizer'::role_type]))
   );
+$advisor$);
 
--- flotte_adhesions
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "adhesions_lecture_soi" ON public.flotte_adhesions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "adhesions_lecture_soi" ON public.flotte_adhesions
   FOR SELECT
   USING (user_id = (SELECT auth.uid()));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "adhesions_select_own" ON public.flotte_adhesions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "adhesions_select_own" ON public.flotte_adhesions
   FOR SELECT TO authenticated
   USING ((user_id = (SELECT auth.uid())) OR is_platform_admin());
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "adhesions_select_manager" ON public.flotte_adhesions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "adhesions_select_manager" ON public.flotte_adhesions
   FOR SELECT
   USING (
@@ -366,8 +543,13 @@ CREATE POLICY "adhesions_select_manager" ON public.flotte_adhesions
     OR is_platform_admin()
     OR rbac_is_fleet_manager_or_above(fleet_id)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "memberships_select_self_or_manager_org" ON public.flotte_adhesions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "memberships_select_self_or_manager_org" ON public.flotte_adhesions
   FOR SELECT TO authenticated
   USING (
@@ -375,8 +557,13 @@ CREATE POLICY "memberships_select_self_or_manager_org" ON public.flotte_adhesion
     OR has_role(fleet_id, 'manager'::role_type)
     OR has_role(fleet_id, 'organizer'::role_type)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "rbac_adhesions_role_read" ON public.flotte_adhesions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "rbac_adhesions_role_read" ON public.flotte_adhesions
   FOR SELECT
   USING (
@@ -384,8 +571,13 @@ CREATE POLICY "rbac_adhesions_role_read" ON public.flotte_adhesions
     OR (user_id = (SELECT auth.uid()))
     OR rbac_is_fleet_manager_or_above(fleet_id)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "adhesions_insert_organizer" ON public.flotte_adhesions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "adhesions_insert_organizer" ON public.flotte_adhesions
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -396,8 +588,13 @@ CREATE POLICY "adhesions_insert_organizer" ON public.flotte_adhesions
         AND (fa.role)::text = 'organizer'::text))
     OR is_platform_admin()
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "adhesions_update_organizer" ON public.flotte_adhesions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "adhesions_update_organizer" ON public.flotte_adhesions
   FOR UPDATE TO authenticated
   USING (
@@ -408,9 +605,13 @@ CREATE POLICY "adhesions_update_organizer" ON public.flotte_adhesions
         AND (fa.role)::text = ANY (ARRAY['organizer'::text, 'manager'::text])))
     OR is_platform_admin()
   );
+$advisor$);
 
--- flottes
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "flottes_select_active_member" ON public.flottes;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "flottes_select_active_member" ON public.flottes
   FOR SELECT TO authenticated
   USING (
@@ -419,8 +620,13 @@ CREATE POLICY "flottes_select_active_member" ON public.flottes
         AND fa.user_id = (SELECT auth.uid())
         AND fa.is_active = true)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "flottes_select_member" ON public.flottes;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "flottes_select_member" ON public.flottes
   FOR SELECT TO authenticated
   USING (
@@ -430,8 +636,13 @@ CREATE POLICY "flottes_select_member" ON public.flottes
         AND fa.is_active = true))
     OR is_platform_admin()
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "flottes_insert_manager_org_org" ON public.flottes;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "flottes_insert_manager_org_org" ON public.flottes
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -443,8 +654,13 @@ CREATE POLICY "flottes_insert_manager_org_org" ON public.flottes
         AND fa.role = ANY (ARRAY['manager'::role_type, 'organizer'::role_type])))
     OR (NOT (EXISTS (SELECT 1 FROM flottes f2 WHERE f2.org_id = flottes.org_id)))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "flottes_update_organizer" ON public.flottes;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "flottes_update_organizer" ON public.flottes
   FOR UPDATE TO authenticated
   USING (
@@ -455,8 +671,13 @@ CREATE POLICY "flottes_update_organizer" ON public.flottes
         AND (fa.role)::text = 'organizer'::text))
     OR is_platform_admin()
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "flottes_real_universe_isolation" ON public.flottes;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "flottes_real_universe_isolation" ON public.flottes
   FOR SELECT
   USING (
@@ -472,25 +693,43 @@ CREATE POLICY "flottes_real_universe_isolation" ON public.flottes
       )
     END
   );
+$advisor$);
 
--- funnel_events
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "funnel events owner read" ON public.funnel_events;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "funnel events owner read" ON public.funnel_events
   FOR SELECT
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "funnel events owner insert" ON public.funnel_events;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "funnel events owner insert" ON public.funnel_events
   FOR INSERT
   WITH CHECK ((SELECT auth.uid()) = user_id);
+$advisor$);
 
--- incidents
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "incidents_select_own" ON public.incidents;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "incidents_select_own" ON public.incidents
   FOR SELECT TO authenticated
   USING (driver_user_id = (SELECT auth.uid()));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "incidents_select_manager" ON public.incidents;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "incidents_select_manager" ON public.incidents
   FOR SELECT TO authenticated
   USING (
@@ -502,13 +741,23 @@ CREATE POLICY "incidents_select_manager" ON public.incidents
         AND (fa.role)::text = ANY (ARRAY['organizer'::text, 'manager'::text])))
     OR is_platform_admin()
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "incidents_insert_driver" ON public.incidents;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "incidents_insert_driver" ON public.incidents
   FOR INSERT TO authenticated
   WITH CHECK (driver_user_id = (SELECT auth.uid()));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "incidents_insertion_conducteur" ON public.incidents;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "incidents_insertion_conducteur" ON public.incidents
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -519,8 +768,13 @@ CREATE POLICY "incidents_insertion_conducteur" ON public.incidents
         AND av.driver_user_id = (SELECT auth.uid())
       WHERE v.id = incidents.vehicle_id))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "incidents_lecture_conducteur" ON public.incidents;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "incidents_lecture_conducteur" ON public.incidents
   FOR SELECT TO authenticated
   USING (
@@ -531,9 +785,13 @@ CREATE POLICY "incidents_lecture_conducteur" ON public.incidents
         AND av.driver_user_id = (SELECT auth.uid())
       WHERE v.id = incidents.vehicle_id))
   );
+$advisor$);
 
--- journal_carburant
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "journal_carburant_select_member" ON public.journal_carburant;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "journal_carburant_select_member" ON public.journal_carburant
   FOR SELECT TO authenticated
   USING (
@@ -542,8 +800,13 @@ CREATE POLICY "journal_carburant_select_member" ON public.journal_carburant
         AND fa.user_id = (SELECT auth.uid())
         AND fa.is_active = true)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "journal_carburant_insert_driver" ON public.journal_carburant;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "journal_carburant_insert_driver" ON public.journal_carburant
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -553,38 +816,66 @@ CREATE POLICY "journal_carburant_insert_driver" ON public.journal_carburant
         AND fa.user_id = (SELECT auth.uid())
         AND fa.is_active = true))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "journal_carburant_update_owner" ON public.journal_carburant;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "journal_carburant_update_owner" ON public.journal_carburant
   FOR UPDATE TO authenticated
   USING ((SELECT auth.uid()) = driver_user_id)
   WITH CHECK ((SELECT auth.uid()) = driver_user_id);
+$advisor$);
 
--- onboarding_progress
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "Users can manage own onboarding" ON public.onboarding_progress;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "Users can manage own onboarding" ON public.onboarding_progress
   FOR ALL
   USING ((SELECT auth.uid()) = user_id)
   WITH CHECK ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "onboarding_progress_select" ON public.onboarding_progress;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "onboarding_progress_select" ON public.onboarding_progress
   FOR SELECT TO authenticated
   USING (((SELECT auth.uid()) = user_id) OR user_can_manage_org_onboarding(org_id));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "onboarding_progress_insert" ON public.onboarding_progress;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "onboarding_progress_insert" ON public.onboarding_progress
   FOR INSERT TO authenticated
   WITH CHECK (((SELECT auth.uid()) = user_id) AND user_can_manage_org_onboarding(org_id));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "onboarding_progress_update" ON public.onboarding_progress;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "onboarding_progress_update" ON public.onboarding_progress
   FOR UPDATE TO authenticated
   USING (((SELECT auth.uid()) = user_id) OR user_can_manage_org_onboarding(org_id))
   WITH CHECK (user_can_manage_org_onboarding(org_id));
+$advisor$);
 
--- organisation_members
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "org_members_select" ON public.organisation_members;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "org_members_select" ON public.organisation_members
   FOR SELECT
   USING (
@@ -594,8 +885,13 @@ CREATE POLICY "org_members_select" ON public.organisation_members
         AND om2.user_id = (SELECT auth.uid())
         AND om2.is_active = true))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "org_members_insert" ON public.organisation_members;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "org_members_insert" ON public.organisation_members
   FOR INSERT
   WITH CHECK (
@@ -605,9 +901,13 @@ CREATE POLICY "org_members_insert" ON public.organisation_members
         AND om2.role = ANY (ARRAY['org_owner'::text, 'org_admin'::text])
         AND om2.is_active = true)
   );
+$advisor$);
 
--- organisations
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "orgs_select_member" ON public.organisations;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "orgs_select_member" ON public.organisations
   FOR SELECT TO authenticated
   USING (
@@ -617,8 +917,13 @@ CREATE POLICY "orgs_select_member" ON public.organisations
         AND fa.user_id = (SELECT auth.uid())
         AND fa.is_active = true)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "orgs_update_member" ON public.organisations;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "orgs_update_member" ON public.organisations
   FOR UPDATE TO authenticated
   USING (
@@ -637,8 +942,13 @@ CREATE POLICY "orgs_update_member" ON public.organisations
         AND fa.is_active = true
         AND fa.role = ANY (ARRAY['manager'::role_type, 'organizer'::role_type]))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "orgs_insert_authenticated" ON public.organisations;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "orgs_insert_authenticated" ON public.organisations
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -648,8 +958,13 @@ CREATE POLICY "orgs_insert_authenticated" ON public.organisations
     AND country_code IS NOT NULL
     AND length(TRIM(BOTH FROM country_code)) > 0
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "orgs_delete_manager_org" ON public.organisations;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "orgs_delete_manager_org" ON public.organisations
   FOR DELETE TO authenticated
   USING (
@@ -660,8 +975,13 @@ CREATE POLICY "orgs_delete_manager_org" ON public.organisations
         AND fa.is_active = true
         AND fa.role = ANY (ARRAY['manager'::role_type, 'organizer'::role_type]))
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "organisations_select_member" ON public.organisations;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "organisations_select_member" ON public.organisations
   FOR SELECT TO authenticated
   USING (
@@ -672,8 +992,13 @@ CREATE POLICY "organisations_select_member" ON public.organisations
         AND fa.is_active = true))
     OR is_platform_admin()
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "organisations_update_organizer" ON public.organisations;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "organisations_update_organizer" ON public.organisations
   FOR UPDATE TO authenticated
   USING (
@@ -685,9 +1010,13 @@ CREATE POLICY "organisations_update_organizer" ON public.organisations
         AND (fa.role)::text = 'organizer'::text))
     OR is_platform_admin()
   );
+$advisor$);
 
--- payment_attempts
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "payment_attempts_select_manager" ON public.payment_attempts;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "payment_attempts_select_manager" ON public.payment_attempts
   FOR SELECT
   USING (
@@ -710,15 +1039,24 @@ CREATE POLICY "payment_attempts_select_manager" ON public.payment_attempts
         )
     )
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "payment_attempts_service_role" ON public.payment_attempts;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "payment_attempts_service_role" ON public.payment_attempts
   FOR ALL
   USING (((SELECT auth.jwt()) ->> 'role'::text) = 'service_role'::text)
   WITH CHECK (((SELECT auth.jwt()) ->> 'role'::text) = 'service_role'::text);
+$advisor$);
 
--- payment_transactions
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "fleet members can read own transactions" ON public.payment_transactions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "fleet members can read own transactions" ON public.payment_transactions
   FOR SELECT
   USING (
@@ -727,8 +1065,13 @@ CREATE POLICY "fleet members can read own transactions" ON public.payment_transa
       WHERE fa.user_id = (SELECT auth.uid())
     )
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "fleet members can create own transactions" ON public.payment_transactions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "fleet members can create own transactions" ON public.payment_transactions
   FOR INSERT
   WITH CHECK (
@@ -737,37 +1080,65 @@ CREATE POLICY "fleet members can create own transactions" ON public.payment_tran
       WHERE fa.user_id = (SELECT auth.uid())
     )
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "service role can update transactions" ON public.payment_transactions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "service role can update transactions" ON public.payment_transactions
   FOR UPDATE
   USING (((SELECT auth.jwt()) ->> 'role'::text) = 'service_role'::text)
   WITH CHECK (((SELECT auth.jwt()) ->> 'role'::text) = 'service_role'::text);
+$advisor$);
 
--- profils
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "profils_select_own" ON public.profils;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "profils_select_own" ON public.profils
   FOR SELECT TO authenticated
   USING (user_id = (SELECT auth.uid()));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "profils_insert_own" ON public.profils;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "profils_insert_own" ON public.profils
   FOR INSERT TO authenticated
   WITH CHECK (user_id = (SELECT auth.uid()));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "profils_update_own" ON public.profils;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "profils_update_own" ON public.profils
   FOR UPDATE TO authenticated
   USING (user_id = (SELECT auth.uid()))
   WITH CHECK (user_id = (SELECT auth.uid()));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "profils_insert_admin" ON public.profils;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "profils_insert_admin" ON public.profils
   FOR INSERT
   WITH CHECK (is_admin_or_dev() OR (current_setting('role'::text) = 'service_role'::text));
+$advisor$);
 
--- scheduled_reports
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "scheduled_reports_select_policy" ON public.scheduled_reports;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "scheduled_reports_select_policy" ON public.scheduled_reports
   FOR SELECT
   USING (
@@ -776,9 +1147,13 @@ CREATE POLICY "scheduled_reports_select_policy" ON public.scheduled_reports
         AND fa.user_id = (SELECT auth.uid())
         AND fa.is_active = true)
   );
+$advisor$);
 
--- scheduled_report_runs
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "scheduled_report_runs_select_policy" ON public.scheduled_report_runs;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "scheduled_report_runs_select_policy" ON public.scheduled_report_runs
   FOR SELECT
   USING (
@@ -787,9 +1162,13 @@ CREATE POLICY "scheduled_report_runs_select_policy" ON public.scheduled_report_r
         AND fa.user_id = (SELECT auth.uid())
         AND fa.is_active = true)
   );
+$advisor$);
 
--- scores_conducteurs
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "scores_conducteurs_select_roles" ON public.scores_conducteurs;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "scores_conducteurs_select_roles" ON public.scores_conducteurs
   FOR SELECT TO authenticated
   USING (
@@ -797,13 +1176,23 @@ CREATE POLICY "scores_conducteurs_select_roles" ON public.scores_conducteurs
     OR has_role(fleet_id, 'manager'::role_type)
     OR has_role(fleet_id, 'organizer'::role_type)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "scores_select_own" ON public.scores_conducteurs;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "scores_select_own" ON public.scores_conducteurs
   FOR SELECT TO authenticated
   USING (driver_user_id = (SELECT auth.uid()));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "scores_select_manager" ON public.scores_conducteurs;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "scores_select_manager" ON public.scores_conducteurs
   FOR SELECT TO authenticated
   USING (
@@ -814,32 +1203,53 @@ CREATE POLICY "scores_select_manager" ON public.scores_conducteurs
         AND (fa.role)::text = ANY (ARRAY['organizer'::text, 'manager'::text])))
     OR is_platform_admin()
   );
+$advisor$);
 
--- security_notifications
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "security_notifications_select_own" ON public.security_notifications;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "security_notifications_select_own" ON public.security_notifications
   FOR SELECT
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "security_notifications_update_own" ON public.security_notifications;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "security_notifications_update_own" ON public.security_notifications
   FOR UPDATE
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
--- session_events
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "session_events_select_own" ON public.session_events;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "session_events_select_own" ON public.session_events
   FOR SELECT
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
--- system_events
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "Users can view their own events" ON public.system_events;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "Users can view their own events" ON public.system_events
   FOR SELECT
   USING (actor_user_id = (SELECT auth.uid()));
+$advisor$);
 
--- transits_cemac
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "fleet_members_read_transits" ON public.transits_cemac;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "fleet_members_read_transits" ON public.transits_cemac
   FOR SELECT
   USING (
@@ -848,8 +1258,13 @@ CREATE POLICY "fleet_members_read_transits" ON public.transits_cemac
       WHERE flotte_adhesions.user_id = (SELECT auth.uid()) AND flotte_adhesions.is_active = true
     )
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "fleet_members_create_transits" ON public.transits_cemac;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "fleet_members_create_transits" ON public.transits_cemac
   FOR INSERT
   WITH CHECK (
@@ -858,8 +1273,13 @@ CREATE POLICY "fleet_members_create_transits" ON public.transits_cemac
       WHERE flotte_adhesions.user_id = (SELECT auth.uid()) AND flotte_adhesions.is_active = true
     )
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "fleet_members_update_transits" ON public.transits_cemac;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "fleet_members_update_transits" ON public.transits_cemac
   FOR UPDATE
   USING (
@@ -868,80 +1288,144 @@ CREATE POLICY "fleet_members_update_transits" ON public.transits_cemac
       WHERE flotte_adhesions.user_id = (SELECT auth.uid()) AND flotte_adhesions.is_active = true
     )
   );
+$advisor$);
 
--- tutorial_favorites
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "tutorial_favorites_select_own" ON public.tutorial_favorites;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "tutorial_favorites_select_own" ON public.tutorial_favorites
   FOR SELECT TO authenticated
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "tutorial_favorites_insert_own" ON public.tutorial_favorites;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "tutorial_favorites_insert_own" ON public.tutorial_favorites
   FOR INSERT TO authenticated
   WITH CHECK ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "tutorial_favorites_delete_own" ON public.tutorial_favorites;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "tutorial_favorites_delete_own" ON public.tutorial_favorites
   FOR DELETE TO authenticated
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
--- tutorial_progress
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "tutorial_progress_select_own" ON public.tutorial_progress;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "tutorial_progress_select_own" ON public.tutorial_progress
   FOR SELECT TO authenticated
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "tutorial_progress_insert_own" ON public.tutorial_progress;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "tutorial_progress_insert_own" ON public.tutorial_progress
   FOR INSERT TO authenticated
   WITH CHECK ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "tutorial_progress_update_own" ON public.tutorial_progress;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "tutorial_progress_update_own" ON public.tutorial_progress
   FOR UPDATE TO authenticated
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
--- tutorial_views
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "tutorial_views_select_own" ON public.tutorial_views;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "tutorial_views_select_own" ON public.tutorial_views
   FOR SELECT TO authenticated
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "tutorial_views_insert_own" ON public.tutorial_views;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "tutorial_views_insert_own" ON public.tutorial_views
   FOR INSERT TO authenticated
   WITH CHECK ((SELECT auth.uid()) = user_id);
+$advisor$);
 
--- user_sessions
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "user_sessions_select_own" ON public.user_sessions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "user_sessions_select_own" ON public.user_sessions
   FOR SELECT
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "user_sessions_insert_own" ON public.user_sessions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "user_sessions_insert_own" ON public.user_sessions
   FOR INSERT
   WITH CHECK ((SELECT auth.uid()) = user_id);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "user_sessions_update_own" ON public.user_sessions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "user_sessions_update_own" ON public.user_sessions
   FOR UPDATE
   USING ((SELECT auth.uid()) = user_id);
+$advisor$);
 
--- users
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "users_select_self" ON public.users;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "users_select_self" ON public.users
   FOR SELECT TO authenticated
   USING (id = (SELECT auth.uid()));
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "users_update_self" ON public.users;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "users_update_self" ON public.users
   FOR UPDATE TO authenticated
   USING (id = (SELECT auth.uid()))
   WITH CHECK (id = (SELECT auth.uid()));
+$advisor$);
 
--- vehicules
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "vehicules_lecture_conducteur_affecte" ON public.vehicules;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "vehicules_lecture_conducteur_affecte" ON public.vehicules
   FOR SELECT
   USING (
@@ -950,84 +1434,123 @@ CREATE POLICY "vehicules_lecture_conducteur_affecte" ON public.vehicules
         AND a.driver_user_id = (SELECT auth.uid())
         AND a.is_active = true)
   );
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "vehicules_select_by_fleet" ON public.vehicules;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "vehicules_select_by_fleet" ON public.vehicules
   FOR SELECT TO authenticated
   USING (fleet_id = (((SELECT auth.jwt()) ->> 'fleet_id'::text))::uuid);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "vehicules_insert_by_fleet" ON public.vehicules;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "vehicules_insert_by_fleet" ON public.vehicules
   FOR INSERT TO authenticated
   WITH CHECK (fleet_id = (((SELECT auth.jwt()) ->> 'fleet_id'::text))::uuid);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "vehicules_update_by_fleet" ON public.vehicules;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "vehicules_update_by_fleet" ON public.vehicules
   FOR UPDATE TO authenticated
   USING (fleet_id = (((SELECT auth.jwt()) ->> 'fleet_id'::text))::uuid)
   WITH CHECK (fleet_id = (((SELECT auth.jwt()) ->> 'fleet_id'::text))::uuid);
+$advisor$);
 
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "vehicules_delete_by_fleet" ON public.vehicules;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "vehicules_delete_by_fleet" ON public.vehicules
   FOR DELETE TO authenticated
   USING (fleet_id = (((SELECT auth.jwt()) ->> 'fleet_id'::text))::uuid);
+$advisor$);
 
--- whatsapp_sessions
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "wa_sessions_own" ON public.whatsapp_sessions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 CREATE POLICY "wa_sessions_own" ON public.whatsapp_sessions
   FOR ALL
   USING (user_id = (SELECT auth.uid()));
+$advisor$);
 
-
--- ============================================================
--- PARTIE 2 : Drop policies Clerk-era + doublons exacts
--- ============================================================
-
--- Policies Clerk-era (current_setting('request.jwt.claims') path obsolète)
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "adhesions_select_own_clerk" ON public.flotte_adhesions;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "flottes_select_own_clerk"   ON public.flottes;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "profils_select_own_clerk"   ON public.profils;
+$advisor$);
 
--- Doublons exacts de profils (profils_*_own est la version canonique)
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "profils_select_self" ON public.profils;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "profils_insert_self" ON public.profils;
+$advisor$);
+
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP POLICY IF EXISTS "profils_update_self" ON public.profils;
+$advisor$);
 
-
--- ============================================================
--- PARTIE 3 : Supprimer les index dupliqués
--- (sans CONCURRENTLY — compatible transaction)
--- ============================================================
-
--- access_codes : garder idx_access_codes_code
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP INDEX IF EXISTS public.idx_access_codes_code_active;
+$advisor$);
 
--- audit_logs : garder audit_logs_fleet_created_idx
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP INDEX IF EXISTS public.audit_logs_fleet_id_idx;
+$advisor$);
 
--- clotures_creneaux shift_id : garder idx_clotures_creneaux_shift_id
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP INDEX IF EXISTS public.idx_clotures_shift;
+$advisor$);
 
--- clotures_creneaux status : garder idx_clotures_creneaux_status
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP INDEX IF EXISTS public.idx_clotures_status;
+$advisor$);
 
--- creneaux_conducteurs : garder idx_creneaux_conducteurs_assignment_id
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP INDEX IF EXISTS public.idx_creneaux_assignment;
+$advisor$);
 
--- flottes : garder idx_flottes_org_id
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP INDEX IF EXISTS public.idx_flottes_org;
+$advisor$);
 
--- incidents driver : garder idx_incidents_driver_user_id
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP INDEX IF EXISTS public.idx_incidents_driver;
+$advisor$);
 
--- incidents vehicle : garder idx_incidents_vehicle_id
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP INDEX IF EXISTS public.idx_incidents_vehicle;
+$advisor$);
 
--- jetons_qr (unique constraint) : garder jetons_qr_token_hash_key
+SELECT pg_temp.run_advisor_statement($advisor$
 ALTER TABLE public.jetons_qr DROP CONSTRAINT IF EXISTS qr_tokens_token_hash_key;
+$advisor$);
 
--- onboarding_progress : garder idx_onboarding_progress_org_id
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP INDEX IF EXISTS public.idx_onboarding_org;
+$advisor$);
 
--- vehicules : garder idx_vehicules_fleet_id
+SELECT pg_temp.run_advisor_statement($advisor$
 DROP INDEX IF EXISTS public.vehicules_fleet_id_idx;
+$advisor$);

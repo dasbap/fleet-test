@@ -38,6 +38,23 @@ const SELECT_WITH_JOINS = `
   vehicle:vehicules!planning_creneaux_vehicle_id_fkey(id, registration, brand, model)
 `;
 
+type PostgrestLikeError = {
+  code?: string;
+  message?: string;
+  details?: string;
+};
+
+function isMissingPlanningTableError(error: PostgrestLikeError): boolean {
+  const text = `${error.code ?? ''} ${error.message ?? ''} ${error.details ?? ''}`.toLowerCase();
+  return (
+    text.includes('planning_creneaux') &&
+    (error.code === 'PGRST205' ||
+      text.includes('could not find the table') ||
+      text.includes('relation') ||
+      text.includes('does not exist'))
+  );
+}
+
 /**
  * Repository pour la planification de créneaux conducteurs.
  */
@@ -58,6 +75,14 @@ export class PlannedShiftRepository {
       .order('planned_start', { ascending: true });
 
     if (error) {
+      if (isMissingPlanningTableError(error)) {
+        console.warn(
+          'Planning shifts table is unavailable; returning an empty planning until migration 20260531120000 is applied.',
+          error,
+        );
+        return [];
+      }
+
       console.error('Error fetching planned shifts for fleet:', error);
       throw new Error(error.message);
     }
@@ -80,6 +105,14 @@ export class PlannedShiftRepository {
       .maybeSingle();
 
     if (error) {
+      if (isMissingPlanningTableError(error)) {
+        console.warn(
+          'Planning shifts table is unavailable; returning no upcoming planning until migration 20260531120000 is applied.',
+          error,
+        );
+        return null;
+      }
+
       console.error('Error fetching upcoming planned shift:', error);
       throw new Error(error.message);
     }

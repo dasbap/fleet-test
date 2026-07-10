@@ -64,10 +64,71 @@ export interface IncidentFilters {
   limit?: number;
 }
 
+type IncidentDriverProfile = Pick<NonNullable<Incident['driver']>, 'user_id' | 'full_name'>;
+type IncidentInsertPayload = {
+  vehicle_id: string;
+  driver_user_id: string;
+  description: string;
+  severity: IncidentSeverity;
+  incident_category?: string | null;
+  evidence_path: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  status: 'open';
+  resolved_at: null;
+  resolved_by: null;
+  client_idempotency_key?: string;
+};
+
+const OPTIONAL_INCIDENT_INSERT_COLUMNS = new Set([
+  'incident_category',
+  'client_idempotency_key',
+]);
+
+function getMissingSchemaColumn(error: { code?: string; message?: string } | null): string | null {
+  if (error?.code !== 'PGRST204') return null;
+  const match = error.message?.match(/'([^']+)' column of 'incidents'/);
+  return match?.[1] ?? null;
+}
+
 /**
  * Repository pour l'accès aux données des incidents
  */
 export class IncidentRepository implements IRepository<Incident, IncidentInsert, IncidentUpdate> {
+  private async hydrateDrivers(rows: Incident[]): Promise<Incident[]> {
+    if (rows.length === 0) return rows;
+
+    const driverIds = [...new Set(rows.map((row) => row.driver_user_id).filter(Boolean))];
+    if (driverIds.length === 0) {
+      return rows.map((row) => ({ ...row, driver: null }));
+    }
+
+    const { data: profiles, error } = await supabase
+      .from('profils')
+      .select('user_id, full_name')
+      .in('user_id', driverIds);
+
+    if (error) {
+      console.error('Error fetching incident driver profiles:', error);
+      throw new Error(error.message);
+    }
+
+    const profileByUserId = new Map(
+      ((profiles ?? []) as IncidentDriverProfile[]).map((profile) => [profile.user_id, profile]),
+    );
+
+    return rows.map((row) => ({
+      ...row,
+      driver: profileByUserId.get(row.driver_user_id) ?? null,
+    }));
+  }
+
+  private async hydrateDriver(row: Incident | null): Promise<Incident | null> {
+    if (!row) return null;
+    const [hydrated] = await this.hydrateDrivers([row]);
+    return hydrated;
+  }
+
   /**
    * Récupère tous les incidents avec filtres optionnels
    */
@@ -80,8 +141,7 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
       .from('incidents')
       .select(`
         *,
-        ${vehicleSelect},
-        driver:profils!incidents_driver_user_id_fkey(user_id, full_name)
+        ${vehicleSelect}
       `)
       .order('created_at', { ascending: false });
 
@@ -116,7 +176,7 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
       throw new Error(error.message);
     }
 
-    return (data || []) as Incident[];
+    return this.hydrateDrivers((data || []) as Incident[]);
   }
 
   /**
@@ -127,8 +187,7 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
       .from('incidents')
       .select(`
         *,
-        vehicle:vehicules(id, registration, brand, model, fleet_id),
-        driver:profils!incidents_driver_user_id_fkey(user_id, full_name)
+        vehicle:vehicules(id, registration, brand, model, fleet_id)
       `)
       .eq('id', id)
       .maybeSingle();
@@ -138,48 +197,64 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
       throw new Error(error.message);
     }
 
-    return (data ?? null) as Incident | null;
+    return this.hydrateDriver((data ?? null) as Incident | null);
   }
 
   /**
    * Crée un nouvel incident
    */
   async create(incident: IncidentInsert): Promise<Incident> {
-    const { data, error } = await supabase
-      .from('incidents')
-      .insert({
-        vehicle_id: incident.vehicle_id,
-        driver_user_id: incident.driver_user_id,
-        description: incident.description,
-        severity: incident.severity || 'medium',
-        incident_category: incident.incident_category ?? null,
-        evidence_path: incident.evidence_path || null,
-        latitude:
-          incident.latitude !== undefined && incident.latitude !== null
-            ? incident.latitude
-            : null,
-        longitude:
-          incident.longitude !== undefined && incident.longitude !== null
-            ? incident.longitude
-            : null,
-        client_idempotency_key: incident.client_idempotency_key ?? null,
-        status: 'open',
-        resolved_at: null,
-        resolved_by: null,
-      })
-      .select(`
-        *,
-        vehicle:vehicules(id, registration, brand, model, fleet_id),
-        driver:profils!incidents_driver_user_id_fkey(user_id, full_name)
-      `)
-      .single();
+    const insertPayload: IncidentInsertPayload = {
+      vehicle_id: incident.vehicle_id,
+      driver_user_id: incident.driver_user_id,
+      description: incident.description,
+      severity: incident.severity || 'medium',
+      incident_category: incident.incident_category ?? null,
+      evidence_path: incident.evidence_path || null,
+      latitude:
+        incident.latitude !== undefined && incident.latitude !== null
+          ? incident.latitude
+          : null,
+      longitude:
+        incident.longitude !== undefined && incident.longitude !== null
+          ? incident.longitude
+          : null,
+      status: 'open',
+      resolved_at: null,
+      resolved_by: null,
+      ...(incident.client_idempotency_key
+        ? { client_idempotency_key: incident.client_idempotency_key }
+        : {}),
+    };
+
+    const insertIncident = (payload: IncidentInsertPayload) =>
+      supabase
+        .from('incidents')
+        .insert(payload)
+        .select(`
+          *,
+          vehicle:vehicules(id, registration, brand, model, fleet_id)
+        `)
+        .single();
+
+    const fallbackPayload = { ...insertPayload };
+    let { data, error } = await insertIncident(fallbackPayload);
+
+    for (let attempt = 0; attempt < OPTIONAL_INCIDENT_INSERT_COLUMNS.size; attempt += 1) {
+      const missingColumn = getMissingSchemaColumn(error);
+      if (!missingColumn || !OPTIONAL_INCIDENT_INSERT_COLUMNS.has(missingColumn)) break;
+
+      delete fallbackPayload[missingColumn as keyof IncidentInsertPayload];
+      ({ data, error } = await insertIncident(fallbackPayload));
+    }
 
     if (error) {
       console.error('Error creating incident:', error);
       throw new Error(error.message);
     }
 
-    return data as Incident;
+    const hydrated = await this.hydrateDriver(data as Incident);
+    return hydrated as Incident;
   }
 
   /**
@@ -192,8 +267,7 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
       .eq('id', id)
       .select(`
         *,
-        vehicle:vehicules(id, registration, brand, model, fleet_id),
-        driver:profils!incidents_driver_user_id_fkey(user_id, full_name)
+        vehicle:vehicules(id, registration, brand, model, fleet_id)
       `)
       .maybeSingle();
 
@@ -206,7 +280,8 @@ export class IncidentRepository implements IRepository<Incident, IncidentInsert,
       throw new Error('Incident introuvable ou accès refusé');
     }
 
-    return data as Incident;
+    const hydrated = await this.hydrateDriver(data as Incident);
+    return hydrated as Incident;
   }
 
   /**

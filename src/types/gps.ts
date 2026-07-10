@@ -4,6 +4,8 @@ export type GeofenceType = "circle" | "polygon";
 
 export type GeofenceEventType = "enter" | "exit";
 
+export type GeofenceGeometry = GeoJSON.Polygon | GeoJSON.MultiPolygon;
+
 export interface VehiclePosition {
   id: string;
   vehicle_id: string;
@@ -29,7 +31,7 @@ export interface Geofence {
   center_lat: number | null;
   center_lng: number | null;
   radius_m: number | null;
-  polygon_geojson: string | null;
+  polygon_geojson: GeofenceGeometry | string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

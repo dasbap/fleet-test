@@ -1,14 +1,13 @@
 -- ============================================================
--- SECURITY ADVISOR FIX — 2026-05-29
--- 1. Vues SECURITY DEFINER → security_invoker = true  (3 ERRORs)
--- 2. search_path mutable → SET search_path = public   (9 WARNs)
--- 3. Fonctions admin/billing accessibles à anon → REVOKE  (WARNs)
+-- SECURITY ADVISOR FIX - 2026-05-29
+-- 1. Vues SECURITY DEFINER -> security_invoker = true
+-- 2. search_path mutable -> SET search_path = public
+-- 3. Fonctions sensibles non accessibles a anon/PUBLIC
 -- ============================================================
 
 
 -- ============================================================
--- PARTIE 1 : Corriger les vues SECURITY DEFINER (3 ERRORs)
--- → Recréer avec security_invoker = true (respecte le RLS du caller)
+-- PARTIE 1 : Corriger les vues SECURITY DEFINER
 -- ============================================================
 
 DROP VIEW IF EXISTS public.v_retention_kpis;
@@ -64,111 +63,119 @@ SELECT
   now()              AS computed_at
 FROM public.v_activation_funnel af;
 
--- Accès en lecture aux rôles authentifiés (inchangé)
 GRANT SELECT ON public.v_activation_funnel   TO authenticated;
 GRANT SELECT ON public.v_daily_active_users  TO authenticated;
 GRANT SELECT ON public.v_retention_kpis      TO authenticated;
 
 
 -- ============================================================
--- PARTIE 2 : Fixer le search_path mutable sur 9 fonctions SECURITY DEFINER
--- → Évite l'injection via search_path
+-- PARTIE 2 : Fixer le search_path mutable sur fonctions SECURITY DEFINER
 -- ============================================================
 
-ALTER FUNCTION public.activate_with_code(p_code text)
-  SET search_path = public;
-
-ALTER FUNCTION public.attach_auth_user(
-  p_user_id uuid, p_role public.user_role, p_universe public.access_universe,
-  p_full_name text, p_fleet_id uuid
-)
-  SET search_path = public;
-
-ALTER FUNCTION public.current_user_is_active()
-  SET search_path = public;
-
-ALTER FUNCTION public.current_user_role()
-  SET search_path = public;
-
-ALTER FUNCTION public.generate_access_code(
-  p_role public.user_role, p_universe public.access_universe,
-  p_target_email text, p_fleet_id uuid, p_duration_days integer
-)
-  SET search_path = public;
-
-ALTER FUNCTION public.get_auth_context(p_user_id uuid)
-  SET search_path = public;
-
-ALTER FUNCTION public.init_activation_progress(p_user_id uuid, p_org_id uuid)
-  SET search_path = public;
-
-ALTER FUNCTION public.is_admin_or_dev()
-  SET search_path = public;
-
-ALTER FUNCTION public.suspend_account(p_target uuid)
-  SET search_path = public;
+DO $$
+DECLARE
+  function_name text;
+  function_ref regprocedure;
+BEGIN
+  FOREACH function_name IN ARRAY ARRAY[
+    'activate_with_code',
+    'attach_auth_user',
+    'current_user_is_active',
+    'current_user_role',
+    'generate_access_code',
+    'get_auth_context',
+    'init_activation_progress',
+    'is_admin_or_dev',
+    'suspend_account'
+  ] LOOP
+    FOR function_ref IN
+      SELECT p.oid::regprocedure
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = function_name
+    LOOP
+      EXECUTE format('ALTER FUNCTION %s SET search_path = public', function_ref);
+    END LOOP;
+  END LOOP;
+END $$;
 
 
 -- ============================================================
--- PARTIE 3 : Révoquer EXECUTE sur anon pour les fonctions sensibles
--- → Fonctions admin/billing/destructives ne doivent pas être appelables sans auth
+-- PARTIE 3 : Revoquer EXECUTE sur anon/PUBLIC pour fonctions sensibles
 -- ============================================================
 
--- Admin & outils de diagnostic
-REVOKE EXECUTE ON FUNCTION public.admin_list_demo_sessions(boolean)          FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.admin_reset_demo_fleet(uuid)               FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.get_database_stats()                       FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.liste_migrations_appliquees()              FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.rls_auto_enable()                          FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.check_constraint_violations()              FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.check_logical_inconsistencies()            FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.check_orphaned_data()                      FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.verifier_sante_systeme(uuid)               FROM anon, PUBLIC;
+DO $$
+DECLARE
+  function_signature text;
+  function_ref regprocedure;
+BEGIN
+  FOREACH function_signature IN ARRAY ARRAY[
+    'public.admin_list_demo_sessions(boolean)',
+    'public.admin_reset_demo_fleet(uuid)',
+    'public.get_database_stats()',
+    'public.liste_migrations_appliquees()',
+    'public.rls_auto_enable()',
+    'public.check_constraint_violations()',
+    'public.check_logical_inconsistencies()',
+    'public.check_orphaned_data()',
+    'public.verifier_sante_systeme(uuid)',
+    'public.billing_cancel_subscription(uuid, uuid)',
+    'public.billing_enter_grace_period(uuid, integer)',
+    'public.billing_run_daily_lifecycle()',
+    'public.billing_start_trial(uuid, integer)',
+    'public.billing_suspend_subscription(uuid)',
+    'public.refund_payment(uuid, text)',
+    'public.seed_esamba_2024(text)',
+    'public.recreate_esamba_2024()',
+    'public.check_esamba_2024()',
+    'public.check_esamba_2024(uuid)',
+    'public.verifier_esamba_2024()',
+    'public.nettoyer_base_donnees(boolean)',
+    'public.cleanup_orphaned_data(boolean)',
+    'public.suspend_account(uuid)',
+    'public.deactivate_demo_account(uuid, uuid, text)',
+    'public.reactivate_demo_account(uuid, uuid, integer)',
+    'public.set_demo_account_expiry(uuid, timestamptz)',
+    'public.expire_demo_accounts_by_type()',
+    'public.expire_temporary_accounts()',
+    'public.prospect_expire_accounts()',
+    'public.prospect_suspend_expired()'
+  ] LOOP
+    function_ref := to_regprocedure(function_signature);
+    IF function_ref IS NOT NULL THEN
+      EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM anon, PUBLIC', function_ref);
+    ELSE
+      RAISE NOTICE 'Fonction absente, revoke ignore: %', function_signature;
+    END IF;
+  END LOOP;
 
--- Facturation
-REVOKE EXECUTE ON FUNCTION public.billing_cancel_subscription(uuid, uuid)    FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.billing_enter_grace_period(uuid, integer)  FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.billing_run_daily_lifecycle()              FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.billing_start_trial(uuid, integer)         FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.billing_suspend_subscription(uuid)         FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.refund_payment(uuid, text)                 FROM anon, PUBLIC;
-
--- Données & seed (fonctions destructives)
-REVOKE EXECUTE ON FUNCTION public.seed_esamba_2024(text)                     FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.recreate_esamba_2024()                     FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.check_esamba_2024()                        FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.check_esamba_2024(uuid)                    FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.verifier_esamba_2024()                     FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.nettoyer_base_donnees(boolean)             FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.cleanup_orphaned_data(boolean)             FROM anon, PUBLIC;
-
--- Comptes & sessions (gestion admin)
-REVOKE EXECUTE ON FUNCTION public.suspend_account(uuid)                      FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.deactivate_demo_account(uuid, uuid, text)  FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.reactivate_demo_account(uuid, uuid, integer) FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.set_demo_account_expiry(uuid, timestamptz) FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.expire_demo_accounts_by_type()             FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.expire_temporary_accounts()                FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.prospect_expire_accounts()                 FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.prospect_suspend_expired()                 FROM anon, PUBLIC;
-
--- Ré-accorder uniquement à service_role (cron, backend)
-GRANT EXECUTE ON FUNCTION public.billing_run_daily_lifecycle()               TO service_role;
-GRANT EXECUTE ON FUNCTION public.billing_cancel_subscription(uuid, uuid)     TO service_role;
-GRANT EXECUTE ON FUNCTION public.billing_enter_grace_period(uuid, integer)   TO service_role;
-GRANT EXECUTE ON FUNCTION public.billing_start_trial(uuid, integer)          TO service_role;
-GRANT EXECUTE ON FUNCTION public.billing_suspend_subscription(uuid)          TO service_role;
-GRANT EXECUTE ON FUNCTION public.refund_payment(uuid, text)                  TO service_role;
-GRANT EXECUTE ON FUNCTION public.nettoyer_base_donnees(boolean)              TO service_role;
-GRANT EXECUTE ON FUNCTION public.cleanup_orphaned_data(boolean)              TO service_role;
-GRANT EXECUTE ON FUNCTION public.expire_demo_accounts_by_type()              TO service_role;
-GRANT EXECUTE ON FUNCTION public.expire_temporary_accounts()                 TO service_role;
-GRANT EXECUTE ON FUNCTION public.prospect_expire_accounts()                  TO service_role;
-GRANT EXECUTE ON FUNCTION public.prospect_suspend_expired()                  TO service_role;
-GRANT EXECUTE ON FUNCTION public.admin_reset_demo_fleet(uuid)                TO service_role;
-GRANT EXECUTE ON FUNCTION public.admin_list_demo_sessions(boolean)           TO service_role;
-GRANT EXECUTE ON FUNCTION public.rls_auto_enable()                           TO service_role;
-GRANT EXECUTE ON FUNCTION public.seed_esamba_2024(text)                      TO service_role;
-GRANT EXECUTE ON FUNCTION public.recreate_esamba_2024()                      TO service_role;
-GRANT EXECUTE ON FUNCTION public.get_database_stats()                        TO service_role;
-GRANT EXECUTE ON FUNCTION public.liste_migrations_appliquees()               TO service_role;
+  -- Re-accorder uniquement a service_role (cron, backend).
+  FOREACH function_signature IN ARRAY ARRAY[
+    'public.billing_run_daily_lifecycle()',
+    'public.billing_cancel_subscription(uuid, uuid)',
+    'public.billing_enter_grace_period(uuid, integer)',
+    'public.billing_start_trial(uuid, integer)',
+    'public.billing_suspend_subscription(uuid)',
+    'public.refund_payment(uuid, text)',
+    'public.nettoyer_base_donnees(boolean)',
+    'public.cleanup_orphaned_data(boolean)',
+    'public.expire_demo_accounts_by_type()',
+    'public.expire_temporary_accounts()',
+    'public.prospect_expire_accounts()',
+    'public.prospect_suspend_expired()',
+    'public.admin_reset_demo_fleet(uuid)',
+    'public.admin_list_demo_sessions(boolean)',
+    'public.rls_auto_enable()',
+    'public.seed_esamba_2024(text)',
+    'public.recreate_esamba_2024()',
+    'public.get_database_stats()',
+    'public.liste_migrations_appliquees()'
+  ] LOOP
+    function_ref := to_regprocedure(function_signature);
+    IF function_ref IS NOT NULL THEN
+      EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role', function_ref);
+    ELSE
+      RAISE NOTICE 'Fonction absente, grant ignore: %', function_signature;
+    END IF;
+  END LOOP;
+END $$;

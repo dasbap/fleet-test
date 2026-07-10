@@ -5,7 +5,7 @@
 //
 // Schéma prod E-Samba (pas le greenfield anglais) :
 //   organization_members → flotte_adhesions + flottes(org_id)
-//   get_org_kpis         → get_dashboard_snapshot
+//   get_org_kpis         → calcul direct depuis tables E-Samba
 //   v_expiring_documents → vehicle_documents
 //   vehicles             → vehicules (ok | blocked)
 //   v_monthly_expenses   → journal_carburant (catégorie fuel)
@@ -18,7 +18,7 @@ import { KpiGrid } from "@/components/dashboard/kpi-cards";
 import { AlertsList, type ExpiringDoc } from "@/components/dashboard/alerts-list";
 import { resolveFleetContext } from "@/lib/dashboard/session";
 import { fetchExpiringDocs } from "@/lib/dashboard/fetch-expiring-docs";
-import { fetchShiftKmRows } from "@/lib/dashboard/fetch-shift-km";
+import { fetchShiftKmRows, type ShiftKmRow } from "@/lib/dashboard/fetch-shift-km";
 import {
   ExpensesBarChart,
   VehicleStatusChart,
@@ -33,6 +33,18 @@ interface MonthlyExpenseRow {
   month: string;
   category: string;
   total_amount: number;
+}
+
+interface VehicleStatusRow {
+  status: string;
+}
+
+interface SimpleIdRow {
+  id: string;
+}
+
+interface DashboardAlertSeverityRow {
+  severity: string | null;
 }
 
 // Données de démo pour les graphiques si pas encore de données en BDD
@@ -96,18 +108,6 @@ function buildExpensesChartData(rawExpenses: MonthlyExpenseRow[]) {
   });
 }
 
-const EMPTY_KPIS: DashboardKpis = {
-  total_vehicles: 0,
-  active_vehicles: 0,
-  total_drivers: 0,
-  active_drivers: 0,
-  expired_docs: 0,
-  expiring_docs_30d: 0,
-  expenses_this_month: 0,
-  km_this_month: 0,
-  new_alerts: 0,
-};
-
 export default async function DashboardPage() {
   const supabase = await createClient();
   const context = await resolveFleetContext(supabase);
@@ -117,6 +117,7 @@ export default async function DashboardPage() {
       data: { user },
     } = await supabase.auth.getUser();
     redirect(user ? "/onboarding" : "/connexion");
+    throw new Error("Contexte flotte introuvable");
   }
 
   const { fleetId, orgId } = context;
@@ -126,22 +127,43 @@ export default async function DashboardPage() {
   thirtyDaysAhead.setDate(thirtyDaysAhead.getDate() + 30);
 
   // Toutes les requêtes en parallèle pour minimiser la latence
-  const [kpisResult, vehicleStatusResult, expensesResult, shiftRows] =
+  const [
+    vehicleStatusResult,
+    shiftRows,
+    driversResult,
+    assignmentsResult,
+    maintenanceResult,
+    alertsResult,
+  ] =
     await Promise.all([
-      supabase.rpc("get_dashboard_snapshot", {
-        p_fleet_id: fleetId,
-        p_org_id: orgId,
-      }),
-
       supabase.from("vehicules").select("status").eq("fleet_id", fleetId),
 
-      supabase
-        .from("journal_carburant")
-        .select("purchased_at, amount_xof")
-        .eq("fleet_id", fleetId)
-        .gte("purchased_at", sixMonthsAgo),
-
       fetchShiftKmRows(supabase, fleetId, sixMonthsAgo),
+
+      supabase
+        .from("flotte_adhesions")
+        .select("user_id")
+        .eq("fleet_id", fleetId)
+        .eq("role", "driver")
+        .eq("is_active", true),
+
+      supabase
+        .from("affectations_vehicules")
+        .select("id")
+        .eq("fleet_id", fleetId)
+        .eq("is_active", true),
+
+      supabase
+        .from("travaux_maintenance")
+        .select("id")
+        .eq("fleet_id", fleetId)
+        .eq("status", "in_progress"),
+
+      supabase
+        .from("alertes_automatiques")
+        .select("severity")
+        .eq("fleet_id", fleetId)
+        .eq("resolved", false),
     ]);
 
   const expiringDocs: ExpiringDoc[] = (
@@ -152,17 +174,13 @@ export default async function DashboardPage() {
     )
   ).sort((a, b) => a.days_remaining - b.days_remaining);
 
-  const snapshot = (kpisResult.data ?? {}) as {
-    stats?: Record<string, number>;
-    kpis?: Record<string, number>;
-  };
-
   const expiredDocs = expiringDocs.filter((d) => d.days_remaining < 0).length;
   const expiringDocs30d = expiringDocs.filter(
     (d) => d.days_remaining >= 0 && d.days_remaining <= 30,
   ).length;
 
-  const fuelRows = expensesResult.data ?? [];
+  const fuelRows: Array<{ purchased_at: string; amount_xof: number | null }> = [];
+  const typedShiftRows = shiftRows as ShiftKmRow[];
   const monthKeyNow = format(startOfMonth(new Date()), "yyyy-MM");
 
   const expensesThisMonth = fuelRows
@@ -170,7 +188,7 @@ export default async function DashboardPage() {
     .reduce((s, row) => s + Number(row.amount_xof ?? 0), 0);
 
   const kmThisMonth = Math.round(
-    shiftRows
+    typedShiftRows
       .filter((row) => row.ended_at?.startsWith(monthKeyNow))
       .reduce((s, row) => {
         const end = row.km_end ?? row.km_start;
@@ -178,19 +196,35 @@ export default async function DashboardPage() {
       }, 0),
   );
 
-  const kpis: DashboardKpis = kpisResult.error
-    ? EMPTY_KPIS
-    : mapSnapshotToDashboardKpis({
-        stats: snapshot.stats ?? {},
-        kpis: snapshot.kpis ?? {},
-        expiredDocs,
-        expiringDocs30d,
-        expensesThisMonth,
-        kmThisMonth,
-      });
+  const vehicles = (vehicleStatusResult.data ?? []) as VehicleStatusRow[];
+  const maintenanceRows = (maintenanceResult.data ?? []) as SimpleIdRow[];
+  const assignmentRows = (assignmentsResult.data ?? []) as SimpleIdRow[];
+  const driverRows = (driversResult.data ?? []) as Array<{ user_id: string }>;
+  const alertRows = (alertsResult.data ?? []) as DashboardAlertSeverityRow[];
+  const maintenanceCount = maintenanceRows.length;
+  const criticalAlerts =
+    alertRows.filter((alert) => alert.severity === "critical").length;
+  const snapshot = {
+    stats: {
+      activeVehicles: vehicles.filter((v) => v.status === "ok").length,
+      totalVehicles: vehicles.length,
+      activeDrivers: assignmentRows.length,
+      totalDrivers: driverRows.length,
+      maintenanceInProgress: maintenanceCount,
+    },
+    kpis: {
+      criticalAlerts,
+    },
+  };
 
-  const vehicles = vehicleStatusResult.data ?? [];
-  const maintenanceCount = snapshot.stats?.maintenanceInProgress ?? 0;
+  const kpis: DashboardKpis = mapSnapshotToDashboardKpis({
+    stats: snapshot.stats,
+    kpis: snapshot.kpis,
+    expiredDocs,
+    expiringDocs30d,
+    expensesThisMonth,
+    kmThisMonth,
+  });
 
   const vehicleStats = {
     active: vehicles.filter((v) => v.status === "ok").length,
@@ -209,7 +243,7 @@ export default async function DashboardPage() {
     ? buildExpensesChartData(rawExpenses)
     : buildEmptyChartData().expenses;
 
-  const tripsData = shiftRows.map((row) => ({
+  const tripsData = typedShiftRows.map((row) => ({
     started_at: row.ended_at,
     distance_km: Math.max(0, (row.km_end ?? row.km_start) - row.km_start),
   }));

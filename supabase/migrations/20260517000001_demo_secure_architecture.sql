@@ -563,15 +563,26 @@ COMMENT ON VIEW public.v_demo_accounts_status IS
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 DO $$
+DECLARE
+  job_exists boolean;
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
-    PERFORM cron.unschedule('demo-session-cleanup')
-    WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'demo-session-cleanup');
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
+    AND to_regnamespace('cron') IS NOT NULL
+    AND to_regclass('cron.job') IS NOT NULL THEN
+    EXECUTE 'SELECT EXISTS (SELECT 1 FROM cron.job WHERE jobname = $1)'
+      INTO job_exists
+      USING 'demo-session-cleanup';
 
-    PERFORM cron.schedule(
+    IF job_exists THEN
+      EXECUTE 'SELECT cron.unschedule($1)'
+        USING 'demo-session-cleanup';
+    END IF;
+
+    EXECUTE 'SELECT cron.schedule($1, $2, $3)'
+      USING
       'demo-session-cleanup',
       '30 2 * * *',
-      $$
+      $cron$
         -- Expirer les sessions démo dépassées
         UPDATE public.demo_sessions
         SET is_active    = false,
@@ -598,8 +609,7 @@ BEGIN
           SELECT 1 FROM public.demo_profiles dp
           WHERE dp.user_id = ds.user_id AND dp.is_active = true
         );
-      $$
-    );
+      $cron$;
 
     RAISE NOTICE 'pg_cron job demo-session-cleanup enregistré (02:30 UTC).';
   ELSE

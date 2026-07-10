@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dialog";
 // Import de type uniquement — les données sont chargées dynamiquement (hors bundle prod)
 import type { DemoCredentialAccount } from "@/features/auth/data/demoCredentials";
-import { buildAuthHref, isAuthSignupMode } from "@/navigation/authEntryUrl";
+import { buildAuthHref } from "@/navigation/authEntryUrl";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { getAuthRedirectUrl } from "@/features/auth/utils/authRedirects";
 import {
@@ -63,7 +63,7 @@ import {
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const isSignup = isAuthSignupMode(searchParams);
+  const isSignup = false;
   const postLoginTarget = useMemo(
     () =>
       getSafePostLoginPath(searchParams.get(POST_LOGIN_NEXT_PARAM)) ??
@@ -274,7 +274,7 @@ const Auth = () => {
 
     try {
       if (isSignup) {
-        const { error } = await signUp(
+        const { data, error } = await signUp(
           formData.email, 
           formData.password, 
           formData.fullName,
@@ -292,11 +292,20 @@ const Auth = () => {
           setIsLoading(false);
           return;
         }
+        if (data?.session) {
+          toast({
+            title: "Compte créé avec succès!",
+            description: "Ouverture de session, préparation de votre espace…",
+          });
+          navigate(`/post-login?next=${encodeURIComponent(postLoginTarget)}`);
+          setIsLoading(false);
+          return;
+        }
         toast({
           title: "Compte créé avec succès!",
           description: invitationFleetId 
-            ? `Vérifiez votre email. Vous rejoindrez la flotte "${invitationFleetName}".`
-            : "Vérifiez votre email pour confirmer votre compte.",
+            ? `Votre demande pour rejoindre la flotte "${invitationFleetName}" est enregistrée.`
+            : "Votre compte est créé. Vous pouvez maintenant vous connecter.",
         });
       } else {
         const { error } = await signIn(
@@ -647,10 +656,10 @@ const Auth = () => {
                   </Link>
                 ) : (
                   <Link
-                    to={buildAuthHref(searchParams, true)}
+                    to={`${ROUTE_PATHS.contact}#demo`}
                     className="text-primary hover:underline font-medium"
                   >
-                    Démarrer gratuitement
+                    Demander un acces
                   </Link>
                 )}
               </p>

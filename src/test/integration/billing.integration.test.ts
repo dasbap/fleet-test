@@ -41,13 +41,17 @@ const RUN = process.env.RUN_SUPABASE_INTEGRATION === "1";
 if (RUN) {
   const url = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-  if (!url) throw new Error("VITE_SUPABASE_URL requis pour RUN_SUPABASE_INTEGRATION=1");
-  if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY requis pour RUN_SUPABASE_INTEGRATION=1");
+  if (!url)
+    throw new Error("VITE_SUPABASE_URL requis pour RUN_SUPABASE_INTEGRATION=1");
+  if (!key)
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY requis pour RUN_SUPABASE_INTEGRATION=1"
+    );
 }
 
 // ─── Suite principale ────────────────────────────────────────────────────────
 
-describe.skipIf(!RUN)("Billing integration — Supabase live", () => {
+describe("Billing integration — Supabase live", () => {
   let admin: SupabaseClient;
   // Tenant réutilisé dans toute la suite
   let tenant: TestTenant;
@@ -72,7 +76,7 @@ describe.skipIf(!RUN)("Billing integration — Supabase live", () => {
     it("billing_start_trial retourne un UUID", async () => {
       trialSubId = await seedTrialSubscription(admin, tenant.fleetId, 30);
       expect(trialSubId).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
       );
     });
 
@@ -259,11 +263,11 @@ describe.skipIf(!RUN)("Billing integration — Supabase live", () => {
 
       const { data } = await admin
         .from("jetons_qr")
-        .select("is_active, expires_at")
+        .select("status, expires_at")
         .eq("id", tokenId)
         .single();
 
-      expect(data!.is_active).toBe(true);
+      expect(data!.status).toBe("active");
       expect(new Date(data!.expires_at).getTime()).toBeGreaterThan(Date.now());
 
       // Nettoyage
@@ -271,18 +275,21 @@ describe.skipIf(!RUN)("Billing integration — Supabase live", () => {
     });
 
     it("6 — jeton QR expiré : expires_at dans le passé", async () => {
-      const { tokenId } = await seedQrToken(admin, vehicleId(), { expired: true });
+      const { tokenId } = await seedQrToken(admin, vehicleId(), {
+        expired: true,
+      });
 
       const { data } = await admin
         .from("jetons_qr")
-        .select("is_active, expires_at")
+        .select("status, expires_at")
         .eq("id", tokenId)
         .single();
 
       expect(new Date(data!.expires_at).getTime()).toBeLessThan(Date.now());
 
       // Un QR expiré ne doit PAS être considéré valide
-      const isValid = data!.is_active && new Date(data!.expires_at) > new Date();
+      const isValid =
+        data!.status === "active" && new Date(data!.expires_at) > new Date();
       expect(isValid).toBe(false);
 
       await admin.from("jetons_qr").delete().eq("id", tokenId);
@@ -357,7 +364,9 @@ describe.skipIf(!RUN)("Billing integration — Supabase live", () => {
         .insert({
           fleet_id: suspendTenant.fleetId,
           plan_id: plan!.id,
-          starts_at: new Date(pastEnds.getTime() - 30 * 86400_000).toISOString(),
+          starts_at: new Date(
+            pastEnds.getTime() - 30 * 86400_000
+          ).toISOString(),
           ends_at: pastEnds.toISOString(),
           grace_until: pastGrace.toISOString(),
           status: "grace_period",
@@ -374,7 +383,10 @@ describe.skipIf(!RUN)("Billing integration — Supabase live", () => {
     it("billing_run_daily_lifecycle suspend la grace_period expirée", async () => {
       const { data, error } = await admin.rpc("billing_run_daily_lifecycle");
       expect(error).toBeNull();
-      expect((data as { transitioned_to_suspended: number }).transitioned_to_suspended).toBeGreaterThan(0);
+      expect(
+        (data as { transitioned_to_suspended: number })
+          .transitioned_to_suspended
+      ).toBeGreaterThan(0);
     });
 
     it("le statut est maintenant suspended", async () => {

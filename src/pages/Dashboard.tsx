@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useNetworkOnline } from "@/features/account/hooks/useNetworkOnline";
 import { WifiOff } from "lucide-react";
+import { useCurrentRole } from "@/hooks/useCurrentRole";
 import { EmptyStateDashboard } from "@/components/dashboard/EmptyStateDashboard";
 import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
 import {
@@ -22,7 +23,6 @@ import {
 import { KpisFlotte } from "@/components/dashboard/KpisFlotte";
 import { TableauValidations } from "@/components/dashboard/TableauValidations";
 import { useActionableDashboard } from "@/hooks/useActionableDashboard";
-import { useCurrentRole } from "@/hooks/useCurrentRole";
 import { useActivation } from "@/hooks/useActivation";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";

@@ -106,7 +106,7 @@ AS $$
     -- Sinon c'est un compte réel (membre d'une flotte)
     CASE WHEN EXISTS (
       SELECT 1 FROM public.flotte_adhesions
-      WHERE user_id = p_user_id AND statut = 'actif'
+      WHERE user_id = p_user_id AND is_active = true
     ) THEN 'real'::public.access_universe END,
 
     -- Fallback : inconnu traité comme real (le plus restrictif)
@@ -216,7 +216,7 @@ CREATE POLICY flottes_real_universe_isolation ON public.flottes
           SELECT 1 FROM public.flotte_adhesions fa
           WHERE fa.fleet_id = flottes.id
             AND fa.user_id = auth.uid()
-            AND fa.statut = 'actif'
+            AND fa.is_active = true
         )
     END
   );
