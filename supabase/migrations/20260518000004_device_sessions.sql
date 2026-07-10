@@ -310,14 +310,23 @@ $$;
 
 -- ── Cron : purge sessions révoquées > 90 jours ────────────────────────────────
 
-SELECT cron.schedule(
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
+    AND to_regnamespace('cron') IS NOT NULL
+    AND to_regclass('cron.job') IS NOT NULL THEN
+    EXECUTE 'SELECT cron.schedule($1, $2, $3)'
+      USING
   'purge-old-revoked-sessions',
   '0 3 * * *',
-  $$
+  $cron$
     DELETE FROM public.user_sessions
     WHERE revoked_at IS NOT NULL
       AND revoked_at < now() - interval '90 days';
     DELETE FROM public.security_notifications
     WHERE created_at < now() - interval '90 days' AND is_read = true;
-  $$
-);
+  $cron$;
+  ELSE
+    RAISE NOTICE 'pg_cron non disponible - planification purge-old-revoked-sessions ignoree.';
+  END IF;
+END $$;

@@ -6,15 +6,16 @@ DECLARE
   v_def text;
 BEGIN
   SELECT pg_get_functiondef(
-    'public.fermer_creneau(uuid,integer,integer,text,text,text)'::regprocedure
+    'public.fermer_creneau(uuid,integer,integer,text,text,text,text)'::regprocedure
   )
   INTO v_def;
 
   IF v_def IS NULL THEN
-    RAISE EXCEPTION 'fonction manquante: fermer_creneau(uuid,int,int,text,text,text)';
+    RAISE EXCEPTION 'fonction manquante: fermer_creneau(uuid,int,int,text,text,text,text)';
   END IF;
 
-  IF position('update vehicules' in lower(v_def)) = 0 THEN
+  IF position('update vehicules' in lower(v_def)) = 0
+     AND position('update public.vehicules' in lower(v_def)) = 0 THEN
     RAISE EXCEPTION 'fermer_creneau: UPDATE vehicules absent du corps de fonction';
   END IF;
 
@@ -109,12 +110,13 @@ BEGIN
   RETURNING id INTO v_shift_id;
 
   PERFORM public.fermer_creneau(
-    v_shift_id,
-    v_km_end,
-    15000,
-    'cash',
-    'photo',
-    'proof-test-fermer'
+    v_shift_id::uuid,
+    v_km_end::integer,
+    15000::integer,
+    'cash'::text,
+    'photo'::text,
+    'proof-test-fermer'::text,
+    'idem-test-fermer-1'::text
   );
 
   SELECT status INTO v_shift_status
@@ -143,12 +145,13 @@ BEGIN
 
   -- GREATEST : re-clôture avec km inférieur ne doit pas régresser km_end ni current_km
   PERFORM public.fermer_creneau(
-    v_shift_id,
-    v_km_before - 100,
-    15000,
-    'cash',
-    'photo',
-    'proof-test-fermer-2'
+    v_shift_id::uuid,
+    (v_km_before - 100)::integer,
+    15000::integer,
+    'cash'::text,
+    'photo'::text,
+    'proof-test-fermer-2'::text,
+    'idem-test-fermer-2'::text
   );
 
   SELECT km_end INTO v_shift_km_end
@@ -175,12 +178,13 @@ BEGIN
   RETURNING id INTO v_shift_id;
 
   PERFORM public.fermer_creneau(
-    v_shift_id,
-    v_km_end + 50,
-    15000,
-    'cash',
-    'photo',
-    'proof-test-fermer-3'
+    v_shift_id::uuid,
+    (v_km_end + 50)::integer,
+    15000::integer,
+    'cash'::text,
+    'photo'::text,
+    'proof-test-fermer-3'::text,
+    'idem-test-fermer-3'::text
   );
 
   SELECT current_km INTO v_km_after

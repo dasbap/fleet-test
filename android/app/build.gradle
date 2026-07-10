@@ -20,7 +20,7 @@ android {
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
-            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:*.gz:*.br'
         }
     }
     signingConfigs {
@@ -69,9 +69,19 @@ apply from: 'capacitor.build.gradle'
 
 try {
     def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
+    def expectedPackageName = android.defaultConfig.applicationId
+    def hasMatchingGoogleServicesClient = false
+    if (servicesJSON.exists() && servicesJSON.text) {
+        def parsedGoogleServices = new groovy.json.JsonSlurper().parse(servicesJSON)
+        hasMatchingGoogleServicesClient = parsedGoogleServices.client?.any { client ->
+            client?.client_info?.android_client_info?.package_name == expectedPackageName
+        }
+    }
+    if (hasMatchingGoogleServicesClient) {
         apply plugin: 'com.google.gms.google-services'
+    } else if (servicesJSON.exists() && servicesJSON.text) {
+        logger.warn("google-services.json ignored: no Android client matches applicationId ${expectedPackageName}. Push Notifications won't be configured.")
     }
 } catch(Exception ignored) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    logger.info("google-services.json not found or invalid, google-services plugin not applied. Push Notifications won't work")
 }

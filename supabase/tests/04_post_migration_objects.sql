@@ -28,8 +28,8 @@ BEGIN
     RAISE EXCEPTION 'Objet manquant: RPC public.affecter_vehicule(uuid,uuid,uuid,timestamptz)';
   END IF;
 
-  IF to_regprocedure('public.fermer_creneau(uuid,integer,integer,text,text,text)') IS NULL THEN
-    RAISE EXCEPTION 'Objet manquant: RPC public.fermer_creneau(uuid,int,int,text,text,text)';
+  IF to_regprocedure('public.fermer_creneau(uuid,integer,integer,text,text,text,text)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: RPC public.fermer_creneau(uuid,int,int,text,text,text,text)';
   END IF;
 
   IF to_regprocedure('public.rechercher_utilisateurs(text,integer)') IS NULL THEN
@@ -143,8 +143,70 @@ BEGIN
     RAISE EXCEPTION 'Objet manquant: RPC public.can_create_vehicle(uuid)';
   END IF;
 
+  IF NOT has_function_privilege('authenticated', 'public.can_create_vehicle(uuid)'::regprocedure, 'EXECUTE') THEN
+    RAISE EXCEPTION 'Grant manquant: authenticated EXECUTE public.can_create_vehicle(uuid)';
+  END IF;
+
+  IF NOT has_function_privilege('service_role', 'public.can_create_vehicle(uuid)'::regprocedure, 'EXECUTE') THEN
+    RAISE EXCEPTION 'Grant manquant: service_role EXECUTE public.can_create_vehicle(uuid)';
+  END IF;
+
   IF to_regprocedure('public.get_plan_access(uuid)') IS NULL THEN
     RAISE EXCEPTION 'Objet manquant: RPC public.get_plan_access(uuid)';
+  END IF;
+
+  IF NOT has_function_privilege('authenticated', 'public.get_plan_access(uuid)'::regprocedure, 'EXECUTE') THEN
+    RAISE EXCEPTION 'Grant manquant: authenticated EXECUTE public.get_plan_access(uuid)';
+  END IF;
+
+  IF NOT has_function_privilege('service_role', 'public.get_plan_access(uuid)'::regprocedure, 'EXECUTE') THEN
+    RAISE EXCEPTION 'Grant manquant: service_role EXECUTE public.get_plan_access(uuid)';
+  END IF;
+
+  IF to_regprocedure('public.upsert_fleet_membership(uuid,uuid,public.role_type,boolean)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: RPC public.upsert_fleet_membership(uuid,uuid,role_type,boolean)';
+  END IF;
+
+  IF NOT has_function_privilege('authenticated', 'public.upsert_fleet_membership(uuid,uuid,public.role_type,boolean)'::regprocedure, 'EXECUTE') THEN
+    RAISE EXCEPTION 'Grant manquant: authenticated EXECUTE public.upsert_fleet_membership(uuid,uuid,role_type,boolean)';
+  END IF;
+
+  IF has_function_privilege('anon', 'public.upsert_fleet_membership(uuid,uuid,public.role_type,boolean)'::regprocedure, 'EXECUTE') THEN
+    RAISE EXCEPTION 'Grant trop large: anon EXECUTE public.upsert_fleet_membership(uuid,uuid,role_type,boolean)';
+  END IF;
+
+  IF NOT has_table_privilege('authenticated', 'public.flotte_adhesions', 'SELECT') THEN
+    RAISE EXCEPTION 'Grant manquant: authenticated SELECT public.flotte_adhesions';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public'
+      AND t.typname = 'alert_type'
+      AND e.enumlabel = 'dvir_unsafe'
+  ) THEN
+    RAISE EXCEPTION 'Valeur enum manquante: public.alert_type.dvir_unsafe';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_index i
+    JOIN pg_class c ON c.oid = i.indrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'flotte_adhesions'
+      AND i.indisunique
+      AND (
+        SELECT array_agg(a.attname ORDER BY k.ord)
+        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+        JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = k.attnum
+        WHERE k.attnum > 0
+      ) = ARRAY['fleet_id', 'user_id']::name[]
+  ) THEN
+    RAISE EXCEPTION 'Contrainte unique manquante: public.flotte_adhesions(fleet_id,user_id)';
   END IF;
 END
 $$;

@@ -2,9 +2,16 @@ import { defineConfig, devices } from "@playwright/test";
 
 const BASE_URL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:5173";
 const isCI = !!process.env.CI;
+const isLiveE2EEnabled =
+  process.env.RUN_E2E_LIVE === "1" || process.env.RUN_E2E_LIVE === "true";
+const generalTestIgnore = [
+  "**/onboarding-wizard.spec.ts",
+  ...(isLiveE2EEnabled ? [] : ["**/golden-path-rls.spec.ts"]),
+];
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  testIgnore: generalTestIgnore,
   timeout: 30_000,
   // Stabilise l'exécution : séquentiel en local, parallèle maîtrisé en CI.
   workers: isCI ? 2 : 1,
@@ -33,28 +40,31 @@ export default defineConfig({
   projects: [
     {
       name: "chromium-desktop",
+      testIgnore: [...generalTestIgnore, /.*\.mobile\.spec\.ts/],
       use: {
         ...devices["Desktop Chrome"],
       },
     },
     {
       name: "chromium-mobile",
+      testIgnore: [...generalTestIgnore, /.*\.desktop\.spec\.ts/],
       use: {
         ...devices["Pixel 5"],
       },
     },
     {
       name: "firefox-desktop",
+      testIgnore: [...generalTestIgnore, /.*\.mobile\.spec\.ts/],
       use: {
         ...devices["Desktop Firefox"],
       },
     },
     {
       name: "webkit-desktop",
+      testIgnore: [...generalTestIgnore, /.*\.mobile\.spec\.ts/],
       use: {
         ...devices["Desktop Safari"],
       },
     },
   ],
 });
-

@@ -122,6 +122,29 @@ CREATE TRIGGER support_tickets_updated_at
   BEFORE UPDATE ON public.support_tickets
   FOR EACH ROW EXECUTE FUNCTION public.set_help_updated_at();
 
+CREATE OR REPLACE FUNCTION public.help_current_user_is_admin()
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_is_admin boolean := false;
+BEGIN
+  IF to_regclass('public.admin_profiles') IS NULL THEN
+    RETURN false;
+  END IF;
+
+  EXECUTE 'SELECT EXISTS (SELECT 1 FROM public.admin_profiles ap WHERE ap.user_id = auth.uid())'
+    INTO v_is_admin;
+
+  RETURN COALESCE(v_is_admin, false);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.help_current_user_is_admin() TO authenticated, service_role;
+
 -- ── RLS ───────────────────────────────────────────────────────────────────────
 
 ALTER TABLE public.help_articles ENABLE ROW LEVEL SECURITY;
@@ -142,10 +165,7 @@ DROP POLICY IF EXISTS help_article_views_read_own ON public.help_article_views;
 CREATE POLICY help_article_views_read_own ON public.help_article_views
   FOR SELECT USING (
     auth.uid() = user_id
-    OR EXISTS (
-      SELECT 1 FROM public.admin_profiles ap
-      WHERE ap.user_id = auth.uid()
-    )
+    OR public.help_current_user_is_admin()
   );
 
 DROP POLICY IF EXISTS help_search_events_insert ON public.help_search_events;
@@ -155,7 +175,7 @@ CREATE POLICY help_search_events_insert ON public.help_search_events
 DROP POLICY IF EXISTS help_search_events_read_admin ON public.help_search_events;
 CREATE POLICY help_search_events_read_admin ON public.help_search_events
   FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.admin_profiles ap WHERE ap.user_id = auth.uid())
+    public.help_current_user_is_admin()
     OR EXISTS (
       SELECT 1 FROM public.flotte_adhesions fa
       WHERE fa.user_id = auth.uid() AND fa.role = 'organizer'
@@ -196,9 +216,7 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.flotte_adhesions fa
     WHERE fa.user_id = auth.uid() AND fa.role = 'organizer'
-  ) AND NOT EXISTS (
-    SELECT 1 FROM public.admin_profiles ap WHERE ap.user_id = auth.uid()
-  ) THEN
+  ) AND NOT public.help_current_user_is_admin() THEN
     RAISE EXCEPTION 'Accès refusé';
   END IF;
 
@@ -247,7 +265,7 @@ GRANT EXECUTE ON FUNCTION public.get_help_analytics_summary(int) TO authenticate
 DROP POLICY IF EXISTS help_articles_admin_write ON public.help_articles;
 CREATE POLICY help_articles_admin_write ON public.help_articles
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM public.admin_profiles ap WHERE ap.user_id = auth.uid())
+    public.help_current_user_is_admin()
     OR EXISTS (
       SELECT 1 FROM public.flotte_adhesions fa
       WHERE fa.user_id = auth.uid() AND fa.role = 'organizer'

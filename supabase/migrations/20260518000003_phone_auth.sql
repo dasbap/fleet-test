@@ -110,11 +110,20 @@ GRANT EXECUTE ON FUNCTION public.otp_record_attempt(text, text, jsonb) TO servic
 
 -- ─── 4. Cron : purge des entrées > 24h (données non sensibles, pas besoin de + long) ──
 
-SELECT cron.schedule(
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
+    AND to_regnamespace('cron') IS NOT NULL
+    AND to_regclass('cron.job') IS NOT NULL THEN
+    EXECUTE 'SELECT cron.schedule($1, $2, $3)'
+      USING
   'otp-rate-limits-purge',
   '0 4 * * *',   -- 04:00 UTC chaque nuit
-  $$
+  $cron$
     DELETE FROM public.otp_rate_limits
      WHERE created_at < now() - interval '24 hours';
-  $$
-);
+  $cron$;
+  ELSE
+    RAISE NOTICE 'pg_cron non disponible - planification otp-rate-limits-purge ignoree.';
+  END IF;
+END $$;

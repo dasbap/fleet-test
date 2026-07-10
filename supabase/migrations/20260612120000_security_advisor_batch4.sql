@@ -1,170 +1,194 @@
 -- ============================================================
--- BATCH 4 — Security Advisor (juin 2026)
--- 1. search_path mutable (cloturer_creneau, set_help_updated_at)
--- 2. Extension pg_trgm → schéma extensions
--- 3. REVOKE PUBLIC + grants ciblés (authenticated / anon / service_role)
+-- BATCH 4 - Security Advisor (juin 2026)
+-- 1. search_path mutable
+-- 2. Extension pg_trgm -> schema extensions
+-- 3. REVOKE PUBLIC + grants cibles
 -- 4. RLS demo_requests + help_search_events
 -- ============================================================
 
--- ─── 1. search_path ─────────────────────────────────────────────────────────
+-- 1. search_path
+DO $$
+DECLARE
+  function_name text;
+  function_ref regprocedure;
+BEGIN
+  FOREACH function_name IN ARRAY ARRAY[
+    'set_help_updated_at',
+    'cloturer_creneau'
+  ] LOOP
+    FOR function_ref IN
+      SELECT p.oid::regprocedure
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = function_name
+    LOOP
+      EXECUTE format('ALTER FUNCTION %s SET search_path = public, pg_catalog', function_ref);
+    END LOOP;
+  END LOOP;
+END $$;
 
-ALTER FUNCTION public.set_help_updated_at()
-  SET search_path = public, pg_catalog;
+-- 2. Extension pg_trgm hors public
+CREATE SCHEMA IF NOT EXISTS extensions;
 
 DO $$
 BEGIN
-  IF to_regprocedure(
-    'public.cloturer_creneau(uuid,integer,numeric,text,text,text)'
-  ) IS NOT NULL THEN
-    ALTER FUNCTION public.cloturer_creneau(
-      uuid, integer, numeric, text, text, text
-    ) SET search_path = public, pg_catalog;
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') THEN
+    ALTER EXTENSION pg_trgm SET SCHEMA extensions;
+  ELSE
+    RAISE NOTICE 'Extension pg_trgm absente - deplacement ignore.';
   END IF;
 END $$;
 
--- ─── 2. Extension pg_trgm hors public ───────────────────────────────────────
-
-CREATE SCHEMA IF NOT EXISTS extensions;
-ALTER EXTENSION pg_trgm SET SCHEMA extensions;
-
--- ─── 3. Grants EXECUTE — révoquer l'héritage PUBLIC par défaut ─────────────
-
+-- 3. Grants EXECUTE - revoquer l'heritage PUBLIC par defaut
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
 
--- Fonctions admin / cron / diagnostic : service_role uniquement
-REVOKE EXECUTE ON FUNCTION public.admin_list_demo_sessions(boolean) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.admin_reset_demo_fleet(uuid) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.billing_cancel_subscription(uuid, uuid) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.billing_enter_grace_period(uuid, integer) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.billing_run_daily_lifecycle() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.billing_start_trial(uuid, integer) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.billing_suspend_subscription(uuid) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.check_constraint_violations() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.check_esamba_2024() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.check_esamba_2024(uuid) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.check_logical_inconsistencies() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.check_orphaned_data() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.cleanup_orphaned_data(boolean) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.deactivate_demo_account(uuid, uuid, text) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.expire_demo_accounts_by_type() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.expire_temporary_accounts() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.get_database_stats() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.liste_migrations_appliquees() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.nettoyer_base_donnees(boolean) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.prospect_expire_accounts() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.prospect_suspend_expired() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.reactivate_demo_account(uuid, uuid, integer) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.recreate_esamba_2024() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.refund_payment(uuid, text) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.seed_esamba_2024(text) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.set_demo_account_expiry(uuid, timestamptz) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.suspend_account(uuid) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.verifier_sante_systeme(uuid) FROM authenticated;
-
--- Triggers / fonctions internes : pas d'appel REST direct
-REVOKE EXECUTE ON FUNCTION public.audit_cloture_validation() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.audit_flotte_adhesion() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.audit_flotte_adhesion_changes() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.audit_flotte_invitation_insert() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.audit_flotte_settings() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.audit_organisation_settings() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.audit_travaux_maintenance_changes() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.audit_vehicule_changes() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.handle_invitation_signup() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.sync_user_email() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.trg_controles_dvir_unsafe_alert() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.trg_enforce_fleet_vehicle_limit() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.refresh_analytics_views() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.get_due_scheduled_reports(timestamptz) FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.notify_upcoming_expirations(integer) FROM authenticated;
-
--- Lecture seule ESAMBA (Paramètres) — rétablir après revoke global
-GRANT EXECUTE ON FUNCTION public.verifier_esamba_2024() TO authenticated;
-
--- service_role : fonctions admin / ops
-GRANT EXECUTE ON FUNCTION public.admin_list_demo_sessions(boolean) TO service_role;
-GRANT EXECUTE ON FUNCTION public.admin_reset_demo_fleet(uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.billing_cancel_subscription(uuid, uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.billing_enter_grace_period(uuid, integer) TO service_role;
-GRANT EXECUTE ON FUNCTION public.billing_run_daily_lifecycle() TO service_role;
-GRANT EXECUTE ON FUNCTION public.billing_start_trial(uuid, integer) TO service_role;
-GRANT EXECUTE ON FUNCTION public.billing_suspend_subscription(uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.check_constraint_violations() TO service_role;
-GRANT EXECUTE ON FUNCTION public.check_esamba_2024() TO service_role;
-GRANT EXECUTE ON FUNCTION public.check_esamba_2024(uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.check_logical_inconsistencies() TO service_role;
-GRANT EXECUTE ON FUNCTION public.check_orphaned_data() TO service_role;
-GRANT EXECUTE ON FUNCTION public.cleanup_orphaned_data(boolean) TO service_role;
-GRANT EXECUTE ON FUNCTION public.deactivate_demo_account(uuid, uuid, text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.expire_demo_accounts_by_type() TO service_role;
-GRANT EXECUTE ON FUNCTION public.expire_temporary_accounts() TO service_role;
-GRANT EXECUTE ON FUNCTION public.get_database_stats() TO service_role;
-GRANT EXECUTE ON FUNCTION public.liste_migrations_appliquees() TO service_role;
-GRANT EXECUTE ON FUNCTION public.nettoyer_base_donnees(boolean) TO service_role;
-GRANT EXECUTE ON FUNCTION public.prospect_expire_accounts() TO service_role;
-GRANT EXECUTE ON FUNCTION public.prospect_suspend_expired() TO service_role;
-GRANT EXECUTE ON FUNCTION public.reactivate_demo_account(uuid, uuid, integer) TO service_role;
-GRANT EXECUTE ON FUNCTION public.recreate_esamba_2024() TO service_role;
-GRANT EXECUTE ON FUNCTION public.refund_payment(uuid, text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.rls_auto_enable() TO service_role;
-GRANT EXECUTE ON FUNCTION public.seed_esamba_2024(text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.set_demo_account_expiry(uuid, timestamptz) TO service_role;
-GRANT EXECUTE ON FUNCTION public.suspend_account(uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.verifier_sante_systeme(uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.refresh_analytics_views() TO service_role;
-GRANT EXECUTE ON FUNCTION public.get_due_scheduled_reports(timestamptz) TO service_role;
-GRANT EXECUTE ON FUNCTION public.notify_upcoming_expirations(integer) TO service_role;
-
--- QR billing (si migration vehicle_qr_engine déployée)
 DO $$
+DECLARE
+  function_name text;
+  function_ref regprocedure;
 BEGIN
-  IF to_regprocedure('public.qr_generate_vehicle(uuid,uuid,uuid,integer,integer)') IS NOT NULL THEN
-    GRANT EXECUTE ON FUNCTION public.qr_generate_vehicle(uuid, uuid, uuid, integer, integer) TO service_role;
-  END IF;
-  IF to_regprocedure('public.qr_generate_fleet_lot(uuid,uuid[],uuid,uuid,integer)') IS NOT NULL THEN
-    GRANT EXECUTE ON FUNCTION public.qr_generate_fleet_lot(uuid, uuid[], uuid, uuid, integer) TO service_role;
-  END IF;
-  IF to_regprocedure('public.qr_scan_activation(text,uuid)') IS NOT NULL THEN
-    GRANT EXECUTE ON FUNCTION public.qr_scan_activation(text, uuid) TO service_role;
-  END IF;
+  -- Fonctions admin / cron / diagnostic : service_role uniquement.
+  FOREACH function_name IN ARRAY ARRAY[
+    'admin_list_demo_sessions',
+    'admin_reset_demo_fleet',
+    'billing_cancel_subscription',
+    'billing_enter_grace_period',
+    'billing_run_daily_lifecycle',
+    'billing_start_trial',
+    'billing_suspend_subscription',
+    'check_constraint_violations',
+    'check_esamba_2024',
+    'check_logical_inconsistencies',
+    'check_orphaned_data',
+    'cleanup_orphaned_data',
+    'deactivate_demo_account',
+    'expire_demo_accounts_by_type',
+    'expire_temporary_accounts',
+    'get_database_stats',
+    'liste_migrations_appliquees',
+    'nettoyer_base_donnees',
+    'prospect_expire_accounts',
+    'prospect_suspend_expired',
+    'reactivate_demo_account',
+    'recreate_esamba_2024',
+    'refund_payment',
+    'rls_auto_enable',
+    'seed_esamba_2024',
+    'set_demo_account_expiry',
+    'suspend_account',
+    'verifier_sante_systeme',
+    'audit_cloture_validation',
+    'audit_flotte_adhesion',
+    'audit_flotte_adhesion_changes',
+    'audit_flotte_invitation_insert',
+    'audit_flotte_settings',
+    'audit_organisation_settings',
+    'audit_travaux_maintenance_changes',
+    'audit_vehicule_changes',
+    'handle_new_user',
+    'handle_invitation_signup',
+    'sync_user_email',
+    'trg_controles_dvir_unsafe_alert',
+    'trg_enforce_fleet_vehicle_limit',
+    'refresh_analytics_views',
+    'get_due_scheduled_reports',
+    'notify_upcoming_expirations'
+  ] LOOP
+    FOR function_ref IN
+      SELECT p.oid::regprocedure
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = function_name
+    LOOP
+      EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM authenticated', function_ref);
+      EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role', function_ref);
+    END LOOP;
+  END LOOP;
+
+  -- Lecture seule ESAMBA (Parametres) - retablir apres revoke global.
+  FOR function_ref IN
+    SELECT p.oid::regprocedure
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'verifier_esamba_2024'
+  LOOP
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated', function_ref);
+  END LOOP;
+
+  -- QR billing (si migration vehicle_qr_engine deployee).
+  FOREACH function_name IN ARRAY ARRAY[
+    'qr_generate_vehicle',
+    'qr_generate_fleet_lot',
+    'qr_scan_activation'
+  ] LOOP
+    FOR function_ref IN
+      SELECT p.oid::regprocedure
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = function_name
+    LOOP
+      EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role', function_ref);
+    END LOOP;
+  END LOOP;
 END $$;
 
--- Allowlist anon : flux pré-authentification uniquement
+-- Allowlist anon : flux pre-authentification uniquement.
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM anon;
 
-GRANT EXECUTE ON FUNCTION public.access_code_validate(text) TO anon;
-GRANT EXECUTE ON FUNCTION public.access_code_consume(text, uuid) TO anon;
-GRANT EXECUTE ON FUNCTION public.valider_code_invitation(text) TO anon;
-GRANT EXECUTE ON FUNCTION public.activate_with_code(text) TO anon;
-GRANT EXECUTE ON FUNCTION public.otp_can_send(text) TO anon;
-GRANT EXECUTE ON FUNCTION public.otp_record_attempt(text, text, jsonb) TO anon;
-GRANT EXECUTE ON FUNCTION public.demo_validate_magic_link(uuid) TO anon;
-GRANT EXECUTE ON FUNCTION public.demo_upsert_session(text, text) TO anon;
-GRANT EXECUTE ON FUNCTION public.prospect_get_status() TO anon;
-GRANT EXECUTE ON FUNCTION public.prospect_get_demo_fleet_id() TO anon;
-GRANT EXECUTE ON FUNCTION public.is_prospect_active() TO anon;
-GRANT EXECUTE ON FUNCTION public.track_funnel_event(uuid, text, smallint, text, jsonb, timestamptz) TO anon;
+DO $$
+DECLARE
+  function_name text;
+  function_ref regprocedure;
+BEGIN
+  FOREACH function_name IN ARRAY ARRAY[
+    'access_code_validate',
+    'access_code_consume',
+    'valider_code_invitation',
+    'activate_with_code',
+    'otp_can_send',
+    'otp_record_attempt',
+    'demo_validate_magic_link',
+    'demo_upsert_session',
+    'prospect_get_status',
+    'prospect_get_demo_fleet_id',
+    'is_prospect_active',
+    'track_funnel_event'
+  ] LOOP
+    FOR function_ref IN
+      SELECT p.oid::regprocedure
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = function_name
+    LOOP
+      EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO anon', function_ref);
+    END LOOP;
+  END LOOP;
+END $$;
 
--- ─── 4. RLS permissives ─────────────────────────────────────────────────────
+-- 4. RLS permissives
+DO $$
+BEGIN
+  IF to_regclass('public.demo_requests') IS NOT NULL THEN
+    DROP POLICY IF EXISTS demo_requests_public_insert ON public.demo_requests;
+    CREATE POLICY demo_requests_public_insert ON public.demo_requests
+      FOR INSERT TO anon, authenticated
+      WITH CHECK (
+        length(trim(full_name)) BETWEEN 2 AND 120
+        AND length(trim(phone)) BETWEEN 8 AND 20
+        AND length(coalesce(company, '')) <= 200
+        AND (fleet_size IS NULL OR fleet_size BETWEEN 1 AND 10000)
+      );
+  END IF;
 
-DROP POLICY IF EXISTS demo_requests_public_insert ON public.demo_requests;
-CREATE POLICY demo_requests_public_insert ON public.demo_requests
-  FOR INSERT TO anon, authenticated
-  WITH CHECK (
-    length(trim(full_name)) BETWEEN 2 AND 120
-    AND length(trim(phone)) BETWEEN 8 AND 20
-    AND length(coalesce(company, '')) <= 200
-    AND (fleet_size IS NULL OR fleet_size BETWEEN 1 AND 10000)
-  );
-
-DROP POLICY IF EXISTS help_search_events_insert ON public.help_search_events;
-CREATE POLICY help_search_events_insert ON public.help_search_events
-  FOR INSERT TO anon, authenticated
-  WITH CHECK (
-    length(trim(query)) BETWEEN 1 AND 200
-    AND results_count >= 0
-    AND (user_id IS NULL OR user_id = auth.uid())
-  );
+  IF to_regclass('public.help_search_events') IS NOT NULL THEN
+    DROP POLICY IF EXISTS help_search_events_insert ON public.help_search_events;
+    CREATE POLICY help_search_events_insert ON public.help_search_events
+      FOR INSERT TO anon, authenticated
+      WITH CHECK (
+        length(trim(query)) BETWEEN 1 AND 200
+        AND results_count >= 0
+        AND (user_id IS NULL OR user_id = auth.uid())
+      );
+  END IF;
+END $$;

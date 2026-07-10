@@ -13,6 +13,7 @@ import {
 } from "@/server/http/routes/billingSubscriptions";
 import { registerTerrainShiftCloseRoutes } from "@/server/http/routes/terrainShiftClose";
 import { registerBillingNotchPayRoutes } from "@/server/http/routes/billingNotchPay";
+import { registerHealthRoutes } from "@/server/http/routes/health";
 import {
   registerLegacyWebhooksPaymentRoutes,
   registerWebhooksPaymentRoutes,

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { DEMO_FEATURE_ENABLED } from "@/lib/demo/demoFeatureFlag";
 
 export interface DemoUpsertSessionResult {
   ok: boolean;
@@ -15,6 +16,10 @@ export interface DemoUpsertSessionResult {
  */
 export class DemoSessionRepository {
   async upsertSession(userAgent?: string | null): Promise<DemoUpsertSessionResult> {
+    if (!DEMO_FEATURE_ENABLED) {
+      return { ok: false, error: "demo_disabled" };
+    }
+
     const { data, error } = await supabase.rpc("demo_upsert_session", {
       p_ip_address: null,
       p_user_agent: userAgent ?? null,

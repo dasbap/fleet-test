@@ -68,7 +68,28 @@ jobs:
         if: always()
         shell: bash
         run: |
-          node -e "const fs=require('fs');let total='n/a';let failed='n/a';try{const r=JSON.parse(fs.readFileSync('test-results/supabase-integration.json','utf8'));total=r.numTotalTests ?? 'n/a';failed=r.numFailedTests ?? 'n/a';}catch{};const md=['## Supabase integration (remote)','',`- Tests: ${total}`,`- Echecs: ${failed}`,'- Seed SQL de reference: supabase/seed/test_fleet_africa.sql',''].join('\n');fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,md);"
+          node <<'NODE'
+          const fs = require('fs');
+          let total = 'n/a';
+          let failed = 'n/a';
+
+          try {
+            const result = JSON.parse(fs.readFileSync('test-results/supabase-integration.json', 'utf8'));
+            total = result.numTotalTests ?? 'n/a';
+            failed = result.numFailedTests ?? 'n/a';
+          } catch {}
+
+          const md = [
+            '## Supabase integration (remote)',
+            '',
+            `- Tests: ${total}`,
+            `- Echecs: ${failed}`,
+            '- Seed SQL de reference: supabase/seed/test_fleet_africa.sql',
+            '',
+          ].join('\n');
+
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
+          NODE
 
       - name: Upload test artifacts
         if: always()

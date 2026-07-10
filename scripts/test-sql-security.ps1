@@ -27,10 +27,13 @@ $tests = @(
 )
 
 function Repair-SupabaseTelemetryJson {
-  $paths = @(
-    (Join-Path $env:APPDATA "supabase\telemetry.json"),
-    (Join-Path $env:USERPROFILE ".supabase\telemetry.json")
-  )
+  $paths = @()
+  if (-not [string]::IsNullOrWhiteSpace($env:APPDATA)) {
+    $paths += Join-Path $env:APPDATA "supabase\telemetry.json"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+    $paths += Join-Path $env:USERPROFILE ".supabase\telemetry.json"
+  }
 
   foreach ($telemetryPath in $paths) {
     if (-not (Test-Path $telemetryPath)) {
@@ -250,4 +253,3 @@ catch {
   Write-Host $_.Exception.Message -ForegroundColor Yellow
   exit 1
 }
-

@@ -11,6 +11,7 @@ import {
   Pencil,
   Plus,
   Share2,
+  UserMinus,
   UserPlus,
   Wrench,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { AssignmentFormDialog } from "@/components/vehicles/AssignmentFormDialog";
+import { useEndAssignment } from "@/hooks/useAssignments";
 import { cn } from "@/lib/utils";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { useAuth } from "@/hooks/useAuth";
@@ -440,10 +442,14 @@ function VehicleInfoPanel({
   vehicle,
   canAssignDriver,
   onAssign,
+  onEndAssignment,
+  isEndingAssignment,
 }: {
   vehicle: VehicleDto;
   canAssignDriver?: boolean;
   onAssign?: () => void;
+  onEndAssignment?: () => void;
+  isEndingAssignment?: boolean;
 }) {
   const st = vehicleStatusUi(vehicle);
   const fields: [string, string][] = [
@@ -470,12 +476,26 @@ function VehicleInfoPanel({
           </div>
         ))}
       </div>
-      {canAssignDriver && vehicle.status === "ok" && onAssign ? (
+      {canAssignDriver && vehicle.status === "ok" ? (
         <div className="border-t border-border p-4">
-          <Button type="button" variant="outline" size="sm" className="w-full gap-2" onClick={onAssign}>
-            <UserPlus className="h-4 w-4" aria-hidden />
-            {vehicle.active_assignment?.driver?.full_name ? "Changer le chauffeur" : "Affecter un chauffeur"}
-          </Button>
+          {vehicle.active_assignment ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full gap-2 border-destructive/30 text-destructive hover:text-destructive"
+              disabled={isEndingAssignment}
+              onClick={onEndAssignment}
+            >
+              <UserMinus className="h-4 w-4" aria-hidden />
+              Delier le chauffeur
+            </Button>
+          ) : (
+            <Button type="button" variant="outline" size="sm" className="w-full gap-2" onClick={onAssign}>
+              <UserPlus className="h-4 w-4" aria-hidden />
+              Affecter un chauffeur
+            </Button>
+          )}
         </div>
       ) : null}
     </Card>
@@ -556,6 +576,8 @@ function VehicleDetailLoaded({
   onShare,
   canAssignDriver,
   onAssignClick,
+  onEndAssignmentClick,
+  isEndingAssignment,
 }: {
   vehicle: VehicleDto;
   jobs: MaintenanceJob[];
@@ -565,6 +587,8 @@ function VehicleDetailLoaded({
   onShare: () => void;
   canAssignDriver: boolean;
   onAssignClick: () => void;
+  onEndAssignmentClick: () => void;
+  isEndingAssignment: boolean;
 }) {
   const stats = useMemo(() => buildVehicleDetailStats(jobs, alerts, fuelEntries), [jobs, alerts, fuelEntries]);
   const nextJob = useMemo(() => pickNextPendingMaintenance(jobs), [jobs]);
@@ -624,6 +648,8 @@ function VehicleDetailLoaded({
             vehicle={vehicle}
             canAssignDriver={canAssignDriver}
             onAssign={onAssignClick}
+            onEndAssignment={onEndAssignmentClick}
+            isEndingAssignment={isEndingAssignment}
           />
         </div>
       </div>
@@ -638,6 +664,7 @@ export default function FleetVehicleDetailPage() {
   const canAssignDriver = can("vehicle.assign_driver");
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const { data: vehicle, isLoading: isVehicleLoading } = useVehicleDetail(vehicleId);
+  const endAssignment = useEndAssignment();
 
   useEffect(() => {
     if (!vehicle || !userFleetId) return;
@@ -720,6 +747,21 @@ export default function FleetVehicleDetailPage() {
     }
   }
 
+  async function handleEndAssignment(): Promise<void> {
+    const assignment = vehicle?.active_assignment;
+    if (!assignment) return;
+
+    const driverName = assignment.driver?.full_name?.trim() || "ce chauffeur";
+    const confirmed = window.confirm(`Delier ${driverName} de ce vehicule ?`);
+    if (!confirmed) return;
+
+    try {
+      await endAssignment.mutateAsync(assignment.id);
+    } catch {
+      // Toast handled by the mutation.
+    }
+  }
+
   return (
     <>
       <VehicleDetailLoaded
@@ -731,6 +773,8 @@ export default function FleetVehicleDetailPage() {
         onShare={handleShare}
         canAssignDriver={canAssignDriver}
         onAssignClick={() => setAssignDialogOpen(true)}
+        onEndAssignmentClick={handleEndAssignment}
+        isEndingAssignment={endAssignment.isPending}
       />
       {canAssignDriver && userFleetId && vehicle.status === "ok" ? (
         <AssignmentFormDialog

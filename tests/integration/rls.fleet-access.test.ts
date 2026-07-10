@@ -12,9 +12,9 @@ import {
 } from "./helpers/testUsers";
 
 const canRunSuite = canRunSupabaseIntegrationTests();
-const describeIfReady = canRunSuite ? describe : describe.skip;
+const describeIntegration = canRunSuite ? describe : describe.skip;
 
-describeIfReady("RLS flotte - controle des acces", () => {
+describeIntegration("RLS flotte - controle des acces", () => {
   let clients: IntegrationClients;
   let context: TestFleetContext;
 
@@ -43,12 +43,15 @@ describeIfReady("RLS flotte - controle des acces", () => {
   });
 
   it("refuse la lecture quand l'adhesion est desactivee", async () => {
-    const { error: deactivationError } = await clients.admin.rpc("creer_ou_mettre_a_jour_adhesion_flotte", {
-      p_fleet_id: context.fleetId,
-      p_user_id: clients.userId,
-      p_role: "manager",
-      p_is_active: false,
-    });
+    const { error: deactivationError } = await clients.admin.rpc(
+      "creer_ou_mettre_a_jour_adhesion_flotte",
+      {
+        p_fleet_id: context.fleetId,
+        p_user_id: clients.userId,
+        p_role: "manager",
+        p_is_active: false,
+      }
+    );
     expect(deactivationError).toBeNull();
 
     const { data, error } = await clients.user
@@ -62,12 +65,15 @@ describeIfReady("RLS flotte - controle des acces", () => {
   });
 
   it("refuse la mutation de role pour un utilisateur non cible", async () => {
-    const { error } = await clients.user.rpc("creer_ou_mettre_a_jour_adhesion_flotte", {
-      p_fleet_id: context.fleetId,
-      p_user_id: "00000000-0000-0000-0000-000000000001",
-      p_role: "organizer",
-      p_is_active: true,
-    });
+    const { error } = await clients.user.rpc(
+      "creer_ou_mettre_a_jour_adhesion_flotte",
+      {
+        p_fleet_id: context.fleetId,
+        p_user_id: "00000000-0000-0000-0000-000000000001",
+        p_role: "organizer",
+        p_is_active: true,
+      }
+    );
 
     expect(error).toBeDefined();
     expect(error?.message).toMatch(/permission|refus|denied/i);
@@ -76,6 +82,8 @@ describeIfReady("RLS flotte - controle des acces", () => {
 
 if (!canRunSuite) {
   console.warn(
-    `[tests/integration] Suite ignoree: variables manquantes (${getMissingSupabaseIntegrationEnv().join(", ")})`,
+    `[tests/integration] Suite ignoree: variables manquantes (${getMissingSupabaseIntegrationEnv().join(
+      ", "
+    )})`
   );
 }

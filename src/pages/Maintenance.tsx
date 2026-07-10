@@ -104,9 +104,13 @@ export default function Maintenance() {
   }, [jobs, searchParams, setSearchParams]);
 
   const handleStatusChange = async (jobId: string, newStatus: JobStatus) => {
-    await updateStatus.mutateAsync({ id: jobId, status: newStatus });
-    if (newStatus === "ready") {
-      onMaintenanceJobMarkedReady(jobId);
+    try {
+      await updateStatus.mutateAsync({ id: jobId, status: newStatus });
+      if (newStatus === "ready") {
+        onMaintenanceJobMarkedReady(jobId);
+      }
+    } catch {
+      // React Query affiche deja le toast d'erreur via useUpdateJobStatus.onError.
     }
   };
 

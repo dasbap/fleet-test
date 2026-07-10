@@ -26,17 +26,20 @@ function Wait-DbHealthy {
 
 function Invoke-DockerDbReset {
   Write-Host "Reset Docker: arret conteneur + volume..." -ForegroundColor Cyan
-  docker stop $ContainerName 2>$null | Out-Null
-  docker rm -f $ContainerName 2>$null | Out-Null
-  docker volume rm $VolumeName 2>$null | Out-Null
-
-  if (-not (docker network inspect $NetworkName 2>$null)) {
-    docker network create $NetworkName | Out-Null
-  }
-
   $existing = docker ps -aq --filter "name=^${ContainerName}$"
   if ($existing) {
-    docker rm -f $existing | Out-Null
+    docker stop $ContainerName 2>$null | Out-Null
+    docker rm -f $ContainerName 2>$null | Out-Null
+  }
+
+  $existingVolume = docker volume ls -q --filter "name=^${VolumeName}$"
+  if ($existingVolume) {
+    docker volume rm $VolumeName 2>$null | Out-Null
+  }
+
+  $existingNetwork = docker network ls -q --filter "name=^${NetworkName}$"
+  if (-not $existingNetwork) {
+    docker network create $NetworkName | Out-Null
   }
 
   Write-Host "Recreation conteneur Postgres ($PostgresImage)..." -ForegroundColor Cyan
@@ -67,13 +70,20 @@ function Apply-ProjectMigrations {
 
   $applied = 0
   $skipped = 0
-  foreach ($file in $files) {
-    $output = Get-Content $file.FullName -Raw | docker exec -i $ContainerName psql -U postgres -d postgres -v ON_ERROR_STOP=0 2>&1 | Out-String
-    if ($LASTEXITCODE -ne 0 -and $output -match "ERROR:") {
-      $skipped++
-      continue
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    foreach ($file in $files) {
+      $output = Get-Content $file.FullName -Raw | docker exec -i $ContainerName psql -U postgres -d postgres -v ON_ERROR_STOP=0 2>&1 | Out-String
+      if ($LASTEXITCODE -ne 0 -and $output -match "ERROR:") {
+        $skipped++
+        continue
+      }
+      $applied++
     }
-    $applied++
+  }
+  finally {
+    $ErrorActionPreference = $prevEap
   }
 
   Write-Host "Migrations: $applied appliquees, $skipped avec erreurs ignorees (idempotence)." -ForegroundColor Gray

@@ -45,7 +45,7 @@ export const PUBLIC_NAV: readonly PublicNavItem[] = [
 export const AUTH_NAV: readonly AuthNavItem[] = [
   { label: "Connexion", href: ROUTE_PATHS.auth, primary: false },
   { label: "Demander une démo", href: `${ROUTE_PATHS.contact}#demo`, primary: false },
-  { label: "Démarrer", href: `${ROUTE_PATHS.auth}?mode=signup`, primary: true },
+  { label: "Demander un acces", href: `${ROUTE_PATHS.contact}#demo`, primary: true },
 ];
 
 /** CTA démo — ancre formulaire contact. */
@@ -53,8 +53,8 @@ export const PUBLIC_DEMO_HREF = `${ROUTE_PATHS.contact}#demo` as const;
 
 /** CTAs landing page (hero + sections). */
 export const LANDING_CTA = {
-  signupHref: `${ROUTE_PATHS.auth}?mode=signup`,
-  signupLabel: "Démarrer gratuitement",
+  signupHref: `${ROUTE_PATHS.contact}#demo`,
+  signupLabel: "Demander un acces",
   demoAudioHref: "#demo-video",
   demoAudioLabel: "Écouter la démo",
 } as const;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Car, MoreVertical, User, AlertCircle, CheckCircle, UserPlus } from "lucide-react";
+import { Car, MoreVertical, User, AlertCircle, CheckCircle, UserMinus, UserPlus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -23,6 +23,7 @@ import { useVehicles, VehicleStatus } from "@/hooks/useVehicles";
 import { AssignmentFormDialog } from "./AssignmentFormDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useEndAssignment } from "@/hooks/useAssignments";
 
 // Configuration du statut des véhicules
 // Règle métier : Un véhicule "Actif" (statut ok) doit être lié à un chauffeur actif
@@ -65,6 +66,7 @@ const VehiclesTable = ({ fleetId }: VehiclesTableProps) => {
   const { data: vehicles = [], isLoading } = useVehicles(fleetId);
   const queryClient = useQueryClient();
   const { can } = useRoleAccess();
+  const endAssignment = useEndAssignment();
 
   const canUpdate      = can("vehicle.update");
   const canDelete      = can("vehicle.delete");
@@ -81,6 +83,19 @@ const VehiclesTable = ({ fleetId }: VehiclesTableProps) => {
 
   const handleAssignSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+  };
+
+  const handleEndAssignment = async (assignmentId: string, driverName?: string | null) => {
+    const confirmed = window.confirm(
+      `Delier ${driverName?.trim() || "ce chauffeur"} de ce vehicule ?`,
+    );
+    if (!confirmed) return;
+
+    try {
+      await endAssignment.mutateAsync(assignmentId);
+    } catch {
+      // Toast handled by the mutation.
+    }
   };
 
   if (isLoading) {
@@ -219,13 +234,30 @@ const VehiclesTable = ({ fleetId }: VehiclesTableProps) => {
 
                         {/* vehicle.assign_driver — organisateur, manager */}
                         {canAssignDriver && (
-                          <DropdownMenuItem
-                            onClick={() => handleAssignClick(vehicle.id, vehicle.registration)}
-                            disabled={!fleetId || vehicle.status === 'blocked' || !!vehicle.active_assignment}
-                          >
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Affecter chauffeur
-                          </DropdownMenuItem>
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleAssignClick(vehicle.id, vehicle.registration)}
+                              disabled={!fleetId || vehicle.status === 'blocked' || !!vehicle.active_assignment}
+                            >
+                              <UserPlus className="w-4 h-4 mr-2" />
+                              Affecter chauffeur
+                            </DropdownMenuItem>
+                            {vehicle.active_assignment && (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                disabled={endAssignment.isPending}
+                                onClick={() =>
+                                  handleEndAssignment(
+                                    vehicle.active_assignment!.id,
+                                    vehicle.active_assignment!.driver?.full_name,
+                                  )
+                                }
+                              >
+                                <UserMinus className="w-4 h-4 mr-2" />
+                                Delier chauffeur
+                              </DropdownMenuItem>
+                            )}
+                          </>
                         )}
 
                         {/* vehicle.delete — organisateur uniquement */}

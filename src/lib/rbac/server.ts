@@ -5,7 +5,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Permission, PlatformRole } from '@/types/rbac';
-import { roleIsAtLeast } from '@/lib/rbac/permissions';
+import { hasPermission as roleHasPermission, roleIsAtLeast } from '@/lib/rbac/permissions';
 import { RbacError } from '@/lib/rbac/errors';
 import type { FleetMember } from '@/repositories/fleet-member.repository';
 
@@ -18,6 +18,38 @@ interface PermissionRpcResult {
 }
 
 /** Vérifie une permission via RPC (ne lève pas). */
+type SupabaseRpcError = {
+  code?: string;
+  message?: string;
+  details?: string;
+};
+
+function isMissingRbacPermissionRpc(error: SupabaseRpcError): boolean {
+  const text = `${error.code ?? ''} ${error.message ?? ''} ${error.details ?? ''}`.toLowerCase();
+  return (
+    text.includes('rbac_check_permission') &&
+    (error.code === 'PGRST202' ||
+      error.code === 'PGRST204' ||
+      text.includes('could not find the function') ||
+      text.includes('schema cache'))
+  );
+}
+
+async function checkPermissionFromMembership(
+  permission: Permission,
+  fleetId: string,
+): Promise<PermissionRpcResult> {
+  const membership = await getCurrentUserMembership(fleetId);
+  const role = (membership?.role as PlatformRole | null) ?? null;
+  const allowed = roleHasPermission(role, permission);
+
+  return {
+    allowed,
+    role,
+    reason: !role ? 'no_fleet_access' : allowed ? 'role_allowed' : 'role_denied',
+  };
+}
+
 export async function hasPermission(
   permission: Permission,
   fleetId?: string,
@@ -28,6 +60,11 @@ export async function hasPermission(
   });
 
   if (error) {
+    if (fleetId && isMissingRbacPermissionRpc(error)) {
+      const fallback = await checkPermissionFromMembership(permission, fleetId);
+      return fallback.allowed;
+    }
+
     console.error('[rbac] rbac_check_permission:', error.message);
     return false;
   }
@@ -58,6 +95,24 @@ export async function requirePermission(
   });
 
   if (error) {
+    if (isMissingRbacPermissionRpc(error)) {
+      const fallback = await checkPermissionFromMembership(permission, fleetId);
+      if (fallback.allowed) {
+        console.warn(
+          '[rbac] rbac_check_permission unavailable; using active membership fallback. Apply migration 20260702002000_restore_rbac_check_permission.sql.',
+          error.message,
+        );
+        return (fallback.role as PlatformRole | null) ?? null;
+      }
+
+      throw new RbacError(
+        'Permission insuffisante pour cette action.',
+        'RBAC_DENIED',
+        permission,
+        (fallback.role as PlatformRole | null) ?? null,
+      );
+    }
+
     throw new RbacError(error.message, 'RBAC_DENIED', permission);
   }
 

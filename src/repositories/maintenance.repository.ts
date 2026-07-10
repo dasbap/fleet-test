@@ -65,6 +65,18 @@ export interface MaintenanceJobFilters {
   limit?: number;
 }
 
+type SupabaseColumnError = {
+  code?: string;
+  message?: string;
+  details?: string | null;
+};
+
+function isUndefinedMaintenanceColumn(error: SupabaseColumnError | null | undefined, column: string): boolean {
+  if (!error || error.code !== '42703') return false;
+  const text = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase();
+  return text.includes(`travaux_maintenance.${column}`) || text.includes(`column ${column}`);
+}
+
 /**
  * Fenêtre d’agrégation pour tableaux de bord (et vues ops) : retards puis à venir.
  * Permet d’ajuster les plafonds sans changer les appelants ; une vue SQL peut remplacer
@@ -179,7 +191,7 @@ export class MaintenanceRepository {
     startOfToday.setHours(0, 0, 0, 0);
     const startIso = startOfToday.toISOString();
 
-    const selectClause = `
+    const fullSelectClause = `
         id,
         fleet_id,
         vehicle_id,
@@ -193,10 +205,22 @@ export class MaintenanceRepository {
         created_at,
         vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model)
       `;
+    const minimalSelectClause = `
+        id,
+        fleet_id,
+        vehicle_id,
+        created_from_incident_id,
+        priority,
+        status,
+        planned_at,
+        closed_at,
+        created_at,
+        vehicle:vehicules!travaux_maintenance_vehicle_id_fkey(id, registration, brand, model)
+      `;
 
     const openStatuses = ['queued', 'in_progress', 'blocked'] as const;
 
-    const [overdueRes, upcomingRes] = await Promise.all([
+    const runWindowQueries = (selectClause: string) => Promise.all([
       supabase
         .from('travaux_maintenance')
         .select(selectClause)
@@ -216,6 +240,30 @@ export class MaintenanceRepository {
         .order('planned_at', { ascending: true })
         .limit(branchLimit),
     ]);
+
+    let [overdueRes, upcomingRes] = await runWindowQueries(fullSelectClause);
+
+    if (
+      isUndefinedMaintenanceColumn(overdueRes.error, 'planned_at') ||
+      isUndefinedMaintenanceColumn(upcomingRes.error, 'planned_at')
+    ) {
+      console.warn(
+        'Maintenance planning columns unavailable; returning empty dashboard maintenance window. Apply migration 20260702004000_restore_maintenance_planning_columns.sql.',
+      );
+      return [];
+    }
+
+    if (
+      isUndefinedMaintenanceColumn(overdueRes.error, 'notes') ||
+      isUndefinedMaintenanceColumn(upcomingRes.error, 'notes') ||
+      isUndefinedMaintenanceColumn(overdueRes.error, 'parts') ||
+      isUndefinedMaintenanceColumn(upcomingRes.error, 'parts')
+    ) {
+      console.warn(
+        'Maintenance notes/parts columns unavailable; using minimal dashboard maintenance window. Apply migration 20260702004000_restore_maintenance_planning_columns.sql.',
+      );
+      [overdueRes, upcomingRes] = await runWindowQueries(minimalSelectClause);
+    }
 
     if (overdueRes.error) {
       console.error('Error fetching overdue scheduled maintenance:', overdueRes.error);

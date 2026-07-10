@@ -572,13 +572,22 @@ COMMENT ON VIEW public.v_access_codes IS
 
 -- ─── 9. Cron : expiration automatique des codes ───────────────────────────────
 
-SELECT cron.schedule(
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
+    AND to_regnamespace('cron') IS NOT NULL
+    AND to_regclass('cron.job') IS NOT NULL THEN
+    EXECUTE 'SELECT cron.schedule($1, $2, $3)'
+      USING
   'access-codes-expire',
   '30 2 * * *',   -- 02:30 UTC, après le cron expire-demo-accounts (02:00)
-  $$
+  $cron$
     UPDATE public.access_codes
        SET is_active = false
      WHERE is_active = true
        AND expires_at < now();
-  $$
-);
+  $cron$;
+  ELSE
+    RAISE NOTICE 'pg_cron non disponible - planification access-codes-expire ignoree.';
+  END IF;
+END $$;

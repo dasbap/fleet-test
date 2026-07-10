@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
 import type { Plugin } from "vite";
 
@@ -15,6 +15,7 @@ const repoRoot = (() => {
   }
   return process.cwd();
 })();
+const runSupabaseIntegration = process.env.RUN_SUPABASE_INTEGRATION === "1";
 
 /**
  * Plusieurs paquets @radix-ui déclarent `module` / `exports.import` vers `dist/index.mjs`
@@ -28,7 +29,13 @@ function radixPreferJsWhenMjsMissing(): Plugin {
     resolveId(source) {
       const bareRadix = /^@radix-ui\/react-[-\w]+$/;
       if (bareRadix.test(source)) {
-        const js = path.join(repoRoot, "node_modules", source, "dist", "index.js");
+        const js = path.join(
+          repoRoot,
+          "node_modules",
+          source,
+          "dist",
+          "index.js"
+        );
         try {
           if (fs.existsSync(js)) return js;
         } catch {
@@ -61,6 +68,10 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    exclude: [
+      ...configDefaults.exclude,
+      ...(runSupabaseIntegration ? [] : ["src/test/integration/**/*"]),
+    ],
     /**
      * Valeurs factices pour `import.meta.env` : le client Supabase valide la présence
      * des clés au chargement des modules qui importent `@/integrations/supabase/client`.

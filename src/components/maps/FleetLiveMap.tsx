@@ -13,6 +13,24 @@ type GeoJsonFeatureCollection = GeoJSON.FeatureCollection<GeoJSON.Geometry, GeoJ
 
 const DEFAULT_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
+function parseGeofenceGeometry(value: Geofence["polygon_geojson"]): GeoJSON.Polygon | GeoJSON.MultiPolygon | null {
+  if (!value) {
+    return null;
+  }
+
+  const geometry = typeof value === "string" ? (JSON.parse(value) as unknown) : value;
+  if (
+    geometry &&
+    typeof geometry === "object" &&
+    "type" in geometry &&
+    (geometry.type === "Polygon" || geometry.type === "MultiPolygon")
+  ) {
+    return geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon;
+  }
+
+  return null;
+}
+
 export function FleetLiveMap({ positions, geofences, mapboxToken }: FleetLiveMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -25,12 +43,14 @@ export function FleetLiveMap({ positions, geofences, mapboxToken }: FleetLiveMap
     geofences.forEach((geofence) => {
       if (geofence.geofence_type === "polygon" && geofence.polygon_geojson) {
         try {
-          const parsed = JSON.parse(geofence.polygon_geojson) as GeoJSON.Polygon | GeoJSON.MultiPolygon;
-          features.push({
-            type: "Feature",
-            geometry: parsed,
-            properties: { geofenceName: geofence.name },
-          });
+          const geometry = parseGeofenceGeometry(geofence.polygon_geojson);
+          if (geometry) {
+            features.push({
+              type: "Feature",
+              geometry,
+              properties: { geofenceName: geofence.name },
+            });
+          }
         } catch (error) {
           console.warn("[FleetLiveMap] Polygone geofence invalide ignoré:", error);
         }

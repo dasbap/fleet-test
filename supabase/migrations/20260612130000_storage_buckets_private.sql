@@ -1,9 +1,21 @@
 -- ============================================================
--- Storage : buckets privés + policies sans listing public
+-- Storage : buckets prives + policies sans listing public
 -- avatars, incident-evidence, maintenance-evidence, tutorials
 -- ============================================================
 
--- ─── avatars ────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.is_app_super_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.is_platform_admin();
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_app_super_admin() TO authenticated, service_role;
+
+-- avatars
 
 UPDATE storage.buckets SET public = false WHERE id = 'avatars';
 
@@ -58,7 +70,7 @@ USING (
   AND auth.uid()::text = split_part(name, '/', 1)
 );
 
--- ─── incident-evidence ──────────────────────────────────────────────────────
+-- incident-evidence
 
 UPDATE storage.buckets SET public = false WHERE id = 'incident-evidence';
 
@@ -104,7 +116,7 @@ USING (
   )
 );
 
--- ─── maintenance-evidence ───────────────────────────────────────────────────
+-- maintenance-evidence
 
 UPDATE storage.buckets SET public = false WHERE id = 'maintenance-evidence';
 
@@ -160,7 +172,7 @@ USING (
   )
 );
 
--- ─── tutorials ──────────────────────────────────────────────────────────────
+-- tutorials
 
 UPDATE storage.buckets SET public = false WHERE id = 'tutorials';
 

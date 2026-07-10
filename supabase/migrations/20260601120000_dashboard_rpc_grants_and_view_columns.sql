@@ -1,6 +1,8 @@
 -- Dashboard : vue alertes (snake_case) puis droits RPC/vue.
 
-CREATE OR REPLACE VIEW public.dashboard_alerts AS
+DROP VIEW IF EXISTS public.dashboard_alerts;
+
+CREATE VIEW public.dashboard_alerts AS
 SELECT
   a.id,
   a.org_id,

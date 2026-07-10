@@ -39,10 +39,64 @@ export interface VehicleListItemDto extends VehicleDto {
   next_maintenance_at: string | null;
 }
 
+interface ActiveAssignmentRow {
+  id: string;
+  vehicle_id: string;
+  driver_user_id: string;
+}
+
 /**
  * Repository pour l'accès aux données des véhicules
  */
 export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertDto, VehicleUpdate> {
+  private async buildActiveAssignmentMap(
+    vehicleIds: string[],
+  ): Promise<Map<string, VehicleDto['active_assignment']>> {
+    if (vehicleIds.length === 0) {
+      return new Map();
+    }
+
+    const { data: assignmentsData, error: assignmentsError } = await supabase
+      .from('affectations_vehicules')
+      .select('id, vehicle_id, driver_user_id')
+      .in('vehicle_id', vehicleIds)
+      .eq('is_active', true);
+
+    if (assignmentsError) {
+      console.error('Error fetching active vehicle assignments:', assignmentsError);
+      throw new Error(assignmentsError.message);
+    }
+
+    const assignments = (assignmentsData ?? []) as ActiveAssignmentRow[];
+    const driverIds = [...new Set(assignments.map((assignment) => assignment.driver_user_id))];
+    const { data: profiles, error: profilesError } = driverIds.length
+      ? await supabase
+          .from('profils')
+          .select('user_id, full_name')
+          .in('user_id', driverIds)
+      : { data: [], error: null };
+
+    if (profilesError) {
+      console.error('Error fetching assignment driver profiles:', profilesError);
+      throw new Error(profilesError.message);
+    }
+
+    const profileByUserId = new Map(
+      (profiles ?? []).map((profile) => [profile.user_id, profile]),
+    );
+    const assignmentMap = new Map<string, VehicleDto['active_assignment']>();
+
+    assignments.forEach((assignment) => {
+      assignmentMap.set(assignment.vehicle_id, {
+        id: assignment.id,
+        driver_user_id: assignment.driver_user_id,
+        driver: profileByUserId.get(assignment.driver_user_id) ?? null,
+      });
+    });
+
+    return assignmentMap;
+  }
+
   /**
    * Récupère tous les véhicules, optionnellement filtrés par flotte
    */
@@ -107,25 +161,7 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
       return [];
     }
 
-    const { data: assignmentsData } = await supabase
-      .from('affectations_vehicules')
-      .select(`
-        id,
-        vehicle_id,
-        driver_user_id,
-        driver:profils!affectations_vehicules_driver_user_id_fkey(user_id, full_name)
-      `)
-      .in('vehicle_id', vehicleIds)
-      .eq('is_active', true);
-
-    const assignmentMap = new Map<string, unknown>();
-    (assignmentsData || []).forEach((a) => {
-      assignmentMap.set(a.vehicle_id, {
-        id: a.id,
-        driver_user_id: a.driver_user_id,
-        driver: a.driver,
-      });
-    });
+    const assignmentMap = await this.buildActiveAssignmentMap(vehicleIds);
 
     const { data: maintenanceData } = await supabase
       .from('travaux_maintenance')
@@ -143,7 +179,7 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
 
     return vehicles.map((vehicle) => ({
       ...vehicle,
-      active_assignment: (assignmentMap.get(vehicle.id) as VehicleDto['active_assignment']) || null,
+      active_assignment: assignmentMap.get(vehicle.id) || null,
       next_maintenance_at: nextMaintenanceMap.get(vehicle.id) || null,
     }));
   }
@@ -181,8 +217,7 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
       .select(`
         id,
         vehicle_id,
-        driver_user_id,
-        driver:profils!affectations_vehicules_driver_user_id_fkey(user_id, full_name)
+        driver_user_id
       `)
       .in('vehicle_id', vehicleIds)
       .eq('is_active', true);
@@ -278,8 +313,7 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
         `
         id,
         vehicle_id,
-        driver_user_id,
-        driver:profils!affectations_vehicules_driver_user_id_fkey(user_id, full_name)
+        driver_user_id
       `
       )
       .eq("vehicle_id", id)
@@ -290,19 +324,23 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
       return { ...vehicle, active_assignment: null };
     }
 
-    const rawDriver = assignmentRow.driver as unknown;
-    const driverRow = Array.isArray(rawDriver) ? rawDriver[0] : rawDriver;
-    const driver =
-      driverRow && typeof driverRow === "object"
-        ? (driverRow as { user_id: string; full_name: string | null })
-        : undefined;
+    const { data: driverProfile, error: driverProfileError } = await supabase
+      .from("profils")
+      .select("user_id, full_name")
+      .eq("user_id", assignmentRow.driver_user_id)
+      .maybeSingle();
+
+    if (driverProfileError) {
+      console.error("Error fetching assignment driver profile:", driverProfileError);
+      throw new Error(driverProfileError.message);
+    }
 
     return {
       ...vehicle,
       active_assignment: {
         id: assignmentRow.id,
         driver_user_id: assignmentRow.driver_user_id,
-        driver,
+        driver: driverProfile ?? null,
       },
     } as VehicleDto;
   }

@@ -18,14 +18,24 @@ export class AuditRepository {
     fleetId: string,
     options?: { limit?: number; actions?: string[] },
   ): Promise<AuditLogRow[]> {
-    const { data, error } = await supabase.rpc('get_fleet_audit_logs', {
-      p_fleet_id: fleetId,
-      p_limit: options?.limit ?? 50,
-      p_actions: options?.actions ?? null,
-    });
+    let query = supabase
+      .from('audit_logs')
+      .select('id, actor_id, action, target_id, fleet_id, metadata, created_at')
+      .eq('fleet_id', fleetId)
+      .order('created_at', { ascending: false })
+      .limit(options?.limit ?? 50);
+
+    if (options?.actions?.length) {
+      query = query.in('action', options.actions);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching fleet audit logs:', error);
+      if (error.code === 'PGRST116' || error.code === 'PGRST205' || error.code === '42P01') {
+        return [];
+      }
       throw new Error(error.message);
     }
 

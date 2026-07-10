@@ -64,6 +64,10 @@ test-results/
 # Ne pas ignorer android/app/src/main/res/ ni le dossier resources/ a la racine.
 
 # Android - publication Play (ne jamais versionner)
+android/app/google-services.json
+android/app/google-services.*.json
+ios/App/App/GoogleService-Info.plist
+apps/mobile/android/app/debug.keystore
 android/keystore.properties
 android/*.jks
 android/*.keystore
@@ -76,4 +80,3 @@ android/.github-android-secrets.local.txt
 
 # Skills agents locaux (non partagés)
 .agents/
-

@@ -180,10 +180,10 @@ export default function HybridAuthPage() {
           </div>
 
           <Link
-            to={`/auth?mode=signup${redirectTo !== ROUTE_PATHS.dashboard ? `&next=${encodeURIComponent(redirectTo)}` : ''}`}
+            to={`${ROUTE_PATHS.contact}#demo`}
             className="mt-3 flex w-full items-center justify-center rounded-xl border border-border py-2.5 text-sm font-medium hover:bg-muted transition-colors"
           >
-            Créer un compte E-Samba
+            Demander un acces E-Samba
           </Link>
         </div>
       </div>

@@ -60,7 +60,7 @@ export interface AuthFlowComputeResult {
 }
 
 /**
- * Aiguillage post-authentification (ordre : adhésion → onboarding / 1ère connexion →
+ * Aiguillage post-authentification (ordre : adhésion → onboarding incomplet →
  * plan payant expiré → rôle driver → rôle mécano → next ou dashboard).
  * Prérequis si `hasMemberships` : contexte org/flotte actif déjà résolu côté appelant.
  *
@@ -77,9 +77,8 @@ export function computeAuthFlowDecision(input: AuthFlowComputeInput): AuthFlowCo
     return { path: ROUTE_PATHS.tenantBootstrap, reason: "tenant_bootstrap" };
   }
 
-  const firstLogin = detectFirstLogin(input.userCreatedAt, input.lastSignInAt);
   const isFleetAdmin = input.role === "organizer" || input.role === "manager";
-  if ((firstLogin || !input.onboardingCompleted) && isFleetAdmin) {
+  if (!input.onboardingCompleted && isFleetAdmin) {
     return { path: ROUTE_PATHS.onboarding, reason: "onboarding" };
   }
 
