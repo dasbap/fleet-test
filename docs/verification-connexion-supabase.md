@@ -74,6 +74,20 @@ Depuis la racine du projet :
 3. **Vérification complète (connexion + migrations)** : `npm run verify:supabase` — enchaîne les étapes ci-dessus et compare les migrations appliquées à la liste attendue. Optionnel : définir `SUPABASE_SERVICE_ROLE_KEY` dans `.env.local` (Dashboard → Project Settings → API) pour comparer les migrations via RPC sans CLI ; sinon le script tente la CLI Supabase ou indique d’exécuter manuellement `supabase/list-applied-migrations.sql` et de comparer avec la liste § 3.2.
 4. **Migrations (si Supabase CLI installée)** : `supabase link` puis `supabase migration list` pour comparer migrations locales et appliquées sur le projet.
 
+### Cas rapide : RPC `get_dashboard_snapshot` en 404
+
+Si la console affiche `POST /rest/v1/rpc/get_dashboard_snapshot 404`, la fonction RPC n'est pas exposee sur le projet Supabase cible. Appliquer la migration ciblee :
+
+```sh
+npm run supabase:setup:dashboard
+```
+
+Pour un environnement issu de la baseline qui peut aussi manquer les tables runtime recentes, appliquer plutot tout le lot idempotent :
+
+```sh
+npm run supabase:setup:runtime
+```
+
 ## 4. Tester à nouveau
 
 - Lancer `npm run dev` puis ouvrir la page de connexion.

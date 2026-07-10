@@ -8,6 +8,8 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
     OR NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_net')
     OR NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'supabase_vault')
+    OR to_regnamespace('cron') IS NULL
+    OR to_regclass('cron.job') IS NULL
   THEN
     RAISE NOTICE 'Extensions cron/net/vault absentes: planification process-whatsapp-retries ignorée.';
     RETURN;

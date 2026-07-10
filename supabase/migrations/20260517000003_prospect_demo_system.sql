@@ -647,11 +647,20 @@ GRANT SELECT ON public.v_prospect_dashboard TO service_role;
 -- pg_cron : expiration quotidienne à 03:00 UTC
 -- ═══════════════════════════════════════════════════════════════════════════════
 
-SELECT cron.schedule(
-  'prospect-daily-expiration',
-  '0 3 * * *',
-  'SELECT prospect_expire_accounts(); SELECT prospect_suspend_expired();'
-);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
+    AND to_regnamespace('cron') IS NOT NULL
+    AND to_regclass('cron.job') IS NOT NULL THEN
+    EXECUTE 'SELECT cron.schedule($1, $2, $3)'
+      USING
+        'prospect-daily-expiration',
+        '0 3 * * *',
+        'SELECT prospect_expire_accounts(); SELECT prospect_suspend_expired();';
+  ELSE
+    RAISE NOTICE 'pg_cron non disponible - planification prospect-daily-expiration ignoree.';
+  END IF;
+END $$;
 
 -- pg_cron : reset hebdomadaire des flottes démo (dimanche 04:00 UTC)
 -- Appelé séparément pour chaque flotte démo via la Edge Function.

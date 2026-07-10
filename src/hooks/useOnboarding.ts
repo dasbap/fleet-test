@@ -1,16 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { OnboardingRepository } from '@/repositories/onboarding.repository';
 import { OnboardingService } from '@/services/onboarding.service';
-import type { OnboardingData, OnboardingStep1Data } from '@/types/onboarding';
+import type { OnboardingData, OnboardingProgress, OnboardingStep1Data } from '@/types/onboarding';
 
 const onboardingRepository = new OnboardingRepository();
 const onboardingService = new OnboardingService(onboardingRepository);
+
+const onboardingProgressKey = (orgId: string) => ['onboarding-progress', orgId] as const;
+const authFlowOnboardingCompletedKey = (orgId: string) =>
+  ['auth-flow-onboarding-completed', orgId] as const;
+const authFlowOnboardingCompletedRootKey = ['auth-flow-onboarding-completed'] as const;
 
 export function useOnboarding(orgId?: string) {
   const queryClient = useQueryClient();
 
   const progressQuery = useQuery({
-    queryKey: ['onboarding-progress', orgId],
+    queryKey: orgId ? onboardingProgressKey(orgId) : ['onboarding-progress', orgId],
     queryFn: () => onboardingService.getProgress(orgId as string),
     enabled: Boolean(orgId),
   });
@@ -23,8 +28,9 @@ export function useOnboarding(orgId?: string) {
       return onboardingService.saveStep(orgId, params.step, params.data, Boolean(params.completed));
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['onboarding-progress', orgId] });
-      queryClient.invalidateQueries({ queryKey: ['route-access'] });
+      if (!orgId) return;
+      queryClient.invalidateQueries({ queryKey: onboardingProgressKey(orgId) });
+      queryClient.invalidateQueries({ queryKey: authFlowOnboardingCompletedKey(orgId) });
     },
   });
 
@@ -36,8 +42,23 @@ export function useOnboarding(orgId?: string) {
       await onboardingService.markCompleted(orgId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['onboarding-progress', orgId] });
-      queryClient.invalidateQueries({ queryKey: ['route-access'] });
+      if (!orgId) return;
+
+      queryClient.setQueryData(authFlowOnboardingCompletedKey(orgId), true);
+      queryClient.setQueryData<OnboardingProgress | null | undefined>(
+        onboardingProgressKey(orgId),
+        current => {
+          if (!current) return current;
+          return {
+            ...current,
+            completed: true,
+            step: Math.max(current.step ?? 4, 4) as OnboardingProgress['step'],
+          };
+        },
+      );
+
+      queryClient.invalidateQueries({ queryKey: onboardingProgressKey(orgId) });
+      queryClient.invalidateQueries({ queryKey: authFlowOnboardingCompletedRootKey });
     },
   });
 
@@ -50,7 +71,10 @@ export function useOnboarding(orgId?: string) {
       return onboardingService.createFirstVehicleForOrg(orgId, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['onboarding-progress', orgId] });
+      if (orgId) {
+        queryClient.invalidateQueries({ queryKey: onboardingProgressKey(orgId) });
+        queryClient.invalidateQueries({ queryKey: authFlowOnboardingCompletedKey(orgId) });
+      }
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles-simple'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });

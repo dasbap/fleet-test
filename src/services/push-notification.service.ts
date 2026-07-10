@@ -38,6 +38,10 @@ function pushLogDebug(message: string, meta?: Record<string, unknown>): void {
 }
 
 /** Catégories métier convenues avec le backend (payload FCM `data`, valeurs string). */
+function isNativePushConfigured(): boolean {
+  return import.meta.env.VITE_NATIVE_PUSH_CONFIGURED === "true";
+}
+
 export type EsambaPushCategory =
   | "critical_alert"
   | "maintenance_due"
@@ -176,6 +180,10 @@ export class PushNotificationService {
    * Enregistre le device auprès d’APNs / FCM (sans nouvelle demande de permission si déjà accordée).
    */
   async register(): Promise<void> {
+    if (!isNativePushConfigured()) {
+      pushLogInfo("Enregistrement push ignore (Firebase non configure pour ce build)");
+      return;
+    }
     await PushNotifications.register();
   }
 
@@ -198,6 +206,11 @@ export class PushNotificationService {
   async start(options?: PushNotificationStartOptions): Promise<() => Promise<void>> {
     if (!isNativePlatform()) {
       pushLogDebug("Push ignoré (plateforme non native)", { platform: Capacitor.getPlatform() });
+      return async () => {};
+    }
+
+    if (!isNativePushConfigured()) {
+      pushLogInfo("Push natif ignore (Firebase non configure pour ce build)");
       return async () => {};
     }
 

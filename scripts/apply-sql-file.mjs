@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
  * Applique un fichier SQL via DATABASE_URL (postgres).
- * Usage: node --env-file=.env.local scripts/apply-sql-file.mjs supabase/migrations/....sql
+ * Usage: node --env-file=.env.local scripts/apply-sql-file.mjs supabase/migrations/....sql [...]
  */
 
 import { readFileSync } from 'fs';
 import pg from 'pg';
 
-const file = process.argv[2];
-if (!file) {
-  console.error('Usage: node scripts/apply-sql-file.mjs <fichier.sql>');
+const files = process.argv.slice(2);
+if (files.length === 0) {
+  console.error('Usage: node scripts/apply-sql-file.mjs <fichier.sql> [...]');
   process.exit(1);
 }
 
@@ -25,7 +25,7 @@ function resolveDatabaseUrl() {
   if (dbPassword && supabaseUrl) {
     const ref = supabaseUrl.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1];
     if (ref) {
-      return `postgresql://postgres.${ref}:${encodeURIComponent(dbPassword)}@aws-1-eu-west-1.pooler.supabase.com:5432/postgres`;
+      return `postgresql://postgres:${encodeURIComponent(dbPassword)}@db.${ref}.supabase.co:5432/postgres`;
     }
   }
 
@@ -40,13 +40,15 @@ if (!url) {
   process.exit(1);
 }
 
-const sql = readFileSync(file, 'utf8');
 const client = new pg.Client({ connectionString: url });
 
 try {
   await client.connect();
-  await client.query(sql);
-  console.log(`OK: ${file}`);
+  for (const file of files) {
+    const sql = readFileSync(file, 'utf8');
+    await client.query(sql);
+    console.log(`OK: ${file}`);
+  }
 } catch (err) {
   console.error('ERREUR:', err.message);
   process.exit(1);

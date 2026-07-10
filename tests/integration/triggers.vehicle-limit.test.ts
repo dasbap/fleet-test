@@ -12,9 +12,9 @@ import {
 } from "./helpers/testUsers";
 
 const canRunSuite = canRunSupabaseIntegrationTests();
-const describeIfReady = canRunSuite ? describe : describe.skip;
+const describeIntegration = canRunSuite ? describe : describe.skip;
 
-describeIfReady("Trigger limite vehicules", () => {
+describeIntegration("Trigger limite vehicules", () => {
   let clients: IntegrationClients;
   let context: TestFleetContext;
 
@@ -46,14 +46,17 @@ describeIfReady("Trigger limite vehicules", () => {
       expect(data).toBeDefined();
     }
 
-    const { error: limitError } = await clients.user.rpc("creer_vehicule_esamba", {
-      p_fleet_id: context.fleetId,
-      p_registration: `LIM-${Date.now()}-4`,
-      p_brand: "Honda",
-      p_model: "Civic",
-      p_year: 2023,
-      p_current_km: 2100,
-    });
+    const { error: limitError } = await clients.user.rpc(
+      "creer_vehicule_esamba",
+      {
+        p_fleet_id: context.fleetId,
+        p_registration: `LIM-${Date.now()}-4`,
+        p_brand: "Honda",
+        p_model: "Civic",
+        p_year: 2023,
+        p_current_km: 2100,
+      }
+    );
 
     expect(limitError).toBeDefined();
     expect(limitError?.message).toMatch(/limite_vehicules_plan_atteinte/i);
@@ -62,6 +65,8 @@ describeIfReady("Trigger limite vehicules", () => {
 
 if (!canRunSuite) {
   console.warn(
-    `[tests/integration] Suite ignoree: variables manquantes (${getMissingSupabaseIntegrationEnv().join(", ")})`,
+    `[tests/integration] Suite ignoree: variables manquantes (${getMissingSupabaseIntegrationEnv().join(
+      ", "
+    )})`
   );
 }

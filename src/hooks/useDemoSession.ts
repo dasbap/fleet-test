@@ -19,6 +19,7 @@ import {
   isSessionExpired,
   sessionMinutesRemaining,
 } from "@/lib/demo/demoGuard";
+import { DEMO_FEATURE_ENABLED } from "@/lib/demo/demoFeatureFlag";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -61,7 +62,9 @@ const demoSessionService = new DemoSessionService(demoSessionRepository);
 export function useDemoSession(): UseDemoSessionReturn {
   const { user } = useAuth();
 
-  const [status, setStatus]             = useState<DemoStatus>("loading");
+  const [status, setStatus]             = useState<DemoStatus>(
+    DEMO_FEATURE_ENABLED ? "loading" : "not_demo",
+  );
   const [session, setSession]           = useState<DemoSession | null>(null);
   const [minutesRemaining, setMinutes]  = useState(0);
 
@@ -71,6 +74,13 @@ export function useDemoSession(): UseDemoSessionReturn {
   // ── Init / refresh session ────────────────────────────────────────────────
 
   const init = useCallback(async () => {
+    if (!DEMO_FEATURE_ENABLED) {
+      setStatus("not_demo");
+      setSession(null);
+      setMinutes(0);
+      return;
+    }
+
     if (!user?.id) {
       setStatus("not_demo");
       return;

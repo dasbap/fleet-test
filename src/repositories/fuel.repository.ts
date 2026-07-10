@@ -1,5 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
+function isMissingFuelStore(error: { code?: string; message?: string } | null | undefined) {
+  return (
+    error?.code === "PGRST205" ||
+    error?.code === "42P01" ||
+    error?.code === "PGRST202" ||
+    error?.message?.includes("journal_carburant") ||
+    error?.message?.includes("enregistrer_carburant_offline")
+  );
+}
+
 export interface FuelEntry {
   id: string;
   fleet_id: string;
@@ -43,6 +53,9 @@ export class FuelRepository {
       .select("liters, amount_xof")
       .eq("fleet_id", fleetId)
       .gte("purchased_at", since.toISOString());
+    if (isMissingFuelStore(error)) {
+      return { totalLiters: 0, totalAmountXof: 0, entryCount: 0 };
+    }
     if (error) throw new Error(error.message);
     const rows = data ?? [];
     return {
@@ -65,6 +78,7 @@ export class FuelRepository {
       .order("purchased_at", { ascending: false })
       .range(options.offset ?? 0, (options.offset ?? 0) + (options.limit ?? 50) - 1);
 
+    if (isMissingFuelStore(error)) return [];
     if (error) throw new Error(error.message);
     return (data ?? []) as unknown as FuelEntry[];
   }
@@ -78,6 +92,7 @@ export class FuelRepository {
       .eq("vehicle_id", vehicleId)
       .order("purchased_at", { ascending: false })
       .limit(limit);
+    if (isMissingFuelStore(error)) return [];
     if (error) throw new Error(error.message);
     return (data ?? []) as FuelEntry[];
   }
@@ -97,6 +112,9 @@ export class FuelRepository {
     });
 
     if (error) {
+      if (isMissingFuelStore(error)) {
+        throw new Error("Le module carburant n'est pas disponible sur ce projet.");
+      }
       console.error("Error creating fuel entry:", error);
       throw new Error(error.message);
     }

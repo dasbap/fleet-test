@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -36,8 +37,9 @@ const inscriptionSchema = z
 type InscriptionFormValues = z.infer<typeof inscriptionSchema>;
 
 export function InscriptionForm() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [emailSent, setEmailSent] = useState("");
+  const [createdEmail, setCreatedEmail] = useState("");
 
   const {
     register,
@@ -52,7 +54,7 @@ export function InscriptionForm() {
 
   async function onSubmit(data: InscriptionFormValues) {
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { data: authData, error } = await supabase.auth.signUp({
       email: data.email.trim(),
       password: data.password,
       options: {
@@ -66,20 +68,27 @@ export function InscriptionForm() {
       return;
     }
 
-    setEmailSent(data.email.trim());
+    if (authData.session) {
+      toast.success("Compte créé, bienvenue !");
+      router.push("/onboarding");
+      router.refresh();
+      return;
+    }
+
+    setCreatedEmail(data.email.trim());
   }
 
-  if (emailSent) {
+  if (createdEmail) {
     return (
       <Card>
         <CardHeader className="text-center">
           <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
             <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
-          <CardTitle>Confirmez votre email</CardTitle>
+          <CardTitle>Compte créé</CardTitle>
           <CardDescription>
-            Un email de confirmation a été envoyé à <strong>{emailSent}</strong>.
-            Cliquez sur le lien pour activer votre compte et configurer votre
+            Votre compte <strong>{createdEmail}</strong> est enregistré.
+            Vous pouvez vous connecter pour continuer la configuration de votre
             flotte.
           </CardDescription>
         </CardHeader>

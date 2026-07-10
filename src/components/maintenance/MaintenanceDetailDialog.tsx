@@ -100,12 +100,16 @@ export function MaintenanceDetailDialog({
   }, [job]);
 
   const handleSavePlanning = async () => {
-    await updateJob.mutateAsync({
-      id: jobId,
-      notes: localNotes || null,
-      planned_at: localPlannedAt ? new Date(localPlannedAt).toISOString() : null,
-      parts: localParts.length > 0 ? localParts : [],
-    });
+    try {
+      await updateJob.mutateAsync({
+        id: jobId,
+        notes: localNotes || null,
+        planned_at: localPlannedAt ? new Date(localPlannedAt).toISOString() : null,
+        parts: localParts.length > 0 ? localParts : [],
+      });
+    } catch {
+      // React Query affiche deja le toast d'erreur via useUpdateMaintenanceJob.onError.
+    }
   };
 
   const handleAddPart = () => {
@@ -204,9 +208,13 @@ export function MaintenanceDetailDialog({
       : undefined;
 
   const handleStatusChange = async (newStatus: JobStatus) => {
-    await updateStatus.mutateAsync({ id: jobId, status: newStatus });
-    if (newStatus === "ready") {
-      onJobMarkedReady?.(jobId);
+    try {
+      await updateStatus.mutateAsync({ id: jobId, status: newStatus });
+      if (newStatus === "ready") {
+        onJobMarkedReady?.(jobId);
+      }
+    } catch {
+      // React Query affiche deja le toast d'erreur via useUpdateJobStatus.onError.
     }
   };
 

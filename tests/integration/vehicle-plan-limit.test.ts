@@ -12,7 +12,9 @@ describeIntegration("Triggers - limite véhicules plan Free", () => {
   let testOrgId: string | undefined;
   let testFleetId: string | undefined;
   const createdVehicleIds: string[] = [];
-  let supabaseAdmin: Awaited<ReturnType<typeof bootstrapIntegrationAuth>>["admin"];
+  let supabaseAdmin: Awaited<
+    ReturnType<typeof bootstrapIntegrationAuth>
+  >["admin"];
 
   const unique = Date.now();
   const testOrgName = `Test Vehicle Limit Org ${unique}`;
@@ -25,11 +27,17 @@ describeIntegration("Triggers - limite véhicules plan Free", () => {
 
   afterAll(async () => {
     if (createdVehicleIds.length > 0) {
-      await supabaseAdmin.from("vehicules").delete().in("id", createdVehicleIds);
+      await supabaseAdmin
+        .from("vehicules")
+        .delete()
+        .in("id", createdVehicleIds);
     }
 
     if (testFleetId) {
-      await supabaseAdmin.from("flotte_adhesions").delete().eq("fleet_id", testFleetId);
+      await supabaseAdmin
+        .from("flotte_adhesions")
+        .delete()
+        .eq("fleet_id", testFleetId);
       await supabaseAdmin.from("flottes").delete().eq("id", testFleetId);
     }
 
@@ -52,11 +60,14 @@ describeIntegration("Triggers - limite véhicules plan Free", () => {
     expect(org?.id).toBeDefined();
     testOrgId = org!.id;
 
-    const { data: fleetId, error: fleetCreateError } = await supabaseAdmin.rpc("create_esamba_fleet", {
-      p_org_id: testOrgId,
-      p_name: testFleetName,
-      p_collection_policy: "mix",
-    });
+    const { data: fleetId, error: fleetCreateError } = await supabaseAdmin.rpc(
+      "create_esamba_fleet",
+      {
+        p_org_id: testOrgId,
+        p_name: testFleetName,
+        p_collection_policy: "mix",
+      }
+    );
 
     expect(fleetCreateError).toBeNull();
     expect(typeof fleetId).toBe("string");
@@ -99,6 +110,8 @@ describeIntegration("Triggers - limite véhicules plan Free", () => {
 
 if (!canRunIntegrationSuite) {
   console.warn(
-    `[tests/integration] Suite ignoree: variables manquantes (${getMissingAuthEnv().join(", ")})`,
+    `[tests/integration] Suite ignoree: variables manquantes (${getMissingAuthEnv().join(
+      ", "
+    )})`
   );
 }

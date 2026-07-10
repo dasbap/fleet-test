@@ -369,23 +369,26 @@ COMMENT ON FUNCTION deactivate_demo_account IS
 -- Remplacement du cron existant par la version typée (si cron activé)
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
+    AND to_regnamespace('cron') IS NOT NULL
+    AND to_regclass('cron.job') IS NOT NULL THEN
     -- Suppression de l'ancien cron prospect si présent
-    PERFORM cron.unschedule('prospect-daily-expiration');
+    EXECUTE 'SELECT cron.unschedule($1)'
+      USING 'prospect-daily-expiration';
 
     -- Cron unifié : toutes les heures (comptes investor expirent en 48h, précision horaire utile)
-    PERFORM cron.schedule(
-      'demo-expiration-hourly',
-      '0 * * * *',
-      'SELECT expire_demo_accounts_by_type()'
-    );
+    EXECUTE 'SELECT cron.schedule($1, $2, $3)'
+      USING
+        'demo-expiration-hourly',
+        '0 * * * *',
+        'SELECT expire_demo_accounts_by_type()';
 
     -- Notifications J-1 : une fois par jour à 10h UTC
-    PERFORM cron.schedule(
-      'demo-notify-expiring',
-      '0 10 * * *',
-      'SELECT notify_upcoming_expirations(24)'
-    );
+    EXECUTE 'SELECT cron.schedule($1, $2, $3)'
+      USING
+        'demo-notify-expiring',
+        '0 10 * * *',
+        'SELECT notify_upcoming_expirations(24)';
   END IF;
 EXCEPTION WHEN OTHERS THEN
   NULL; -- pg_cron non disponible en dev local, ignoré

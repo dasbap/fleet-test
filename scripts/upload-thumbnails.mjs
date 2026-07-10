@@ -18,7 +18,10 @@ function loadEnv() {
     for (const line of raw.split("\n")) {
       const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
       if (!m) continue;
-      let val = m[2].replace(/^["']|["']$/g, "").trim();
+      const rawVal = m[2].trim();
+      const isQuoted = /^["'].*["']\s*$/.test(rawVal);
+      const withoutComment = isQuoted ? rawVal : rawVal.replace(/\s+#.*$/, "");
+      let val = withoutComment.replace(/^["']|["']$/g, "").trim();
       if (!process.env[m[1]]) process.env[m[1]] = val;
     }
   }

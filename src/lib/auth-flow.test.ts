@@ -82,7 +82,21 @@ describe("computeAuthFlowDecision", () => {
     ).toEqual({ path: ROUTE_PATHS.terrain, reason: "role_driver" });
   });
 
-  it("première connexion → /onboarding", () => {
+  it("première connexion avec onboarding incomplet → /onboarding", () => {
+    const created = "2026-04-18T12:00:00.000Z";
+    const last = new Date(new Date(created).getTime() + 10_000).toISOString();
+    expect(
+      computeAuthFlowDecision({
+        ...base,
+        role: "organizer",
+        onboardingCompleted: false,
+        userCreatedAt: created,
+        lastSignInAt: last,
+      }),
+    ).toEqual({ path: ROUTE_PATHS.onboarding, reason: "onboarding" });
+  });
+
+  it("première connexion avec onboarding terminé → dashboard", () => {
     const created = "2026-04-18T12:00:00.000Z";
     const last = new Date(new Date(created).getTime() + 10_000).toISOString();
     expect(
@@ -93,7 +107,7 @@ describe("computeAuthFlowDecision", () => {
         userCreatedAt: created,
         lastSignInAt: last,
       }),
-    ).toEqual({ path: ROUTE_PATHS.onboarding, reason: "onboarding" });
+    ).toEqual({ path: ROUTE_PATHS.dashboard, reason: "default_next" });
   });
 
   it("plan payant expiré → /upgrade (après onboarding)", () => {

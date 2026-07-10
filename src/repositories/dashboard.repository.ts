@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { FleetMetrics } from '@/types/fleet-metrics';
 import type { KpiSummary } from '@/types/dashboard';
-import { mapRpcKpiSummary } from '@/lib/dashboard-kpis';
 
 export interface DashboardFuelSummary {
   totalLiters: number;
@@ -217,34 +216,131 @@ export class DashboardRepository {
     if (error) throw new Error(error.message);
   }
 
-  /** Snapshot agrégé (1 RPC) : stats + KPIs org + carburant 90j. */
-  async getDashboardSnapshot(fleetId: string, orgId: string): Promise<DashboardSnapshot> {
-    const { data, error } = await supabase.rpc('get_dashboard_snapshot', {
-      p_fleet_id: fleetId,
-      p_org_id: orgId,
-    });
-    if (error) throw new Error(error.message);
-    const raw = (data ?? {}) as Record<string, unknown>;
-    const statsRaw = (raw.stats ?? {}) as Record<string, number>;
-    const fuelRaw = (raw.fuelSummary ?? {}) as Record<string, number>;
+  /** Snapshot agrégé sans RPC distante : stats + KPIs + carburant 90j. */
+  async getDashboardSnapshot(fleetId: string, _orgId: string): Promise<DashboardSnapshot> {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTodayIso = startOfToday.toISOString();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+    const [
+      vehiclesResult,
+      driversResult,
+      activeAssignmentsResult,
+      allAssignmentsResult,
+      maintenanceResult,
+      alertsResult,
+    ] = await Promise.all([
+      supabase
+        .from('vehicules')
+        .select('id, status, created_at')
+        .eq('fleet_id', fleetId),
+      supabase
+        .from('flotte_adhesions')
+        .select('user_id')
+        .eq('fleet_id', fleetId)
+        .eq('role', 'driver')
+        .eq('is_active', true),
+      supabase
+        .from('affectations_vehicules')
+        .select('id')
+        .eq('fleet_id', fleetId)
+        .eq('is_active', true),
+      supabase
+        .from('affectations_vehicules')
+        .select('id')
+        .eq('fleet_id', fleetId),
+      supabase
+        .from('travaux_maintenance')
+        .select('id')
+        .eq('fleet_id', fleetId)
+        .eq('status', 'in_progress'),
+      supabase
+        .from('alertes_automatiques')
+        .select('severity, alert_type, created_at')
+        .eq('fleet_id', fleetId)
+        .eq('resolved', false),
+    ]);
+
+    const firstError = [
+      vehiclesResult,
+      driversResult,
+      activeAssignmentsResult,
+      allAssignmentsResult,
+      maintenanceResult,
+      alertsResult,
+    ].find((result) => result.error)?.error;
+    if (firstError) throw new Error(firstError.message);
+
+    const vehicles = vehiclesResult.data ?? [];
+    const vehicleIds = vehicles.map((vehicle) => vehicle.id);
+    const allAssignmentIds = (allAssignmentsResult.data ?? []).map((assignment) => assignment.id);
+
+    const incidentsResult = vehicleIds.length
+      ? await supabase
+          .from('incidents')
+          .select('id')
+          .in('vehicle_id', vehicleIds)
+          .gte('created_at', thirtyDaysAgo)
+      : { data: [], error: null };
+    if (incidentsResult.error) throw new Error(incidentsResult.error.message);
+
+    const shiftsResult = allAssignmentIds.length
+      ? await supabase
+          .from('creneaux_conducteurs')
+          .select('id')
+          .in('assignment_id', allAssignmentIds)
+      : { data: [], error: null };
+    if (shiftsResult.error) throw new Error(shiftsResult.error.message);
+
+    const shiftIds = (shiftsResult.data ?? []).map((shift) => shift.id);
+    const closuresResult = shiftIds.length
+      ? await supabase
+          .from('clotures_creneaux')
+          .select('revenue_declared, status, created_at')
+          .in('shift_id', shiftIds)
+      : { data: [], error: null };
+    if (closuresResult.error) throw new Error(closuresResult.error.message);
+
+    const closures = closuresResult.data ?? [];
+    const fuelRows: Array<{ liters: number | null; amount_xof: number | null }> = [];
+    const alerts = alertsResult.data ?? [];
+    const activeVehicles = vehicles.filter((vehicle) => vehicle.status === 'ok').length;
+    const maintenanceInProgress = maintenanceResult.data?.length ?? 0;
+    const totalLiters = fuelRows.reduce((sum, row) => sum + Number(row.liters ?? 0), 0);
+    const totalAmountXof = fuelRows.reduce((sum, row) => sum + Number(row.amount_xof ?? 0), 0);
+
     return {
       stats: {
-        activeVehicles: statsRaw.activeVehicles ?? 0,
-        totalVehicles: statsRaw.totalVehicles ?? 0,
-        blockedVehicles: statsRaw.blockedVehicles ?? 0,
-        activeDrivers: statsRaw.activeDrivers ?? 0,
-        totalDrivers: statsRaw.totalDrivers ?? 0,
-        pendingIncidents: statsRaw.pendingIncidents ?? 0,
-        todayRevenue: statsRaw.todayRevenue ?? 0,
-        pendingClosures: statsRaw.pendingClosures ?? 0,
-        maintenanceInProgress: statsRaw.maintenanceInProgress ?? 0,
+        activeVehicles,
+        totalVehicles: vehicles.length,
+        blockedVehicles: vehicles.filter((vehicle) => vehicle.status === 'blocked').length,
+        activeDrivers: activeAssignmentsResult.data?.length ?? 0,
+        totalDrivers: driversResult.data?.length ?? 0,
+        pendingIncidents: incidentsResult.data?.length ?? 0,
+        todayRevenue: closures
+          .filter((closure) => closure.status === 'validated' && closure.created_at >= startOfTodayIso)
+          .reduce((sum, closure) => sum + Number(closure.revenue_declared ?? 0), 0),
+        pendingClosures: closures.filter((closure) => closure.status === 'pending').length,
+        maintenanceInProgress,
       },
-      kpis: mapRpcKpiSummary(raw.kpis),
+      kpis: {
+        activeVehicles,
+        inMaintenance: maintenanceInProgress,
+        criticalAlerts: alerts.filter((alert) => alert.severity === 'critical').length,
+        overdueServices: alerts.filter((alert) => alert.alert_type === 'maintenance_due').length,
+        deltaCritical: alerts.filter(
+          (alert) => alert.severity === 'critical' && alert.created_at >= twentyFourHoursAgo,
+        ).length,
+        deltaActive: vehicles.filter((vehicle) => vehicle.created_at >= thirtyDaysAgo).length,
+      },
       fuelSummary: {
-        totalLiters: Number(fuelRaw.totalLiters ?? 0),
-        totalAmountXof: Number(fuelRaw.totalAmountXof ?? 0),
-        entryCount: Number(fuelRaw.entryCount ?? 0),
-        avgCostPerLiter: Number(fuelRaw.avgCostPerLiter ?? 0),
+        totalLiters,
+        totalAmountXof,
+        entryCount: fuelRows.length,
+        avgCostPerLiter: totalLiters > 0 ? totalAmountXof / totalLiters : 0,
       },
     };
   }

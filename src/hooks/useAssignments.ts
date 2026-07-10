@@ -100,7 +100,11 @@ export function useEndAssignment() {
     mutationFn: (assignmentId: string) => assignmentService.endAssignment(assignmentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles-list'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles-simple'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicle'] });
       queryClient.invalidateQueries({ queryKey: ['active-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-drivers'] });
       toast({
         title: 'Affectation terminée',
         description: "L'affectation a été clôturée.",

@@ -170,9 +170,9 @@ describe("app.routes redirections critiques", () => {
     expect(await screen.findByTestId("auth-page")).toBeInTheDocument();
   });
 
-  it("redirige /inscription vers /auth?mode=signup", async () => {
+  it("redirige /inscription vers la demande d'accès", async () => {
     renderRoutes("/inscription");
-    expect(await screen.findByTestId("auth-page")).toBeInTheDocument();
+    expect(await screen.findByTestId("contact-page")).toBeInTheDocument();
   });
 
   it("redirige /privacy vers /confidentialite", async () => {

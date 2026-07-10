@@ -52,6 +52,7 @@ import type { AppRole } from "@/types/auth";
 import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
 import { useAuth } from "@/hooks/useAuth";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface DashboardSidebarProps {
   userRole: AppRole;
@@ -86,6 +87,7 @@ const DASHBOARD_NAV_ICONS: Record<string, LucideIcon> = {
   [ROUTE_PATHS.dashboardHistory]: Fuel,
   [ROUTE_PATHS.dashboardRetentionAnalytics]: LineChart,
   [ROUTE_PATHS.dashboardRoles]: Shield,
+  [ROUTE_PATHS.dashboardAdminUsers]: Shield,
 };
 
 function withIcons(items: readonly DashboardNavItem[]): SidebarNavItem[] {
@@ -115,6 +117,7 @@ function buildOrganizerMenu(userRole: AppRole, planOptions: {
 const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
   const location = useLocation();
   const { userFleetId } = useAuth();
+  const { isAdmin } = useRoleAccess();
   const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
   const planOptions = {
     financeEnabled:
@@ -130,7 +133,12 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
     mechanic: withIcons(DASHBOARD_NAV.mechanic),
   };
 
-  const items = menuItems[userRole];
+  const items = isAdmin
+    ? [
+        ...menuItems[userRole],
+        { label: "Admin comptes", href: ROUTE_PATHS.dashboardAdminUsers, icon: Shield },
+      ]
+    : menuItems[userRole];
 
   const containerVariants = {
     hidden: {},

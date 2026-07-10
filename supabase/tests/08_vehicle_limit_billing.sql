@@ -42,7 +42,8 @@ BEGIN
       RAISE EXCEPTION 'attendu: Non authentifié';
     EXCEPTION
       WHEN OTHERS THEN
-        IF SQLERRM NOT ILIKE '%Non authentifié%' THEN
+        IF SQLERRM NOT ILIKE '%Non authentifié%'
+           AND SQLERRM NOT ILIKE '%non_authentifie%' THEN
           RAISE;
         END IF;
     END;
@@ -111,6 +112,7 @@ BEGIN
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLERRM NOT ILIKE '%Accès refusé%'
+         AND SQLERRM NOT ILIKE '%acces_refuse_flotte%'
          AND SQLERRM NOT ILIKE '%flotte_introuvable%'
          AND SQLERRM NOT ILIKE '%Flotte introuvable%' THEN
         RAISE;

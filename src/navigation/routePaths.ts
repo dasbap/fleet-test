@@ -139,6 +139,8 @@ export const ROUTE_PATHS = {
   dashboardHelpAnalytics: "/dashboard/admin/help-analytics",
   /** Backoffice articles aide (v2). */
   dashboardHelpAdmin: "/dashboard/admin/help",
+  /** Administration des comptes utilisateur. */
+  dashboardAdminUsers: "/dashboard/admin/users",
 } as const;
 
 /** Hub conducteur et sous-routes (scan QR, etc.). */

@@ -88,6 +88,13 @@ export async function signUp(
   invitationFleetId?: string,
   invitationCode?: string,
 ) {
+  return {
+    data: null,
+    error: new Error(
+      "La creation de compte est reservee a un administrateur E-Samba.",
+    ),
+  };
+
   if (isMockAuthEnabled()) {
     return {
       data: null,

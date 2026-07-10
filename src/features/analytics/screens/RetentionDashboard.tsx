@@ -251,8 +251,9 @@ export function RetentionDashboard() {
   if (isError) {
     const msg = error?.message ?? "";
     const schemaDrift =
-      /org_id\s+does\s+not\s+exist|v_retention_kpis/i.test(msg) &&
-      /column|does not exist/i.test(msg);
+      /PGRST205|schema cache|v_retention_kpis|v_retention_cohorts|v_daily_active_users|v_activation_funnel|org_id\s+does\s+not\s+exist/i.test(
+        msg,
+      ) && /column|does not exist|Could not find/i.test(msg);
     return (
       <div className="rounded-card border border-red-500/30 bg-red-500/10 p-6 text-center space-y-2">
         <p className="text-sm font-medium text-red-400">Erreur de chargement</p>
@@ -262,7 +263,7 @@ export function RetentionDashboard() {
             La vue SQL <code className="text-slate-300">v_retention_kpis</code> du projet distant est
             probablement obsolète. Appliquer les migrations Supabase (ex.{" "}
             <code className="text-slate-300">supabase db push</code> ou migration{" "}
-            <code className="text-slate-300">20260418140000_repair_v_retention_kpis</code>
+            <code className="text-slate-300">20260702007000_restore_retention_analytics_views</code>
             ), puis recharger.
           </p>
         )}

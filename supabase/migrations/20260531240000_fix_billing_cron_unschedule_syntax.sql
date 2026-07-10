@@ -2,7 +2,9 @@
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
+    AND to_regnamespace('cron') IS NOT NULL
+    AND to_regclass('cron.job') IS NOT NULL THEN
     IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'billing-lifecycle-daily') THEN
       PERFORM cron.unschedule('billing-lifecycle-daily');
     END IF;

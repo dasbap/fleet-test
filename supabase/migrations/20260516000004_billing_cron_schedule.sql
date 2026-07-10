@@ -43,18 +43,24 @@ ALTER TABLE public.notification_queue ENABLE ROW LEVEL SECURITY;
 -- Remplacer YOUR_PROJECT_REF et CRON_SECRET_VALUE par les vraies valeurs.
 
 DO $$
+DECLARE
+  job_exists boolean;
 BEGIN
   -- Vérifie que pg_cron est disponible
   IF EXISTS (
     SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'
   ) AND EXISTS (
     SELECT 1 FROM pg_extension WHERE extname = 'http'
-  ) THEN
+  ) AND to_regnamespace('cron') IS NOT NULL
+    AND to_regclass('cron.job') IS NOT NULL THEN
     -- Supprime le job existant si présent (idempotent)
-    IF EXISTS (
-      SELECT 1 FROM cron.job WHERE jobname = 'billing-lifecycle-daily'
-    ) THEN
-      PERFORM cron.unschedule('billing-lifecycle-daily');
+    EXECUTE 'SELECT EXISTS (SELECT 1 FROM cron.job WHERE jobname = $1)'
+      INTO job_exists
+      USING 'billing-lifecycle-daily';
+
+    IF job_exists THEN
+      EXECUTE 'SELECT cron.unschedule($1)'
+        USING 'billing-lifecycle-daily';
     END IF;
 
     -- Enregistre le cron quotidien à 02:00 UTC
@@ -63,7 +69,8 @@ BEGIN
     --               cette migration. Ne jamais committer le secret réel dans le dépôt.
     --               Commande pour récupérer la valeur : `supabase secrets list --project-ref <ref>`
     --               En production, exécuter directement depuis le Dashboard Supabase SQL Editor.
-    PERFORM cron.schedule(
+    EXECUTE 'SELECT cron.schedule($1, $2, $3)'
+      USING
       'billing-lifecycle-daily',          -- nom unique
       '0 2 * * *',                        -- tous les jours à 02h00 UTC
       $cron$
@@ -72,8 +79,7 @@ BEGIN
           headers := '{"Content-Type": "application/json"}'::jsonb,
           body    := '{"secret": "CRON_SECRET_PLACEHOLDER"}'::jsonb
         );
-      $cron$
-    );
+      $cron$;
 
     RAISE NOTICE 'pg_cron job billing-lifecycle-daily enregistré (02:00 UTC).';
   ELSE

@@ -39,7 +39,76 @@ export interface FleetMemberFilters {
 /**
  * Repository pour l'accès aux données des membres de flotte
  */
+type SupabaseRpcError = {
+  code?: string;
+  message?: string;
+  details?: string;
+};
+
+function isRecoverableMembersRpcOutage(error: SupabaseRpcError): boolean {
+  const text = `${error.code ?? ''} ${error.message ?? ''} ${error.details ?? ''}`.toLowerCase();
+  const isMissingRpc =
+    error.code === 'PGRST202' ||
+    error.code === 'PGRST204' ||
+    text.includes('could not find the function') ||
+    text.includes('schema cache');
+
+  return (
+    isMissingRpc &&
+    (text.includes('get_fleet_members') || text.includes('rbac_check_permission'))
+  );
+}
+
 export class FleetMemberRepository implements IRepository<FleetMember, FleetMemberInsert, FleetMemberUpdate> {
+  private async findAllDirectByFleet(fleetId: string): Promise<FleetMember[]> {
+    const { data: memberships, error } = await supabase
+      .from('flotte_adhesions')
+      .select('id, user_id, fleet_id, role, is_active, created_at')
+      .eq('fleet_id', fleetId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching fleet members directly:', error);
+      throw new Error(error.message);
+    }
+
+    const userIds = Array.from(new Set((memberships || []).map((member) => member.user_id as string)));
+    const { data: profiles, error: profileError } = userIds.length > 0
+      ? await supabase.from('profils').select('user_id, full_name, phone').in('user_id', userIds)
+      : { data: [], error: null };
+
+    if (profileError) {
+      console.warn('Unable to enrich fleet members with profiles:', profileError.message);
+    }
+
+    const profilesByUserId = new Map(
+      (profiles || []).map((profile: { user_id: string; full_name: string | null; phone: string | null }) => [
+        profile.user_id,
+        profile,
+      ]),
+    );
+
+    return ((memberships || []) as Array<{
+      id: string;
+      user_id: string;
+      fleet_id: string;
+      role: RoleType;
+      is_active: boolean;
+      created_at: string;
+    }>).map((member) => {
+      const profile = profilesByUserId.get(member.user_id);
+      return {
+        ...member,
+        profile: profile
+          ? {
+              full_name: profile.full_name,
+              phone: profile.phone,
+            }
+          : null,
+        email: null,
+      };
+    });
+  }
   /**
    * Récupère tous les membres d'une flotte avec leurs profils
    */
@@ -289,6 +358,14 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
     });
 
     if (error) {
+      if (isRecoverableMembersRpcOutage(error)) {
+        console.warn(
+          'get_fleet_members RPC unavailable; using direct membership fallback. Apply migrations 20260702002000_restore_rbac_check_permission.sql and 20260702003000_restore_get_fleet_members.sql.',
+          error.message,
+        );
+        return this.findAllDirectByFleet(fleetId);
+      }
+
       console.error('Error fetching fleet members via RPC:', error);
       throw new Error(error.message);
     }

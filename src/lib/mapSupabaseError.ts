@@ -50,6 +50,18 @@ export function mapSupabaseErrorToFrench(message: string): string {
   if (m.includes("conducteur_deja_affecte")) {
     return "Ce chauffeur a déjà un véhicule affecté.";
   }
+  if (m.includes("affectation_introuvable")) {
+    return "Affectation introuvable ou deja cloturee.";
+  }
+  if (m.includes("affectation_deja_terminee")) {
+    return "Cette affectation est deja terminee.";
+  }
+  if (m.includes("droits_insuffisants_affectation")) {
+    return "Seuls les gestionnaires et organisateurs peuvent delier un vehicule.";
+  }
+  if (m.includes("creneau_ouvert_bloque_desaffectation")) {
+    return "Un creneau conducteur est ouvert sur cette affectation. Fermez-le avant de delier le vehicule.";
+  }
   if (m.includes("conducteur_score_suspendu_affectation")) {
     return "Affectation impossible : score conducteur trop bas (seuil critique).";
   }

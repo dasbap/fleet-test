@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TutorialRepository } from "@/repositories/tutorial.repository";
 import { TutorialService } from "@/services/tutorial.service";
 import { TUTORIAL_CATALOG_SEEDS } from "@/data/tutorials/catalog.seed";
@@ -12,6 +12,14 @@ vi.mock("@/lib/storage/signedUrl", () => ({
 describe("TutorialService", () => {
   const repository = new TutorialRepository();
   const service = new TutorialService(repository);
+
+  beforeEach(() => {
+    vi.spyOn(repository, "findAllFromDb").mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it("retourne le catalogue seed en fallback", async () => {
     const items = await service.getTutorials();
@@ -27,6 +35,12 @@ describe("TutorialService", () => {
   });
 
   it("trouve un tutoriel seed par slug", async () => {
+    vi.spyOn(repository, "findById").mockImplementation(async (tutorialId) => {
+      const normalized = tutorialId.trim();
+      const seed = repository.list().find((item) => item.id === normalized || item.slug === normalized);
+      return seed ?? null;
+    });
+
     const item = await service.getTutorialById("tuto-03");
     expect(item.title).toContain("QR");
   });
