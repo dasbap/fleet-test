@@ -82,7 +82,7 @@ const Navbar = () => {
 
   const connexionNav = AUTH_NAV.find((item) => item.label === "Connexion");
   const demoNav = AUTH_NAV.find((item) => item.label === "Demander une démo");
-  const demarrerNav = AUTH_NAV.find((item) => item.label === "Démarrer");
+  const primaryAuthNav = AUTH_NAV.find((item) => item.primary);
 
   const closeMenu = () => setIsOpen(false);
   const navLinkClass =
@@ -142,9 +142,9 @@ const Navbar = () => {
                   <Link to={demoNav.href}>{demoNav.label}</Link>
                 </Button>
               ) : null}
-              {!user && demarrerNav ? (
+              {!user && primaryAuthNav ? (
                 <Button asChild>
-                  <Link to={demarrerNav.href}>{demarrerNav.label}</Link>
+                  <Link to={primaryAuthNav.href}>{primaryAuthNav.label}</Link>
                 </Button>
               ) : null}
             </div>
@@ -205,10 +205,10 @@ const Navbar = () => {
                       </Link>
                     </Button>
                   ) : null}
-                  {demarrerNav ? (
+                  {primaryAuthNav ? (
                     <Button asChild className="min-h-[44px]">
-                      <Link to={demarrerNav.href} onClick={closeMenu}>
-                        Démarrer gratuitement
+                      <Link to={primaryAuthNav.href} onClick={closeMenu}>
+                        {primaryAuthNav.label}
                       </Link>
                     </Button>
                   ) : null}

@@ -178,7 +178,7 @@ const Invitations = () => {
     <>
       <div className="max-w-7xl mx-auto space-y-6">
               {/* Header */}
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-4">
                 <div>
                   <h1 className="text-2xl md:text-3xl font-heading font-bold">
                     Gestion des invitations
@@ -187,14 +187,14 @@ const Invitations = () => {
                     Créez et gérez les codes d'invitation pour votre flotte
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" asChild>
+                <div className="flex w-full flex-col gap-2">
+                  <Button variant="outline" className="w-full" asChild>
                     <Link to="/dashboard/teams">
                       <UsersRound className="w-4 h-4 mr-2" />
                       Voir l'équipe
                     </Link>
                   </Button>
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
+                  <Button className="w-full" onClick={() => setIsCreateDialogOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Créer une invitation
                   </Button>
