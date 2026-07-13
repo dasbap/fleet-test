@@ -95,7 +95,10 @@ async function mockSupabaseForActivationJourney(
 }
 
 export async function openDashboard(page: Page): Promise<void> {
-  await page.goto("/dashboard");
+  await page.goto("/dashboard", {
+    waitUntil: "domcontentloaded",
+    timeout: 30_000,
+  });
   await expect(page).toHaveURL(/\/dashboard(\/.*)?$/);
 }
 
@@ -103,7 +106,10 @@ export async function visitBusinessStep(
   page: Page,
   routePath: string
 ): Promise<void> {
-  await page.goto(routePath);
+  await page.goto(routePath, {
+    waitUntil: "domcontentloaded",
+    timeout: 30_000,
+  });
   await expect(page).toHaveURL(new RegExp(routePath.replace("/", "\\/")));
 }
 
