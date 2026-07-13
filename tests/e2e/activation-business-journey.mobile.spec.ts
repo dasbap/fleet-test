@@ -4,6 +4,7 @@ import {
   openDashboard,
   seedActivationState,
   setupActivationMocks,
+  visitBusinessStep,
 } from "./activation-business-journey.helpers";
 
 test.describe("Activation journey E2E (mobile)", () => {
@@ -23,7 +24,6 @@ test.describe("Activation journey E2E (mobile)", () => {
     await openDashboard(page);
     await expect(page).toHaveURL(/\/dashboard(\/.*)?$/);
 
-    await page.goto("/dashboard/alerts");
-    await expect(page).toHaveURL(/\/dashboard\/alerts$/);
+    await visitBusinessStep(page, "/dashboard/alerts");
   });
 });
