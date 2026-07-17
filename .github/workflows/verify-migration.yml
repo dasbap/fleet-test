@@ -27,7 +27,7 @@ permissions:
 jobs:
   verify-migration:
     name: Verify Migration to French
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     
     env:
       SUPABASE_CLI_VERSION: 2.102.0  # Version de Supabase CLI à installer
