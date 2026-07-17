@@ -62,7 +62,7 @@ function DriverOperationsContent({
 }) {
   const { departure, arrival, toggleDepartureItem, toggleArrivalItem } =
     useDriverOperationalChecklists(day);
-  const { data: activeShift } = useActiveShift();
+  const { data: activeShift } = useActiveShift({ refetchOnWindowFocus: false });
 
   return (
     <div className="space-y-6 sm:space-y-8">

@@ -11,6 +11,7 @@ import { queryKeys } from '@/lib/cache/queryKeys';
 import {
   dashboardStaleTimeMs,
   refetchIntervalWhenVisible,
+  shouldRefetchOnWindowFocus,
 } from '@/lib/query/refetchPolicy';
 
 const dashboardRepository = new DashboardRepository();
@@ -76,7 +77,7 @@ export function useDashboardStats() {
     },
     enabled: !!userFleetId,
     staleTime: dashboardStaleTimeMs(),
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: shouldRefetchOnWindowFocus(),
     refetchInterval: () =>
       refetchIntervalWhenVisible(refetchIntervalForInteraction(120_000, 180_000)),
   });
@@ -96,7 +97,7 @@ export function useDashboardKpis() {
     enabled: canFetch,
     retry: 1,
     staleTime: dashboardStaleTimeMs(),
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: shouldRefetchOnWindowFocus(),
     refetchInterval: () =>
       refetchIntervalWhenVisible(refetchIntervalForInteraction(120_000, 180_000)),
   });
@@ -110,7 +111,7 @@ export function useRecentActivity() {
     queryFn: () => (userFleetId ? dashboardService.getRecentActivity(userFleetId) : []),
     enabled: !!userFleetId,
     staleTime: dashboardStaleTimeMs(),
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: shouldRefetchOnWindowFocus(),
     refetchInterval: () =>
       refetchIntervalWhenVisible(refetchIntervalForInteraction(120_000, 180_000)),
   });
@@ -124,7 +125,7 @@ export function useFleetVehicles() {
     queryFn: () => (userFleetId ? dashboardService.getFleetVehiclesOverview(userFleetId) : []),
     enabled: !!userFleetId,
     staleTime: dashboardStaleTimeMs(),
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: shouldRefetchOnWindowFocus(),
     refetchInterval: () =>
       refetchIntervalWhenVisible(refetchIntervalForInteraction(120_000, 180_000)),
   });

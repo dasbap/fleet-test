@@ -7,6 +7,7 @@ import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { preloadRouteChunksForPath } from "@/app/routes/preloadRouteChunks";
 import { isValidUuid } from "@/lib/isUuid";
 import { i18nReady } from "@/i18n";
+import { scheduleDeferredMainThreadWork } from "@/lib/performance/deferredMainThreadWork";
 import App from "./App.tsx";
 
 const ACTIVE_FLEET_STORAGE_KEY = "esamba.active_fleet_id";
@@ -126,7 +127,7 @@ const bootstrap = async () => {
 
     // Analytics est différé en production pour préserver le LCP/INP.
     if (import.meta.env.PROD) {
-      window.setTimeout(() => {
+      scheduleDeferredMainThreadWork(() => {
         void import("@/lib/analytics")
           .then(({ initAnalytics }) => {
             initAnalytics();
@@ -134,17 +135,17 @@ const bootstrap = async () => {
           .catch((error) => {
             console.error("Échec du chargement analytics:", error);
           });
-      }, 3_000);
+      }, { delayMs: 8_000, idleTimeoutMs: 5_000 });
     }
 
     // PWA est chargée après load avec un délai pour éviter la compétition réseau initiale.
     if (import.meta.env.PROD) {
       window.addEventListener("load", () => {
-        window.setTimeout(() => {
+        scheduleDeferredMainThreadWork(() => {
           void import("@/pwa").catch((error) => {
             console.error("Échec du chargement PWA:", error);
           });
-        }, 2_000);
+        }, { delayMs: 10_000, idleTimeoutMs: 5_000 });
       });
     }
   } catch (error) {
