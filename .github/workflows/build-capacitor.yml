@@ -37,7 +37,7 @@ on:
 jobs:
   build-capacitor:
     name: vite build (mode capacitor)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       # Valeurs factices : le client Supabase n’est pas exécuté pendant le build statique.
       VITE_SUPABASE_URL: https://placeholder-build.supabase.co

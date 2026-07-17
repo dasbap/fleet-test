@@ -17,7 +17,7 @@ concurrency:
 jobs:
   bundle-release:
     name: bundleRelease (AAB)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       # Injectés depuis les secrets du dépôt — requis : VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (voir docs/publication-stores.md).
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
