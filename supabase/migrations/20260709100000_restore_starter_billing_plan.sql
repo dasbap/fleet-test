@@ -1,5 +1,16 @@
 -- Restore the Starter plan expected by billing checkout and integration flows.
 
+ALTER TABLE public.plans
+  ADD COLUMN IF NOT EXISTS max_vehicles integer,
+  ADD COLUMN IF NOT EXISTS enables_finance boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS enables_ai boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS enables_reports boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS enables_driver_scoring boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS enables_anomaly_insights boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS enables_geofencing boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS enables_scheduled_reports boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS enables_offline_driver boolean NOT NULL DEFAULT false;
+
 INSERT INTO public.plans (
   code,
   name,
