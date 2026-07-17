@@ -3,6 +3,10 @@
 -- Ne pas ré-appliquer sur une base déjà à jour : déjà présent dans schema_migrations.
 
 DO $$ BEGIN
+  CREATE TYPE public.pays_cemac AS ENUM ('CM', 'CG', 'GA', 'TD', 'CF', 'GQ');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
   CREATE TYPE public.statut_pilote AS ENUM (
     'prospect', 'qualification', 'negociation', 'actif', 'suspendu', 'converti', 'perdu'
   );
