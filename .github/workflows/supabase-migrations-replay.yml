@@ -18,7 +18,7 @@ on:
 jobs:
   verify-migration-filenames:
     name: Verify migration filenames
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
 
   replay-migrations:
     name: Replay migrations on clean local stack
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     needs: verify-migration-filenames
     steps:
       - name: Checkout
