@@ -168,6 +168,35 @@ describe("useCreateInvitation", () => {
     );
   });
 
+  it("considère la création réussie sans relire la ligne insérée", async () => {
+    fromChain.insert.mockResolvedValueOnce({ data: null, error: null });
+
+    const { result } = renderHook(() => useCreateInvitation(), {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      fleet_id: "f1",
+      code: "NEW-CODE",
+      expires_at: null,
+      max_uses: null,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(fromChain.select).not.toHaveBeenCalled();
+    expect(fromChain.single).not.toHaveBeenCalled();
+    expect(result.current.data).toEqual(
+      expect.objectContaining({
+        fleet_id: "f1",
+        code: "NEW-CODE",
+        created_by: "user-1",
+        current_uses: 0,
+      })
+    );
+  });
+
   it("throw si l'utilisateur n'est pas authentifié", async () => {
     getUserMock.mockResolvedValue({ data: { user: null } });
     const { result } = renderHook(() => useCreateInvitation(), {
@@ -183,7 +212,7 @@ describe("useCreateInvitation", () => {
   });
 
   it("throw avec message adapté quand le code d'invitation existe déjà (23505)", async () => {
-    fromChain.single.mockResolvedValueOnce({
+    fromChain.insert.mockResolvedValueOnce({
       data: null,
       error: { code: "23505", message: "duplicate key value" },
     });

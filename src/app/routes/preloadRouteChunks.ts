@@ -65,6 +65,24 @@ const scheduleIdle = (task: () => void, idleTimeoutMs = 1200) => {
   window.setTimeout(task, 0);
 };
 
+function runPreloadTasksInIdleSlices(tasks: Array<() => Promise<unknown>>): void {
+  let index = 0;
+
+  const runNext = () => {
+    const task = tasks[index];
+    index += 1;
+    if (!task) return;
+
+    void task().finally(() => {
+      if (index < tasks.length) {
+        scheduleIdle(runNext);
+      }
+    });
+  };
+
+  scheduleIdle(runNext);
+}
+
 export function preloadRouteChunksForPath(pathname: string) {
   const normalizedPath = pathname || "/";
 
@@ -87,7 +105,5 @@ export function preloadRouteChunksForPath(pathname: string) {
   }
 
   if (tasks.length === 0) return;
-  scheduleIdle(() => {
-    tasks.forEach((task) => void task());
-  });
+  runPreloadTasksInIdleSlices(tasks);
 }

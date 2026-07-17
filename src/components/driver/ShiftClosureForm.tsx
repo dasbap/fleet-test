@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -27,6 +27,8 @@ import { useNavigate } from "react-router-dom";
 import { useCloseShift } from "@/hooks/useDriverShifts";
 import { useActivation } from "@/hooks/useActivation";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import { storageGet, storageRemove, storageSet } from "@/lib/storage/localStorageService";
+import { storageKeys } from "@/lib/storage/storageKeys";
 
 const closureFormSchema = shiftClosureFormSchema;
 type ClosureFormValues = ShiftClosureFormValues;
@@ -37,6 +39,12 @@ interface ShiftClosureFormProps {
   successRedirect?: string;
 }
 
+interface ShiftClosureDraft {
+  form: ClosureFormValues;
+  proofType: ProofType;
+  proofValue: string;
+}
+
 const collectionModes: { value: CollectionMode; label: string; icon: typeof Banknote }[] = [
   { value: "cash", label: COLLECTION_MODE_LABELS.cash, icon: Banknote },
   { value: "momo", label: COLLECTION_MODE_LABELS.momo, icon: Smartphone },
@@ -44,9 +52,17 @@ const collectionModes: { value: CollectionMode; label: string; icon: typeof Bank
 ];
 
 const ShiftClosureForm = ({ shiftId, kmStart, successRedirect = ROUTE_PATHS.dashboard }: ShiftClosureFormProps) => {
+  const draftStorageKey = `${storageKeys.shiftClosureDraft}:${shiftId}`;
+  const initialDraft = useMemo(() => storageGet<ShiftClosureDraft>(draftStorageKey), [draftStorageKey]);
+  const initialFormValues = initialDraft?.form ?? {
+    kmEnd: kmStart,
+    revenueDeclared: 0,
+    collectionMode: "cash" as const,
+    notes: "",
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [proofType, setProofType] = useState<ProofType>('photo');
-  const [proofValue, setProofValue] = useState('');
+  const [proofType, setProofType] = useState<ProofType>(initialDraft?.proofType ?? 'photo');
+  const [proofValue, setProofValue] = useState(initialDraft?.proofValue ?? '');
   const [proofFile, setProofFile] = useState<File | null>(null);
   const navigate = useNavigate();
   const closeShiftMutation = useCloseShift();
@@ -54,17 +70,37 @@ const ShiftClosureForm = ({ shiftId, kmStart, successRedirect = ROUTE_PATHS.dash
 
   const form = useForm<ClosureFormValues>({
     resolver: zodResolver(closureFormSchema),
-    defaultValues: {
-      kmEnd: kmStart,
-      revenueDeclared: 0,
-      collectionMode: "cash",
-      notes: "",
-    },
+    defaultValues: initialFormValues,
   });
 
   const watchKmEnd = form.watch("kmEnd");
   const kmDriven = watchKmEnd - kmStart;
   const watchRevenue = form.watch("revenueDeclared");
+
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      storageSet<ShiftClosureDraft>(draftStorageKey, {
+        form: {
+          kmEnd: Number(values.kmEnd ?? kmStart),
+          revenueDeclared: Number(values.revenueDeclared ?? 0),
+          collectionMode: values.collectionMode ?? "cash",
+          notes: values.notes ?? "",
+        },
+        proofType,
+        proofValue,
+      });
+    });
+
+    return () => subscription.unsubscribe();
+  }, [draftStorageKey, form, kmStart, proofType, proofValue]);
+
+  useEffect(() => {
+    storageSet<ShiftClosureDraft>(draftStorageKey, {
+      form: form.getValues(),
+      proofType,
+      proofValue,
+    });
+  }, [draftStorageKey, form, proofType, proofValue]);
 
   const readFileAsDataUrl = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -91,7 +127,7 @@ const ShiftClosureForm = ({ shiftId, kmStart, successRedirect = ROUTE_PATHS.dash
     }
 
     // Validate proof
-    if (proofType === 'photo' && !proofFile) {
+    if (proofType === 'photo' && !proofFile && !proofValue.trim()) {
       toast({
         title: "Photo requise",
         description: "Veuillez prendre une photo de la preuve de recette.",
@@ -134,6 +170,7 @@ const ShiftClosureForm = ({ shiftId, kmStart, successRedirect = ROUTE_PATHS.dash
         proof_value: finalProofValue,
       });
       await completeStep("first_creneau");
+      storageRemove(draftStorageKey);
       
       toast({
         title: "Clôture envoyée",

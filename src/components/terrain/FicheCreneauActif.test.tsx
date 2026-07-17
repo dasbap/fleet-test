@@ -52,7 +52,9 @@ describe("FicheCreneauActif", () => {
     render(<FicheCreneauActif creneauId="creneau-1" />);
 
     expect(screen.getByText(/Chargement des données du créneau/i)).toBeInTheDocument();
-    expect(useCreneauActifValidationMock).toHaveBeenCalledWith("creneau-1");
+    expect(useCreneauActifValidationMock).toHaveBeenCalledWith("creneau-1", {
+      refetchOnWindowFocus: false,
+    });
   });
 
   it("affiche les validations DVIR et carburant", () => {
@@ -68,6 +70,20 @@ describe("FicheCreneauActif", () => {
     expect(screen.getByText("LT-001-AA")).toBeInTheDocument();
     expect(screen.getByText(/DVIR pré-trip/i)).toBeInTheDocument();
     expect(screen.getByText(/Saisie carburant/i)).toBeInTheDocument();
+  });
+
+  it("ne refetch pas au retour focus camera", () => {
+    useCreneauActifValidationMock.mockReturnValue({
+      data: makeDonnees(),
+      isPending: false,
+      isError: false,
+    });
+
+    render(<FicheCreneauActif creneauId="creneau-1" />);
+
+    expect(useCreneauActifValidationMock).toHaveBeenCalledWith("creneau-1", {
+      refetchOnWindowFocus: false,
+    });
   });
 
   it("affiche un message si le créneau est introuvable", () => {

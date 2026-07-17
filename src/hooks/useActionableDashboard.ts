@@ -15,7 +15,10 @@ import { isValidUuid } from "@/lib/isUuid";
 import { MaintenanceRepository } from "@/repositories/maintenance.repository";
 import type { MaintenanceJob } from "@/hooks/useMaintenance";
 import type { DashboardAlert, KpiSummary } from "@/types/dashboard";
-import { refetchIntervalWhenVisible } from "@/lib/query/refetchPolicy";
+import {
+  refetchIntervalWhenVisible,
+  shouldRefetchOnWindowFocus,
+} from "@/lib/query/refetchPolicy";
 
 const maintenanceRepository = new MaintenanceRepository();
 
@@ -98,7 +101,7 @@ export function useActionableDashboard() {
     queryFn: () => fetchScheduledMaintenance(userFleetId!),
     enabled: !!userFleetId,
     staleTime: 120_000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: shouldRefetchOnWindowFocus(),
     refetchInterval: () => refetchIntervalWhenVisible(120_000, 300_000),
     retry: 1,
   });

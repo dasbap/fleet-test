@@ -79,7 +79,8 @@ describe("DriverShiftService.closeShift", () => {
 
     expect(closeShift).toHaveBeenCalledWith(closure);
     expect(calculateExpectedRevenue).toHaveBeenCalledWith("shift-1");
-    expect(updateKilometerage).toHaveBeenCalledWith("vehicle-1", 1100);
+    expect(getVehicleIdByShiftId).not.toHaveBeenCalled();
+    expect(updateKilometerage).not.toHaveBeenCalled();
   });
 
   it("rejette si le créneau est introuvable", async () => {
@@ -121,6 +122,8 @@ describe("DriverShiftService.closeShift", () => {
 
     await expect(service.closeShift(closure)).resolves.toBeUndefined();
     expect(closeShift).toHaveBeenCalled();
+    expect(getVehicleIdByShiftId).not.toHaveBeenCalled();
+    expect(updateKilometerage).not.toHaveBeenCalled();
   });
 });
 

@@ -49,7 +49,6 @@ import {
   type DashboardNavItem,
 } from "@/config/navigation";
 import type { AppRole } from "@/types/auth";
-import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
 import { useAuth } from "@/hooks/useAuth";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
@@ -202,12 +201,6 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
                 })}
               </motion.div>
             </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup className="pt-0">
-          <SidebarGroupLabel>Activation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <ActivationChecklist mode="sidebar" className="rounded-xl" />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

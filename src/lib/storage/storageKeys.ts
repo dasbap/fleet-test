@@ -10,6 +10,7 @@ export const storageKeys = {
   offlineQueue: `${STORAGE_PREFIX}offline-queue`,
   syncState: `${STORAGE_PREFIX}sync-state`,
   syncMetrics: `${STORAGE_PREFIX}sync-metrics`,
+  shiftClosureDraft: `${STORAGE_PREFIX}shift-closure-draft`,
   /** Dernière liste véhicules consultée (hors ligne). */
   vehicleListSnapshot: `${STORAGE_PREFIX}vehicle-list-snapshot`,
 } as const;

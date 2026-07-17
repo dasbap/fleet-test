@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Upload, X, FileText, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 export type ProofType = 'photo' | 'momo_ref' | 'doc';
 
@@ -53,6 +54,33 @@ const ProofUpload = ({
 }: ProofUploadProps) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoPreviewUrl =
+    previewUrl ?? (proofType === "photo" && proofValue.startsWith("data:image/") ? proofValue : null);
+
+  const readFileAsDataUrl = (file: File, mimeType: string) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        onProofValueChange(normalizeImageDataUrl(reader.result, mimeType));
+        return;
+      }
+      onProofValueChange("");
+      toast({
+        title: "Photo non enregistrée",
+        description: "Impossible de lire la photo prise.",
+        variant: "destructive",
+      });
+    };
+    reader.onerror = () => {
+      onProofValueChange("");
+      toast({
+        title: "Photo non enregistrée",
+        description: "Erreur de lecture de la photo prise.",
+        variant: "destructive",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     if (!proofFile) {
@@ -90,20 +118,23 @@ const ProofUpload = ({
     const file = e.target.files?.[0];
     if (file) {
       onProofFileChange(file);
+
+      const mimeType = inferImageMimeType(file);
+      if (proofType === "photo" && mimeType) {
+        readFileAsDataUrl(file, mimeType);
+      } else if (!mimeType) {
+        setPreviewUrl(null);
+        onProofValueChange("");
+      }
     }
   };
 
   const handleRemoveFile = () => {
     onProofFileChange(null);
     setPreviewUrl(null);
+    onProofValueChange("");
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
-    }
-  };
-
-  const handleCapturePhoto = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
     }
   };
 
@@ -146,6 +177,7 @@ const ProofUpload = ({
         <div className="space-y-3">
           <input
             ref={fileInputRef}
+            aria-label="Photo de preuve"
             type="file"
             accept="image/*"
             capture="environment"
@@ -153,10 +185,10 @@ const ProofUpload = ({
             className="hidden"
           />
           
-          {proofFile && previewUrl ? (
+          {photoPreviewUrl ? (
             <div className="relative aspect-video w-full">
               <img
-                src={previewUrl}
+                src={photoPreviewUrl}
                 alt="Apercu de la preuve photo"
                 className="w-full h-full object-cover rounded-lg border"
               />
@@ -175,7 +207,7 @@ const ProofUpload = ({
               type="button"
               variant="outline"
               className="w-full h-32 flex flex-col gap-2"
-              onClick={handleCapturePhoto}
+              onClick={() => fileInputRef.current?.click()}
             >
               <Camera className="w-8 h-8" />
               <span>Prendre une photo</span>

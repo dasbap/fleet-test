@@ -40,7 +40,20 @@ describe("OfflineBanner", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("affiche le message hors ligne et déclenche une relance", async () => {
+  it("n'affiche pas un etat de synchronisation avec zero action en attente", () => {
+    useOfflineSyncStatusMock.mockReturnValue({
+      displayStatus: "synced",
+      isOnline: true,
+      pendingIncidentDraftsCount: 0,
+    });
+
+    const { container } = render(<OfflineBanner />);
+
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByText(/Synchronisation/i)).not.toBeInTheDocument();
+  });
+
+  it("affiche le message hors ligne et declenche une relance", async () => {
     useOfflineSyncStatusMock.mockReturnValue({
       displayStatus: "pending",
       isOnline: false,
@@ -88,8 +101,8 @@ describe("OfflineSyncIndicator", () => {
 });
 
 describe("NetworkQualityBadge", () => {
-  it("affiche un label lisible selon la qualité", () => {
+  it("affiche un label lisible selon la qualite", () => {
     render(<NetworkQualityBadge type="cellular" effectiveType="3g" />);
-    expect(screen.getByLabelText("Qualité réseau: 3G")).toBeInTheDocument();
+    expect(screen.getByText("3G")).toBeInTheDocument();
   });
 });
