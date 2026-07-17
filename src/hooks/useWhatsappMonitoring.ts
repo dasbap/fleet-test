@@ -5,6 +5,7 @@ import {
   type WhatsappMonitoringData,
 } from "@/services/whatsapp-monitoring.service";
 import { WhatsappMonitoringRepository } from "@/repositories/whatsapp-monitoring.repository";
+import { shouldRefetchOnWindowFocus } from "@/lib/query/refetchPolicy";
 
 const whatsappMonitoringRepository = new WhatsappMonitoringRepository();
 const whatsappMonitoringService = new WhatsappMonitoringService(whatsappMonitoringRepository);
@@ -25,6 +26,6 @@ export function useWhatsappMonitoring() {
     enabled: !!userFleetId,
     refetchInterval: () => refetchIntervalWhenVisible(60_000, 180_000),
     staleTime: 45_000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: shouldRefetchOnWindowFocus(),
   });
 }

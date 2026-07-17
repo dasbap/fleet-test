@@ -58,4 +58,5 @@ Ces pistes ne sont **pas** des engagements de roadmap ; elles servent à cadrer 
 
 - État actuel : [CURRENT_ARCHITECTURE.md](./CURRENT_ARCHITECTURE.md)
 - Multi-tenant : [MULTITENANT.md](./MULTITENANT.md)
+- Backend Supabase PR #22 : [BACKEND_ARCHITECTURE_PR22.md](./BACKEND_ARCHITECTURE_PR22.md)
 - Paiements : [PAYMENTS.md](./PAYMENTS.md)

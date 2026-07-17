@@ -32,6 +32,70 @@ BEGIN
     RAISE EXCEPTION 'Objet manquant: RPC public.fermer_creneau(uuid,int,int,text,text,text,text)';
   END IF;
 
+  IF to_regprocedure('public.closure_shift_can_read(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: helper RLS public.closure_shift_can_read(uuid)';
+  END IF;
+
+  IF to_regprocedure('public.closure_shift_can_manage(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: helper RLS public.closure_shift_can_manage(uuid)';
+  END IF;
+
+  IF to_regprocedure('public.fleet_can_read(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: helper RLS public.fleet_can_read(uuid)';
+  END IF;
+
+  IF to_regprocedure('public.vehicle_can_read(uuid,uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: helper RLS public.vehicle_can_read(uuid,uuid)';
+  END IF;
+
+  IF to_regprocedure('public.incident_can_read(uuid,uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: helper RLS public.incident_can_read(uuid,uuid)';
+  END IF;
+
+  IF to_regprocedure('public.assignment_can_read_by_id(uuid)') IS NULL THEN
+    RAISE EXCEPTION 'Objet manquant: helper RLS public.assignment_can_read_by_id(uuid)';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND tablename = 'clotures_creneaux'
+      AND indexname = 'idx_clotures_creneaux_pending_shift_created'
+  ) THEN
+    RAISE EXCEPTION 'Index manquant: public.idx_clotures_creneaux_pending_shift_created';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND tablename = 'vehicules'
+      AND indexname = 'idx_vehicules_fleet_created'
+  ) THEN
+    RAISE EXCEPTION 'Index manquant: public.idx_vehicules_fleet_created';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND tablename = 'incidents'
+      AND indexname = 'idx_incidents_vehicle_created'
+  ) THEN
+    RAISE EXCEPTION 'Index manquant: public.idx_incidents_vehicle_created';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND tablename = 'creneaux_conducteurs'
+      AND indexname = 'idx_creneaux_conducteurs_assignment'
+  ) THEN
+    RAISE EXCEPTION 'Index manquant: public.idx_creneaux_conducteurs_assignment';
+  END IF;
+
   IF to_regprocedure('public.rechercher_utilisateurs(text,integer)') IS NULL THEN
     RAISE EXCEPTION 'Objet manquant: RPC public.rechercher_utilisateurs(text,int)';
   END IF;

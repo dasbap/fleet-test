@@ -31,6 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_journal_carburant_vehicle_created_at
 
 ALTER TABLE public.journal_carburant ENABLE ROW LEVEL SECURITY;
 
+drop view if exists public.v_kpis_flotte;
 create or replace view public.v_kpis_flotte
 with (security_barrier = true)
 as
@@ -87,6 +88,7 @@ where
       and fa.role::text in ('organizer', 'manager', 'mechanic')
   );
 
+drop view if exists public.v_creneaux_actifs_validations;
 create or replace view public.v_creneaux_actifs_validations
 with (security_barrier = true)
 as

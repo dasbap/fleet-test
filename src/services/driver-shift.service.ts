@@ -86,15 +86,7 @@ export class DriverShiftService {
 
     await this.repository.calculateExpectedRevenue(parsed.shift_id);
 
-    // Best-effort : le km véhicule est mis à jour par la RPC fermer_creneau (SECURITY DEFINER).
-    const vehicleId = await this.repository.getVehicleIdByShiftId(parsed.shift_id);
-    if (vehicleId) {
-      try {
-        await this.vehicleRepository.updateKilometerage(vehicleId, parsed.km_end);
-      } catch (err) {
-        console.warn('Mise à jour km véhicule ignorée après clôture:', err);
-      }
-    }
+    // Le km véhicule est mis à jour par la RPC fermer_creneau (SECURITY DEFINER).
   }
 
   buildOfflineShiftStartPayload(data: ShiftInsert): OfflineShiftStartPayload {

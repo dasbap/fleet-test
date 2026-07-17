@@ -4,7 +4,7 @@ BEGIN;
 -- Module conducteurs MVP : profil RH, permis et scoring v1
 -- =====================================================
 
--- 1) Extension légère du profil RH conducteur
+-- 1) Extension legere du profil RH conducteur
 ALTER TABLE public.profils
   ADD COLUMN IF NOT EXISTS employee_code text,
   ADD COLUMN IF NOT EXISTS hire_date date,
@@ -58,7 +58,7 @@ CREATE INDEX IF NOT EXISTS idx_driver_licenses_verification_status
 CREATE INDEX IF NOT EXISTS idx_driver_licenses_expires_at
   ON public.driver_licenses(expires_at);
 
--- 3) Statut de résolution incident (pour mesurer le délai de clôture)
+-- 3) Statut de resolution incident (pour mesurer le delai de cloture)
 ALTER TABLE public.incidents
   ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'open';
 ALTER TABLE public.incidents
@@ -77,7 +77,7 @@ CREATE INDEX IF NOT EXISTS idx_incidents_fleet_driver_created
 CREATE INDEX IF NOT EXISTS idx_incidents_status_resolved_at
   ON public.incidents(status, resolved_at);
 
--- 4) Snapshots de score et versioning de modèle
+-- 4) Snapshots de score et versioning de modele
 ALTER TABLE public.scores_conducteurs
   ADD COLUMN IF NOT EXISTS score_total numeric(5,2),
   ADD COLUMN IF NOT EXISTS incidents_score numeric(5,2),
@@ -115,11 +115,11 @@ ALTER TABLE public.driver_score_snapshots ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS driver_licenses_select_roles ON public.driver_licenses;
 CREATE POLICY driver_licenses_select_roles ON public.driver_licenses
 FOR SELECT USING (
-  public.has_role(fleet_id, 'organizer')
-  OR public.has_role(fleet_id, 'manager')
-  OR public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  OR public.has_role(fleet_id, 'manager'::public.role_type)
+  OR public.has_role(fleet_id, 'mechanic'::public.role_type)
   OR (
-    public.has_role(fleet_id, 'driver')
+    public.has_role(fleet_id, 'driver'::public.role_type)
     AND auth.uid() = driver_user_id
   )
 );
@@ -127,35 +127,35 @@ FOR SELECT USING (
 DROP POLICY IF EXISTS driver_licenses_insert_manager_org ON public.driver_licenses;
 CREATE POLICY driver_licenses_insert_manager_org ON public.driver_licenses
 FOR INSERT WITH CHECK (
-  public.has_role(fleet_id, 'organizer')
-  OR public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  OR public.has_role(fleet_id, 'manager'::public.role_type)
 );
 
 DROP POLICY IF EXISTS driver_licenses_update_manager_org ON public.driver_licenses;
 CREATE POLICY driver_licenses_update_manager_org ON public.driver_licenses
 FOR UPDATE USING (
-  public.has_role(fleet_id, 'organizer')
-  OR public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  OR public.has_role(fleet_id, 'manager'::public.role_type)
 ) WITH CHECK (
-  public.has_role(fleet_id, 'organizer')
-  OR public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  OR public.has_role(fleet_id, 'manager'::public.role_type)
 );
 
 DROP POLICY IF EXISTS driver_licenses_delete_manager_org ON public.driver_licenses;
 CREATE POLICY driver_licenses_delete_manager_org ON public.driver_licenses
 FOR DELETE USING (
-  public.has_role(fleet_id, 'organizer')
-  OR public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  OR public.has_role(fleet_id, 'manager'::public.role_type)
 );
 
 DROP POLICY IF EXISTS driver_score_snapshots_select_roles ON public.driver_score_snapshots;
 CREATE POLICY driver_score_snapshots_select_roles ON public.driver_score_snapshots
 FOR SELECT USING (
-  public.has_role(fleet_id, 'organizer')
-  OR public.has_role(fleet_id, 'manager')
-  OR public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  OR public.has_role(fleet_id, 'manager'::public.role_type)
+  OR public.has_role(fleet_id, 'mechanic'::public.role_type)
   OR (
-    public.has_role(fleet_id, 'driver')
+    public.has_role(fleet_id, 'driver'::public.role_type)
     AND auth.uid() = driver_user_id
   )
 );
@@ -163,11 +163,11 @@ FOR SELECT USING (
 DROP POLICY IF EXISTS driver_score_snapshots_insert_manager_org ON public.driver_score_snapshots;
 CREATE POLICY driver_score_snapshots_insert_manager_org ON public.driver_score_snapshots
 FOR INSERT WITH CHECK (
-  public.has_role(fleet_id, 'organizer')
-  OR public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  OR public.has_role(fleet_id, 'manager'::public.role_type)
 );
 
--- 6) Scoring v1 hybride (transparent + versionné)
+-- 6) Scoring v1 hybride (transparent + versionne)
 CREATE OR REPLACE FUNCTION public.calculer_score_conducteur_v2(
   p_driver_user_id uuid,
   p_fleet_id uuid,
@@ -212,7 +212,7 @@ BEGIN
 
   v_incidents_score := GREATEST(0, LEAST(100, 100 - (v_weighted_incidents * 4)));
 
-  -- Discipline de clôture (créneaux fermés / clôtures en attente)
+  -- Discipline de cloture (creneaux fermes / clotures en attente)
   SELECT
     COUNT(*) FILTER (WHERE c.status = 'closed')::int,
     COUNT(*) FILTER (WHERE cc.status = 'pending')::int
@@ -229,7 +229,7 @@ BEGIN
     ELSE GREATEST(0, LEAST(100, 100 - ((v_shift_pending_count::numeric / v_shift_closed_count::numeric) * 100)))
   END;
 
-  -- Délai de résolution incidents (heures moyennes)
+  -- Delai de resolution incidents (heures moyennes)
   SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (i.resolved_at - i.created_at)) / 3600), 0)::numeric
   INTO v_avg_resolution_hours
   FROM public.incidents i
@@ -247,7 +247,7 @@ BEGIN
     ELSE 50
   END;
 
-  -- Stabilité opérationnelle (activité validée)
+  -- Stabilite operationnelle (activite validee)
   SELECT CASE
       WHEN COUNT(*) FILTER (WHERE cc.status = 'validated') = 0 THEN 60
       WHEN COUNT(*) FILTER (WHERE cc.status = 'validated') >= 15 THEN 100
@@ -262,7 +262,7 @@ BEGIN
     AND a.fleet_id = p_fleet_id
     AND c.started_at >= now() - interval '30 days';
 
-  -- Pondération hybride v1
+  -- Ponderation hybride v1
   v_score_total := ROUND(
     (v_incidents_score * 0.35)
     + (v_closure_delay_score * 0.25)

@@ -1,9 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import TerrainPage from "@/features/terrain/screens/TerrainPage";
 
 const startShiftMutate = vi.fn();
+const useActiveShiftMock = vi.fn();
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -33,10 +34,13 @@ vi.mock("@/hooks/useAssignments", () => ({
 }));
 
 vi.mock("@/hooks/useDriverShifts", () => ({
-  useActiveShift: () => ({
-    data: null,
-    isPending: false,
-  }),
+  useActiveShift: (...args: unknown[]) => {
+    useActiveShiftMock(...args);
+    return {
+      data: null,
+      isPending: false,
+    };
+  },
   useStartShift: () => ({
     mutate: startShiftMutate,
     isPending: false,
@@ -58,6 +62,10 @@ vi.mock("@/hooks/useFuel", () => ({
 }));
 
 describe("TerrainPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("ouvre un créneau après saisie du km départ", () => {
     render(
       <MemoryRouter>
@@ -77,6 +85,17 @@ describe("TerrainPage", () => {
     expect(startShiftMutate).toHaveBeenCalledWith({
       assignment_id: "assign-1",
       km_start: 45230,
+    });
+  });
+  it("ne refetch pas le creneau actif au retour camera", () => {
+    render(
+      <MemoryRouter>
+        <TerrainPage />
+      </MemoryRouter>,
+    );
+
+    expect(useActiveShiftMock).toHaveBeenCalledWith({
+      refetchOnWindowFocus: false,
     });
   });
 });

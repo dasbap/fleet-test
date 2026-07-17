@@ -16,10 +16,6 @@ vi.mock("@/hooks/use-toast", () => ({
   toast: vi.fn(),
 }));
 
-vi.mock("@/components/shared/ActivationChecklist", () => ({
-  ActivationChecklist: () => <div>activation-checklist</div>,
-}));
-
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: null,
@@ -164,4 +160,9 @@ describe("DashboardSidebar", () => {
     },
     20000,
   );
+  it("n'affiche pas la checklist d'activation sous la navigation", () => {
+    renderSidebar("organizer");
+
+    expect(screen.queryByText("activation-checklist")).not.toBeInTheDocument();
+  });
 });

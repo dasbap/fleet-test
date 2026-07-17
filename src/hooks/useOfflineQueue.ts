@@ -3,6 +3,7 @@ import { useNetworkOnline } from "@/features/account/hooks/useNetworkOnline";
 import { runOfflineSyncOnce } from "@/services/offlineSyncOrchestrator.service";
 import { OfflineQueueService } from "@/services/offlineQueue.service";
 import { patchLocalSyncState } from "@/lib/storage/flotteEsambaLocalCache";
+import { isNativeExternalActivityResumeGraceActive } from "@/lib/native/nativeLifecycleGuards";
 
 const queueService = new OfflineQueueService();
 
@@ -19,6 +20,18 @@ const EMPTY_STATS: OfflineQueueStats = {
   failed: 0,
   oldestPendingAgeMs: null,
 };
+
+export function shouldAutoFlushOfflineQueueOnNetworkChange({
+  wasOffline,
+  nowOnline,
+  nativeExternalActivityResumeGraceActive,
+}: {
+  wasOffline: boolean;
+  nowOnline: boolean;
+  nativeExternalActivityResumeGraceActive: boolean;
+}): boolean {
+  return wasOffline && nowOnline && !nativeExternalActivityResumeGraceActive;
+}
 
 /**
  * Expose les statistiques de la file offline et permet un flush manuel.
@@ -68,7 +81,13 @@ export function useOfflineQueue() {
     const nowOnline = isOnline;
     prevOnline.current = isOnline;
 
-    if (wasOffline && nowOnline) {
+    if (
+      shouldAutoFlushOfflineQueueOnNetworkChange({
+        wasOffline,
+        nowOnline,
+        nativeExternalActivityResumeGraceActive: isNativeExternalActivityResumeGraceActive(),
+      })
+    ) {
       void flush();
     }
   }, [isOnline, flush]);
