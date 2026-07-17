@@ -18,7 +18,7 @@ on:
 jobs:
   e2e-helpcenter:
     name: Playwright HelpCenter (fr/en/ln)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 20
     env:
       # Valeurs factices : le client Supabase s'initialise sans planter (URL valide requise),
