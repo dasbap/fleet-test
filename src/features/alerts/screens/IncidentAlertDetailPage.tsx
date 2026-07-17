@@ -31,7 +31,10 @@ import { IncidentAttachmentPlaceholder } from "@/features/alerts/components/Inci
 import { IncidentSeverityBadge } from "@/features/alerts/components/IncidentSeverityBadge";
 import { IncidentStatusBadge } from "@/features/alerts/components/IncidentStatusBadge";
 import { useAlertDetail, useUpdateAlertStatus, useAssignAlert, useAlertComments, useAddAlertComment } from "@/hooks/useAlerts";
-import type { IncidentWorkflowStatus } from "@/types/incident-alert";
+import type {
+  IncidentAlertSeverity,
+  IncidentWorkflowStatus,
+} from "@/types/incident-alert";
 import { cn } from "@/lib/utils";
 import { shareContent, buildAlertDtoDocumentSharePayload } from "@/services/share.service";
 import { useActivation } from "@/hooks/useActivation";
@@ -59,9 +62,9 @@ export default function IncidentAlertDetailPage() {
   const { user } = useAuth();
   const { data: alertDto } = useAlertDetail(alertId);
   const { data: comments = [] } = useAlertComments(alertId);
-  const { mutate: updateStatus, isLoading: isUpdatingStatus } = useUpdateAlertStatus();
-  const { mutate: assignAlert, isLoading: isAssigning } = useAssignAlert();
-  const { mutate: addComment, isLoading: isAddingComment } = useAddAlertComment(alertId);
+  const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateAlertStatus();
+  const { mutate: assignAlert, isPending: isAssigning } = useAssignAlert();
+  const { mutate: addComment, isPending: isAddingComment } = useAddAlertComment(alertId);
   const { completeStep } = useActivation();
   const [commentDraft, setCommentDraft] = useState("");
   const authorName = useMemo(() => displayNameFromUser(user), [user]);
@@ -204,7 +207,7 @@ export default function IncidentAlertDetailPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <IncidentSeverityBadge severity={alertDto.severity as "critical" | "high" | "medium" | "low"} />
+        <IncidentSeverityBadge severity={alertDto.severity as IncidentAlertSeverity} />
         <IncidentStatusBadge status={alertDto.status} />
         <span className="text-muted-foreground self-center text-sm">
           {INCIDENT_KIND_LABELS["maintenance_due"]}

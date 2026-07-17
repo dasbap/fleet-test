@@ -1,10 +1,16 @@
 /**
  * Types métier — rôles et permissions Flotte E-Samba.
- * Alignés sur les rôles applicatifs (fleet_members.role).
+ *
+ * Source de vérité persistée : {@link AppRole} (`@/types/auth`).
+ * `FleetRole` est un alias domaine (libellés / hiérarchie UI flotte).
+ * Nomenclature mobile : {@link MobileAppRole} + bridge `mobileRoleBridge`.
+ * Alias composants `Role` (= PlatformRole) : `@/config/permissions` uniquement.
  */
 
-/** Rôle dans une flotte (autorisation métier). */
-export type FleetRole = "organizer" | "manager" | "driver" | "mechanic";
+import type { AppRole } from "@/types/auth";
+
+/** Rôle dans une flotte (autorisation métier) — alias de {@link AppRole}. */
+export type FleetRole = AppRole;
 
 /** Libellés affichables pour l’UI. */
 export const FLEET_ROLE_LABELS: Record<FleetRole, string> = {
@@ -21,9 +27,6 @@ export const FLEET_ROLE_PRIORITY: FleetRole[] = [
   "mechanic",
   "driver",
 ];
-
-/** Alias du rôle applicatif dans une flotte. */
-export type Role = FleetRole;
 
 export function fleetRoleAtLeast(
   userRole: FleetRole | null,

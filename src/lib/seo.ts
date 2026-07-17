@@ -96,7 +96,7 @@ export const SEO_BY_ROUTE_KEY: Record<SeoRouteKey, SeoRouteConfig> = {
   incidentDeclare: {
     title: "Déclarer un incident - E-Samba",
     description: "Signalement terrain et déclaration d'incident pour la flotte.",
-    canonicalPath: "/dashboard/incidents/declare",
+    canonicalPath: "/incidents/declare",
   },
   maintenance: { title: "Maintenance - E-Samba", description: "Planning et suivi des maintenances des vehicules.", canonicalPath: "/dashboard/maintenance" },
   reports: { title: "Rapports - E-Samba", description: "Rapports et statistiques de la flotte.", canonicalPath: "/dashboard/reports" },
@@ -187,6 +187,7 @@ const PATH_TO_ROUTE_KEY: Record<string, SeoRouteKey> = {
   "/dashboard/closure": SEO_ROUTE_KEYS.closure,
   "/dashboard/incidents": SEO_ROUTE_KEYS.incidents,
   "/dashboard/incidents/declare": SEO_ROUTE_KEYS.incidentDeclare,
+  "/incidents/declare": SEO_ROUTE_KEYS.incidentDeclare,
   "/dashboard/maintenance": SEO_ROUTE_KEYS.maintenance,
   "/dashboard/reports": SEO_ROUTE_KEYS.reports,
   "/dashboard/invitations": SEO_ROUTE_KEYS.invitations,
