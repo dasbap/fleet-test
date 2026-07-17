@@ -18,6 +18,7 @@ dist-ssr
 # Fichiers d'environnement
 .env
 .env.local
+.env.prod
 .env.*.local
 .env.local.bak
 .env.*.bak
@@ -37,7 +38,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
+.codex/
 # Vercel
 .vercel
 
