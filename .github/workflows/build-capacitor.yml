@@ -37,7 +37,7 @@ on:
 jobs:
   build-capacitor:
     name: vite build (mode capacitor)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: self-hosted
     env:
       # Valeurs factices : le client Supabase n’est pas exécuté pendant le build statique.
       VITE_SUPABASE_URL: https://placeholder-build.supabase.co
@@ -52,6 +52,7 @@ jobs:
           cache: "npm"
 
       - name: Install libvips (requis par @capacitor/assets/sharp en fallback compilation)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libvips-dev
@@ -79,4 +80,10 @@ jobs:
 
       - name: Android assembleDebug
         working-directory: android
-        run: chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
+        shell: bash
+        run: |
+          if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
+          if [ -f ./gradlew ]; then ./gradlew :app:assembleDebug --no-daemon
+          elif [ -f ./gradlew.bat ]; then ./gradlew.bat :app:assembleDebug --no-daemon
+          else echo "gradlew introuvable" && exit 1
+          fi

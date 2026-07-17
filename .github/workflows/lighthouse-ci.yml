@@ -55,7 +55,7 @@ on:
 jobs:
   lighthouse:
     name: Lighthouse CI (placeholders)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: self-hosted
     timeout-minutes: 25
     env:
       VITE_SUPABASE_URL: https://placeholder-build.supabase.co
