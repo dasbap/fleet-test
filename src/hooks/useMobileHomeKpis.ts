@@ -9,6 +9,7 @@ import {
   countCriticalUnresolvedAlerts,
   type MobileHomeKpis,
 } from "@/lib/mobileHomeKpi";
+import { mapOperationalAlertDtoToDomain } from "@/services/mappers/alert.dto.mapper";
 
 interface UseMobileHomeKpisResult {
   kpis: MobileHomeKpis;
@@ -30,7 +31,7 @@ export function useMobileHomeKpis(): UseMobileHomeKpisResult {
 
   const kpis = useMemo((): MobileHomeKpis => {
     const vehicles = vehiclesQ.data ?? [];
-    const alerts = alertsQ.data ?? [];
+    const alerts = (alertsQ.data ?? []).map(mapOperationalAlertDtoToDomain);
 
     const { activeVehicles, immobilizedVehicles } = computeVehicleKpis(
       vehicles,

@@ -29,8 +29,10 @@ const DashboardStats = () => {
     (!billingQuery.isPending
       ? billingQuery.isError || (billingQuery.data?.driverScoringEnabled ?? true)
       : false);
-  const { data: scores = [] } = useDriverScores(userFleetId, allowDriverScores);
-  const { data: activationMetrics, isSuccess: activationLoaded } = useFleetActivationMetrics(userFleetId);
+  const { data: scores = [] } = useDriverScores(userFleetId ?? undefined, allowDriverScores);
+  const { data: activationMetrics, isSuccess: activationLoaded } = useFleetActivationMetrics(
+    userFleetId ?? undefined,
+  );
   const { data: driverTerrainHealth, isSuccess: terrainHealthLoaded } =
     useFleetDriverActivationHealth(userFleetId ?? undefined);
   const showTerrainHealth =

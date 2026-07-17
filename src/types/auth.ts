@@ -8,7 +8,7 @@
  * - Capacités plan : RPC `get_fleet_billing_context` (voir `FleetBillingContext`).
  */
 
-/** Rôles persistés côté adhésions flotte (ENUM `role_type`). */
+/** Rôles persistés côté adhésions flotte (ENUM `role_type`) — source de vérité applicative. */
 export type AppRole = "organizer" | "manager" | "driver" | "mechanic";
 
 /**

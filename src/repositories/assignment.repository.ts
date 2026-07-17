@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { asSingleRelation } from '@/lib/supabaseRelation';
 
 export interface DriverRow {
   user_id: string;
@@ -158,7 +159,13 @@ export class AssignmentRepository {
       throw new Error(error.message);
     }
 
-    return (data || []) as AssignmentHistoryRow[];
+    return (data || []).map((row) => ({
+      id: row.id,
+      starts_at: row.starts_at,
+      ends_at: row.ends_at,
+      is_active: row.is_active,
+      vehicle: asSingleRelation(row.vehicle),
+    }));
   }
 
   async assignVehicle(params: {

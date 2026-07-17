@@ -7,7 +7,8 @@ export interface FilterChipItem {
   label: string;
 }
 
-export interface FilterChipsProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface FilterChipsProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onSelect"> {
   items: FilterChipItem[];
   /** Identifiant sélectionné ; null = aucun filtre actif */
   selectedId: string | null;

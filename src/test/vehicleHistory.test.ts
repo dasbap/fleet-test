@@ -43,6 +43,10 @@ describe("buildVehicleHistoryEvents", () => {
         resolved_by: null,
         resolved_at: null,
         created_at: "2026-03-10T08:00:00.000Z",
+        status: "NOUVEAU",
+        assignee_user_id: null,
+        assigned_at: null,
+        status_updated_at: null,
       },
     ];
 

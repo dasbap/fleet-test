@@ -1,7 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { AppRole } from '@/types/auth';
+import { asSingleRelation } from '@/lib/supabaseRelation';
 import type { IRepository } from './base.repository';
 
-export type RoleType = 'organizer' | 'manager' | 'driver' | 'mechanic';
+/** Alias dépôt du rôle persisté — source de vérité : {@link AppRole}. */
+export type RoleType = AppRole;
 
 export interface FleetMember {
   id: string;
@@ -44,6 +47,31 @@ type SupabaseRpcError = {
   message?: string;
   details?: string;
 };
+
+type FleetMemberProfile = FleetMember["profile"];
+
+function mapFleetMemberRow(
+  row: {
+    id: string;
+    user_id: string;
+    fleet_id: string;
+    role: RoleType;
+    is_active: boolean;
+    created_at: string;
+    profile?: FleetMemberProfile | FleetMemberProfile[] | null;
+  },
+): FleetMember {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    fleet_id: row.fleet_id,
+    role: row.role,
+    is_active: row.is_active,
+    created_at: row.created_at,
+    profile: asSingleRelation(row.profile),
+    email: null,
+  };
+}
 
 function isRecoverableMembersRpcOutage(error: SupabaseRpcError): boolean {
   const text = `${error.code ?? ''} ${error.message ?? ''} ${error.details ?? ''}`.toLowerCase();
@@ -150,10 +178,19 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
     }
 
     // Note: Les emails ne sont pas récupérables directement pour des raisons de sécurité
-    return (data || []).map((member) => ({
-      ...member,
-      email: null, // Sera récupéré côté serveur si nécessaire
-    })) as FleetMember[];
+    return (data || []).map((member) =>
+      mapFleetMemberRow(
+        member as {
+          id: string;
+          user_id: string;
+          fleet_id: string;
+          role: RoleType;
+          is_active: boolean;
+          created_at: string;
+          profile?: FleetMemberProfile | FleetMemberProfile[] | null;
+        },
+      ),
+    );
   }
 
   /**
@@ -214,10 +251,17 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
 
     if (!data) return null;
 
-    return {
-      ...data,
-      email: null,
-    } as FleetMember;
+    return mapFleetMemberRow(
+      data as {
+        id: string;
+        user_id: string;
+        fleet_id: string;
+        role: RoleType;
+        is_active: boolean;
+        created_at: string;
+        profile?: FleetMemberProfile | FleetMemberProfile[] | null;
+      },
+    );
   }
 
   /**
@@ -248,10 +292,17 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
       throw new Error(error.message);
     }
 
-    return {
-      ...data,
-      email: null,
-    } as FleetMember;
+    return mapFleetMemberRow(
+      data as {
+        id: string;
+        user_id: string;
+        fleet_id: string;
+        role: RoleType;
+        is_active: boolean;
+        created_at: string;
+        profile?: FleetMemberProfile | FleetMemberProfile[] | null;
+      },
+    );
   }
 
   /**
@@ -282,10 +333,17 @@ export class FleetMemberRepository implements IRepository<FleetMember, FleetMemb
       throw new Error('Membre de flotte introuvable ou accès refusé');
     }
 
-    return {
-      ...data,
-      email: null,
-    } as FleetMember;
+    return mapFleetMemberRow(
+      data as {
+        id: string;
+        user_id: string;
+        fleet_id: string;
+        role: RoleType;
+        is_active: boolean;
+        created_at: string;
+        profile?: FleetMemberProfile | FleetMemberProfile[] | null;
+      },
+    );
   }
 
   /**
