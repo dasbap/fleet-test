@@ -1,9 +1,11 @@
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isNativePlatform } from "@/lib/platform";
 
 const PULL_THRESHOLD_PX = 72;
 const MAX_PULL_PX = 120;
+const NATIVE_RESUME_SUPPRESSION_MS = 1_500;
 
 interface PullToRefreshProps {
   children: ReactNode;
@@ -23,12 +25,43 @@ export function PullToRefresh({
 }: PullToRefreshProps) {
   const startY = useRef(0);
   const pulling = useRef(false);
+  const suppressPullUntil = useRef(0);
   const [pullPx, setPullPx] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
+
+    void import("@capacitor/app").then(({ App }) => {
+      if (cancelled) return;
+
+      void App.addListener("appStateChange", ({ isActive }) => {
+        pulling.current = false;
+        setPullPx(0);
+
+        if (isActive) {
+          suppressPullUntil.current = Date.now() + NATIVE_RESUME_SUPPRESSION_MS;
+        }
+      }).then((handle) => {
+        cleanup = () => {
+          void handle.remove();
+        };
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, []);
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (disabled || refreshing) return;
+      if (Date.now() < suppressPullUntil.current) return;
       const scrollTop = (e.currentTarget as HTMLElement).scrollTop;
       if (scrollTop > 0) return;
       startY.current = e.touches[0]?.clientY ?? 0;
@@ -40,6 +73,11 @@ export function PullToRefresh({
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
       if (!pulling.current || disabled || refreshing) return;
+      if (Date.now() < suppressPullUntil.current) {
+        pulling.current = false;
+        setPullPx(0);
+        return;
+      }
       const y = e.touches[0]?.clientY ?? 0;
       const delta = Math.max(0, Math.min(MAX_PULL_PX, y - startY.current));
       setPullPx(delta);
@@ -50,6 +88,10 @@ export function PullToRefresh({
   const handleTouchEnd = useCallback(async () => {
     if (!pulling.current) return;
     pulling.current = false;
+    if (Date.now() < suppressPullUntil.current) {
+      setPullPx(0);
+      return;
+    }
     if (pullPx >= PULL_THRESHOLD_PX && !disabled) {
       setRefreshing(true);
       try {

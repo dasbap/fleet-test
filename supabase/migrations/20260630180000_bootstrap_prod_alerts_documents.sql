@@ -144,9 +144,9 @@ drop policy if exists alertes_automatiques_select_fleet_roles on public.alertes_
 create policy alertes_automatiques_select_fleet_roles on public.alertes_automatiques
 for select to authenticated
 using (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
-  or public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
+  or public.has_role(fleet_id, 'mechanic'::public.role_type)
   or driver_user_id = auth.uid()
   or exists (
     select 1
@@ -161,31 +161,31 @@ drop policy if exists alertes_automatiques_insert_staff on public.alertes_automa
 create policy alertes_automatiques_insert_staff on public.alertes_automatiques
 for insert to authenticated
 with check (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
-  or public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
+  or public.has_role(fleet_id, 'mechanic'::public.role_type)
 );
 
 drop policy if exists alertes_automatiques_update_staff on public.alertes_automatiques;
 create policy alertes_automatiques_update_staff on public.alertes_automatiques
 for update to authenticated
 using (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
-  or public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
+  or public.has_role(fleet_id, 'mechanic'::public.role_type)
 )
 with check (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
-  or public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
+  or public.has_role(fleet_id, 'mechanic'::public.role_type)
 );
 
 drop policy if exists alertes_automatiques_delete_manager_org on public.alertes_automatiques;
 create policy alertes_automatiques_delete_manager_org on public.alertes_automatiques
 for delete to authenticated
 using (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
 );
 
 drop policy if exists alert_comments_select_fleet_member on public.alert_comments;
@@ -197,9 +197,9 @@ using (
     from public.alertes_automatiques a
     where a.id = alert_comments.alert_id
       and (
-        public.has_role(a.fleet_id, 'organizer')
-        or public.has_role(a.fleet_id, 'manager')
-        or public.has_role(a.fleet_id, 'mechanic')
+        public.has_role(a.fleet_id, 'organizer'::public.role_type)
+        or public.has_role(a.fleet_id, 'manager'::public.role_type)
+        or public.has_role(a.fleet_id, 'mechanic'::public.role_type)
         or a.driver_user_id = auth.uid()
         or exists (
           select 1
@@ -222,9 +222,9 @@ with check (
     from public.alertes_automatiques a
     where a.id = alert_comments.alert_id
       and (
-        public.has_role(a.fleet_id, 'organizer')
-        or public.has_role(a.fleet_id, 'manager')
-        or public.has_role(a.fleet_id, 'mechanic')
+        public.has_role(a.fleet_id, 'organizer'::public.role_type)
+        or public.has_role(a.fleet_id, 'manager'::public.role_type)
+        or public.has_role(a.fleet_id, 'mechanic'::public.role_type)
         or a.driver_user_id = auth.uid()
       )
   )
@@ -234,9 +234,9 @@ drop policy if exists vehicle_documents_select_fleet_roles on public.vehicle_doc
 create policy vehicle_documents_select_fleet_roles on public.vehicle_documents
 for select to authenticated
 using (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
-  or public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
+  or public.has_role(fleet_id, 'mechanic'::public.role_type)
   or exists (
     select 1
     from public.affectations_vehicules a
@@ -250,31 +250,31 @@ drop policy if exists vehicle_documents_insert_staff on public.vehicle_documents
 create policy vehicle_documents_insert_staff on public.vehicle_documents
 for insert to authenticated
 with check (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
-  or public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
+  or public.has_role(fleet_id, 'mechanic'::public.role_type)
 );
 
 drop policy if exists vehicle_documents_update_staff on public.vehicle_documents;
 create policy vehicle_documents_update_staff on public.vehicle_documents
 for update to authenticated
 using (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
-  or public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
+  or public.has_role(fleet_id, 'mechanic'::public.role_type)
 )
 with check (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
-  or public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
+  or public.has_role(fleet_id, 'mechanic'::public.role_type)
 );
 
 drop policy if exists vehicle_documents_delete_manager_org on public.vehicle_documents;
 create policy vehicle_documents_delete_manager_org on public.vehicle_documents
 for delete to authenticated
 using (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
 );
 
 create or replace function public.generer_alertes_automatiques(p_fleet_id uuid)
@@ -289,9 +289,9 @@ declare
   v_vehicle record;
 begin
   if not (
-    public.has_role(p_fleet_id, 'organizer')
-    or public.has_role(p_fleet_id, 'manager')
-    or public.has_role(p_fleet_id, 'mechanic')
+    public.has_role(p_fleet_id, 'organizer'::public.role_type)
+    or public.has_role(p_fleet_id, 'manager'::public.role_type)
+    or public.has_role(p_fleet_id, 'mechanic'::public.role_type)
   ) then
     raise exception 'access_denied';
   end if;

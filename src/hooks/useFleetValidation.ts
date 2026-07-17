@@ -22,12 +22,17 @@ export function useCreneauxValidations(fleetId?: string) {
   });
 }
 
-export function useCreneauActifValidation(creneauId?: string) {
+interface ValidationQueryOptions {
+  refetchOnWindowFocus?: boolean;
+}
+
+export function useCreneauActifValidation(creneauId?: string, options: ValidationQueryOptions = {}) {
   return useQuery({
     queryKey: fleetValidationQueryKeys.creneau(creneauId ?? ""),
     queryFn: () => fleetValidationService.getCreneauActifById(creneauId!),
     enabled: Boolean(creneauId),
     staleTime: 30_000,
+    refetchOnWindowFocus: options.refetchOnWindowFocus,
   });
 }
 

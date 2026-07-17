@@ -1,6 +1,5 @@
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { App } from "@capacitor/app";
 import { ArrowLeft, Download, Loader2, Star, Trash2, Video } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,11 +24,9 @@ import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { tutorialOfflineService } from "@/services/tutorial-offline.service";
 import { toast } from "@/hooks/use-toast";
 import { analytics } from "@/lib/analytics";
-import { isNativePlatform } from "@/lib/platform";
 
 export default function TutorialPlayerPage() {
   const { tutorialId = "" } = useParams();
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { data, isLoading, error } = useTutorial(tutorialId);
   const {
@@ -113,16 +110,6 @@ export default function TutorialPlayerPage() {
       cancelled = true;
     };
   }, [user?.id, data?.id]);
-
-  useEffect(() => {
-    if (!isNativePlatform()) return;
-    const listener = App.addListener("backButton", () => {
-      navigate(ROUTE_PATHS.dashboardTutorials);
-    });
-    return () => {
-      void listener.then((l) => l.remove());
-    };
-  }, [navigate]);
 
   const videoSrc = useMemo(
     () => localVideoUrl ?? data?.videoUrl ?? "",

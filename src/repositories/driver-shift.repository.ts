@@ -423,23 +423,25 @@ export class DriverShiftRepository {
    * Met à jour une clôture (validation/rejet)
    */
   async updateClosure(closureId: string, updates: ShiftClosureUpdate): Promise<ShiftClosure> {
-    const { data, error } = await supabase
-      .from('clotures_creneaux')
-      .update(updates)
-      .eq('id', closureId)
-      .select()
-      .maybeSingle();
+    const { data, error } = await supabase.rpc('review_shift_closure_for_actor', {
+      p_closure_id: closureId,
+      p_status: updates.status ?? null,
+      p_validated_by: updates.validated_by ?? null,
+      p_validated_at: updates.validated_at ?? null,
+    });
 
     if (error) {
       console.error('Error updating closure:', error);
       throw new Error(error.message);
     }
 
-    if (!data) {
+    const closure = Array.isArray(data) ? data[0] : data;
+
+    if (!closure) {
       throw new Error('Clôture introuvable ou accès refusé');
     }
 
-    return data as ShiftClosure;
+    return closure as ShiftClosure;
   }
 
   /**

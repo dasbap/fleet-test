@@ -73,12 +73,17 @@ export interface ShiftClosureInsert {
   proof_value: string;
 }
 
-export function useActiveShift() {
+interface DriverShiftQueryOptions {
+  refetchOnWindowFocus?: boolean;
+}
+
+export function useActiveShift(options: DriverShiftQueryOptions = {}) {
   const { user } = useAuth();
   return useQuery({
     queryKey: ['active-shift', user?.id],
     queryFn: () => (user ? driverShiftService.getActiveShift(user.id) : Promise.resolve(null)),
     enabled: !!user,
+    refetchOnWindowFocus: options.refetchOnWindowFocus,
   });
 }
 

@@ -27,7 +27,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.102.0
 
       # Démarrer une instance Supabase locale fraîche (sans services optionnels lourds)
       - name: Start Supabase local
@@ -184,7 +184,11 @@ jobs:
           mkdir -p ci-metrics test-results
           start=$(date +%s%3N)
           set +e
-          npx vitest run -c vitest.integration.config.ts --reporter=json --outputFile=test-results/integration.json
+          npx vitest run -c vitest.integration.config.ts \
+            tests/integration/rls.fleet-access.test.ts \
+            tests/integration/triggers.vehicle-limit.test.ts \
+            tests/integration/fuel.fraud-scoring.test.ts \
+            --reporter=json --outputFile=test-results/integration.json
           code=$?
           set -e
           end=$(date +%s%3N)

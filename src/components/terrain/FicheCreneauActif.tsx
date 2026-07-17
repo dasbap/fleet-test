@@ -43,7 +43,9 @@ function ArticleValidation({ icone, label, valide, detail }: ArticleValidationPr
 
 /** Fiche détaillée du créneau actif — source : v_creneaux_actifs_validations. */
 export function FicheCreneauActif({ creneauId }: FicheCreneauActifProps) {
-  const { data: donnees, isPending, isError } = useCreneauActifValidation(creneauId);
+  const { data: donnees, isPending, isError } = useCreneauActifValidation(creneauId, {
+    refetchOnWindowFocus: false,
+  });
 
   if (isPending) {
     return (

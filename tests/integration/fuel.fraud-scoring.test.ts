@@ -24,6 +24,7 @@ describeIntegration("Fuel fraud scoring", () => {
   beforeAll(async () => {
     clients = await createSupabaseIntegrationClients();
     context = await createFleetContextForUser(clients.admin, clients.userId, {
+      user: clients.user,
       role: "organizer",
     });
     vehicleId = await createVehicleForFleet(

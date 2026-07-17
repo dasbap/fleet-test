@@ -216,9 +216,12 @@ export const ALL_HELP_ARTICLES: HelpArticle[] = [
   },
 ];
 
+const HELP_TUTORIAL_VIDEOS_ENABLED =
+  (import.meta.env.VITE_ENABLE_TUTORIAL_HELP_VIDEOS as string | undefined) === "true";
+
 const STORAGE_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/tutorials`;
 
-const FEATURED_VIDEOS_INTERNAL: HelpVideo[] = [
+const TUTORIAL_FEATURED_VIDEOS: HelpVideo[] = [
   {
     id: "tuto-01",
     titleKey: "Ouvrir un créneau",
@@ -241,6 +244,10 @@ const FEATURED_VIDEOS_INTERNAL: HelpVideo[] = [
     href: "/aide/videos/tuto-07",
   },
 ];
+
+const FEATURED_VIDEOS_INTERNAL: HelpVideo[] = HELP_TUTORIAL_VIDEOS_ENABLED
+  ? TUTORIAL_FEATURED_VIDEOS
+  : [];
 
 // Mapping route → catégorie. Exporté pour tests unitaires.
 
@@ -332,6 +339,8 @@ export function useHelp(): UseHelpReturn {
   const [featuredVideos, setFeaturedVideos] = useState(FEATURED_VIDEOS_INTERNAL);
 
   useEffect(() => {
+    if (FEATURED_VIDEOS_INTERNAL.length === 0) return;
+
     let cancelled = false;
     void (async () => {
       const resolved = await Promise.all(
@@ -443,4 +452,3 @@ export function useHelp(): UseHelpReturn {
     focusedSlug,
   };
 }
-
