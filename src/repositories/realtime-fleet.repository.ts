@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { asSingleRelation } from "@/lib/supabaseRelation";
 
 /** Données résolues pour une notification « clôture de créneau ». */
 export interface ClosureNotificationContext {
@@ -39,10 +40,13 @@ export class RealtimeFleetRepository {
 
     if (error || !shift) return null;
 
-    const assignment = shift.assignment as
-      | { fleet_id: string; driver_user_id: string }
-      | null
-      | undefined;
+    const assignment = asSingleRelation(
+      shift.assignment as
+        | { fleet_id: string; driver_user_id: string }
+        | { fleet_id: string; driver_user_id: string }[]
+        | null
+        | undefined,
+    );
     if (!assignment || assignment.fleet_id !== targetFleetId) return null;
 
     const { data: profile } = await supabase

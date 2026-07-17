@@ -4,7 +4,6 @@ import type {
   FleetVehicleDocumentExpiry,
   FleetVehicleMaintenanceEntry,
 } from "@/types/fleet-vehicle";
-import { DEMO_FLEET_ID } from "@/mocks/demo/constants";
 import { demoIsoFuture, demoIsoPast } from "@/mocks/demo/constants";
 import { getDocumentsForVehicle } from "@/mocks/demo/vehicleDocuments";
 import { getTimelineForVehicle } from "@/mocks/demo/timelineEvents";
@@ -78,7 +77,6 @@ const MAINT_BY_VEH: Record<string, FleetVehicleMaintenanceEntry[]> = {
 function v(
   base: Omit<
     FleetVehicleDetail,
-    | "fleetId"
     | "documentsExpiringSoon"
     | "maintenanceHistory"
     | "timeline"
@@ -86,7 +84,6 @@ function v(
 ): FleetVehicleDetail {
   return {
     ...base,
-    fleetId: DEMO_FLEET_ID,
     documentsExpiringSoon: documentsExpiringForVehicle(base.id),
     maintenanceHistory: MAINT_BY_VEH[base.id] ?? [],
     timeline: getTimelineForVehicle(base.id),

@@ -4,11 +4,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Mail, Shield, Calendar } from "lucide-react";
 import { getRoleLabel, getRoleBadgeClass } from "@/lib/roleUtils";
 import type { AppRole } from "@/hooks/useAuth";
-import type { User } from "@supabase/supabase-js";
+import type { AuthUser } from "@/types/auth";
 import { useAvatarDisplayUrl } from "@/hooks/useAvatarDisplayUrl";
 
 interface ProfileHeaderProps {
-  user: User;
+  user: AuthUser;
   role: AppRole | null;
   fullName: string;
   initials: string;

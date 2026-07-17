@@ -1,14 +1,23 @@
-export type { MobileAppRole, Role } from "./mobile-app-role";
+/**
+ * Rôles — une seule sémantique par nom :
+ * - AppRole / FleetRole / RoleType → rôles persistés flotte
+ * - PlatformRole → AppRole | "admin" (RBAC plateforme)
+ * - Role → alias PlatformRole via `@/config/permissions` (composants)
+ * - MobileAppRole → nomenclature mobile (bridge → AppRole)
+ */
+export type { MobileAppRole } from "./mobile-app-role";
 export {
   MOBILE_APP_ROLE_LABELS,
   MOBILE_APP_ROLE_ORDER,
 } from "./mobile-app-role";
-export type { FleetRole, Role } from "./role";
+export type { FleetRole } from "./role";
 export {
   FLEET_ROLE_LABELS,
   FLEET_ROLE_PRIORITY,
   fleetRoleAtLeast,
 } from "./role";
+export type { AppRole } from "./auth";
+export type { PlatformRole } from "./rbac";
 /**
  * Types domaine : `User` = utilisateur métier (`FleetUser`), pas la session Supabase (`AuthUser` dans `./auth`).
  */

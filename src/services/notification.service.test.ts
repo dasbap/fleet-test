@@ -36,7 +36,6 @@ describe("NotificationService", () => {
 
     await expect(
       service.registerDeviceToken({
-        // @ts-expect-error test d'entrée invalide
         userId: "not-a-uuid",
         token: "short",
         platform: "web",
