@@ -17,7 +17,7 @@ jobs:
   # ── Job 1 : Migrations & tests DB ──────────────────────────────────────
   db-migrations:
     name: Supabase migrations (fresh DB)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 20
 
     steps:
@@ -63,7 +63,7 @@ jobs:
   # ── Job 2 : TypeScript build ────────────────────────────────────────────
   build:
     name: TypeScript build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: db-migrations
 
     steps:
@@ -105,7 +105,7 @@ jobs:
   # ── Job 3 : Lint ────────────────────────────────────────────────────────
   lint:
     name: ESLint
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v4
@@ -120,7 +120,7 @@ jobs:
   # ── Job 4 : Qualité + métriques consolidées ───────────────────────────────
   quality-metrics:
     name: Test layers metrics
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 45
     needs: [build]
     env:
