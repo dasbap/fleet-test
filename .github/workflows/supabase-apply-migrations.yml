@@ -30,7 +30,7 @@ concurrency:
 jobs:
   apply-migrations:
     name: Apply migrations to Supabase
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: production
 
     steps:
