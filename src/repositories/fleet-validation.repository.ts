@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isValidUuid } from "@/lib/isUuid";
 import { getSignedStorageUrl } from "@/lib/storage/signedUrl";
 import type { CreneauValidationRow, KpisFlotteData } from "@/types/fleet-validation";
 
@@ -21,6 +22,10 @@ export class FleetValidationRepository {
   }
 
   async findActiveValidationByCreneauId(creneauId: string): Promise<CreneauValidationRow | null> {
+    if (!isValidUuid(creneauId)) {
+      return null;
+    }
+
     const { data, error } = await supabase
       .from("v_creneaux_actifs_validations")
       .select("*")

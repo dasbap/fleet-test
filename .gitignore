@@ -22,6 +22,7 @@ dist-ssr
 .env.local.bak
 .env.*.bak
 .env.vercel*
+.env.prod
 
 # Editor directories and files
 .vscode/*

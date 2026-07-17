@@ -7,6 +7,7 @@ import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { appRoutes } from "@/app/routes/app.routes";
 import { LazySentryErrorBoundary } from "@/components/errors/LazySentryErrorBoundary";
 import { HelpProvider } from "@/context/HelpContext";
+import { NativeBackButtonBridge } from "@/components/mobile/NativeBackButtonBridge";
 
 const PostHogPageViewSync = lazy(() =>
   import("@/components/analytics/PostHogPageViewSync").then((module) => ({
@@ -37,6 +38,7 @@ const AppContent = () => (
           <Suspense fallback={null}>
             <DeepLinkListener />
           </Suspense>
+          <NativeBackButtonBridge />
           <PageSEO />
           <Suspense fallback={<RoutePageFallback />}>
             <Routes>{appRoutes}</Routes>

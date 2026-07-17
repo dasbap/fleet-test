@@ -12,6 +12,7 @@ import {
   shouldUseBiometricLock,
   verifyStoredPin,
 } from "@/services/biometric-lock.service";
+import { isNativeExternalActivityResumeGraceActive } from "@/lib/native/nativeLifecycleGuards";
 
 export type BiometricLockAuthState =
   | "idle"
@@ -29,6 +30,22 @@ interface UseBiometricLockOptions {
   onUnlocked: (session: Session) => void;
   /** Trop d’échecs PIN ou session invalide : déconnexion. */
   onForceSignOut: () => void | Promise<void>;
+}
+
+export function shouldArmBiometricLockOnAppResume({
+  fromBackground,
+  hasSession,
+  userId,
+  nativeExternalActivityResumeGraceActive,
+}: {
+  fromBackground: boolean;
+  hasSession: boolean;
+  userId: string | null;
+  nativeExternalActivityResumeGraceActive: boolean;
+}): boolean {
+  if (!fromBackground || !hasSession) return false;
+  if (!userId) return false;
+  return !nativeExternalActivityResumeGraceActive;
 }
 
 function parseErrorCode(error: unknown): number | undefined {
@@ -141,12 +158,19 @@ export function useBiometricLock({
           fromBackgroundRef.current = true;
           return;
         }
-        if (!fromBackgroundRef.current || !hasSessionRef.current) {
+        if (
+          !shouldArmBiometricLockOnAppResume({
+            fromBackground: fromBackgroundRef.current,
+            hasSession: hasSessionRef.current,
+            userId: userIdRef.current,
+            nativeExternalActivityResumeGraceActive: isNativeExternalActivityResumeGraceActive(),
+          })
+        ) {
+          fromBackgroundRef.current = false;
           return;
         }
         fromBackgroundRef.current = false;
         const uid = userIdRef.current;
-        if (!uid) return;
         void (async () => {
           const enabled = await isBiometricLockEnabledForUser(uid);
           if (enabled) {

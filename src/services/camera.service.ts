@@ -1,6 +1,10 @@
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import type { PermissionStatus, Photo } from "@capacitor/camera";
 import { isUserCancellationMessage } from "@/lib/cameraCancellation";
+import {
+  markNativeExternalActivityFinished,
+  markNativeExternalActivityStarted,
+} from "@/lib/native/nativeLifecycleGuards";
 
 /** Résultat normalisé pour l’UI (aperçu, envoi futur). */
 export interface CameraCaptureResult {
@@ -122,6 +126,7 @@ export class CameraService {
     maxHeight?: number;
   }): Promise<CameraCaptureResult> {
     await this.ensureCameraPermission();
+    markNativeExternalActivityStarted();
     try {
       const photo = await Camera.getPhoto({
         quality: options?.quality ?? 85,
@@ -140,6 +145,8 @@ export class CameraService {
         throw new CameraServiceError("Capture annulée.", "user_cancelled", { cause: e });
       }
       throw mapUnknownError(e);
+    } finally {
+      markNativeExternalActivityFinished();
     }
   }
 
@@ -167,6 +174,7 @@ export class CameraService {
         "permission_denied"
       );
     }
+    markNativeExternalActivityStarted();
     try {
       const photo = await Camera.getPhoto({
         quality: options?.quality ?? 85,
@@ -184,6 +192,8 @@ export class CameraService {
         throw new CameraServiceError("Sélection annulée.", "user_cancelled", { cause: e });
       }
       throw mapUnknownError(e);
+    } finally {
+      markNativeExternalActivityFinished();
     }
   }
 }

@@ -21,6 +21,7 @@ describeIntegration("Trigger limite vehicules", () => {
   beforeAll(async () => {
     clients = await createSupabaseIntegrationClients();
     context = await createFleetContextForUser(clients.admin, clients.userId, {
+      user: clients.user,
       role: "organizer",
     });
   });

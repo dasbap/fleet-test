@@ -12,7 +12,7 @@ import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
 const ShiftClosure = () => {
   const { can } = useRoleAccess();
   const canSubmitDvir = can("dvir.submit");
-  const { data: activeShift, isPending } = useActiveShift();
+  const { data: activeShift, isPending } = useActiveShift({ refetchOnWindowFocus: false });
 
   if (!canSubmitDvir) {
     return (

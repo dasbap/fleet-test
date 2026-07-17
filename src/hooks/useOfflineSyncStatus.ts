@@ -8,12 +8,12 @@ import {
 import type { AccountSyncDisplayStatus } from "@/types/account-preferences";
 import type { LocalSyncState } from "@/types/local-cache";
 
-function deriveDisplayStatus(
+export function deriveOfflineDisplayStatus(
   sync: LocalSyncState,
   pendingDrafts: number,
 ): AccountSyncDisplayStatus {
-  if (sync.displayStatus === "syncing") return "syncing";
   if (sync.displayStatus === "error") return "error";
+  if (sync.displayStatus === "syncing" && pendingDrafts > 0) return "syncing";
   if (pendingDrafts > 0) return "pending";
   return "synced";
 }
@@ -33,7 +33,7 @@ export function useOfflineSyncStatus() {
   const pendingDrafts = snapshot.pendingDrafts;
 
   const displayStatus = useMemo(
-    () => deriveDisplayStatus(snapshot.sync, pendingDrafts),
+    () => deriveOfflineDisplayStatus(snapshot.sync, pendingDrafts),
     [snapshot.sync, pendingDrafts],
   );
 

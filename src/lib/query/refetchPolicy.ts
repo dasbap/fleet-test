@@ -23,3 +23,7 @@ export function refetchIntervalWhenVisible(visibleMs: number, hiddenMs = visible
 export function dashboardStaleTimeMs(): number {
   return isSlowOrMeteredConnection() ? 5 * 60_000 : 2 * 60_000;
 }
+
+export function shouldRefetchOnWindowFocus(): false {
+  return false;
+}

@@ -36,7 +36,7 @@ export default function TerrainPage() {
     return user ? list.find((a) => a.driver_user_id === user.id) : null;
   }, [rawAssignments, user]);
   const vehicleId = myAssignment?.vehicle_id ?? null;
-  const { data: creneauActif } = useActiveShift();
+  const { data: creneauActif } = useActiveShift({ refetchOnWindowFocus: false });
   const createFuel = useCreateFuelEntry();
   const [liters, setLiters] = useState("");
   const [amountXof, setAmountXof] = useState("");
