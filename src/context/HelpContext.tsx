@@ -57,6 +57,8 @@ export function HelpProvider({ children }: { children: ReactNode }) {
   const [featuredVideos, setFeaturedVideos] = useState<HelpVideo[]>(FEATURED_VIDEOS);
 
   useEffect(() => {
+    if (FEATURED_VIDEOS.length === 0) return;
+
     let cancelled = false;
     void (async () => {
       const resolved = await Promise.all(

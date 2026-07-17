@@ -77,6 +77,8 @@ $$;
 CREATE INDEX IF NOT EXISTS idx_scores_conducteurs_fleet_score_total
   ON public.scores_conducteurs(fleet_id, score_total DESC NULLS LAST, last_calculated_at DESC);
 
+DROP FUNCTION IF EXISTS public.get_top_driver_scores(uuid, int);
+
 CREATE OR REPLACE FUNCTION public.get_top_driver_scores(
   p_fleet_id uuid,
   p_limit int DEFAULT 5
@@ -111,10 +113,10 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(p_fleet_id, 'organizer')
-    OR public.has_role(p_fleet_id, 'manager')
-    OR public.has_role(p_fleet_id, 'mechanic')
-    OR public.has_role(p_fleet_id, 'driver')
+    public.has_role(p_fleet_id, 'organizer'::public.role_type)
+    OR public.has_role(p_fleet_id, 'manager'::public.role_type)
+    OR public.has_role(p_fleet_id, 'mechanic'::public.role_type)
+    OR public.has_role(p_fleet_id, 'driver'::public.role_type)
   ) THEN
     RAISE EXCEPTION 'Acces refuse pour cette flotte';
   END IF;

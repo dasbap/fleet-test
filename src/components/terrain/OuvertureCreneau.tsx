@@ -26,7 +26,9 @@ export function OuvertureCreneau() {
     const list = rawAssignments ?? [];
     return user ? list.find((a) => a.driver_user_id === user.id) : null;
   }, [rawAssignments, user]);
-  const { data: creneauActif, isPending: shiftPending } = useActiveShift();
+  const { data: creneauActif, isPending: shiftPending } = useActiveShift({
+    refetchOnWindowFocus: false,
+  });
   const { data: upcomingPlanned } = useUpcomingPlannedShift();
   const startShift = useStartShift();
 

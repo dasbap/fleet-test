@@ -77,17 +77,17 @@ export class DriverProfileRepository {
       return data as DriverProfile;
     }
 
-    // Profil absent (edge signup) — création minimale pour le conducteur connecté
-    const { data: inserted, error: insertError } = await supabase
-      .from('profils')
-      .insert({ user_id: driverUserId, ...updates })
-      .select(PROFILE_CORE_COLUMNS)
-      .single();
+    // Fallback serveur: evite un INSERT direct fragile sous RLS.
+    const { data: upserted, error: upsertError } = await supabase.rpc('upsert_driver_profile_for_actor', {
+      p_driver_user_id: driverUserId,
+      p_full_name: updates.full_name ?? null,
+      p_phone: updates.phone ?? null,
+    });
 
-    if (insertError) {
-      throw new Error(insertError.message);
+    if (upsertError) {
+      throw new Error(upsertError.message);
     }
 
-    return inserted as DriverProfile;
+    return upserted as DriverProfile;
   }
 }

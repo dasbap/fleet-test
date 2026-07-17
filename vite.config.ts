@@ -233,7 +233,7 @@ export default defineConfig(({ mode }) => {
     }),
     VitePWA({
       disable: mode === "capacitor",
-      registerType: "autoUpdate",
+      registerType: "prompt",
       injectRegister: "auto",
       includeAssets: ["favicon.svg", "robots.txt", "offline.html"],
       /** Même correctif Radix que le build app : le bundle SW (workbox) utilise un Rollup séparé. */
@@ -288,8 +288,8 @@ export default defineConfig(({ mode }) => {
       },
       workbox: {
         cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true,
+        skipWaiting: false,
+        clientsClaim: false,
         globPatterns: [
           "**/*.{js,css,html,ico,svg,woff2,webp}",
           "icons/*.webp",

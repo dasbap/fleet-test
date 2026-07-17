@@ -59,11 +59,11 @@ drop policy if exists driver_licenses_select_roles on public.driver_licenses;
 create policy driver_licenses_select_roles on public.driver_licenses
 for select to authenticated
 using (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
-  or public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
+  or public.has_role(fleet_id, 'mechanic'::public.role_type)
   or (
-    public.has_role(fleet_id, 'driver')
+    public.has_role(fleet_id, 'driver'::public.role_type)
     and auth.uid() = driver_user_id
   )
 );
@@ -72,28 +72,28 @@ drop policy if exists driver_licenses_insert_manager_org on public.driver_licens
 create policy driver_licenses_insert_manager_org on public.driver_licenses
 for insert to authenticated
 with check (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
 );
 
 drop policy if exists driver_licenses_update_manager_org on public.driver_licenses;
 create policy driver_licenses_update_manager_org on public.driver_licenses
 for update to authenticated
 using (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
 )
 with check (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
 );
 
 drop policy if exists driver_licenses_delete_manager_org on public.driver_licenses;
 create policy driver_licenses_delete_manager_org on public.driver_licenses
 for delete to authenticated
 using (
-  public.has_role(fleet_id, 'organizer')
-  or public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type)
+  or public.has_role(fleet_id, 'manager'::public.role_type)
 );
 
 grant select, insert, update, delete on public.driver_licenses to authenticated;

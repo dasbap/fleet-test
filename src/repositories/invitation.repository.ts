@@ -124,21 +124,16 @@ export class InvitationRepository implements IRepository<FleetInvitation, Invita
    * Crée une nouvelle invitation
    */
   async create(invitation: InvitationInsert): Promise<FleetInvitation> {
-    const { data, error } = await supabase
-      .from('flotte_invitations')
-      .insert({
-        fleet_id: invitation.fleet_id,
-        code: invitation.code,
-        expires_at: invitation.expires_at || null,
-        max_uses: invitation.max_uses || null,
-        created_by: invitation.created_by,
-        current_uses: 0,
-      })
-      .select(`
-        *,
-        fleet:flottes(id, name)
-      `)
-      .single();
+    const payload: InvitationInsert & { current_uses: number } = {
+      fleet_id: invitation.fleet_id,
+      code: invitation.code,
+      expires_at: invitation.expires_at || null,
+      max_uses: invitation.max_uses || null,
+      created_by: invitation.created_by,
+      current_uses: 0,
+    };
+
+    const { error } = await supabase.from('flotte_invitations').insert(payload);
 
     if (error) {
       console.error('Error creating invitation:', error);
@@ -156,7 +151,13 @@ export class InvitationRepository implements IRepository<FleetInvitation, Invita
       throw new Error(error.message);
     }
 
-    return data as FleetInvitation;
+    return {
+      id: '',
+      ...payload,
+      created_at: new Date().toISOString(),
+      fleet: null,
+      creator: null,
+    };
   }
 
   /**

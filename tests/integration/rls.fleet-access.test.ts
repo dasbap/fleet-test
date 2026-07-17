@@ -21,6 +21,7 @@ describeIntegration("RLS flotte - controle des acces", () => {
   beforeAll(async () => {
     clients = await createSupabaseIntegrationClients();
     context = await createFleetContextForUser(clients.admin, clients.userId, {
+      user: clients.user,
       role: "manager",
     });
   });
@@ -43,7 +44,7 @@ describeIntegration("RLS flotte - controle des acces", () => {
   });
 
   it("refuse la lecture quand l'adhesion est desactivee", async () => {
-    const { error: deactivationError } = await clients.admin.rpc(
+    const { error: deactivationError } = await clients.user.rpc(
       "creer_ou_mettre_a_jour_adhesion_flotte",
       {
         p_fleet_id: context.fleetId,

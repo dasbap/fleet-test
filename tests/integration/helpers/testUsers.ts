@@ -12,6 +12,7 @@ export async function createFleetContextForUser(
   admin: SupabaseClient,
   userId: string,
   options?: {
+    user?: SupabaseClient;
     countryCode?: string;
     role?: "organizer" | "manager" | "mechanic" | "driver";
     runId?: string;
@@ -44,17 +45,35 @@ export async function createFleetContextForUser(
     throw new Error(`[integration setup] Creation flotte impossible: ${fleetError?.message ?? "inconnu"}`);
   }
 
-  const { error: membershipError } = await admin.rpc("creer_ou_mettre_a_jour_adhesion_flotte", {
+  const membershipClient = options?.user ?? admin;
+  const bootstrapRole = role === "organizer" ? role : "organizer";
+
+  const { error: bootstrapError } = await membershipClient.rpc("creer_ou_mettre_a_jour_adhesion_flotte", {
     p_fleet_id: fleetId,
     p_user_id: userId,
-    p_role: role,
+    p_role: bootstrapRole,
     p_is_active: true,
   });
 
-  if (membershipError) {
+  if (bootstrapError) {
     throw new Error(
-      `[integration setup] Creation adhesion impossible (${role}): ${membershipError.message}`,
+      `[integration setup] Creation adhesion impossible (${bootstrapRole}): ${bootstrapError.message}`,
     );
+  }
+
+  if (role !== bootstrapRole) {
+    const { error: roleError } = await membershipClient.rpc("creer_ou_mettre_a_jour_adhesion_flotte", {
+      p_fleet_id: fleetId,
+      p_user_id: userId,
+      p_role: role,
+      p_is_active: true,
+    });
+
+    if (roleError) {
+      throw new Error(
+        `[integration setup] Mise a jour adhesion impossible (${role}): ${roleError.message}`,
+      );
+    }
   }
 
   return {
@@ -109,5 +128,10 @@ export async function cleanupFleetContext(
 
   if (orgId) {
     await admin.from("organisations").delete().eq("id", orgId);
+  }
+
+  if (context.userId) {
+    await admin.from("profils").delete().eq("user_id", context.userId);
+    await admin.auth.admin.deleteUser(context.userId);
   }
 }

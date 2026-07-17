@@ -60,7 +60,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.102.0
 
       - name: Enable local email auth for integration tests
         shell: pwsh

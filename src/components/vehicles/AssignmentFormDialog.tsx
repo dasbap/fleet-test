@@ -128,7 +128,7 @@ export function AssignmentFormDialog({
                     <FormLabel>Véhicule</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      value={field.value || undefined}
+                      value={field.value ?? ""}
                     >
                       <FormControl>
                         <SelectTrigger aria-label="Sélectionner un véhicule">
@@ -170,7 +170,7 @@ export function AssignmentFormDialog({
                     <FormLabel>Chauffeur</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      value={field.value || undefined}
+                      value={field.value ?? ""}
                       disabled={drivers.length === 0}
                     >
                       <FormControl>

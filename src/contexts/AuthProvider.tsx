@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -30,9 +31,12 @@ import {
   devLog,
   devWarn,
   mapSupabaseUserToAuthUser,
+  shouldFetchMembershipsForAuthEvent,
+  shouldRefreshSessionOnVisibility,
   withPromiseTimeout,
 } from "@/features/auth/lib/authProviderUtils";
 import { AUTH_INIT_TIMEOUT_MS } from "@/lib/auth-flow";
+import { isNativePlatform } from "@/lib/platform";
 
 const fleetMemberRepository = new FleetMemberRepository();
 const fleetMemberService = new FleetMemberService(fleetMemberRepository);
@@ -54,6 +58,14 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [isTenantOrgLoading, setIsTenantOrgLoading] = useState<boolean>(false);
   // Vrai si Supabase a émis PASSWORD_RECOVERY (clic lien email reset) — bloque l'aiguillage normal.
   const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(false);
+  const authStateRef = useRef({ userId: null as string | null, membershipCount: 0 });
+
+  useEffect(() => {
+    authStateRef.current = {
+      userId: user?.id ?? null,
+      membershipCount: memberships.length,
+    };
+  }, [memberships.length, user?.id]);
 
   const processPendingInvitation = async (sessionUser: User): Promise<void> => {
     const pendingCode = await checkPendingInvitation(sessionUser);
@@ -251,7 +263,14 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
       // Après connexion (SIGNED_IN), éviter un rendu avec user défini mais memberships encore vides :
       // PostLoginGate interpréterait à tort l'absence d'adhésion et redirigerait vers /start.
-      if (event === "SIGNED_IN" && nextSession?.user) {
+      const shouldLoadMemberships = shouldFetchMembershipsForAuthEvent({
+        event,
+        nextUserId: nextSession?.user?.id ?? null,
+        currentUserId: authStateRef.current.userId,
+        membershipCount: authStateRef.current.membershipCount,
+      });
+
+      if (shouldLoadMemberships) {
         setIsLoading(true);
       }
       setSession(nextSession);
@@ -261,7 +280,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       // signInWithPassword avorte les fetch en cours pendant sa propre résolution.
       // setTimeout(0) laisse la transition auth se terminer avant de requêter la DB.
       setTimeout(() => {
-        if (nextSession?.user) {
+        if (nextSession?.user && shouldLoadMemberships) {
           withPromiseTimeout(
             fetchMemberships(nextSession.user),
             AUTH_INIT_TIMEOUT_MS,
@@ -271,12 +290,14 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
               console.error("Erreur memberships (onAuthStateChange):", e),
             )
             .finally(() => setIsLoading(false));
-        } else {
+        } else if (!nextSession?.user) {
           setRole(null);
           setMemberships([]);
           setOrgId(null);
           setActiveFleetIdState(null);
           setTenantOptions([]);
+          setIsLoading(false);
+        } else {
           setIsLoading(false);
         }
       }, 0);
@@ -293,13 +314,23 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onVisibility = (): void => {
       if (document.visibilityState !== "visible") return;
+      if (
+        !shouldRefreshSessionOnVisibility(
+          session?.expires_at,
+          Math.floor(Date.now() / 1000),
+          5 * 60,
+          { nativeApp: isNativePlatform() },
+        )
+      ) {
+        return;
+      }
       void supabase.auth.refreshSession().catch(() => {
         /* hors ligne ou session non renouvelable */
       });
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
+  }, [session?.expires_at]);
 
   const userFleetId = useMemo(() => {
     if (memberships.length === 0) {

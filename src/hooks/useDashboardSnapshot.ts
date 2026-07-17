@@ -9,6 +9,7 @@ import { isValidUuid } from "@/lib/isUuid";
 import {
   dashboardStaleTimeMs,
   refetchIntervalWhenVisible,
+  shouldRefetchOnWindowFocus,
 } from "@/lib/query/refetchPolicy";
 
 const dashboardRepository = new DashboardRepository();
@@ -31,7 +32,7 @@ export function useDashboardSnapshot() {
     queryFn: () => dashboardService.getDashboardSnapshot(userFleetId!, orgId!),
     enabled: canFetch,
     staleTime: dashboardStaleTimeMs(),
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: shouldRefetchOnWindowFocus(),
     refetchInterval: () => refetchIntervalWhenVisible(120_000, 300_000),
     retry: 1,
   });

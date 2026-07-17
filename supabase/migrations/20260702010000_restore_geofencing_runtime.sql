@@ -196,8 +196,8 @@ DROP POLICY IF EXISTS geofences_write_policy ON public.geofences;
 CREATE POLICY geofences_write_policy
 ON public.geofences
 FOR ALL
-USING (public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager'))
-WITH CHECK (public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager'));
+USING (public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type))
+WITH CHECK (public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type));
 
 DROP POLICY IF EXISTS geofence_states_select_policy ON public.geofence_vehicle_states;
 CREATE POLICY geofence_states_select_policy

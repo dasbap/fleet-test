@@ -11,6 +11,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { logError } from "@/lib/logging";
 import { getQueryPersister } from "@/lib/query/persistQueryClient";
+import { shouldRefetchOnWindowFocus } from "@/lib/query/refetchPolicy";
 
 /** Instance unique pour éviter réinitialisation du cache à chaque rendu. */
 const queryClient = new QueryClient({
@@ -37,6 +38,7 @@ const queryClient = new QueryClient({
       networkMode: "offlineFirst",
       // Évite les re-fetch inutiles pendant 5 min (réseau instable Afrique)
       staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: shouldRefetchOnWindowFocus(),
     },
   },
 });
