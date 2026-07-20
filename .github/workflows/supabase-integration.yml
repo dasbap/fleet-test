@@ -2,17 +2,9 @@ name: Supabase Integration (Remote)
 
 on:
   pull_request:
-    branches: [main, develop]
-    paths:
-      - "tests/integration/**"
-      - "supabase/seed/**"
-      - ".github/workflows/supabase-integration.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   push:
-    branches: [main, develop]
-    paths:
-      - "tests/integration/**"
-      - "supabase/seed/**"
-      - ".github/workflows/supabase-integration.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
 defaults:

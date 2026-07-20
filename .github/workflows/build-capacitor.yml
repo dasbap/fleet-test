@@ -3,35 +3,9 @@ name: Build Capacitor
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - release/**
-    paths:
-      - "src/**"
-      - "vite.config.ts"
-      - "package.json"
-      - "package-lock.json"
-      - "index.html"
-      - "capacitor.config.ts"
-      - "android/**"
-      - "resources/**"
-      - "scripts/export-resources-icon-png.mjs"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   pull_request:
-    branches:
-      - main
-      - master
-      - release/**
-    paths:
-      - "src/**"
-      - "vite.config.ts"
-      - "package.json"
-      - "package-lock.json"
-      - "index.html"
-      - "capacitor.config.ts"
-      - "android/**"
-      - "resources/**"
-      - "scripts/export-resources-icon-png.mjs"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
 defaults:

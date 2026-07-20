@@ -2,21 +2,9 @@ name: Verify Migration Status
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - release/**
-    paths:
-      - 'supabase/migrations/**'
-      - 'supabase/scripts/verify/verify-migration-status.sql'
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   pull_request:
-    branches:
-      - main
-      - master
-      - release/**
-    paths:
-      - 'supabase/migrations/**'
-      - 'supabase/scripts/verify/verify-migration-status.sql'
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch: # Permet d'exécuter manuellement depuis GitHub
 
 permissions:

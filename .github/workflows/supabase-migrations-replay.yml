@@ -2,19 +2,9 @@ name: Supabase Migrations Replay
 
 on:
   pull_request:
-    branches: [main, master, PRINCIPALE, fix/ci-green-main, release/**]
-    paths:
-      - "supabase/migrations/**"
-      - "supabase/config.toml"
-      - "scripts/_local-supabase-ports.ps1"
-      - ".github/workflows/supabase-migrations-replay.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   push:
-    branches: [main, master, PRINCIPALE, fix/ci-green-main, release/**]
-    paths:
-      - "supabase/migrations/**"
-      - "supabase/config.toml"
-      - "scripts/_local-supabase-ports.ps1"
-      - ".github/workflows/supabase-migrations-replay.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
 defaults:

@@ -2,9 +2,10 @@ name: Supabase Integration Tests
 
 on:
   pull_request:
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   push:
-    branches:
-      - main
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+  workflow_dispatch:
 
 defaults:
   run:

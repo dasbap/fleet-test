@@ -2,25 +2,9 @@ name: Supabase Baseline and Delta Validation
 
 on:
   pull_request:
-    paths:
-      - "supabase/**"
-      - "scripts/test-baseline-delta.ps1"
-      - "scripts/test-sql-security.ps1"
-      - "scripts/_local-supabase-ports.ps1"
-      - "scripts/freeze-remote-schema.ps1"
-      - "package.json"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   push:
-    branches:
-      - main
-      - master
-      - release/**
-    paths:
-      - "supabase/**"
-      - "scripts/test-baseline-delta.ps1"
-      - "scripts/test-sql-security.ps1"
-      - "scripts/_local-supabase-ports.ps1"
-      - "scripts/freeze-remote-schema.ps1"
-      - "package.json"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
 env:

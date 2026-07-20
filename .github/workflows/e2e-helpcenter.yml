@@ -2,17 +2,7 @@ name: E2E HelpCenter i18n
 
 on:
   pull_request:
-    branches:
-      - main
-      - master
-      - develop
-      - release/**
-    paths:
-      - "tests/e2e/**"
-      - "src/components/shared/HelpCenter.tsx"
-      - "src/context/HelpContext.tsx"
-      - "public/locales/**"
-      - "package.json"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
 defaults:

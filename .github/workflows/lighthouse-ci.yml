@@ -19,37 +19,9 @@ name: Lighthouse CI — garde-fou
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - develop
-      - PRINCIPALE
-      - fix/ci-green-main
-      - release/**
-    paths:
-      - "src/**"
-      - "index.html"
-      - "vite.config.ts"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/lighthouse/**"
-      - ".github/workflows/lighthouse-ci.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   pull_request:
-    branches:
-      - main
-      - master
-      - develop
-      - PRINCIPALE
-      - fix/ci-green-main
-      - release/**
-    paths:
-      - "src/**"
-      - "index.html"
-      - "vite.config.ts"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/lighthouse/**"
-      - ".github/workflows/lighthouse-ci.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
 defaults:

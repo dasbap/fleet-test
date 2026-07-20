@@ -2,20 +2,7 @@ name: Image Optimization CI
 
 on:
   pull_request:
-    branches:
-      - main
-      - master
-      - develop
-      - release/**
-    paths:
-      - "src/assets/**"
-      - "resources/**"
-      - "store-assets/**"
-      - "scripts/optimize-images.mjs"
-      - "scripts/image-profiles.json"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/image-optimization.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
 permissions:
