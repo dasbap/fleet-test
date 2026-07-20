@@ -26,12 +26,12 @@ permissions:
 
 defaults:
   run:
-    shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+    shell: bash
 
 jobs:
   verify-migration:
     name: Verify Migration to French
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
     
     env:
       SUPABASE_CLI_VERSION: 2.102.0  # Version de Supabase CLI à installer

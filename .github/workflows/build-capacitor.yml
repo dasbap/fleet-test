@@ -36,12 +36,12 @@ on:
 
 defaults:
   run:
-    shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+    shell: bash
 
 jobs:
   build-capacitor:
     name: vite build (mode capacitor)
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
     env:
       # Valeurs factices : le client Supabase n’est pas exécuté pendant le build statique.
       VITE_SUPABASE_URL: https://placeholder-build.supabase.co
@@ -84,7 +84,7 @@ jobs:
 
       - name: Android assembleDebug
         working-directory: android
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+        shell: bash
         run: |
           if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
           if [ -f ./gradlew ]; then ./gradlew :app:assembleDebug --no-daemon
