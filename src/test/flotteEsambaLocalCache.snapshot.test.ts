@@ -36,12 +36,12 @@ describe("flotteEsambaLocalCache snapshot stability", () => {
     saveIncidentDeclarationDraft({
       fleetId: "fleet-test",
       vehicleId: "vehicle-test",
+      driverUserId: "user-test",
       description: "Pneu creve",
       severity: "medium",
       latitude: null,
       longitude: null,
-      evidencePath: null,
-      declaredBy: "user-test",
+      evidenceDataUrl: null,
     });
 
     const after = getOfflineCacheSnapshot();

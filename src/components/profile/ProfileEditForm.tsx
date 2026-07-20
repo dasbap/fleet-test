@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Camera, Save } from "lucide-react";
-import { User } from "@supabase/supabase-js";
+import type { AuthUser } from "@/types/auth";
 import { useUpdateProfileFullName } from "@/hooks/useUpdateProfileFullName";
 import { useAvatarUpload } from "@/hooks/useAvatarUpload";
 import { useAvatarDisplayUrl } from "@/hooks/useAvatarDisplayUrl";
@@ -37,7 +37,7 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 interface ProfileEditFormProps {
-  user: User;
+  user: AuthUser;
   onUpdate: () => void;
 }
 
@@ -72,7 +72,7 @@ const ProfileEditForm = ({ user, onUpdate }: ProfileEditFormProps) => {
     currentFullName
       .trim()
       .split(" ")
-      .map((n) => n[0] || "")
+      .map((n: string) => n[0] || "")
       .join("")
       .toUpperCase()
       .slice(0, 2) || "U";

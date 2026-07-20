@@ -79,14 +79,20 @@ describe("OperationsRepository.fetchDriverDay", () => {
   it("retourne l'affectation véhicule sans créneau ouvert", async () => {
     shiftSpy.mockResolvedValue(null);
     assignmentSpy.mockResolvedValue({
-      assignmentId: "assign-1",
-      fleetId: "fleet-1",
-      vehicle: {
-        id: "veh-1",
-        registration: "LT-002-BB",
-        brand: "Isuzu",
-        model: "NPR",
-        current_km: 8_400,
+      id: "veh-1",
+      fleet_id: "fleet-1",
+      registration: "LT-002-BB",
+      brand: "Isuzu",
+      model: "NPR",
+      year: null,
+      current_km: 8_400,
+      status: "ok",
+      blocked_reason: null,
+      created_at: "2026-01-01T00:00:00.000Z",
+      active_assignment: {
+        id: "assign-1",
+        driver_user_id: "user-1",
+        driver: null,
       },
     });
 

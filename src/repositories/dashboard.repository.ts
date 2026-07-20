@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { throwIfSupabaseInfrastructureError } from '@/lib/supabase-runtime-errors';
+import { asSingleRelation } from '@/lib/supabaseRelation';
 import type { FleetMetrics } from '@/types/fleet-metrics';
 import type { KpiSummary } from '@/types/dashboard';
 
@@ -176,7 +177,28 @@ export class DashboardRepository {
     const activities: RecentActivityItem[] = [];
 
     (closures.data || []).forEach((c: Record<string, unknown>) => {
-      const vehicle = (c.shift as Record<string, unknown>)?.assignment?.vehicle?.registration || 'Véhicule';
+      const shift = asSingleRelation(
+        c.shift as
+          | { assignment?: unknown }
+          | { assignment?: unknown }[]
+          | null
+          | undefined,
+      );
+      const assignment = asSingleRelation(
+        shift?.assignment as
+          | { vehicle?: unknown }
+          | { vehicle?: unknown }[]
+          | null
+          | undefined,
+      );
+      const vehicleRow = asSingleRelation(
+        assignment?.vehicle as
+          | { registration?: string }
+          | { registration?: string }[]
+          | null
+          | undefined,
+      );
+      const vehicle = vehicleRow?.registration || 'Véhicule';
       activities.push({
         id: `closure-${c.id}`,
         type: 'closure',
@@ -193,16 +215,30 @@ export class DashboardRepository {
     });
 
     (incidents.data || []).forEach((i: Record<string, unknown>) => {
+      const vehicleRow = asSingleRelation(
+        i.vehicle as
+          | { registration?: string }
+          | { registration?: string }[]
+          | null
+          | undefined,
+      );
       activities.push({
         id: `incident-${i.id}`,
         type: 'incident',
         message: `Incident ${i.severity}`,
-        detail: `${(i.vehicle as Record<string, string>)?.registration || 'Véhicule'} - ${String(i.description || '').substring(0, 30)}...`,
+        detail: `${vehicleRow?.registration || 'Véhicule'} - ${String(i.description || '').substring(0, 30)}...`,
         time: new Date(i.created_at as string),
       });
     });
 
     (maintenance.data || []).forEach((m: Record<string, unknown>) => {
+      const vehicleRow = asSingleRelation(
+        m.vehicle as
+          | { registration?: string }
+          | { registration?: string }[]
+          | null
+          | undefined,
+      );
       activities.push({
         id: `maintenance-${m.id}`,
         type: 'maintenance',
@@ -212,7 +248,7 @@ export class DashboardRepository {
             : m.status === 'in_progress'
               ? 'Intervention en cours'
               : 'Intervention en file',
-        detail: `${(m.vehicle as Record<string, string>)?.registration || 'Véhicule'} - Priorité ${m.priority}`,
+        detail: `${vehicleRow?.registration || 'Véhicule'} - Priorité ${m.priority}`,
         time: new Date(m.created_at as string),
         status: m.status as string,
       });

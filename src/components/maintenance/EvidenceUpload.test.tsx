@@ -42,6 +42,7 @@ const { useEvidenceUpload } = await import("@/hooks/useEvidenceUpload");
 const defaultUploadReturn = {
   fileInputRef: { current: null },
   previewUrl: null as string | null,
+  selectedFile: null as File | null,
   handleFileSelect: mockHandleFileSelect,
   handleUpload: mockHandleUpload,
   cancelPreview: mockCancelPreview,

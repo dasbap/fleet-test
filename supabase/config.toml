@@ -406,3 +406,72 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configure AWS_SECRET_ACCESS_KEY pour le bucket S3
 s3_secret_key = "env(S3_SECRET_KEY)"
+
+# Edge Functions déclarées pour le déploiement auto sur branches (Supabase branching).
+# verify_jwt aligné sur scripts/deploy-missing-edge-functions.mjs (NO_JWT).
+
+[functions.otp-send]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.process-whatsapp-retries]
+verify_jwt = false
+
+[functions.notch-pay-webhook]
+verify_jwt = false
+
+[functions.billing-lifecycle-cron]
+verify_jwt = false
+
+[functions.expire-demo-accounts]
+verify_jwt = false
+
+[functions.expire-prospect-accounts]
+verify_jwt = false
+
+[functions.demo-magic-link]
+verify_jwt = false
+
+[functions.retention-nudge]
+verify_jwt = false
+
+[functions.refresh-analytics]
+verify_jwt = false
+
+[functions.process-notification-queue]
+verify_jwt = false
+
+[functions.generate-scheduled-report]
+verify_jwt = false
+
+[functions.dashcam-ai-webhook]
+verify_jwt = false
+
+[functions.support-notify]
+verify_jwt = false
+
+[functions.create-prospect-account]
+verify_jwt = false
+
+[functions.session-tracker]
+verify_jwt = true
+
+[functions.revoke-session]
+verify_jwt = true
+
+[functions.send-notification]
+verify_jwt = true
+
+[functions.send-whatsapp]
+verify_jwt = true
+
+[functions.gps-ingest]
+verify_jwt = true
+
+[functions.generate-voice-coaching]
+verify_jwt = true
+
+[functions.onboarding-sequence]
+verify_jwt = true

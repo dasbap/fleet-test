@@ -1,8 +1,8 @@
 import { Capacitor } from "@capacitor/core";
+import type { PluginListenerHandle } from "@capacitor/core";
 import type {
   ActionPerformed,
   PermissionStatus,
-  PluginListenerHandle,
   PushNotificationSchema,
   Token,
 } from "@capacitor/push-notifications";
