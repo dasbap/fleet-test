@@ -1,6 +1,8 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
+import { throwIfSupabaseInfrastructureError } from "@/lib/supabase-runtime-errors";
 import { getBearerToken } from "@/server/http/auth";
+import { jsonInternalServerError } from "@/server/http/errorResponse";
 import { createSupabaseUserClient } from "@/server/infra/supabaseUserClient";
 
 const shiftCloseBodySchema = z.object({
@@ -44,13 +46,17 @@ async function handleTerrainShiftClose(c: Context) {
     });
 
     if (error) {
+      try {
+        throwIfSupabaseInfrastructureError(error, "terrain shift close RPC");
+      } catch (infrastructureError) {
+        return jsonInternalServerError(c, infrastructureError);
+      }
       return c.json({ error: error.message }, 400);
     }
 
     return c.json({ ok: true });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Erreur serveur";
-    return c.json({ error: msg }, 500);
+    return jsonInternalServerError(c, e);
   }
 }
 

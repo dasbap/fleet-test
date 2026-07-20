@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { throwIfSupabaseInfrastructureError } from '@/lib/supabase-runtime-errors';
 
 export interface AuditLogRow {
   id: string;
@@ -33,7 +34,8 @@ export class AuditRepository {
 
     if (error) {
       console.error('Error fetching fleet audit logs:', error);
-      if (error.code === 'PGRST116' || error.code === 'PGRST205' || error.code === '42P01') {
+      throwIfSupabaseInfrastructureError(error, 'fleet audit logs');
+      if (error.code === 'PGRST116') {
         return [];
       }
       throw new Error(error.message);
@@ -62,6 +64,7 @@ export class AuditRepository {
 
     if (error) {
       console.error('Error writing audit log:', error);
+      throwIfSupabaseInfrastructureError(error, 'fleet audit write');
       throw new Error(error.message);
     }
   }

@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { throwIfSupabaseInfrastructureError } from '@/lib/supabase-runtime-errors';
 
 export interface DriverRow {
   user_id: string;
@@ -43,6 +44,11 @@ export interface AssignmentHistoryRow {
   } | null;
 }
 
+function throwAssignmentRepositoryError(error: { message: string }, context: string): never {
+  throwIfSupabaseInfrastructureError(error, context);
+  throw new Error(error.message);
+}
+
 /**
  * Repository pour les affectations véhicule–chauffeur et la liste des conducteurs.
  */
@@ -57,7 +63,7 @@ export class AssignmentRepository {
 
     if (error) {
       console.error('Error fetching drivers:', error);
-      throw new Error(error.message);
+      throwAssignmentRepositoryError(error, 'fleet drivers memberships');
     }
 
     const rows = memberships ?? [];
@@ -71,7 +77,7 @@ export class AssignmentRepository {
 
     if (profilesError) {
       console.error('Error fetching driver profiles:', profilesError);
-      throw new Error(profilesError.message);
+      throwAssignmentRepositoryError(profilesError, 'fleet driver profiles');
     }
 
     const profileByUserId = new Map(
@@ -102,7 +108,7 @@ export class AssignmentRepository {
 
     if (error) {
       console.error('Error fetching assignments:', error);
-      throw new Error(error.message);
+      throwAssignmentRepositoryError(error, 'active assignments');
     }
 
     const assignments = (data || []) as AssignmentRow[];
@@ -126,8 +132,8 @@ export class AssignmentRepository {
           : Promise.resolve({ data: [], error: null }),
       ]);
 
-    if (vehiclesError) throw new Error(vehiclesError.message);
-    if (profilesError) throw new Error(profilesError.message);
+    if (vehiclesError) throwAssignmentRepositoryError(vehiclesError, 'assignment vehicles');
+    if (profilesError) throwAssignmentRepositoryError(profilesError, 'assignment driver profiles');
 
     const vehicleById = new Map((vehicles ?? []).map((vehicle) => [vehicle.id, vehicle]));
     const profileByUserId = new Map((profiles ?? []).map((profile) => [profile.user_id, profile]));
@@ -155,7 +161,7 @@ export class AssignmentRepository {
       .order('starts_at', { ascending: false });
 
     if (error) {
-      throw new Error(error.message);
+      throwAssignmentRepositoryError(error, 'driver assignment history');
     }
 
     return (data || []) as AssignmentHistoryRow[];
@@ -176,7 +182,7 @@ export class AssignmentRepository {
 
     if (error) {
       console.error('Error assigning vehicle:', error);
-      throw new Error(error.message);
+      throwAssignmentRepositoryError(error, 'assign vehicle RPC');
     }
 
     return data as string;
@@ -189,7 +195,7 @@ export class AssignmentRepository {
 
     if (error) {
       console.error('Error ending assignment:', error);
-      throw new Error(error.message);
+      throwAssignmentRepositoryError(error, 'end assignment RPC');
     }
 
     if (!data) {

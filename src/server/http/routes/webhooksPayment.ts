@@ -1,6 +1,7 @@
 import type { Context, Hono } from "hono";
 import { runInboundPaymentWebhook } from "@/server/domain/billing/processInboundPaymentWebhook";
 import { getPaymentWebhookSecrets } from "@/server/env";
+import { jsonInternalServerError } from "@/server/http/errorResponse";
 import { createSupabaseServiceClient } from "@/server/infra/supabaseServiceClient";
 import { resolvePaymentWebhookProvider } from "@/server/payments/webhookProviders";
 
@@ -34,7 +35,7 @@ async function handleInboundPaymentWebhook(c: Context) {
     if (msg.includes("introuvable pour cette référence")) {
       return c.json({ error: msg }, 404);
     }
-    return c.json({ error: msg }, 500);
+    return jsonInternalServerError(c, e);
   }
   return c.body(null, 204);
 }

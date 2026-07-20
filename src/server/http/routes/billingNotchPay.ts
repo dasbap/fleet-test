@@ -2,6 +2,7 @@ import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { initiateNotchPayPayment } from "@/server/domain/notchPayInitiate";
 import { getBearerToken } from "@/server/http/auth";
+import { jsonInternalServerError } from "@/server/http/errorResponse";
 import { createSupabaseUserClient } from "@/server/infra/supabaseUserClient";
 import { rateLimit } from "@/server/http/middleware/rateLimitMiddleware";
 
@@ -36,8 +37,7 @@ async function handleNotchPayInitiate(c: Context) {
     const result = await initiateNotchPayPayment(supabase, parsed.data);
     return c.json(result, 201);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Erreur serveur";
-    return c.json({ error: msg }, 500);
+    return jsonInternalServerError(c, e);
   }
 }
 
