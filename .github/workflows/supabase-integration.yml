@@ -17,7 +17,7 @@ on:
 
 defaults:
   run:
-    shell: bash
+    shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
 
 jobs:
   integration-remote:
@@ -40,7 +40,7 @@ jobs:
           cache: npm
 
       - name: Validate required secrets
-        shell: bash
+        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
         run: |
           missing=()
           for key in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
@@ -68,7 +68,7 @@ jobs:
 
       - name: Publish integration summary
         if: always()
-        shell: bash
+        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
         run: |
           node <<'NODE'
           const fs = require('fs');

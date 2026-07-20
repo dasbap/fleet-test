@@ -15,7 +15,7 @@ on:
 
 defaults:
   run:
-    shell: bash
+    shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
 
 jobs:
   db-migrations:
@@ -147,7 +147,7 @@ jobs:
       - name: Run lint layer
         id: layer_lint
         continue-on-error: true
-        shell: bash
+        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
         run: |
           mkdir -p ci-metrics test-results
           start=$(date +%s%3N)
@@ -164,7 +164,7 @@ jobs:
       - name: Run unit layer
         id: layer_unit
         continue-on-error: true
-        shell: bash
+        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
         run: |
           mkdir -p ci-metrics test-results
           start=$(date +%s%3N)
@@ -182,7 +182,7 @@ jobs:
       - name: Run integration layer
         id: layer_integration
         continue-on-error: true
-        shell: bash
+        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
         run: |
           mkdir -p ci-metrics test-results
           start=$(date +%s%3N)
@@ -204,7 +204,7 @@ jobs:
       - name: Run e2e layer
         id: layer_e2e
         continue-on-error: true
-        shell: bash
+        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
         run: |
           mkdir -p ci-metrics test-results/e2e
           start=$(date +%s%3N)
@@ -223,7 +223,7 @@ jobs:
 
       - name: Build consolidated metrics + summary
         if: always()
-        shell: bash
+        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -266,6 +266,6 @@ jobs:
 
       - name: Fail workflow if any layer failed
         if: always()
-        shell: bash
+        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
         run: |
           node -e "const fs=require('fs');const payload=JSON.parse(fs.readFileSync('ci-metrics.json','utf8'));const failed=payload.layers.filter((l)=>l.status!=='passed');if(failed.length){console.error('Layers en echec:',failed.map((l)=>l.layer).join(', '));process.exit(1)}"
