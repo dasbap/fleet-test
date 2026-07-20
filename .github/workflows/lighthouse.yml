@@ -50,12 +50,12 @@ permissions:
 
 defaults:
   run:
-    shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+    shell: bash
 
 jobs:
   lighthouse:
     name: Core Web Vitals audit
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 20
 
     steps:
