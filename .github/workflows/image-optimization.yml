@@ -22,10 +22,51 @@ permissions:
   contents: read
   pull-requests: write
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
+  select-runner:
+    name: Select CI runner
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      runs-on: ${{ steps.select.outputs.runs-on }}
+    steps:
+      - name: Prefer online Windows self-hosted runner
+        id: select
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const preferredLabels = ["self-hosted", "Windows", "X64"];
+            let selected = "ubuntu-latest";
+            try {
+              const { data } = await github.rest.actions.listSelfHostedRunnersForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+              });
+              const hasPreferredRunner = data.runners.some((runner) =>
+                runner.status === "online" &&
+                preferredLabels.every((label) =>
+                  runner.labels.some((runnerLabel) =>
+                    runnerLabel.name.toLowerCase() === label.toLowerCase(),
+                  ),
+                ),
+              );
+              if (hasPreferredRunner) selected = preferredLabels;
+            } catch (error) {
+              core.warning(`Unable to inspect self-hosted runners, falling back to ubuntu-latest: ${error.message}`);
+            }
+            core.setOutput("runs-on", JSON.stringify(selected));
+            core.info(`Selected runner: ${Array.isArray(selected) ? selected.join(", ") : selected}`);
   optimize-images-strict:
     name: Optimize images strict (prod)
-    runs-on: [self-hosted, Linux, X64]
+    needs: select-runner
+    runs-on: ${{ fromJSON(needs.select-runner.outputs.runs-on) }}
     timeout-minutes: 15
 
     steps:
