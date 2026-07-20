@@ -18,7 +18,7 @@ on:
 jobs:
   verify-migration-filenames:
     name: Verify migration filenames
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
 
   replay-migrations:
     name: Replay migrations on clean local stack
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
     needs: verify-migration-filenames
     steps:
       - name: Checkout
@@ -63,13 +63,29 @@ jobs:
           version: 2.102.0
 
       - name: Enable local email auth for integration tests
-        shell: pwsh
+        shell: bash
         run: |
-          $config = Get-Content supabase/config.toml -Raw
-          $config = $config -replace '(?ms)(\[auth\]\s*.*?enable_signup\s*=\s*)false', '${1}true'
-          $config = $config -replace '(?ms)(\[auth\.email\]\s*.*?enable_signup\s*=\s*)false', '${1}true'
-          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-          [System.IO.File]::WriteAllText((Resolve-Path supabase/config.toml), $config, $utf8NoBom)
+          set -euo pipefail
+          # Active le signup email en local (auth + auth.email) sans PowerShell (runners Linux).
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path("supabase/config.toml")
+          text = path.read_text(encoding="utf-8")
+          text = re.sub(
+              r"(?ms)(\[auth\]\s*.*?enable_signup\s*=\s*)false",
+              r"\1true",
+              text,
+              count=1,
+          )
+          text = re.sub(
+              r"(?ms)(\[auth\.email\]\s*.*?enable_signup\s*=\s*)false",
+              r"\1true",
+              text,
+              count=1,
+          )
+          path.write_text(text, encoding="utf-8")
+          PY
 
       - name: Start Supabase local stack
         run: supabase start -x vector,logflare

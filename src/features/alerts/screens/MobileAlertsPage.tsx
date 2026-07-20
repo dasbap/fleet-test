@@ -257,7 +257,7 @@ export default function MobileAlertsPage() {
                           alert.severity === "critical"
                             ? "destructive"
                             : alert.severity === "warning"
-                            ? "warning"
+                            ? "outline"
                             : "secondary"
                         }
                         className="text-[0.7rem] uppercase tracking-wide"

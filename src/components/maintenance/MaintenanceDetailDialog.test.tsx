@@ -108,7 +108,7 @@ describe("MaintenanceDetailDialog", () => {
       isError: false,
       error: null,
       refetch: mockRefetch,
-    } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
+    } as unknown as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
   });
 
   it(
@@ -130,7 +130,7 @@ describe("MaintenanceDetailDialog", () => {
       isError: true,
       error: new Error("Erreur réseau"),
       refetch: mockRefetch,
-    } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
+    } as unknown as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
 
     renderDialog();
 
@@ -152,7 +152,7 @@ describe("MaintenanceDetailDialog", () => {
       isError: true,
       error: new Error("Erreur"),
       refetch: mockRefetch,
-    } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
+    } as unknown as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
 
     renderDialog();
     fireEvent.click(screen.getByRole("button", { name: /Réessayer/i }));
@@ -171,7 +171,7 @@ describe("MaintenanceDetailDialog", () => {
       isError: false,
       error: null,
       refetch: mockRefetch,
-    } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
+    } as unknown as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
 
     renderDialog();
 
@@ -194,7 +194,7 @@ describe("MaintenanceDetailDialog", () => {
       isError: false,
       error: null,
       refetch: mockRefetch,
-    } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
+    } as unknown as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
 
     renderDialog();
 
@@ -215,7 +215,7 @@ describe("MaintenanceDetailDialog", () => {
       isError: false,
       error: null,
       refetch: mockRefetch,
-    } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
+    } as unknown as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
 
     renderDialog();
 
@@ -240,7 +240,7 @@ describe("MaintenanceDetailDialog", () => {
       isError: false,
       error: null,
       refetch: mockRefetch,
-    } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
+    } as unknown as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
 
     renderDialog();
 
@@ -261,7 +261,7 @@ describe("MaintenanceDetailDialog", () => {
       isError: false,
       error: null,
       refetch: mockRefetch,
-    } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
+    } as unknown as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
 
     renderDialog();
 
@@ -285,7 +285,7 @@ describe("MaintenanceDetailDialog", () => {
       isError: false,
       error: null,
       refetch: mockRefetch,
-    } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
+    } as unknown as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
 
     renderDialog();
 
@@ -307,7 +307,7 @@ describe("MaintenanceDetailDialog", () => {
       isError: false,
       error: null,
       refetch: mockRefetch,
-    } as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
+    } as unknown as ReturnType<typeof useMaintenanceModule.useMaintenanceJob>);
 
     renderDialog();
 

@@ -64,7 +64,7 @@ export function logError(
   const err =
     error instanceof Error
       ? error
-      : new Error(message, { cause: error });
+      : new Error(message);
 
   Sentry.captureException(err, {
     tags: {
