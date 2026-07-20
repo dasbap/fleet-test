@@ -1,8 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
+import { throwIfSupabaseInfrastructureError } from '@/lib/supabase-runtime-errors';
 import type {
   FleetDriverActivationFlagRow,
   FleetDriverActivationHealth,
 } from '@/types/fleet-driver-activation-health';
+
+function throwFleetDriverActivationError(error: { message: string }, context: string): never {
+  throwIfSupabaseInfrastructureError(error, context);
+  throw new Error(error.message);
+}
 
 export class FleetDriverActivationRepository {
   async getFleetHealth(fleetId: string): Promise<FleetDriverActivationHealth | null> {
@@ -14,7 +20,7 @@ export class FleetDriverActivationRepository {
       .eq('is_active', true);
 
     if (membershipError) {
-      throw new Error(membershipError.message);
+      throwFleetDriverActivationError(membershipError, 'fleet driver activation memberships');
     }
 
     const driverIds = (memberships ?? []).map((row) => row.user_id);
@@ -41,8 +47,8 @@ export class FleetDriverActivationRepository {
           .in('driver_user_id', driverIds),
       ]);
 
-    if (profilesError) throw new Error(profilesError.message);
-    if (assignmentsError) throw new Error(assignmentsError.message);
+    if (profilesError) throwFleetDriverActivationError(profilesError, 'fleet driver activation profiles');
+    if (assignmentsError) throwFleetDriverActivationError(assignmentsError, 'fleet driver activation assignments');
 
     const assignmentRows = assignments ?? [];
     const assignmentIds = assignmentRows.map((row) => row.id);
@@ -54,7 +60,9 @@ export class FleetDriverActivationRepository {
         .select('assignment_id')
         .in('assignment_id', assignmentIds);
 
-      if (shiftsError) throw new Error(shiftsError.message);
+      if (shiftsError) {
+        throwFleetDriverActivationError(shiftsError, 'fleet driver activation shifts');
+      }
 
       const assignmentToDriver = new Map(
         assignmentRows.map((row) => [row.id, row.driver_user_id]),

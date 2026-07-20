@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { DASHBOARD_EMPTY_KPIS } from "@/lib/dashboard-kpis";
+import { throwIfSupabaseInfrastructureError } from "@/lib/supabase-runtime-errors";
 import type { DashboardAlert, KpiSummary } from "@/types/dashboard";
 
 export interface DashboardAlertRow {
@@ -33,14 +34,6 @@ interface VehicleLiteRow {
   registration: string;
   brand: string | null;
   model: string | null;
-}
-
-function isMissingSchemaObject(error: { code?: string; message?: string } | null | undefined) {
-  return (
-    error?.code === "PGRST205" ||
-    error?.code === "42P01" ||
-    error?.message?.includes("Could not find the table")
-  );
 }
 
 function normalizeSeverity(severity: string | null): DashboardAlert["severity"] {
@@ -127,7 +120,10 @@ async function findFleetIdsByOrg(orgId: string): Promise<string[]> {
     .select("id")
     .eq("org_id", orgId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throwIfSupabaseInfrastructureError(error, "dashboard alert fleet lookup");
+    throw new Error(error.message);
+  }
   return (data ?? []).map((fleet) => fleet.id);
 }
 
@@ -143,8 +139,10 @@ export class DashboardAlertRepository {
       .eq("resolved", false)
       .order("created_at", { ascending: false });
 
-    if (isMissingSchemaObject(error)) return [];
-    if (error) throw new Error(error.message);
+    if (error) {
+      throwIfSupabaseInfrastructureError(error, "dashboard active alerts");
+      throw new Error(error.message);
+    }
 
     const rows = (alerts ?? []) as AlertesAutomatiquesRow[];
     const vehicleIds = [...new Set(rows.map((row) => row.vehicle_id).filter(Boolean))] as string[];
@@ -155,7 +153,10 @@ export class DashboardAlertRepository {
           .in("id", vehicleIds)
       : { data: [], error: null };
 
-    if (vehiclesError) throw new Error(vehiclesError.message);
+    if (vehiclesError) {
+      throwIfSupabaseInfrastructureError(vehiclesError, "dashboard alert vehicles");
+      throw new Error(vehiclesError.message);
+    }
 
     const vehiclesById = new Map(
       ((vehicles ?? []) as VehicleLiteRow[]).map((vehicle) => [vehicle.id, vehicle]),
@@ -175,8 +176,10 @@ export class DashboardAlertRepository {
       .update({ resolved: true, resolved_at: new Date().toISOString() })
       .eq("id", alertId);
 
-    if (isMissingSchemaObject(error)) return;
-    if (error) throw new Error(error.message);
+    if (error) {
+      throwIfSupabaseInfrastructureError(error, "dashboard alert resolve");
+      throw new Error(error.message);
+    }
   }
 
   async getKpiSummary(orgId: string): Promise<KpiSummary> {
@@ -202,16 +205,18 @@ export class DashboardAlertRepository {
         .eq("resolved", false),
     ]);
 
-    if (vehiclesResult.error) throw new Error(vehiclesResult.error.message);
-    if (maintenanceResult.error) throw new Error(maintenanceResult.error.message);
-    if (isMissingSchemaObject(alertsResult.error)) {
-      return {
-        ...DASHBOARD_EMPTY_KPIS,
-        activeVehicles: (vehiclesResult.data ?? []).filter((row) => row.status === "ok").length,
-        inMaintenance: maintenanceResult.data?.length ?? 0,
-      };
+    if (vehiclesResult.error) {
+      throwIfSupabaseInfrastructureError(vehiclesResult.error, "dashboard KPI vehicles");
+      throw new Error(vehiclesResult.error.message);
     }
-    if (alertsResult.error) throw new Error(alertsResult.error.message);
+    if (maintenanceResult.error) {
+      throwIfSupabaseInfrastructureError(maintenanceResult.error, "dashboard KPI maintenance");
+      throw new Error(maintenanceResult.error.message);
+    }
+    if (alertsResult.error) {
+      throwIfSupabaseInfrastructureError(alertsResult.error, "dashboard KPI alerts");
+      throw new Error(alertsResult.error.message);
+    }
 
     const vehicles = vehiclesResult.data ?? [];
     const alerts = alertsResult.data ?? [];

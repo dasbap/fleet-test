@@ -17,6 +17,7 @@
  */
 
 import type { Context, MiddlewareHandler } from "hono";
+import { throwIfSupabaseInfrastructureError } from "@/lib/supabase-runtime-errors";
 import { getBearerToken } from "@/server/http/auth";
 import { createSupabaseServiceClient } from "@/server/infra/supabaseServiceClient";
 import type { Permission, PlatformRole } from "@/types/rbac";
@@ -43,10 +44,14 @@ async function resolveUserId(c: Context): Promise<string | null> {
   if (!token) return null;
 
   const admin = createSupabaseServiceClient();
-  if (!admin) return null;
+  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY missing for RBAC");
 
   const { data: { user }, error } = await admin.auth.getUser(token);
-  if (error || !user) return null;
+  if (error) {
+    throwIfSupabaseInfrastructureError(error, "rbac token verification");
+    return null;
+  }
+  if (!user) return null;
 
   return user.id;
 }
@@ -57,14 +62,19 @@ async function resolveUserId(c: Context): Promise<string | null> {
  */
 async function isDemoUser(userId: string): Promise<boolean> {
   const admin = createSupabaseServiceClient();
-  if (!admin) return false;
+  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY missing for demo check");
 
-  const { data } = await admin
+  const { data, error } = await admin
     .from("demo_profiles")
     .select("user_id")
     .eq("user_id", userId)
     .eq("is_active", true)
     .maybeSingle();
+
+  if (error) {
+    throwIfSupabaseInfrastructureError(error, "rbac demo profile lookup");
+    return false;
+  }
 
   return !!data;
 }
@@ -79,7 +89,7 @@ async function checkPermissionRpc(
   fleetId?: string,
 ): Promise<{ allowed: boolean; role: string | null } | null> {
   const admin = createSupabaseServiceClient();
-  if (!admin) return null;
+  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY missing for RBAC");
 
   // Utiliser un client avec le JWT utilisateur pour que RLS s'applique correctement
   // La fonction est SECURITY DEFINER → elle voit toutes les données
@@ -90,6 +100,7 @@ async function checkPermissionRpc(
 
   if (error) {
     console.error("[rbacMiddleware] rbac_check_permission error:", error.message);
+    throwIfSupabaseInfrastructureError(error, "rbac permission RPC");
     return null;
   }
 
@@ -104,27 +115,37 @@ async function resolvePlatformRole(
   fleetId?: string,
 ): Promise<PlatformRole | null> {
   const admin = createSupabaseServiceClient();
-  if (!admin) return null;
+  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY missing for RBAC role lookup");
 
   // Vérifier admin plateforme
-  const { data: adminProfile } = await admin
+  const { data: adminProfile, error: adminProfileError } = await admin
     .from("admin_profiles")
     .select("id, is_active")
     .eq("id", userId)
     .eq("is_active", true)
     .maybeSingle();
 
+  if (adminProfileError) {
+    throwIfSupabaseInfrastructureError(adminProfileError, "rbac admin profile lookup");
+    return null;
+  }
+
   if (adminProfile) return "admin";
 
   // Rôle sur la flotte demandée
   if (fleetId) {
-    const { data: membership } = await admin
+    const { data: membership, error: membershipError } = await admin
       .from("flotte_adhesions")
       .select("role")
       .eq("user_id", userId)
       .eq("fleet_id", fleetId)
       .eq("is_active", true)
       .maybeSingle();
+
+    if (membershipError) {
+      throwIfSupabaseInfrastructureError(membershipError, "rbac fleet membership lookup");
+      return null;
+    }
 
     return (membership?.role as PlatformRole | undefined) ?? null;
   }
@@ -316,12 +337,17 @@ export function requireAdmin(): MiddlewareHandler {
       return c.json({ error: "Configuration serveur incorrecte" }, 500);
     }
 
-    const { data: adminProfile } = await admin
+    const { data: adminProfile, error: adminProfileError } = await admin
       .from("admin_profiles")
       .select("id, is_active")
       .eq("id", userId)
       .eq("is_active", true)
       .maybeSingle();
+
+    if (adminProfileError) {
+      throwIfSupabaseInfrastructureError(adminProfileError, "rbac require admin lookup");
+      return c.json({ error: "Configuration serveur incorrecte" }, 500);
+    }
 
     if (!adminProfile) {
       return c.json({ error: "Accès admin refusé", code: "NOT_PLATFORM_ADMIN" }, 403);

@@ -9,6 +9,7 @@ import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { LANDING_CTA, PUBLIC_DEMO_HREF } from "@/config/navigation";
 import { LegacyAideVideoRedirect } from "@/app/routes/LegacyAideVideoRedirect";
 import { DEMO_FEATURE_ENABLED } from "@/lib/demo/demoFeatureFlag";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -95,13 +96,26 @@ const AuthCallbackPage = lazy(() =>
   import("@/features/auth/screens/AuthCallbackPage")
 );
 
+function AuthAwareIndex() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (user) {
+    return <Navigate to={ROUTE_PATHS.dashboard} replace />;
+  }
+
+  return <Index />;
+}
+
 /**
  * Arbre de routes racine : pages publiques, redirections, dashboard, 404.
  * Monté dans `App.tsx` sous `<Routes>` (avec Suspense au niveau parent).
  */
 export const appRoutes = (
   <Route element={<RootLayout />}>
-    <Route path="/" element={<Index />} />
     <Route element={<HelpPublicLayout />}>
       <Route path="/help" element={<HelpHomePage />} />
       <Route path="/help/quickstart" element={<HelpQuickStartPage />} />
@@ -182,6 +196,7 @@ export const appRoutes = (
     />
     <Route path="/connexion" element={<Navigate to={ROUTE_PATHS.auth} replace />} />
     <Route element={<AuthProviderLayout />}>
+      <Route path="/" element={<AuthAwareIndex />} />
       {authPublicRoutes}
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/start" element={<TenantBootstrapRoute />} />

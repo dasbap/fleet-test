@@ -2,6 +2,7 @@ import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { initiateMobileMoneyPaymentForUser } from "@/server/domain/mobileMoneyInitiate";
 import { getBearerToken } from "@/server/http/auth";
+import { jsonInternalServerError } from "@/server/http/errorResponse";
 import { createSupabaseUserClient } from "@/server/infra/supabaseUserClient";
 
 const momoIntentSchema = z.object({
@@ -36,8 +37,7 @@ async function handleMobileMoneyInitiate(c: Context) {
     const result = await initiateMobileMoneyPaymentForUser(supabase, parsed.data);
     return c.json(result);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Erreur serveur";
-    return c.json({ error: msg }, 500);
+    return jsonInternalServerError(c, e);
   }
 }
 

@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { throwIfSupabaseInfrastructureError } from '@/lib/supabase-runtime-errors';
 import type { FleetMetrics } from '@/types/fleet-metrics';
 import type { KpiSummary } from '@/types/dashboard';
 
@@ -48,6 +49,11 @@ export interface FleetVehicleOverviewItem {
   hasActiveAssignment: boolean;
 }
 
+function throwSupabaseRepositoryError(error: { message: string }, context: string): never {
+  throwIfSupabaseInfrastructureError(error, context);
+  throw new Error(error.message);
+}
+
 /**
  * Repository pour les données agrégées du tableau de bord
  */
@@ -91,6 +97,16 @@ export class DashboardRepository {
         .eq('is_active', true),
     ]);
 
+    const statsError = [
+      vehiclesResult.error,
+      driversResult.error,
+      incidentsResult.error,
+      closuresResult.error,
+      maintenanceResult.error,
+      assignmentsResult.error,
+    ].find(Boolean);
+    if (statsError) throwSupabaseRepositoryError(statsError, 'dashboard stats');
+
     const vehicles = vehiclesResult.data || [];
     const drivers = driversResult.data || [];
     const incidents = incidentsResult.data || [];
@@ -100,11 +116,14 @@ export class DashboardRepository {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const { data: todayClosures } = await supabase
+    const { data: todayClosures, error: todayClosuresError } = await supabase
       .from('clotures_creneaux')
       .select('revenue_declared, status')
       .gte('created_at', today.toISOString())
       .eq('status', 'validated');
+    if (todayClosuresError) {
+      throwSupabaseRepositoryError(todayClosuresError, 'dashboard stats today closures');
+    }
 
     const todayRevenue = (todayClosures || []).reduce((sum, c) => sum + (c.revenue_declared || 0), 0);
 
@@ -148,6 +167,11 @@ export class DashboardRepository {
         .order('created_at', { ascending: false })
         .limit(5),
     ]);
+
+    const activityError = [closures.error, incidents.error, maintenance.error].find(Boolean);
+    if (activityError) {
+      throwSupabaseRepositoryError(activityError, 'dashboard recent activity');
+    }
 
     const activities: RecentActivityItem[] = [];
 
@@ -205,7 +229,7 @@ export class DashboardRepository {
     const { data, error } = await supabase.rpc('get_fleet_dashboard_metrics', {
       p_fleet_id: fleetId,
     });
-    if (error) throw new Error(error.message);
+    if (error) throwSupabaseRepositoryError(error, 'dashboard cached metrics');
     return data as FleetMetrics;
   }
 
@@ -213,7 +237,7 @@ export class DashboardRepository {
     const { error } = await supabase.rpc('invalidate_fleet_metrics_cache', {
       p_fleet_id: fleetId,
     });
-    if (error) throw new Error(error.message);
+    if (error) throwSupabaseRepositoryError(error, 'dashboard metrics cache invalidation');
   }
 
   /** Snapshot agrégé sans RPC distante : stats + KPIs + carburant 90j. */
@@ -272,7 +296,7 @@ export class DashboardRepository {
       maintenanceResult,
       alertsResult,
     ].find((result) => result.error)?.error;
-    if (firstError) throw new Error(firstError.message);
+    if (firstError) throwSupabaseRepositoryError(firstError, 'dashboard snapshot');
 
     const vehicles = vehiclesResult.data ?? [];
     const vehicleIds = vehicles.map((vehicle) => vehicle.id);
@@ -285,7 +309,9 @@ export class DashboardRepository {
           .in('vehicle_id', vehicleIds)
           .gte('created_at', thirtyDaysAgo)
       : { data: [], error: null };
-    if (incidentsResult.error) throw new Error(incidentsResult.error.message);
+    if (incidentsResult.error) {
+      throwSupabaseRepositoryError(incidentsResult.error, 'dashboard snapshot incidents');
+    }
 
     const shiftsResult = allAssignmentIds.length
       ? await supabase
@@ -293,7 +319,9 @@ export class DashboardRepository {
           .select('id')
           .in('assignment_id', allAssignmentIds)
       : { data: [], error: null };
-    if (shiftsResult.error) throw new Error(shiftsResult.error.message);
+    if (shiftsResult.error) {
+      throwSupabaseRepositoryError(shiftsResult.error, 'dashboard snapshot shifts');
+    }
 
     const shiftIds = (shiftsResult.data ?? []).map((shift) => shift.id);
     const closuresResult = shiftIds.length
@@ -302,7 +330,9 @@ export class DashboardRepository {
           .select('revenue_declared, status, created_at')
           .in('shift_id', shiftIds)
       : { data: [], error: null };
-    if (closuresResult.error) throw new Error(closuresResult.error.message);
+    if (closuresResult.error) {
+      throwSupabaseRepositoryError(closuresResult.error, 'dashboard snapshot closures');
+    }
 
     const closures = closuresResult.data ?? [];
     const fuelRows: Array<{ liters: number | null; amount_xof: number | null }> = [];
@@ -356,7 +386,7 @@ export class DashboardRepository {
       .order('registration', { ascending: true })
       .limit(10);
 
-    if (error) throw new Error(error.message);
+    if (error) throwSupabaseRepositoryError(error, 'dashboard fleet vehicles overview');
 
     return (data || []).map((v: Record<string, unknown>) => {
       const assignments = v.assignments as Array<{ is_active: boolean }> | undefined;
