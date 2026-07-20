@@ -7,6 +7,11 @@ import { DASHBOARD_NAV } from "@/config/navigation";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const signOutMock = vi.fn();
+const roleAccessMock = vi.fn(() => ({
+  isAdmin: false,
+  rbac: { platformRole: "organizer" },
+  isLoading: false,
+}));
 
 vi.mock("@/lib/auth-actions", () => ({
   signOut: (...args: unknown[]) => signOutMock(...args),
@@ -42,6 +47,10 @@ vi.mock("@/hooks/useFleetBillingContext", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useRoleAccess", () => ({
+  useRoleAccess: () => roleAccessMock(),
+}));
+
 function renderSidebar(
   userRole: "organizer" | "manager" | "driver" | "mechanic" = "organizer",
   initialRoute = "/dashboard",
@@ -64,6 +73,11 @@ describe("DashboardSidebar", () => {
   beforeEach(() => {
     signOutMock.mockReset();
     signOutMock.mockResolvedValue({ error: null });
+    roleAccessMock.mockReturnValue({
+      isAdmin: false,
+      rbac: { platformRole: "organizer" },
+      isLoading: false,
+    });
   });
 
   it(
@@ -164,5 +178,20 @@ describe("DashboardSidebar", () => {
     renderSidebar("organizer");
 
     expect(screen.queryByText("activation-checklist")).not.toBeInTheDocument();
+  });
+
+  it("affiche le panneau de creation demo aux administrateurs plateforme", async () => {
+    roleAccessMock.mockReturnValue({
+      isAdmin: true,
+      rbac: { platformRole: "admin" },
+      isLoading: false,
+    });
+
+    renderSidebar("organizer");
+
+    expect(await screen.findByRole("link", { name: /Comptes demo/i })).toHaveAttribute(
+      "href",
+      ROUTE_PATHS.dashboardAdminDemo,
+    );
   });
 });

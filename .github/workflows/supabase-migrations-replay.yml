@@ -7,6 +7,10 @@ on:
     branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     shell: bash
@@ -47,8 +51,11 @@ jobs:
 
   replay-migrations:
     name: Replay migrations on clean local stack
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Windows, X64]
     needs: verify-migration-filenames
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,29 +66,22 @@ jobs:
           version: 2.102.0
 
       - name: Enable local email auth for integration tests
-        shell: bash
         run: |
-          set -euo pipefail
-          # Active le signup email en local (auth + auth.email) sans PowerShell (runners Linux).
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          path = Path("supabase/config.toml")
-          text = path.read_text(encoding="utf-8")
-          text = re.sub(
-              r"(?ms)(\[auth\]\s*.*?enable_signup\s*=\s*)false",
-              r"\1true",
-              text,
-              count=1,
+          $path = "supabase/config.toml"
+          $text = Get-Content $path -Raw
+          $text = [regex]::Replace(
+            $text,
+            "(?ms)(\[auth\]\s*.*?enable_signup\s*=\s*)false",
+            '${1}true',
+            1
           )
-          text = re.sub(
-              r"(?ms)(\[auth\.email\]\s*.*?enable_signup\s*=\s*)false",
-              r"\1true",
-              text,
-              count=1,
+          $text = [regex]::Replace(
+            $text,
+            "(?ms)(\[auth\.email\]\s*.*?enable_signup\s*=\s*)false",
+            '${1}true',
+            1
           )
-          path.write_text(text, encoding="utf-8")
-          PY
+          Set-Content -Path $path -Value $text -NoNewline
 
       - name: Prepare dynamic Supabase local ports
         shell: pwsh
@@ -99,7 +99,10 @@ jobs:
       - name: Export local Supabase env
         # supabase status -o env peut entourer les valeurs de guillemets ("eyJ...").
         # On les supprime pour éviter que SERVICE_ROLE_KEY commence par un " invalide en base64.
-        run: supabase status -o env | sed 's/="\(.*\)"$/=\1/' >> "$GITHUB_ENV"
+        run: |
+          supabase status -o env |
+            ForEach-Object { $_ -replace '="(.*)"$', '=$1' } |
+            Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Setup Node
         uses: actions/setup-node@v4

@@ -2,7 +2,6 @@ import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PublicPageLayout } from "@/components/landing/PublicPageLayout";
 import { PublicPageHero } from "@/components/landing/PublicPageHero";
-import { PublicCtaSection } from "@/components/landing/PublicCtaSection";
 import { MODULES } from "@/data/marketing/modules";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { getMarketingUrl } from "@/lib/marketing-url";
@@ -23,7 +22,7 @@ export default function ModulesPage() {
         description="Chaque utilisateur dispose d'une interface optimisée pour ses besoins. Sécurité et simplicité garanties."
       />
 
-      <section className="py-20 md:py-32">
+      <section className="py-10 md:py-14">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto animate-fade-in-up">
             {MODULES.map((module) => (
@@ -80,7 +79,7 @@ export default function ModulesPage() {
             ))}
           </div>
 
-          <p className="text-center mt-12">
+          <p className="text-center mt-8">
             <Button asChild variant="outline" className="gap-2">
               <a href={getMarketingUrl("/guides")} target="_blank" rel="noopener noreferrer">
                 Parcourir les guides
@@ -90,8 +89,6 @@ export default function ModulesPage() {
           </p>
         </div>
       </section>
-
-      <PublicCtaSection />
     </PublicPageLayout>
   );
 }

@@ -34,6 +34,7 @@ import {
   MapPin,
   CalendarClock,
   CreditCard,
+  KeyRound,
   Mic,
   Video,
 } from "lucide-react";
@@ -87,6 +88,7 @@ const DASHBOARD_NAV_ICONS: Record<string, LucideIcon> = {
   [ROUTE_PATHS.dashboardRetentionAnalytics]: LineChart,
   [ROUTE_PATHS.dashboardRoles]: Shield,
   [ROUTE_PATHS.dashboardAdminUsers]: Shield,
+  [ROUTE_PATHS.dashboardAdminDemo]: KeyRound,
 };
 
 function withIcons(items: readonly DashboardNavItem[]): SidebarNavItem[] {
@@ -136,6 +138,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
     ? [
         ...menuItems[userRole],
         { label: "Admin comptes", href: ROUTE_PATHS.dashboardAdminUsers, icon: Shield },
+        { label: "Comptes demo", href: ROUTE_PATHS.dashboardAdminDemo, icon: KeyRound },
       ]
     : menuItems[userRole];
 

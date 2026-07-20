@@ -33,10 +33,9 @@ export interface DashboardNavItem {
 
 /** Liens principaux header public (navbar desktop + mobile). */
 export const PUBLIC_NAV: readonly PublicNavItem[] = [
-  { label: "Fonctionnalités", href: "/#features", type: "anchor" },
-  { label: "Modules", href: "/#modules", type: "anchor" },
+  { label: "Fonctionnalités", href: ROUTE_PATHS.fonctionnalites, type: "route" },
+  { label: "Modules", href: ROUTE_PATHS.modules, type: "route" },
   { label: "Tarifs", href: ROUTE_PATHS.pricing, type: "route" },
-  { label: "Guides", href: ROUTE_PATHS.help, type: "route" },
   { label: "FAQ", href: ROUTE_PATHS.faq, type: "route" },
   { label: "Contact", href: ROUTE_PATHS.contact, type: "route" },
 ];
@@ -44,18 +43,17 @@ export const PUBLIC_NAV: readonly PublicNavItem[] = [
 /** CTAs header (connexion, démo, inscription). */
 export const AUTH_NAV: readonly AuthNavItem[] = [
   { label: "Connexion", href: ROUTE_PATHS.auth, primary: false },
-  { label: "Demander une démo", href: `${ROUTE_PATHS.contact}#demo`, primary: false },
-  { label: "Demander un acces", href: `${ROUTE_PATHS.contact}#demo`, primary: true },
+  { label: "Demander une démo", href: ROUTE_PATHS.contact, primary: false },
 ];
 
 /** CTA démo — ancre formulaire contact. */
-export const PUBLIC_DEMO_HREF = `${ROUTE_PATHS.contact}#demo` as const;
+export const PUBLIC_DEMO_HREF = ROUTE_PATHS.contact;
 
 /** CTAs landing page (hero + sections). */
 export const LANDING_CTA = {
-  signupHref: `${ROUTE_PATHS.contact}#demo`,
+  signupHref: ROUTE_PATHS.contact,
   signupLabel: "Demander un acces",
-  demoAudioHref: "#demo-video",
+  demoAudioHref: ROUTE_PATHS.contact,
   demoAudioLabel: "Écouter la démo",
 } as const;
 

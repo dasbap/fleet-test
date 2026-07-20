@@ -109,6 +109,7 @@ export const ROUTE_PATHS = {
   tarifs: "/tarifs",
   /** Hub conversion fonctionnalités (contenu profond sur marketing). */
   fonctionnalites: "/fonctionnalites",
+  fonctionnalitesPiloterFlotte: "/fonctionnalites/piloter-flotte",
   /** Hub modules par rôle métier. */
   modules: "/modules",
   /** FAQ marketing publique. */
@@ -141,6 +142,8 @@ export const ROUTE_PATHS = {
   dashboardHelpAdmin: "/dashboard/admin/help",
   /** Administration des comptes utilisateur. */
   dashboardAdminUsers: "/dashboard/admin/users",
+  /** Administration des comptes de demonstration. */
+  dashboardAdminDemo: "/dashboard/admin/demo",
 } as const;
 
 /** Hub conducteur et sous-routes (scan QR, etc.). */

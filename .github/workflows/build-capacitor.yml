@@ -8,13 +8,48 @@ on:
     branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     shell: bash
 
 jobs:
+  changes:
+    name: Detect Capacitor changes
+    runs-on: [self-hosted, Linux, X64]
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        name: Check changed files
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          changed="$(git diff --name-only "origin/$BASE_REF"...HEAD)"
+          if echo "$changed" | grep -Eq '^(src/|android/|resources/|vite\.config\.ts$|package(-lock)?\.json$|index\.html$|capacitor\.config\.ts$|scripts/export-resources-icon-png\.mjs$|\.github/workflows/build-capacitor\.yml$)'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-capacitor:
     name: vite build (mode capacitor)
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: [self-hosted, Linux, X64]
     env:
       # Valeurs factices : le client Supabase n’est pas exécuté pendant le build statique.

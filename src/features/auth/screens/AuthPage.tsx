@@ -656,7 +656,7 @@ const Auth = () => {
                   </Link>
                 ) : (
                   <Link
-                    to={`${ROUTE_PATHS.contact}#demo`}
+                    to={ROUTE_PATHS.contact}
                     className="text-primary hover:underline font-medium"
                   >
                     Demander un acces

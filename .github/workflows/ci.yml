@@ -13,6 +13,10 @@ on:
     branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     shell: bash
@@ -20,8 +24,11 @@ defaults:
 jobs:
   db-migrations:
     name: Supabase migrations (fresh DB)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
 
     steps:
       - name: Checkout
@@ -51,20 +58,19 @@ jobs:
       # Marqueur textuel pour éviter les ambiguïtés de formatage psql (alignement, CR/LF, ANSI).
       - name: Smoke test — search_fleet sans auth
         run: |
-          out=$(supabase db query \
-            "SELECT CASE WHEN count(*)=0 THEN 'OK_SAFE' ELSE 'FAIL_HAS_ROWS' END AS result FROM public.search_fleet('Toyota'::text, 5::int, NULL::uuid);" \
-            --local 2>&1 || true)
-          echo "search_fleet output: $out"
-          echo "$out" | grep -q "OK_SAFE" \
-            && echo "✅ CI safe: 0 rows without auth" \
-            || { echo "❌ search_fleet a retourné des lignes sans auth ou a planté"; exit 1; }
+          $out = (& supabase db query "SELECT CASE WHEN count(*)=0 THEN 'OK_SAFE' ELSE 'FAIL_HAS_ROWS' END AS result FROM public.search_fleet('Toyota'::text, 5::int, NULL::uuid);" --local 2>&1 | Out-String)
+          Write-Host "search_fleet output: $out"
+          if ($out -match "OK_SAFE") {
+            Write-Host "CI safe: 0 rows without auth"
+          } else {
+            Write-Error "search_fleet a retourné des lignes sans auth ou a planté"
+            exit 1
+          }
 
       # Vérifier que les vues de rétention existent
       - name: Smoke test — retention views
         run: |
-          supabase db query \
-            "SELECT table_name FROM information_schema.views WHERE table_schema='public' AND table_name LIKE 'v_retention%' ORDER BY table_name;" \
-            --local
+          supabase db query "SELECT table_name FROM information_schema.views WHERE table_schema='public' AND table_name LIKE 'v_retention%' ORDER BY table_name;" --local
 
       - name: Stop Supabase local
         if: always()

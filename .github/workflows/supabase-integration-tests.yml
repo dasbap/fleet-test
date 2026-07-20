@@ -7,14 +7,21 @@ on:
     branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     shell: bash
 
 jobs:
   supabase-integration:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
 
     steps:
       - name: Checkout

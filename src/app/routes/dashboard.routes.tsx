@@ -11,7 +11,6 @@ import {
   DASHBOARD_ROLES_HUB_ROLES,
 } from "@/navigation/dashboardRouteRoles";
 import { MODULE_ACCESS } from "@/navigation/dashboardRouteRoles";
-import { DEMO_FEATURE_ENABLED } from "@/lib/demo/demoFeatureFlag";
 
 const MobileHomePage = lazy(() => import("@/features/home/screens/MobileHomePage"));
 const FleetVehicleDetailPage = lazy(
@@ -97,9 +96,7 @@ const DashcamPage = lazy(
   () => import("@/features/dashcam/screens/DashcamPage")
 );
 const Scan = lazy(() => import("@/pages/Scan"));
-const DemoAdminPage = DEMO_FEATURE_ENABLED
-  ? lazy(() => import("@/pages/admin/DemoAdminPage"))
-  : null;
+const DemoAdminPage = lazy(() => import("@/pages/admin/DemoAdminPage"));
 const HelpAnalyticsDashboard = lazy(
   () => import("@/features/help/screens/HelpAnalyticsDashboard"),
 );
@@ -283,11 +280,7 @@ export const dashboardRoutes = (
       />
       <Route
         path="admin/demo"
-        element={
-          DEMO_FEATURE_ENABLED && DemoAdminPage
-            ? <DemoAdminPage />
-            : <Navigate to={ROUTE_PATHS.dashboard} replace />
-        }
+        element={<DemoAdminPage />}
       />
       <Route
         path="admin/users"

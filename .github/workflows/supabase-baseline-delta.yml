@@ -7,6 +7,10 @@ on:
     branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   SUPABASE_CLI_VERSION: 2.102.0
@@ -18,7 +22,10 @@ defaults:
 jobs:
   validate-baseline-delta:
     name: Validate baseline + deltas on fresh local DB
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Windows, X64]
+    defaults:
+      run:
+        shell: pwsh
 
     steps:
       - name: Checkout Code

@@ -246,7 +246,7 @@ export function DemoAccountsPanel({ currentAdminId }: DemoAccountsPanelProps) {
 
       {/* Légende types */}
       <div className="flex flex-wrap gap-2 pt-1">
-        {(Object.keys(TYPE_LABELS) as AccountType[]).map((type) => (
+        {(Object.keys(TYPE_LABELS) as DemoProfileAccountType[]).map((type) => (
           <span key={type} className={cn(
             "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
             TYPE_COLORS[type],
