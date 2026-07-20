@@ -29,12 +29,12 @@ concurrency:
 
 defaults:
   run:
-    shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+    shell: bash
 
 jobs:
   apply-migrations:
     name: Apply migrations to Supabase
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
     environment: production
 
     steps:
@@ -66,7 +66,7 @@ jobs:
 
       - name: Apply selected migrations
         if: ${{ inputs.mode == 'apply' }}
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+        shell: bash
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}

@@ -17,12 +17,12 @@ on:
 
 defaults:
   run:
-    shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+    shell: bash
 
 jobs:
   verify-migration-filenames:
     name: Verify migration filenames
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
 
   replay-migrations:
     name: Replay migrations on clean local stack
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
     needs: verify-migration-filenames
     steps:
       - name: Checkout
@@ -67,7 +67,7 @@ jobs:
           version: 2.102.0
 
       - name: Enable local email auth for integration tests
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+        shell: bash
         run: |
           set -euo pipefail
           # Active le signup email en local (auth + auth.email) sans PowerShell (runners Linux).

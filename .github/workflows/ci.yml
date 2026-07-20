@@ -15,12 +15,12 @@ on:
 
 defaults:
   run:
-    shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+    shell: bash
 
 jobs:
   db-migrations:
     name: Supabase migrations (fresh DB)
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 20
 
     steps:
@@ -66,7 +66,7 @@ jobs:
   # ── Job 2 : TypeScript build ────────────────────────────────────────────
   build:
     name: TypeScript build
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
     needs: db-migrations
 
     steps:
@@ -108,7 +108,7 @@ jobs:
   # ── Job 3 : Lint ────────────────────────────────────────────────────────
   lint:
     name: ESLint
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
 
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
   # ── Job 4 : Qualité + métriques consolidées ───────────────────────────────
   quality-metrics:
     name: Test layers metrics
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 45
     needs: build
     env:
@@ -147,7 +147,7 @@ jobs:
       - name: Run lint layer
         id: layer_lint
         continue-on-error: true
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+        shell: bash
         run: |
           mkdir -p ci-metrics test-results
           start=$(date +%s%3N)
@@ -164,7 +164,7 @@ jobs:
       - name: Run unit layer
         id: layer_unit
         continue-on-error: true
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+        shell: bash
         run: |
           mkdir -p ci-metrics test-results
           start=$(date +%s%3N)
@@ -182,7 +182,7 @@ jobs:
       - name: Run integration layer
         id: layer_integration
         continue-on-error: true
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+        shell: bash
         run: |
           mkdir -p ci-metrics test-results
           start=$(date +%s%3N)
@@ -204,7 +204,7 @@ jobs:
       - name: Run e2e layer
         id: layer_e2e
         continue-on-error: true
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+        shell: bash
         run: |
           mkdir -p ci-metrics test-results/e2e
           start=$(date +%s%3N)
@@ -223,7 +223,7 @@ jobs:
 
       - name: Build consolidated metrics + summary
         if: always()
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+        shell: bash
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -266,6 +266,6 @@ jobs:
 
       - name: Fail workflow if any layer failed
         if: always()
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+        shell: bash
         run: |
           node -e "const fs=require('fs');const payload=JSON.parse(fs.readFileSync('ci-metrics.json','utf8'));const failed=payload.layers.filter((l)=>l.status!=='passed');if(failed.length){console.error('Layers en echec:',failed.map((l)=>l.layer).join(', '));process.exit(1)}"

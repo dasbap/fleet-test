@@ -17,12 +17,12 @@ on:
 
 defaults:
   run:
-    shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+    shell: bash
 
 jobs:
   integration-remote:
     name: Integration tests on remote Supabase
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 30
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -40,7 +40,7 @@ jobs:
           cache: npm
 
       - name: Validate required secrets
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+        shell: bash
         run: |
           missing=()
           for key in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
@@ -68,7 +68,7 @@ jobs:
 
       - name: Publish integration summary
         if: always()
-        shell: '"C:\Program Files\Git\bin\bash.exe" --noprofile --norc -e -o pipefail {0}'
+        shell: bash
         run: |
           node <<'NODE'
           const fs = require('fs');
