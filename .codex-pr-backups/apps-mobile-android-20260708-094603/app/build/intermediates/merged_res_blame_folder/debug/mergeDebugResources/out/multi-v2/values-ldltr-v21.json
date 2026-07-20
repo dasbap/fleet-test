@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.rienaucun7.smartfleetafricamobile.app-mergeDebugResources-54:/values-ldltr-v21/values-ldltr-v21.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\da silva\\.gradle\\caches\\8.13\\transforms\\987b9c3b43518bd5bd0c651e23d04602\\transformed\\appcompat-1.7.0\\res\\values-ldltr-v21\\values-ldltr-v21.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "112",
+                        "endOffsets": "163"
+                    }
+                }
+            ]
+        }
+    ]
+}

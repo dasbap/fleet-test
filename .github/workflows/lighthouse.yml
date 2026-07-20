@@ -1,0 +1,221 @@
+# Audit Lighthouse « complet » : secrets Vite, budget JS gzip, action treosh, commentaire PR.
+# Ne tourne pas sur les forks sans secrets (échec build / étapes optionnelles).
+#
+# Garde-fou sans secrets (placeholders, forks) : .github/workflows/lighthouse-ci.yml
+#
+# Doublon possible : un push qui matche les paths peut lancer en parallèle lighthouse-ci.yml
+# (garde-fou) ; les en-têtes de chaque fichier précisent le rôle (complet vs sans secrets).
+#
+# Pages : /, /login, /auth (lighthouserc.json). SEO séparé sur / seul (lighthouserc-seo.json).
+# Pas d’audit /dashboard/* sans session.
+#
+# --- Secrets GitHub (Settings > Secrets and variables > Actions) ---
+# Obligatoires :
+#   VITE_SUPABASE_URL                 — build Vite (variables injectées dans le bundle).
+#   VITE_SUPABASE_ANON_KEY
+#   VITE_SUPABASE_URL_PREVIEW         — étape preview (souvent identiques au build si un seul projet Supabase).
+#   VITE_SUPABASE_ANON_KEY_PREVIEW
+# Optionnel :
+#   LHCI_GITHUB_APP_TOKEN             — intégration GitHub App Lighthouse ; temporaryPublicStorage suffit souvent sinon.
+# Commentaire PR : colonne INP informative uniquement (valeur lab si l’audit renvoie une métrique ; sinon « — ») ;
+#                  INP en assertion « warn » dans lighthouserc (non bloquant si failOnSeverity=error).
+
+name: Lighthouse CI — audit complet
+
+on:
+  push:
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+    paths:
+      - "src/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/lighthouse/**"
+      - ".github/workflows/lighthouse.yml"
+  pull_request:
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+    paths:
+      - "src/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/lighthouse/**"
+      - ".github/workflows/lighthouse.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lighthouse:
+    name: Core Web Vitals audit
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # Fallback placeholders prevent client.ts module-level throw when secrets are unset.
+          # Non-empty URL/key = Supabase client init succeeds, app renders, FCP fires.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ci-placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key-ci-lighthouse' }}
+
+      - name: Vérifier le budget JS initial (gzip)
+        id: bundle
+        run: |
+          set -e
+          LOG=$(npm run check:bundle-budget 2>&1) || { echo "$LOG"; exit 1; }
+          echo "$LOG"
+          {
+            echo "bundle_summary<<EOF"
+            echo "$LOG" | tail -n 1
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+        env:
+          BUNDLE_BUDGET_INITIAL_GZIP_KB: "450"
+
+      - name: Démarrer le serveur preview
+        run: npm run preview &
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL_PREVIEW }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY_PREVIEW }}
+
+      - name: Attendre le serveur
+        run: npx wait-on http://localhost:4173 --timeout 60000
+
+      - name: Setup Chrome 124 (compatible Lighthouse 11)
+        uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+        with:
+          chrome-version: "124"
+
+      - name: Lighthouse CI (perf, a11y)
+        id: lhci
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          configPath: .github/lighthouse/lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          runs: 2
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+
+      - name: Lighthouse CI (SEO — page d’accueil)
+        run: npx lhci autorun --config=.github/lighthouse/lighthouserc-seo.json
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+
+      - name: Commentaire PR — résultats Lighthouse
+        if: >
+          github.event_name == 'pull_request' &&
+          always() &&
+          (steps.lhci.conclusion == 'success' || steps.lhci.conclusion == 'failure')
+        uses: actions/github-script@v7
+        env:
+          LHCI_RESULTS: ${{ steps.lhci.outputs.resultsPath }}
+          BUNDLE_SUMMARY: ${{ steps.bundle.outputs.bundle_summary }}
+        with:
+          script: |
+            const fs = require("fs");
+            const path = require("path");
+
+            const resultsDir = process.env.LHCI_RESULTS;
+            const bundleSummary = process.env.BUNDLE_SUMMARY || "";
+
+            const formatScore = (s) => {
+              if (s == null || Number.isNaN(s)) return "—";
+              const pct = Math.round(s * 100);
+              const icon = pct >= 90 ? "OK" : pct >= 70 ? "!" : "KO";
+              return `${icon} ${pct}`;
+            };
+
+            let table = "| URL | Perf | A11y | LCP | CLS | INP |\n|-----|------|------|-----|-----|-----|\n";
+
+            if (resultsDir && fs.existsSync(resultsDir)) {
+              const files = fs
+                .readdirSync(resultsDir)
+                .filter(
+                  (f) =>
+                    f.startsWith("lhr-") &&
+                    f.endsWith(".json") &&
+                    f !== "assertion-results.json",
+                );
+              /** Une ligne par URL (run le plus récent si plusieurs fichiers). */
+              const byUrl = new Map();
+              for (const f of files) {
+                const raw = fs.readFileSync(path.join(resultsDir, f), "utf8");
+                const data = JSON.parse(raw);
+                const lhr = data.lhr ?? data;
+                if (!lhr?.categories) continue;
+                const url = lhr.finalUrl || lhr.requestedUrl || f;
+                const fetchTime = lhr.fetchTime || "";
+                const prev = byUrl.get(url);
+                if (!prev || fetchTime > (prev.fetchTime || "")) {
+                  byUrl.set(url, { lhr, fetchTime });
+                }
+              }
+              const rows = [];
+              for (const { lhr } of byUrl.values()) {
+                const url = lhr.finalUrl || lhr.requestedUrl;
+                const perf = lhr.categories?.performance?.score;
+                const a11y = lhr.categories?.accessibility?.score;
+                const lcpMs = lhr.audits?.["largest-contentful-paint"]?.numericValue;
+                const lcpStr =
+                  lcpMs != null ? `${(lcpMs / 1000).toFixed(1)}s` : "—";
+                const clsVal = lhr.audits?.["cumulative-layout-shift"]?.numericValue;
+                const clsStr = clsVal != null ? clsVal.toFixed(3) : "—";
+                const inpMs = lhr.audits?.["interaction-to-next-paint"]?.numericValue;
+                const inpStr = inpMs != null ? `${Math.round(inpMs)}ms` : "—";
+                rows.push(
+                  `| ${url} | ${formatScore(perf)} | ${formatScore(a11y)} | ${lcpStr} | ${clsStr} | ${inpStr} |`,
+                );
+              }
+              if (rows.length) {
+                table += rows.join("\n");
+              } else {
+                table +=
+                  "| _(aucun rapport lhr-*.json exploitable trouvé)_ | — | — | — | — | — |";
+              }
+            } else {
+              table += `| _(dossier résultats introuvable : \`${resultsDir || "n/a"}\`)_ | — | — | — | — | — |`;
+            }
+
+            const body = `## Rapport Lighthouse CI — Smart Fleet Africa
+
+            ${table}
+
+            **Assertions LHCI** : gate bloquant — CLS ≤ 0,1 (erreur, médiane). Avertissements — scores perf/a11y, LCP, INP, FCP, SI, TBT, opportunités (seuils assouplis), unused JS/CSS.
+
+            **INP (tableau)** : valeur lab si disponible ; assertion INP en « warn » dans lighthouserc (non bloquant pour la PR avec failOnSeverity par défaut).
+
+            Budget JS (gzip, \`check:bundle-budget\`) : ${bundleSummary ? `**${bundleSummary}**` : "voir l’étape CI"}
+            `;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });

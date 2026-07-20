@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "types": ["vitest/globals"],
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting — mode strict pour le code applicatif */
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": false,
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@esamba/offline-contracts": ["./packages/offline-contracts/src/index.ts"],
+      "@esamba/domain-validation": ["./packages/domain-validation/src/index.ts"],
+      "@esamba/domain-sync": ["./packages/domain-sync/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

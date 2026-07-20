@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Smart Fleet Africa Mobile",
+    "slug": "smart-fleet-africa-mobile",
+    "scheme": "smartfleetafrica",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      "expo-router",
+      "expo-screen-orientation"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "android": {
+      "package": "com.rienaucun7.smartfleetafricamobile"
+    }
+  }
+}

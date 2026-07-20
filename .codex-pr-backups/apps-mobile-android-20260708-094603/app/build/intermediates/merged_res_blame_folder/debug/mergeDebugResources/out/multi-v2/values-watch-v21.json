@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.rienaucun7.smartfleetafricamobile.app-mergeDebugResources-54:/values-watch-v21/values-watch-v21.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\da silva\\.gradle\\caches\\8.13\\transforms\\987b9c3b43518bd5bd0c651e23d04602\\transformed\\appcompat-1.7.0\\res\\values-watch-v21\\values-watch-v21.xml",
+                    "from": {
+                        "startLines": "2,6,10",
+                        "startColumns": "4,4,4",
+                        "startOffsets": "55,271,499",
+                        "endLines": "5,9,13",
+                        "endColumns": "12,12,12",
+                        "endOffsets": "266,494,724"
+                    }
+                }
+            ]
+        }
+    ]
+}

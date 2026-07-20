@@ -1,0 +1,102 @@
+diff --git a/node_modules/@capacitor/filesystem/android/build.gradle b/node_modules/@capacitor/filesystem/android/build.gradle
+index 915b0dd..91a3477 100644
+--- a/node_modules/@capacitor/filesystem/android/build.gradle
++++ b/node_modules/@capacitor/filesystem/android/build.gradle
+@@ -53,8 +53,8 @@ android {
+         abortOnError = false
+     }
+     compileOptions {
+-        sourceCompatibility JavaVersion.VERSION_21
+-        targetCompatibility JavaVersion.VERSION_21
++        sourceCompatibility JavaVersion.VERSION_17
++        targetCompatibility JavaVersion.VERSION_17
+     }
+     publishing {
+         singleVariant("release")
+@@ -62,7 +62,7 @@ android {
+ }
+ 
+ kotlin {
+-    jvmToolchain(21)
++    jvmToolchain(17)
+ }
+ 
+ repositories {
+diff --git a/node_modules/@capacitor/filesystem/android/src/main/kotlin/com/capacitorjs/plugins/filesystem/FilesystemPlugin.kt b/node_modules/@capacitor/filesystem/android/src/main/kotlin/com/capacitorjs/plugins/filesystem/FilesystemPlugin.kt
+index fed6e14..59ae77c 100644
+--- a/node_modules/@capacitor/filesystem/android/src/main/kotlin/com/capacitorjs/plugins/filesystem/FilesystemPlugin.kt
++++ b/node_modules/@capacitor/filesystem/android/src/main/kotlin/com/capacitorjs/plugins/filesystem/FilesystemPlugin.kt
+@@ -309,6 +309,7 @@ class FilesystemPlugin : Plugin() {
+         }
+     }
+ 
++    @Suppress("DEPRECATION")
+     @PermissionCallback
+     private fun permissionCallback(call: PluginCall) {
+         if (!isStoragePermissionGranted(true)) {
+diff --git a/node_modules/@capacitor/filesystem/android/src/main/kotlin/com/capacitorjs/plugins/filesystem/LegacyFilesystemImplementation.kt b/node_modules/@capacitor/filesystem/android/src/main/kotlin/com/capacitorjs/plugins/filesystem/LegacyFilesystemImplementation.kt
+index cfe09ec..e57d0c4 100644
+--- a/node_modules/@capacitor/filesystem/android/src/main/kotlin/com/capacitorjs/plugins/filesystem/LegacyFilesystemImplementation.kt
++++ b/node_modules/@capacitor/filesystem/android/src/main/kotlin/com/capacitorjs/plugins/filesystem/LegacyFilesystemImplementation.kt
+@@ -5,6 +5,7 @@ import android.net.Uri
+ import android.os.Environment
+ import android.os.Handler
+ import android.os.Looper
++import androidx.core.net.toUri
+ import com.getcapacitor.Bridge
+ import com.getcapacitor.JSObject
+ import com.getcapacitor.PluginCall
+@@ -25,7 +26,7 @@ class LegacyFilesystemImplementation internal constructor(private val context: C
+         emitter: ProgressEmitter?,
+         callback: FilesystemDownloadCallback
+     ) {
+-        val urlString = call.getString("url", "")
++        val urlString = call.getString("url", "")!!
+         val handler = Handler(Looper.getMainLooper())
+ 
+         thread {
+@@ -61,7 +62,7 @@ class LegacyFilesystemImplementation internal constructor(private val context: C
+ 
+     private fun getFileObject(path: String, directory: String?): File? {
+         if (directory == null) {
+-            val u = Uri.parse(path)
++            val u = path.toUri()
+             if (u.scheme == null || u.scheme == "file") {
+                 return File(u.path)
+             }
+@@ -82,7 +83,7 @@ class LegacyFilesystemImplementation internal constructor(private val context: C
+ 
+     @Throws(IOException::class, URISyntaxException::class, JSONException::class)
+     private fun doDownloadInBackground(
+-        urlString: String?,
++        urlString: String,
+         call: PluginCall,
+         bridge: Bridge,
+         emitter: ProgressEmitter?
+@@ -125,7 +126,7 @@ class LegacyFilesystemImplementation internal constructor(private val context: C
+ 
+         try {
+             maxBytes = contentLength?.toInt() ?: 0
+-        } catch (ignored: NumberFormatException) {
++        } catch (_: NumberFormatException) {
+         }
+ 
+         val buffer = ByteArray(1024)
+@@ -140,7 +141,7 @@ class LegacyFilesystemImplementation internal constructor(private val context: C
+ 
+             bytes += len
+ 
+-            if (progress!! && null != emitter) {
++            if (progress && null != emitter) {
+                 val currentTime = System.currentTimeMillis()
+                 if (currentTime - lastEmitTime > minEmitIntervalMillis) {
+                     emitter.emit(bytes, maxBytes)
+@@ -149,7 +150,7 @@ class LegacyFilesystemImplementation internal constructor(private val context: C
+             }
+         }
+ 
+-        if (progress!! && null != emitter) {
++        if (progress && null != emitter) {
+             emitter.emit(bytes, maxBytes)
+         }
+ 

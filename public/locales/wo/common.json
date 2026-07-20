@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "dashboard": "Dal bu mag",
+    "fleet": "Parc bi",
+    "maintenance": "Sampu",
+    "alerts": "Yëgle yi",
+    "reports": "Rapoor yi",
+    "settings": "Parameetar yi"
+  },
+  "actions": {
+    "add": "Yokk",
+    "edit": "Soppi",
+    "delete": "Far",
+    "save": "Denc",
+    "cancel": "Neenal",
+    "confirm": "Fésal",
+    "back": "Delluwaat",
+    "next": "Bi ci topp",
+    "close": "Tëj",
+    "plan": "Teg ci ndaje",
+    "resolve": "Sàmmal",
+    "export": "Génne",
+    "search": "Wut"
+  },
+  "status": {
+    "active": "Dafa dox",
+    "maintenance": "Ci sampu la nekk",
+    "inactive": "Doxul",
+    "resolved": "Jàppandi na",
+    "pending": "Mu ngi xaar",
+    "overdue": "Mu yàgg ba weesu"
+  },
+  "severity": {
+    "critical": "Metti lool",
+    "warning": "Moytu",
+    "info": "Xibaar"
+  },
+  "empty": {
+    "noVehicles": "Amul benn oto ci parc bi",
+    "noAlerts": "Amul benn yëgle yu dox",
+    "noMaintenance": "Amul sampu bu ñu teg ci waxtu"
+  },
+  "settingsPage": {
+    "title": "Parameetar yi",
+    "description": "Jumtukaay yi ngir saytu ak tabax sa barab E-Samba.",
+    "languageSectionTitle": "Làkk",
+    "languageSectionDescription": "Tannal làkk wi ñuy won ci aplikasiyoŋ bi."
+  },
+  "languageSwitcher": {
+    "ariaLabel": "Làkku aplikasiyoŋ bi"
+  },
+  "dialog": {
+    "close": "Tëj"
+  },
+  "searchPalette": {
+    "openAria": "Ubbi wut",
+    "dialogTitle": "Wut bu mat",
+    "dialogDescription": "Wut ci oto yi, sampu yi ak yëgle yi.",
+    "placeholder": "Wut oto, chauffeur, yëgle…",
+    "clear": "Far wut bi",
+    "resultsAria": "Njariñu wut",
+    "emptyTitle": "Amul njariñ ci \"{query}\"",
+    "emptyHint": "Jéemal plaque, turu chauffeur walla xeetu sampu.",
+    "idlePrompt": "Bindal lu gën a néew ñaari araf",
+    "hintNavigate": "Doxal",
+    "hintOpen": "Ubbi",
+    "hintClose": "Tëj",
+    "hintShortcut": "Ubbi wut",
+    "loadingState": "Mi ngi wut",
+    "resultsCount": "{{count}} njariñ",
+    "noResults": "Amul njariñ"
+  },
+  "loading": "Mi ngi yebbi…",
+  "error": "Njuumte am na"
+}

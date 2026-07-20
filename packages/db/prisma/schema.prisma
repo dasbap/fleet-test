@@ -1,0 +1,336 @@
+// ═══════════════════════════════════════════════════════════════════
+// Prisma schema — smart-fleet-africa  (Supabase PostgreSQL)
+// ═══════════════════════════════════════════════════════════════════
+//
+// Variables d'environnement requises (.env.local / Vercel env):
+//   DATABASE_URL  — Supabase pooler (Transaction mode, port 6543)
+//                   postgresql://postgres.[ref]:[pwd]@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+//   DIRECT_URL    — Connexion directe (port 5432, migrations uniquement)
+//                   postgresql://postgres.[ref]:[pwd]@db.[ref].supabase.co:5432/postgres
+//
+// Pour introspection complète du schéma réel :
+//   npm run db:pull
+//
+// ═══════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+  // Sortie vers le node_modules racine du monorepo — résolu
+  // automatiquement quand prisma generate est lancé depuis la racine.
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Pooler Supabase → runtime serverless (Vercel functions, scripts)
+  url       = env("DATABASE_URL")
+  // Connexion directe → migrations Prisma uniquement
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────
+
+enum RoleType {
+  organizer
+  manager
+  driver
+  mechanic
+
+  @@map("role_type")
+}
+
+enum VehicleStatus {
+  ok
+  blocked
+
+  @@map("vehicle_status")
+}
+
+enum ClosureStatus {
+  pending
+  validated
+  rejected
+
+  @@map("closure_status")
+}
+
+// ─── Core models ────────────────────────────────────────────────────
+
+model Organisation {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  countryCode String   @default("CM") @map("country_code")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  flottes     Flotte[]
+  paiements   Paiement[]
+
+  @@map("organisations")
+}
+
+model Flotte {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId            String   @map("org_id") @db.Uuid
+  name             String
+  collectionPolicy String   @default("mix") @map("collection_policy")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organisation Organisation             @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  vehicules    Vehicule[]
+  adhesions    FlotteAdhesion[]
+  invitations  FlotteInvitation[]
+  travaux      TravauxMaintenance[]
+  abonnements  Abonnement[]
+
+  @@map("flottes")
+}
+
+model Profil {
+  userId    String   @id @map("user_id") @db.Uuid
+  fullName  String?  @map("full_name")
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("profils")
+}
+
+model FlotteAdhesion {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fleetId   String   @map("fleet_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      RoleType
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  flotte Flotte @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+
+  @@unique([fleetId, userId, role])
+  @@map("flotte_adhesions")
+}
+
+model FlotteInvitation {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fleetId     String    @map("fleet_id") @db.Uuid
+  code        String    @unique
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)
+  maxUses     Int?      @map("max_uses")
+  currentUses Int       @default(0) @map("current_uses")
+  createdBy   String?   @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  flotte Flotte @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+
+  @@map("flotte_invitations")
+}
+
+model Vehicule {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fleetId       String        @map("fleet_id") @db.Uuid
+  registration  String
+  brand         String?
+  model         String?
+  year          Int?
+  currentKm     Int           @default(0) @map("current_km")
+  status        VehicleStatus @default(ok)
+  blockedReason String?       @map("blocked_reason")
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  flotte       Flotte                @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  affectations AffectationVehicule[]
+  incidents    Incident[]
+  travaux      TravauxMaintenance[]
+  droits       DroitVehicule[]
+  jetonsQr     JetonQr[]
+
+  @@unique([fleetId, registration])
+  @@map("vehicules")
+}
+
+model AffectationVehicule {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fleetId      String    @map("fleet_id") @db.Uuid
+  vehicleId    String    @map("vehicle_id") @db.Uuid
+  driverUserId String    @map("driver_user_id") @db.Uuid
+  startsAt     DateTime  @default(now()) @map("starts_at") @db.Timestamptz(6)
+  endsAt       DateTime? @map("ends_at") @db.Timestamptz(6)
+  isActive     Boolean   @default(true) @map("is_active")
+  createdBy    String    @map("created_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  vehicule Vehicule            @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  creneaux CreneauConducteur[]
+
+  @@map("affectations_vehicules")
+}
+
+model CreneauConducteur {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assignmentId String    @map("assignment_id") @db.Uuid
+  kmStart      Int       @map("km_start")
+  kmEnd        Int?      @map("km_end")
+  startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt      DateTime? @map("ended_at") @db.Timestamptz(6)
+  status       String    @default("open")
+
+  affectation AffectationVehicule @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  cloture     ClotureCreneau?
+
+  @@map("creneaux_conducteurs")
+}
+
+model ClotureCreneau {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shiftId         String        @unique @map("shift_id") @db.Uuid
+  revenueDeclared Int           @map("revenue_declared")
+  collectionMode  String        @map("collection_mode")
+  proofType       String        @map("proof_type")
+  proofValue      String        @map("proof_value")
+  status          ClosureStatus @default(pending)
+  validatedBy     String?       @map("validated_by") @db.Uuid
+  validatedAt     DateTime?     @map("validated_at") @db.Timestamptz(6)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  creneau CreneauConducteur @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@map("clotures_creneaux")
+}
+
+model Incident {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vehicleId    String   @map("vehicle_id") @db.Uuid
+  driverUserId String   @map("driver_user_id") @db.Uuid
+  severity     String   @default("medium")
+  description  String
+  evidencePath String?  @map("evidence_path")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  vehicule Vehicule             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  travaux  TravauxMaintenance[]
+
+  @@map("incidents")
+}
+
+model TravauxMaintenance {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vehicleId             String    @map("vehicle_id") @db.Uuid
+  fleetId               String    @map("fleet_id") @db.Uuid
+  createdFromIncidentId String?   @map("created_from_incident_id") @db.Uuid
+  priority              String    @default("medium")
+  status                String    @default("queued")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  closedAt              DateTime? @map("closed_at") @db.Timestamptz(6)
+
+  vehicule Vehicule                       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  flotte   Flotte                         @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  incident Incident?                      @relation(fields: [createdFromIncidentId], references: [id])
+  preuves  PreuveMaintenance[]
+  listes   ListeVerificationMaintenance[]
+
+  @@map("travaux_maintenance")
+}
+
+model PreuveMaintenance {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId     String   @map("job_id") @db.Uuid
+  kind      String
+  filePath  String   @map("file_path")
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  travaux TravauxMaintenance @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("preuves_maintenance")
+}
+
+model ListeVerificationMaintenance {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId    String   @map("job_id") @db.Uuid
+  items    Json
+  signedBy String   @map("signed_by") @db.Uuid
+  signedAt DateTime @default(now()) @map("signed_at") @db.Timestamptz(6)
+
+  travaux TravauxMaintenance @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("listes_verification_maintenance")
+}
+
+// ─── Abonnements & facturation ──────────────────────────────────────
+
+model Plan {
+  id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code              String  @unique
+  name              String
+  pricePerVehicle   Int     @map("price_per_vehicle")
+  minCommitmentDays Int     @default(60) @map("min_commitment_days")
+  isActive          Boolean @default(true) @map("is_active")
+
+  abonnements Abonnement[]
+
+  @@map("plans")
+}
+
+model Paiement {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId          String   @map("org_id") @db.Uuid
+  provider       String
+  amount         Int
+  currency       String   @default("XAF")
+  externalRef    String?  @map("external_ref")
+  status         String   @default("initiated")
+  idempotencyKey String   @map("idempotency_key")
+  rawPayload     Json?    @map("raw_payload")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  abonnements  Abonnement[]
+
+  @@unique([provider, idempotencyKey])
+  @@map("paiements")
+}
+
+model Abonnement {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fleetId   String   @map("fleet_id") @db.Uuid
+  planId    String   @map("plan_id") @db.Uuid
+  paymentId String?  @map("payment_id") @db.Uuid
+  startsAt  DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt    DateTime @map("ends_at") @db.Timestamptz(6)
+  status    String   @default("active")
+
+  flotte   Flotte          @relation(fields: [fleetId], references: [id], onDelete: Cascade)
+  plan     Plan            @relation(fields: [planId], references: [id])
+  paiement Paiement?       @relation(fields: [paymentId], references: [id])
+  droits   DroitVehicule[]
+
+  @@map("abonnements")
+}
+
+model DroitVehicule {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vehicleId      String   @map("vehicle_id") @db.Uuid
+  subscriptionId String   @map("subscription_id") @db.Uuid
+  active         Boolean  @default(true)
+  startsAt       DateTime @default(now()) @map("starts_at") @db.Timestamptz(6)
+  endsAt         DateTime @map("ends_at") @db.Timestamptz(6)
+  status         String   @default("active")
+  isPremium      Boolean  @default(false) @map("is_premium")
+
+  vehicule   Vehicule   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  abonnement Abonnement @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, subscriptionId])
+  @@map("droits_vehicules")
+}
+
+model JetonQr {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vehicleId String?  @map("vehicle_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  scope     String   @default("subscription")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  vehicule Vehicule? @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("jetons_qr")
+}

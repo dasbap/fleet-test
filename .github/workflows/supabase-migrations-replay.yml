@@ -1,0 +1,119 @@
+name: Supabase Migrations Replay
+
+on:
+  pull_request:
+    branches: [main, master, PRINCIPALE, fix/ci-green-main, release/**]
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/config.toml"
+      - ".github/workflows/supabase-migrations-replay.yml"
+  push:
+    branches: [main, master, PRINCIPALE, fix/ci-green-main, release/**]
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/config.toml"
+      - ".github/workflows/supabase-migrations-replay.yml"
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  verify-migration-filenames:
+    name: Verify migration filenames
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate migration naming convention
+        run: |
+          set -euo pipefail
+          bash scripts/report-legacy-migrations.sh
+          shopt -s nullglob
+          invalid_files=()
+
+          for file in supabase/migrations/*.sql; do
+            filename="$(basename "$file")"
+
+            # Format strict attendu.
+            if [[ "$filename" =~ ^[0-9]{14}_[a-z0-9_]+\.sql$ ]]; then
+              continue
+            fi
+
+            invalid_files+=("$file")
+          done
+
+          if [ ${#invalid_files[@]} -gt 0 ]; then
+            echo "::error::Fichiers de migration invalides détectés (format attendu: YYYYMMDDHHMMSS_description.sql)"
+            printf '%s\n' "${invalid_files[@]}" | sort
+            exit 1
+          fi
+
+          echo "Convention de nommage des migrations OK."
+
+  replay-migrations:
+    name: Replay migrations on clean local stack
+    runs-on: [self-hosted, Linux, X64]
+    needs: verify-migration-filenames
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.102.0
+
+      - name: Enable local email auth for integration tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Active le signup email en local (auth + auth.email) sans PowerShell (runners Linux).
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path("supabase/config.toml")
+          text = path.read_text(encoding="utf-8")
+          text = re.sub(
+              r"(?ms)(\[auth\]\s*.*?enable_signup\s*=\s*)false",
+              r"\1true",
+              text,
+              count=1,
+          )
+          text = re.sub(
+              r"(?ms)(\[auth\.email\]\s*.*?enable_signup\s*=\s*)false",
+              r"\1true",
+              text,
+              count=1,
+          )
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Start Supabase local stack
+        run: supabase start -x vector,logflare
+
+      - name: Replay migrations from scratch
+        run: supabase db reset --no-seed
+
+      - name: Export local Supabase env
+        # supabase status -o env peut entourer les valeurs de guillemets ("eyJ...").
+        # On les supprime pour éviter que SERVICE_ROLE_KEY commence par un " invalide en base64.
+        run: supabase status -o env | sed 's/="\(.*\)"$/=\1/' >> "$GITHUB_ENV"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Supabase Vitest integration tests
+        run: npm run test:integration:supabase:vitest
+        env:
+          VITE_SUPABASE_URL: ${{ env.API_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ env.ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}

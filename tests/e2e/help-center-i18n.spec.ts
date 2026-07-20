@@ -1,0 +1,156 @@
+import { expect, test, type Page } from "@playwright/test";
+
+type HelpLocaleCase = {
+  locale: "fr" | "en" | "ln";
+  bubbleLabel: string;
+  panelTitle: string;
+  faqTitle: string;
+};
+
+const HELP_LOCALE_CASES: HelpLocaleCase[] = [
+  {
+    locale: "fr",
+    bubbleLabel: "Besoin d'aide ?",
+    panelTitle: "Centre d'aide",
+    faqTitle: "Questions fréquentes",
+  },
+  {
+    locale: "en",
+    bubbleLabel: "Need help?",
+    panelTitle: "Help Center",
+    faqTitle: "Frequently asked questions",
+  },
+  {
+    locale: "ln",
+    bubbleLabel: "Bosalisi?",
+    panelTitle: "Lisalisi",
+    faqTitle: "Mituna ya mingi",
+  },
+];
+
+async function seedSessionAndLocale(page: Page, locale: HelpLocaleCase["locale"]): Promise<void> {
+  await page.addInitScript((nextLocale) => {
+    const nowIso = new Date().toISOString();
+    const demoFleetId = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
+
+    window.localStorage.setItem("esamba_lang", nextLocale);
+    window.localStorage.setItem("esamba-demo-auth-fallback", "true");
+    window.localStorage.setItem(
+      "esamba-mock-auth-v1",
+      JSON.stringify({
+        user: {
+          id: "11111111-1111-4111-8111-111111111111",
+          email: "organizer@esamba.test",
+          created_at: nowIso,
+          user_metadata: { full_name: "E2E Help User" },
+        },
+        role: "organizer",
+        memberships: [
+          {
+            id: "22222222-2222-4222-8222-222222222222",
+            fleet_id: demoFleetId,
+            role: "organizer",
+            is_active: true,
+          },
+        ],
+      }),
+    );
+  }, locale);
+}
+
+async function mockSupabaseRequests(page: Page): Promise<void> {
+  // Realtime WebSocket upgrade requests → abort (no console.error side-effect
+  // from aborting WebSocket connections, and they keep no HTTP long-poll open).
+  await page.route("**/realtime/v1/**", (route) => route.abort());
+
+  // Auth and generic REST requests → return an empty 200 so the app's
+  // fetch calls succeed silently (no "TypeError: Failed to fetch" in
+  // console.error → hardErrors assertion stays green).
+  // Registered before the billing mock (lower LIFO priority).
+  await page.route("**/auth/v1/**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "{}" }),
+  );
+  await page.route("**/rest/v1/**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
+  );
+
+  // Billing context RPC → fulfill with a "pro" plan so HelpBubble is shown.
+  // Registered last → highest LIFO priority → overrides the generic REST
+  // catch-all above for this specific URL.
+  await page.route("**/rest/v1/rpc/get_fleet_billing_context", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        plan_code: "pro",
+        ai_enabled: true,
+      }),
+    });
+  });
+}
+
+async function openHelpCenter(
+  page: Page,
+  bubbleLabel: string,
+): Promise<void> {
+  const bubbleButton = page
+    .getByTestId("help-bubble-button")
+    .or(page.getByRole("button", { name: bubbleLabel }))
+    .or(page.getByRole("button", { name: /Besoin d'aide \?|Need help\?|Bosalisi\?/i }))
+    .first();
+  await expect(bubbleButton).toBeVisible({ timeout: 15_000 });
+  // force: true bypasses pointer-event interception that occurs on mobile
+  // viewports when the fixed-position bubble sits behind dashboard content
+  // in the stacking context. The button is confirmed visible above.
+  await bubbleButton.click({ force: true });
+}
+
+async function gotoDashboard(page: Page): Promise<void> {
+  // Navigate and wait for the React app to mount (<main> from DashboardLayout).
+  // We deliberately avoid waitForLoadState("networkidle"): SPAs with WebSocket
+  // keep-alive connections (Supabase Realtime) never reach network-idle in CI.
+  await page.goto("/dashboard", { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await page.waitForSelector("main", { state: "attached", timeout: 15_000 });
+}
+
+test.describe("HelpCenter i18n e2e", () => {
+  test.describe.configure({ mode: "serial" });
+
+  for (const localeCase of HELP_LOCALE_CASES) {
+    test(`ouvre le centre d'aide et affiche les textes ${localeCase.locale}`, async ({ page }) => {
+      test.setTimeout(90_000);
+      const consoleErrors: string[] = [];
+      page.on("console", (msg) => {
+        if (msg.type() === "error") {
+          consoleErrors.push(msg.text());
+        }
+      });
+
+      await seedSessionAndLocale(page, localeCase.locale);
+      await mockSupabaseRequests(page);
+      await gotoDashboard(page);
+
+      await openHelpCenter(page, localeCase.bubbleLabel);
+
+      const helpPanel = page.getByTestId("help-center-panel");
+      await expect(helpPanel).toBeVisible();
+      await expect(helpPanel).toContainText(localeCase.panelTitle);
+      await expect(helpPanel).toContainText(localeCase.faqTitle);
+
+      // En CI, certaines requêtes API non critiques peuvent échouer (mock auth + backend indisponible).
+      // On garde uniquement les erreurs JavaScript réellement bloquantes côté runtime UI.
+      const hardErrors = consoleErrors.filter((entry) =>
+        /ReferenceError|SyntaxError|Uncaught/i.test(entry),
+      );
+      expect(
+        hardErrors,
+        `Erreurs console bloquantes (${localeCase.locale}): ${hardErrors.join("\n")}`,
+      ).toHaveLength(0);
+
+      await expect(page.getByTestId("help-bubble-button")).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
+    });
+  }
+});

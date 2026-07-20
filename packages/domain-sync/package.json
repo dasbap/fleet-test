@@ -1,0 +1,18 @@
+{
+  "name": "@esamba/domain-sync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stratégies de sync et résolution de conflits offline E-Samba",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@esamba/offline-contracts": "0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

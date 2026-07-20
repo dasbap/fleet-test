@@ -1,0 +1,42 @@
+{
+  "installationFolder": "D:\\Entreprise\\Stage\\Smartia\\smart-fleet-africa\\apps\\mobile\\node_modules\\react-native-reanimated\\android\\build\\intermediates\\prefab_package\\debug\\prefab",
+  "gradlePath": ":react-native-reanimated",
+  "packageInfo": {
+    "packageName": "react-native-reanimated",
+    "packageVersion": "3.17.5",
+    "packageSchemaVersion": 2,
+    "packageDependencies": [],
+    "modules": [
+      {
+        "moduleName": "reanimated",
+        "moduleHeaders": "D:\\Entreprise\\Stage\\Smartia\\smart-fleet-africa\\apps\\mobile\\node_modules\\react-native-reanimated\\android\\build\\prefab-headers\\reanimated",
+        "moduleExportLibraries": [],
+        "abis": [
+          {
+            "abiName": "arm64-v8a",
+            "abiApi": 24,
+            "abiNdkMajor": 27,
+            "abiStl": "c++_shared",
+            "abiLibrary": "D:\\Entreprise\\Stage\\Smartia\\smart-fleet-africa\\apps\\mobile\\node_modules\\react-native-reanimated\\android\\build\\intermediates\\cxx\\Debug\\216x1452\\obj\\arm64-v8a\\libreanimated.so",
+            "abiAndroidGradleBuildJsonFile": "D:\\Entreprise\\Stage\\Smartia\\smart-fleet-africa\\apps\\mobile\\node_modules\\react-native-reanimated\\android\\.cxx\\Debug\\216x1452\\arm64-v8a\\android_gradle_build.json"
+          }
+        ]
+      },
+      {
+        "moduleName": "worklets",
+        "moduleHeaders": "D:\\Entreprise\\Stage\\Smartia\\smart-fleet-africa\\apps\\mobile\\node_modules\\react-native-reanimated\\android\\build\\prefab-headers\\worklets",
+        "moduleExportLibraries": [],
+        "abis": [
+          {
+            "abiName": "arm64-v8a",
+            "abiApi": 24,
+            "abiNdkMajor": 27,
+            "abiStl": "c++_shared",
+            "abiLibrary": "D:\\Entreprise\\Stage\\Smartia\\smart-fleet-africa\\apps\\mobile\\node_modules\\react-native-reanimated\\android\\build\\intermediates\\cxx\\Debug\\216x1452\\obj\\arm64-v8a\\libworklets.so",
+            "abiAndroidGradleBuildJsonFile": "D:\\Entreprise\\Stage\\Smartia\\smart-fleet-africa\\apps\\mobile\\node_modules\\react-native-reanimated\\android\\.cxx\\Debug\\216x1452\\arm64-v8a\\android_gradle_build.json"
+          }
+        ]
+      }
+    ]
+  }
+}

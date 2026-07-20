@@ -1,0 +1,2 @@
+-- RLS audit_logs deja geree dans 20260523000000_audit_logs_create_and_rls.sql
+-- Ce fichier est intentionnellement vide (migration supersedee).

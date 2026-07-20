@@ -1,0 +1,277 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.rienaucun7.smartfleetafricamobile"
+4    android:versionCode="1"
+5    android:versionName="1.0.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="24"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+11-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:6:3-75
+11-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:6:20-73
+12    <uses-permission android:name="android.permission.INTERNET" />
+12-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:2:3-64
+12-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:2:20-62
+13    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+13-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:3:3-77
+13-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:3:20-75
+14    <uses-permission
+14-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:4:3-77
+15        android:name="android.permission.READ_EXTERNAL_STORAGE"
+15-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:4:20-75
+16        android:maxSdkVersion="32" />
+16-->[BareExpo:expo.modules.image:2.4.1] C:\Users\da silva\.gradle\caches\8.13\transforms\5a0b7a7726490e586676faf18b77b3bd\transformed\expo.modules.image-2.4.1\AndroidManifest.xml:17:9-35
+17    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+17-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:5:3-68
+17-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:5:20-66
+18    <uses-permission android:name="android.permission.VIBRATE" />
+18-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:7:3-63
+18-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:7:20-61
+19    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+19-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:8:3-78
+19-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:8:20-76
+20
+21    <queries>
+21-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:9:3-15:13
+22        <intent>
+22-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:10:5-14:14
+23            <action android:name="android.intent.action.VIEW" />
+23-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:11:7-58
+23-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:11:15-56
+24
+25            <category android:name="android.intent.category.BROWSABLE" />
+25-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:12:7-67
+25-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:12:17-65
+26
+27            <data android:scheme="https" />
+27-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:13:7-37
+27-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:13:13-35
+28        </intent>
+29        <!-- Query open documents -->
+30        <intent>
+30-->[host.exp.exponent:expo.modules.filesystem:18.1.11] C:\Users\da silva\.gradle\caches\8.13\transforms\d7b3e6cd3011a6f3bbc948bd5c90adbd\transformed\expo.modules.filesystem-18.1.11\AndroidManifest.xml:15:9-17:18
+31            <action android:name="android.intent.action.OPEN_DOCUMENT_TREE" />
+31-->[host.exp.exponent:expo.modules.filesystem:18.1.11] C:\Users\da silva\.gradle\caches\8.13\transforms\d7b3e6cd3011a6f3bbc948bd5c90adbd\transformed\expo.modules.filesystem-18.1.11\AndroidManifest.xml:16:13-79
+31-->[host.exp.exponent:expo.modules.filesystem:18.1.11] C:\Users\da silva\.gradle\caches\8.13\transforms\d7b3e6cd3011a6f3bbc948bd5c90adbd\transformed\expo.modules.filesystem-18.1.11\AndroidManifest.xml:16:21-76
+32        </intent>
+33    </queries>
+34
+35    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+35-->[:react-native-community_netinfo] D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\node_modules\@react-native-community\netinfo\android\build\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:7:5-79
+35-->[:react-native-community_netinfo] D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\node_modules\@react-native-community\netinfo\android\build\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:7:22-76
+36    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+36-->[:react-native-community_netinfo] D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\node_modules\@react-native-community\netinfo\android\build\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:8:5-76
+36-->[:react-native-community_netinfo] D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\node_modules\@react-native-community\netinfo\android\build\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:8:22-73
+37
+38    <permission
+38-->[androidx.core:core:1.13.1] C:\Users\da silva\.gradle\caches\8.13\transforms\d3e6a9ee5c6e95e14c47049b4c772dde\transformed\core-1.13.1\AndroidManifest.xml:22:5-24:47
+39        android:name="com.rienaucun7.smartfleetafricamobile.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+39-->[androidx.core:core:1.13.1] C:\Users\da silva\.gradle\caches\8.13\transforms\d3e6a9ee5c6e95e14c47049b4c772dde\transformed\core-1.13.1\AndroidManifest.xml:23:9-81
+40        android:protectionLevel="signature" />
+40-->[androidx.core:core:1.13.1] C:\Users\da silva\.gradle\caches\8.13\transforms\d3e6a9ee5c6e95e14c47049b4c772dde\transformed\core-1.13.1\AndroidManifest.xml:24:9-44
+41
+42    <uses-permission android:name="com.rienaucun7.smartfleetafricamobile.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+42-->[androidx.core:core:1.13.1] C:\Users\da silva\.gradle\caches\8.13\transforms\d3e6a9ee5c6e95e14c47049b4c772dde\transformed\core-1.13.1\AndroidManifest.xml:26:5-97
+42-->[androidx.core:core:1.13.1] C:\Users\da silva\.gradle\caches\8.13\transforms\d3e6a9ee5c6e95e14c47049b4c772dde\transformed\core-1.13.1\AndroidManifest.xml:26:22-94
+43
+44    <application
+44-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:16:3-32:17
+45        android:name="com.rienaucun7.smartfleetafricamobile.MainApplication"
+45-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:16:16-47
+46        android:allowBackup="true"
+46-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:16:162-188
+47        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+47-->[androidx.core:core:1.13.1] C:\Users\da silva\.gradle\caches\8.13\transforms\d3e6a9ee5c6e95e14c47049b4c772dde\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
+48        android:debuggable="true"
+49        android:extractNativeLibs="false"
+50        android:icon="@mipmap/ic_launcher"
+50-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:16:81-115
+51        android:label="@string/app_name"
+51-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:16:48-80
+52        android:roundIcon="@mipmap/ic_launcher_round"
+52-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:16:116-161
+53        android:supportsRtl="true"
+53-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:16:221-247
+54        android:theme="@style/AppTheme"
+54-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:16:189-220
+55        android:usesCleartextTraffic="true" >
+55-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\debug\AndroidManifest.xml:6:18-53
+56        <meta-data
+56-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:17:5-83
+57            android:name="expo.modules.updates.ENABLED"
+57-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:17:16-59
+58            android:value="false" />
+58-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:17:60-81
+59        <meta-data
+59-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:18:5-105
+60            android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH"
+60-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:18:16-80
+61            android:value="ALWAYS" />
+61-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:18:81-103
+62        <meta-data
+62-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:19:5-99
+63            android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS"
+63-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:19:16-79
+64            android:value="0" />
+64-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:19:80-97
+65
+66        <activity
+66-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:20:5-31:16
+67            android:name="com.rienaucun7.smartfleetafricamobile.MainActivity"
+67-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:20:15-43
+68            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode"
+68-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:20:44-134
+69            android:exported="true"
+69-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:20:256-279
+70            android:launchMode="singleTask"
+70-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:20:135-166
+71            android:screenOrientation="portrait"
+71-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:20:280-316
+72            android:theme="@style/Theme.App.SplashScreen"
+72-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:20:210-255
+73            android:windowSoftInputMode="adjustResize" >
+73-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:20:167-209
+74            <intent-filter>
+74-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:21:7-24:23
+75                <action android:name="android.intent.action.MAIN" />
+75-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:22:9-60
+75-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:22:17-58
+76
+77                <category android:name="android.intent.category.LAUNCHER" />
+77-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:23:9-68
+77-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:23:19-66
+78            </intent-filter>
+79            <intent-filter>
+79-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:25:7-30:23
+80                <action android:name="android.intent.action.VIEW" />
+80-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:11:7-58
+80-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:11:15-56
+81
+82                <category android:name="android.intent.category.DEFAULT" />
+82-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:27:9-67
+82-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:27:19-65
+83                <category android:name="android.intent.category.BROWSABLE" />
+83-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:12:7-67
+83-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:12:17-65
+84
+85                <data android:scheme="smartfleetafrica" />
+85-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:13:7-37
+85-->D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\android\app\src\main\AndroidManifest.xml:13:13-35
+86            </intent-filter>
+87        </activity>
+88
+89        <meta-data
+89-->[:expo-modules-core] D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\node_modules\expo-modules-core\android\build\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:9:9-11:89
+90            android:name="org.unimodules.core.AppLoader#react-native-headless"
+90-->[:expo-modules-core] D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\node_modules\expo-modules-core\android\build\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:10:13-79
+91            android:value="expo.modules.adapters.react.apploader.RNHeadlessAppLoader" />
+91-->[:expo-modules-core] D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\node_modules\expo-modules-core\android\build\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:11:13-86
+92        <meta-data
+92-->[:expo-modules-core] D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\node_modules\expo-modules-core\android\build\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:12:9-15:45
+93            android:name="com.facebook.soloader.enabled"
+93-->[:expo-modules-core] D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\node_modules\expo-modules-core\android\build\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:13:13-57
+94            android:value="true" />
+94-->[:expo-modules-core] D:\Entreprise\Stage\Smartia\smart-fleet-africa\apps\mobile\node_modules\expo-modules-core\android\build\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:14:13-33
+95
+96        <activity
+96-->[com.facebook.react:react-android:0.79.6] C:\Users\da silva\.gradle\caches\8.13\transforms\d6934a38f70fc06a6bb5715d1781b220\transformed\react-android-0.79.6-debug\AndroidManifest.xml:19:9-21:40
+97            android:name="com.facebook.react.devsupport.DevSettingsActivity"
+97-->[com.facebook.react:react-android:0.79.6] C:\Users\da silva\.gradle\caches\8.13\transforms\d6934a38f70fc06a6bb5715d1781b220\transformed\react-android-0.79.6-debug\AndroidManifest.xml:20:13-77
+98            android:exported="false" />
+98-->[com.facebook.react:react-android:0.79.6] C:\Users\da silva\.gradle\caches\8.13\transforms\d6934a38f70fc06a6bb5715d1781b220\transformed\react-android-0.79.6-debug\AndroidManifest.xml:21:13-37
+99
+100        <provider
+100-->[host.exp.exponent:expo.modules.filesystem:18.1.11] C:\Users\da silva\.gradle\caches\8.13\transforms\d7b3e6cd3011a6f3bbc948bd5c90adbd\transformed\expo.modules.filesystem-18.1.11\AndroidManifest.xml:21:9-30:20
+101            android:name="expo.modules.filesystem.FileSystemFileProvider"
+101-->[host.exp.exponent:expo.modules.filesystem:18.1.11] C:\Users\da silva\.gradle\caches\8.13\transforms\d7b3e6cd3011a6f3bbc948bd5c90adbd\transformed\expo.modules.filesystem-18.1.11\AndroidManifest.xml:22:13-74
+102            android:authorities="com.rienaucun7.smartfleetafricamobile.FileSystemFileProvider"
+102-->[host.exp.exponent:expo.modules.filesystem:18.1.11] C:\Users\da silva\.gradle\caches\8.13\transforms\d7b3e6cd3011a6f3bbc948bd5c90adbd\transformed\expo.modules.filesystem-18.1.11\AndroidManifest.xml:23:13-74
+103            android:exported="false"
+103-->[host.exp.exponent:expo.modules.filesystem:18.1.11] C:\Users\da silva\.gradle\caches\8.13\transforms\d7b3e6cd3011a6f3bbc948bd5c90adbd\transformed\expo.modules.filesystem-18.1.11\AndroidManifest.xml:24:13-37
+104            android:grantUriPermissions="true" >
+104-->[host.exp.exponent:expo.modules.filesystem:18.1.11] C:\Users\da silva\.gradle\caches\8.13\transforms\d7b3e6cd3011a6f3bbc948bd5c90adbd\transformed\expo.modules.filesystem-18.1.11\AndroidManifest.xml:25:13-47
+105            <meta-data
+105-->[host.exp.exponent:expo.modules.filesystem:18.1.11] C:\Users\da silva\.gradle\caches\8.13\transforms\d7b3e6cd3011a6f3bbc948bd5c90adbd\transformed\expo.modules.filesystem-18.1.11\AndroidManifest.xml:27:13-29:70
+106                android:name="android.support.FILE_PROVIDER_PATHS"
+106-->[host.exp.exponent:expo.modules.filesystem:18.1.11] C:\Users\da silva\.gradle\caches\8.13\transforms\d7b3e6cd3011a6f3bbc948bd5c90adbd\transformed\expo.modules.filesystem-18.1.11\AndroidManifest.xml:28:17-67
+107                android:resource="@xml/file_system_provider_paths" />
+107-->[host.exp.exponent:expo.modules.filesystem:18.1.11] C:\Users\da silva\.gradle\caches\8.13\transforms\d7b3e6cd3011a6f3bbc948bd5c90adbd\transformed\expo.modules.filesystem-18.1.11\AndroidManifest.xml:29:17-67
+108        </provider>
+109
+110        <meta-data
+110-->[com.github.bumptech.glide:okhttp3-integration:4.11.0] C:\Users\da silva\.gradle\caches\8.13\transforms\3b66244261c8e50690bb68a24587316e\transformed\okhttp3-integration-4.11.0\AndroidManifest.xml:11:9-13:43
+111            android:name="com.bumptech.glide.integration.okhttp3.OkHttpGlideModule"
+111-->[com.github.bumptech.glide:okhttp3-integration:4.11.0] C:\Users\da silva\.gradle\caches\8.13\transforms\3b66244261c8e50690bb68a24587316e\transformed\okhttp3-integration-4.11.0\AndroidManifest.xml:12:13-84
+112            android:value="GlideModule" />
+112-->[com.github.bumptech.glide:okhttp3-integration:4.11.0] C:\Users\da silva\.gradle\caches\8.13\transforms\3b66244261c8e50690bb68a24587316e\transformed\okhttp3-integration-4.11.0\AndroidManifest.xml:13:13-40
+113
+114        <provider
+114-->[androidx.emoji2:emoji2:1.3.0] C:\Users\da silva\.gradle\caches\8.13\transforms\3b84dc4648d743c1708ded0e781cd363\transformed\emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+115            android:name="androidx.startup.InitializationProvider"
+115-->[androidx.emoji2:emoji2:1.3.0] C:\Users\da silva\.gradle\caches\8.13\transforms\3b84dc4648d743c1708ded0e781cd363\transformed\emoji2-1.3.0\AndroidManifest.xml:25:13-67
+116            android:authorities="com.rienaucun7.smartfleetafricamobile.androidx-startup"
+116-->[androidx.emoji2:emoji2:1.3.0] C:\Users\da silva\.gradle\caches\8.13\transforms\3b84dc4648d743c1708ded0e781cd363\transformed\emoji2-1.3.0\AndroidManifest.xml:26:13-68
+117            android:exported="false" >
+117-->[androidx.emoji2:emoji2:1.3.0] C:\Users\da silva\.gradle\caches\8.13\transforms\3b84dc4648d743c1708ded0e781cd363\transformed\emoji2-1.3.0\AndroidManifest.xml:27:13-37
+118            <meta-data
+118-->[androidx.emoji2:emoji2:1.3.0] C:\Users\da silva\.gradle\caches\8.13\transforms\3b84dc4648d743c1708ded0e781cd363\transformed\emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
+119                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+119-->[androidx.emoji2:emoji2:1.3.0] C:\Users\da silva\.gradle\caches\8.13\transforms\3b84dc4648d743c1708ded0e781cd363\transformed\emoji2-1.3.0\AndroidManifest.xml:30:17-75
+120                android:value="androidx.startup" />
+120-->[androidx.emoji2:emoji2:1.3.0] C:\Users\da silva\.gradle\caches\8.13\transforms\3b84dc4648d743c1708ded0e781cd363\transformed\emoji2-1.3.0\AndroidManifest.xml:31:17-49
+121            <meta-data
+121-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\da silva\.gradle\caches\8.13\transforms\be1abd285ebf1c1d78a6ba24e9a5c027\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:29:13-31:52
+122                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+122-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\da silva\.gradle\caches\8.13\transforms\be1abd285ebf1c1d78a6ba24e9a5c027\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:30:17-78
+123                android:value="androidx.startup" />
+123-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\da silva\.gradle\caches\8.13\transforms\be1abd285ebf1c1d78a6ba24e9a5c027\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:31:17-49
+124            <meta-data
+124-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+125                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+125-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+126                android:value="androidx.startup" />
+126-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+127        </provider>
+128
+129        <receiver
+129-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+130            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+130-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+131            android:directBootAware="false"
+131-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+132            android:enabled="true"
+132-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+133            android:exported="true"
+133-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+134            android:permission="android.permission.DUMP" >
+134-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+135            <intent-filter>
+135-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+136                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+136-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+136-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+137            </intent-filter>
+138            <intent-filter>
+138-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+139                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+139-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+139-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+140            </intent-filter>
+141            <intent-filter>
+141-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+142                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+142-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+142-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+143            </intent-filter>
+144            <intent-filter>
+144-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+145                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+145-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+145-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\da silva\.gradle\caches\8.13\transforms\22e2ebcbd648bbae3ff1cb09c2e85076\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
+146            </intent-filter>
+147        </receiver>
+148    </application>
+149
+150</manifest>

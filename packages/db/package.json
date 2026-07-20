@@ -1,0 +1,27 @@
+{
+  "name": "@smart-fleet/db",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Prisma client & schema for smart-fleet-africa (Supabase PostgreSQL)",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "pull": "prisma db pull",
+    "format": "prisma format",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.0.0",
+    "typescript": "^5.0.0"
+  }
+}

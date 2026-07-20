@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "fleet": "Fleet",
+    "maintenance": "Maintenance",
+    "alerts": "Alerts",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "actions": {
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "close": "Close",
+    "plan": "Schedule",
+    "resolve": "Resolve",
+    "export": "Export",
+    "search": "Search"
+  },
+  "status": {
+    "active": "Active",
+    "maintenance": "In Maintenance",
+    "inactive": "Inactive",
+    "resolved": "Resolved",
+    "pending": "Pending",
+    "overdue": "Overdue"
+  },
+  "severity": {
+    "critical": "Critical",
+    "warning": "Warning",
+    "info": "Info"
+  },
+  "empty": {
+    "noVehicles": "No vehicles in fleet",
+    "noAlerts": "No active alerts",
+    "noMaintenance": "No maintenance scheduled"
+  },
+  "settingsPage": {
+    "title": "Settings",
+    "description": "Admin tools and configuration for your E-Samba workspace.",
+    "languageSectionTitle": "Language",
+    "languageSectionDescription": "Choose the interface language."
+  },
+  "languageSwitcher": {
+    "ariaLabel": "Interface language"
+  },
+  "dialog": {
+    "close": "Close"
+  },
+  "searchPalette": {
+    "openAria": "Open search",
+    "dialogTitle": "Universal search",
+    "dialogDescription": "Search across vehicles, maintenance and alerts.",
+    "placeholder": "Search vehicle, driver, alert…",
+    "clear": "Clear search",
+    "resultsAria": "Search results",
+    "emptyTitle": "No result for \"{query}\"",
+    "emptyHint": "Try a plate number, driver name, or maintenance type.",
+    "idlePrompt": "Type at least 2 characters",
+    "hintNavigate": "Navigate",
+    "hintOpen": "Open",
+    "hintClose": "Close",
+    "hintShortcut": "Open search",
+    "loadingState": "Searching",
+    "resultsCount": "{{count}} results",
+    "noResults": "No results"
+  },
+  "loading": "Loading…",
+  "error": "An error occurred"
+}

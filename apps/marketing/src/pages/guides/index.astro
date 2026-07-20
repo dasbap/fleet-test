@@ -1,0 +1,69 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import {
+  getPublishedGuides,
+  guidePath,
+  getHubForPillar,
+} from "@/lib/content";
+import { PILLAR_LABELS, type PillarKey } from "@/lib/site";
+
+const guides = await getPublishedGuides();
+const hubs = guides.filter((g) => g.data.kind === "hub");
+const pillars = Object.keys(PILLAR_LABELS) as PillarKey[];
+---
+
+<BaseLayout
+  title="Guides flotte et transport CEMAC"
+  description="Guides E-Samba : analyses flotte, opérations terrain, performance et conformité pour gestionnaires de flotte en Afrique centrale."
+  canonicalPath="/guides"
+>
+  <div class="container mx-auto px-4 max-w-4xl">
+    <header class="mb-12 text-center">
+      <h1 class="font-heading text-4xl font-bold mb-4">
+        Guides <span class="text-gradient">E-Samba</span>
+      </h1>
+      <p class="text-muted-foreground text-lg max-w-2xl mx-auto">
+        Bonnes pratiques transport, réglementation CEMAC et exploitation de votre flotte.
+      </p>
+    </header>
+
+    {
+      pillars.map((pillar) => {
+        const hub = getHubForPillar(pillar);
+        const hubEntry = hubs.find((h) => h.slug === hub.slug);
+        const articles = guides.filter(
+          (g) => g.data.kind === "article" && g.data.pillar === pillar
+        );
+        return (
+          <section class="mb-14">
+            <h2 class="font-heading text-2xl font-bold mb-2">
+              <a href={hub.href} class="hover:text-primary">
+                {PILLAR_LABELS[pillar]}
+              </a>
+            </h2>
+            {hubEntry && (
+              <p class="text-sm text-muted-foreground mb-4">
+                {hubEntry.data.description}
+              </p>
+            )}
+            <ul class="grid gap-4 md:grid-cols-2">
+              {articles.map((article) => (
+                <li>
+                  <a
+                    href={guidePath(article.slug)}
+                    class="block rounded-xl border border-border bg-card p-5 hover:border-primary/40 transition-colors"
+                  >
+                    <h3 class="font-semibold mb-2">{article.data.title}</h3>
+                    <p class="text-sm text-muted-foreground line-clamp-2">
+                      {article.data.description}
+                    </p>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })
+    }
+  </div>
+</BaseLayout>

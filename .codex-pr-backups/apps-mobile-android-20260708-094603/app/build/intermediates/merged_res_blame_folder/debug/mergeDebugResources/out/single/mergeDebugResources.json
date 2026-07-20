@@ -1,0 +1,70 @@
+[
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/mipmap-xxxhdpi_ic_launcher.webp.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/mipmap-xxxhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/mipmap-xhdpi_ic_launcher_round.webp.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/mipmap-xhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/mipmap-hdpi_ic_launcher.webp.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/mipmap-hdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/mipmap-xxhdpi_ic_launcher_round.webp.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/mipmap-xxhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/drawable_rn_edit_text_material.xml.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/drawable/rn_edit_text_material.xml"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/drawable-xxhdpi_splashscreen_logo.png.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/drawable-xxhdpi/splashscreen_logo.png"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/drawable-mdpi_splashscreen_logo.png.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/drawable-mdpi/splashscreen_logo.png"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/mipmap-xxhdpi_ic_launcher.webp.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/mipmap-xxhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/mipmap-xxxhdpi_ic_launcher_round.webp.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/mipmap-xxxhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/drawable-xhdpi_splashscreen_logo.png.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/drawable-xhdpi/splashscreen_logo.png"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/mipmap-mdpi_ic_launcher.webp.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/mipmap-mdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/drawable-hdpi_splashscreen_logo.png.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/drawable-hdpi/splashscreen_logo.png"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/mipmap-xhdpi_ic_launcher.webp.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/mipmap-xhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/mipmap-hdpi_ic_launcher_round.webp.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/mipmap-hdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/mipmap-mdpi_ic_launcher_round.webp.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/mipmap-mdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/drawable-xxxhdpi_splashscreen_logo.png.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/drawable-xxxhdpi/splashscreen_logo.png"
+    },
+    {
+        "merged": "com.rienaucun7.smartfleetafricamobile.app-debug-56:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.rienaucun7.smartfleetafricamobile.app-main-58:/drawable/ic_launcher_background.xml"
+    }
+]

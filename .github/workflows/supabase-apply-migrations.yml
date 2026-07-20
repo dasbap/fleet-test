@@ -1,0 +1,95 @@
+name: Supabase Apply Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run liste les migrations, apply les execute sur la BDD cible"
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - apply
+      migration_set:
+        description: "runtime = migrations de restauration prod, all = toutes les migrations SQL"
+        required: true
+        default: runtime
+        type: choice
+        options:
+          - runtime
+          - all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-apply-migrations-production
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  apply-migrations:
+    name: Apply migrations to Supabase
+    runs-on: [self-hosted, Linux, X64]
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Select migration files
+        env:
+          MIGRATION_SET: ${{ inputs.migration_set }}
+        run: node scripts/select-supabase-migrations.mjs "$MIGRATION_SET" migration-files.txt
+
+      - name: Print selected migrations
+        run: cat migration-files.txt
+
+      - name: Dry run summary
+        if: ${{ inputs.mode == 'dry-run' }}
+        run: |
+          echo "Dry run uniquement: aucune requete SQL n'a ete executee."
+          echo "Relancer cette action avec mode=apply pour appliquer cette liste."
+
+      - name: Apply selected migrations
+        if: ${{ inputs.mode == 'apply' }}
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          PGSSLMODE: no-verify
+        run: |
+          set -euo pipefail
+          mapfile -t migration_files < migration-files.txt
+          if [ "${#migration_files[@]}" -eq 0 ]; then
+            echo "::error::Aucune migration selectionnee."
+            exit 1
+          fi
+          node scripts/apply-sql-file.mjs "${migration_files[@]}"
+
+      - name: Verify critical migration objects
+        if: ${{ inputs.mode == 'apply' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          PGSSLMODE: no-verify
+        run: node scripts/apply-sql-file.mjs supabase/tests/04_post_migration_objects.sql

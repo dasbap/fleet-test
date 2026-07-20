@@ -1,0 +1,93 @@
+# Vérifie que le bundle WebView Capacitor compile (chemins relatifs, pas de régression Vite).
+name: Build Capacitor
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - release/**
+    paths:
+      - "src/**"
+      - "vite.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "index.html"
+      - "capacitor.config.ts"
+      - "android/**"
+      - "resources/**"
+      - "scripts/export-resources-icon-png.mjs"
+  pull_request:
+    branches:
+      - main
+      - master
+      - release/**
+    paths:
+      - "src/**"
+      - "vite.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "index.html"
+      - "capacitor.config.ts"
+      - "android/**"
+      - "resources/**"
+      - "scripts/export-resources-icon-png.mjs"
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-capacitor:
+    name: vite build (mode capacitor)
+    runs-on: [self-hosted, Linux, X64]
+    env:
+      # Valeurs factices : le client Supabase n’est pas exécuté pendant le build statique.
+      VITE_SUPABASE_URL: https://placeholder-build.supabase.co
+      VITE_SUPABASE_ANON_KEY: placeholder-anon-key-ci-build-only
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install libvips (requis par @capacitor/assets/sharp en fallback compilation)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libvips-dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Guardrail - no critical Vite externals
+        run: npm run check:vite-external
+
+      - name: Build (capacitor mode)
+        run: npm run build:capacitor
+
+      - name: Vérifier dist/ (artefacts minimaux)
+        run: npm run verify:dist
+
+      - name: Capacitor sync
+        run: npm run cap:sync
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Android assembleDebug
+        working-directory: android
+        shell: bash
+        run: |
+          if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
+          if [ -f ./gradlew ]; then ./gradlew :app:assembleDebug --no-daemon
+          elif [ -f ./gradlew.bat ]; then ./gradlew.bat :app:assembleDebug --no-daemon
+          else echo "gradlew introuvable" && exit 1
+          fi

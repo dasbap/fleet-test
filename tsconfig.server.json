@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src/server/**/*.ts",
+    "src/lib/bff-config.ts",
+    "src/lib/billing/**/*.ts",
+    "src/types/billing-snapshot.ts",
+    "src/types/mobile-money.ts"
+  ]
+}

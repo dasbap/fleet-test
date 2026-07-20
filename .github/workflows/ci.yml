@@ -1,0 +1,271 @@
+#
+# .github/workflows/ci.yml — smart-fleet-africa
+# Fix PR #3 : l'ordre des migrations sur DB fraîche causait
+# "relation public.flotte_adhesions does not exist"
+# Solution : supabase db push --local avec --include-all + migration idempotente
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop, PRINCIPALE, fix/ci-green-main]
+  pull_request:
+    branches: [main, develop, PRINCIPALE, fix/ci-green-main]
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  db-migrations:
+    name: Supabase migrations (fresh DB)
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.102.0
+
+      # Démarrer une instance Supabase locale fraîche (sans services optionnels lourds)
+      - name: Start Supabase local
+        run: supabase start -x vector,logflare
+
+      # Rejouer toutes les migrations depuis zéro (équivalent db reset + apply)
+      - name: Replay all migrations
+        run: supabase db reset --no-seed
+
+      # Vérifier que search_fleet fonctionne sans auth (retourne 0 rows, pas d'erreur).
+      # Marqueur textuel pour éviter les ambiguïtés de formatage psql (alignement, CR/LF, ANSI).
+      - name: Smoke test — search_fleet sans auth
+        run: |
+          out=$(supabase db query \
+            "SELECT CASE WHEN count(*)=0 THEN 'OK_SAFE' ELSE 'FAIL_HAS_ROWS' END AS result FROM public.search_fleet('Toyota'::text, 5::int, NULL::uuid);" \
+            --local 2>&1 || true)
+          echo "search_fleet output: $out"
+          echo "$out" | grep -q "OK_SAFE" \
+            && echo "✅ CI safe: 0 rows without auth" \
+            || { echo "❌ search_fleet a retourné des lignes sans auth ou a planté"; exit 1; }
+
+      # Vérifier que les vues de rétention existent
+      - name: Smoke test — retention views
+        run: |
+          supabase db query \
+            "SELECT table_name FROM information_schema.views WHERE table_schema='public' AND table_name LIKE 'v_retention%' ORDER BY table_name;" \
+            --local
+
+      - name: Stop Supabase local
+        if: always()
+        run: supabase stop
+
+  # ── Job 2 : TypeScript build ────────────────────────────────────────────
+  build:
+    name: TypeScript build
+    runs-on: [self-hosted, Linux, X64]
+    needs: db-migrations
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+        env:
+          # Utiliser des valeurs de test pour le build CI
+          # Le build Vite n'a pas besoin de vraies credentials en tsc --noEmit
+          VITE_SUPABASE_URL:      ${{ secrets.VITE_SUPABASE_URL      || 'https://placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder_key' }}
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Bundle size check
+        run: |
+          TOTAL=$(find dist/assets -name "*.js" -exec wc -c {} + 2>/dev/null | tail -1 | awk '{print $1}' || echo 0)
+          KB=$((TOTAL / 1024))
+          echo "Bundle JS : ${KB} KB"
+          if [ "$KB" -gt 300 ]; then
+            echo "::warning::Bundle ${KB}KB depasse 300KB - verifier les imports"
+          fi
+
+  # ── Job 3 : Lint ────────────────────────────────────────────────────────
+  lint:
+    name: ESLint
+    runs-on: [self-hosted, Linux, X64]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+        continue-on-error: false   # bloquant sur la PR
+
+  # ── Job 4 : Qualité + métriques consolidées ───────────────────────────────
+  quality-metrics:
+    name: Test layers metrics
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 45
+    needs: build
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_TEST_EMAIL: ${{ secrets.SUPABASE_TEST_EMAIL }}
+      SUPABASE_TEST_PASSWORD: ${{ secrets.SUPABASE_TEST_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run lint layer
+        id: layer_lint
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p ci-metrics test-results
+          start=$(date +%s%3N)
+          set +e
+          npm run lint
+          code=$?
+          set -e
+          end=$(date +%s%3N)
+          duration=$((end - start))
+          status="passed"
+          if [ "$code" -ne 0 ]; then status="failed"; fi
+          node -e "const fs=require('fs');fs.writeFileSync('ci-metrics/lint.json',JSON.stringify({layer:'lint',status:'$status',duration_ms:$duration,test_count:null,flaky_count:null},null,2));"
+
+      - name: Run unit layer
+        id: layer_unit
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p ci-metrics test-results
+          start=$(date +%s%3N)
+          set +e
+          npx vitest run --reporter=json --outputFile=test-results/unit.json
+          code=$?
+          set -e
+          end=$(date +%s%3N)
+          duration=$((end - start))
+          status="passed"
+          if [ "$code" -ne 0 ]; then status="failed"; fi
+          count=$(node -e "const fs=require('fs');let n='null';try{const r=JSON.parse(fs.readFileSync('test-results/unit.json','utf8'));n=String(r.numTotalTests ?? r.testResults?.reduce((a,t)=>a+(t.assertionResults?.length||0),0) ?? 'null')}catch{}process.stdout.write(n)")
+          node -e "const fs=require('fs');fs.writeFileSync('ci-metrics/unit.json',JSON.stringify({layer:'unit',status:'$status',duration_ms:$duration,test_count:($count==='null'?null:Number($count)),flaky_count:null},null,2));"
+
+      - name: Run integration layer
+        id: layer_integration
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p ci-metrics test-results
+          start=$(date +%s%3N)
+          set +e
+          npx vitest run -c vitest.integration.config.ts \
+            tests/integration/rls.fleet-access.test.ts \
+            tests/integration/triggers.vehicle-limit.test.ts \
+            tests/integration/fuel.fraud-scoring.test.ts \
+            --reporter=json --outputFile=test-results/integration.json
+          code=$?
+          set -e
+          end=$(date +%s%3N)
+          duration=$((end - start))
+          status="passed"
+          if [ "$code" -ne 0 ]; then status="failed"; fi
+          count=$(node -e "const fs=require('fs');let n='null';try{const r=JSON.parse(fs.readFileSync('test-results/integration.json','utf8'));n=String(r.numTotalTests ?? r.testResults?.reduce((a,t)=>a+(t.assertionResults?.length||0),0) ?? 'null')}catch{}process.stdout.write(n)")
+          node -e "const fs=require('fs');fs.writeFileSync('ci-metrics/integration.json',JSON.stringify({layer:'integration',status:'$status',duration_ms:$duration,test_count:($count==='null'?null:Number($count)),flaky_count:null},null,2));"
+
+      - name: Run e2e layer
+        id: layer_e2e
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p ci-metrics test-results/e2e
+          start=$(date +%s%3N)
+          set +e
+          PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/e2e/results.json npx playwright test --reporter=line,json
+          code=$?
+          set -e
+          end=$(date +%s%3N)
+          duration=$((end - start))
+          status="passed"
+          if [ "$code" -ne 0 ]; then status="failed"; fi
+          counts=$(node -e "const fs=require('fs');let out={tests:null,flaky:null};try{const r=JSON.parse(fs.readFileSync('test-results/e2e/results.json','utf8'));const specs=[];const walk=s=>{(s.specs||[]).forEach(sp=>specs.push(sp));(s.suites||[]).forEach(walk)};(r.suites||[]).forEach(walk);const tests=specs.reduce((acc,sp)=>acc+(sp.tests?.length||0),0);const flaky=specs.reduce((acc,sp)=>acc+(sp.tests||[]).filter(t=>t.outcome==='flaky').length,0);out={tests,flaky};}catch{}process.stdout.write(JSON.stringify(out));")
+          test_count=$(node -e "const c=JSON.parse(process.argv[1]);process.stdout.write(c.tests===null?'null':String(c.tests));" "$counts")
+          flaky_count=$(node -e "const c=JSON.parse(process.argv[1]);process.stdout.write(c.flaky===null?'null':String(c.flaky));" "$counts")
+          node -e "const fs=require('fs');fs.writeFileSync('ci-metrics/e2e.json',JSON.stringify({layer:'e2e',status:'$status',duration_ms:$duration,test_count:($test_count==='null'?null:Number($test_count)),flaky_count:($flaky_count==='null'?null:Number($flaky_count))},null,2));"
+
+      - name: Build consolidated metrics + summary
+        if: always()
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const dir = 'ci-metrics';
+          const files = ['lint.json', 'unit.json', 'integration.json', 'e2e.json'];
+          const layers = files.map((file) => {
+            const p = path.join(dir, file);
+            if (!fs.existsSync(p)) {
+              return { layer: file.replace('.json', ''), status: 'failed', duration_ms: 0, test_count: null, flaky_count: null };
+            }
+            return JSON.parse(fs.readFileSync(p, 'utf8'));
+          });
+          const payload = { generated_at: new Date().toISOString(), layers };
+          fs.writeFileSync('ci-metrics.json', JSON.stringify(payload, null, 2));
+          const rows = layers
+            .map((layer) => `| ${layer.layer} | ${layer.status} | ${layer.duration_ms} | ${layer.test_count ?? 'n/a'} | ${layer.flaky_count ?? 'n/a'} |`)
+            .join('\n');
+          const md = [
+            '## CI metrics',
+            '',
+            '| Couche | Statut | Duree (ms) | Tests | Flaky E2E |',
+            '|---|---:|---:|---:|---:|',
+            rows,
+            '',
+          ].join('\n');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
+          NODE
+
+      - name: Upload metrics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-metrics
+          path: |
+            ci-metrics.json
+            ci-metrics/*.json
+            test-results/**/*.json
+          if-no-files-found: warn
+
+      - name: Fail workflow if any layer failed
+        if: always()
+        shell: bash
+        run: |
+          node -e "const fs=require('fs');const payload=JSON.parse(fs.readFileSync('ci-metrics.json','utf8'));const failed=payload.layers.filter((l)=>l.status!=='passed');if(failed.length){console.error('Layers en echec:',failed.map((l)=>l.layer).join(', '));process.exit(1)}"

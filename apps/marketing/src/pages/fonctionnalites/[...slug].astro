@@ -1,0 +1,29 @@
+---
+import { getCollection, render } from "astro:content";
+import LandingLayout from "@/layouts/LandingLayout.astro";
+import { featurePath } from "@/lib/content";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("features", ({ data }) => !data.draft);
+  return entries.map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<LandingLayout
+  title={entry.data.title}
+  description={entry.data.description}
+  canonicalPath={featurePath(entry.slug)}
+  heroLabel={entry.data.module}
+  breadcrumbs={[
+    { label: "Fonctionnalités", href: "/fonctionnalites" },
+    { label: entry.data.title },
+  ]}
+>
+  <Content />
+</LandingLayout>

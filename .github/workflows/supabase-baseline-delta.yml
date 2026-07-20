@@ -1,0 +1,101 @@
+name: Supabase Baseline and Delta Validation
+
+on:
+  pull_request:
+    paths:
+      - "supabase/**"
+      - "scripts/test-baseline-delta.ps1"
+      - "scripts/test-sql-security.ps1"
+      - "scripts/freeze-remote-schema.ps1"
+      - "package.json"
+  push:
+    branches:
+      - main
+      - master
+      - release/**
+    paths:
+      - "supabase/**"
+      - "scripts/test-baseline-delta.ps1"
+      - "scripts/test-sql-security.ps1"
+      - "scripts/freeze-remote-schema.ps1"
+      - "package.json"
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  SUPABASE_CLI_VERSION: 2.102.0
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate-baseline-delta:
+    name: Validate baseline + deltas on fresh local DB
+    runs-on: [self-hosted, Linux, X64]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      - name: Verify Supabase CLI Installation
+        run: |
+          supabase --version
+
+      - name: Prepare CI Log Directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Path "supabase-ci-logs" -Force | Out-Null
+
+      - name: Run Baseline + Delta Validation
+        shell: pwsh
+        env:
+          CI_SUPABASE_DEBUG: "true"
+        run: ./scripts/test-baseline-delta.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/baseline-delta.log"
+
+      - name: Run SQL Security Tests
+        shell: pwsh
+        env:
+          CI_SUPABASE_DEBUG: "true"
+        run: ./scripts/test-sql-security.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/sql-security.log"
+
+      - name: Upload Supabase Debug Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-debug-logs
+          path: supabase-ci-logs/
+          if-no-files-found: warn
+
+  validate-delta-file-list:
+    name: Validate delta files exist
+    runs-on: [self-hosted, Linux, X64]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v5
+
+      - name: Validate Delta Migration List
+        run: |
+          while IFS= read -r file; do
+            if [ -z "$file" ]; then
+              continue
+            fi
+            if [ ! -f "$file" ]; then
+              echo "Missing delta file: $file"
+              exit 1
+            fi
+          done < supabase/baseline/delta-migrations.txt

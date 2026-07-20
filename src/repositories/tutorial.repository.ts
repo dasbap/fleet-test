@@ -1,0 +1,238 @@
+import { supabase } from "@/integrations/supabase/client";
+import {
+  TUTORIAL_CATALOG_SEEDS,
+  type TutorialCatalogSeed,
+} from "@/data/tutorials/catalog.seed";
+import { resolveThumbPath } from "@/features/tutorials/lib/tutorialStorageAssets";
+import { getSignedStorageUrl } from "@/lib/storage/signedUrl";
+
+export type TutorialProvider = "storage" | "youtube" | "vimeo";
+
+export interface TutorialChapter {
+  id: string;
+  title: string;
+  startSec: number;
+}
+
+export interface TutorialItem {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  durationSec: number;
+  durationMin: number;
+  categorySlug: string;
+  categoryLabel: string;
+  provider: TutorialProvider;
+  videoUrl: string;
+  thumbUrl: string;
+  videoPath: string | null;
+  externalUrl: string | null;
+  tags: string[];
+  sortOrder: number;
+  chapters: TutorialChapter[];
+  isPublished: boolean;
+}
+
+interface TutorialRow {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  duration_sec: number;
+  provider: TutorialProvider;
+  video_path: string | null;
+  external_url: string | null;
+  thumb_path: string | null;
+  sort_order: number;
+  is_published: boolean;
+  tags: string[] | null;
+  chapters: TutorialChapter[] | null;
+  tutorial_categories: {
+    slug: string;
+    label_fr: string;
+  } | null;
+}
+
+const BUCKET = "tutorials";
+const VIDEO_SIGNED_TTL = 86_400;
+const THUMB_SIGNED_TTL = 3_600;
+
+async function resolveStorageSignedUrl(path: string, ttlSeconds: number): Promise<string> {
+  const signed = await getSignedStorageUrl(BUCKET, path, ttlSeconds);
+  return signed ?? "";
+}
+
+function mapSeedToItemBase(seed: TutorialCatalogSeed): TutorialItem {
+  return {
+    id: seed.id,
+    slug: seed.slug,
+    title: seed.title,
+    description: seed.description,
+    durationSec: seed.durationSec,
+    durationMin: Math.max(1, Math.ceil(seed.durationSec / 60)),
+    categorySlug: seed.categorySlug,
+    categoryLabel: seed.categoryLabelFr,
+    provider: seed.provider,
+    videoUrl: seed.provider === "storage" ? seed.videoPath : seed.externalUrl ?? seed.videoPath,
+    thumbUrl: resolveThumbPath(seed.slug, seed.thumbPath),
+    videoPath: seed.videoPath,
+    externalUrl: seed.externalUrl,
+    tags: seed.tags,
+    sortOrder: seed.sortOrder,
+    chapters: seed.chapters,
+    isPublished: true,
+  };
+}
+
+async function enrichSeedItem(item: TutorialItem): Promise<TutorialItem> {
+  if (item.provider === "storage") {
+    const videoUrl = item.videoPath
+      ? await resolveStorageSignedUrl(item.videoPath, VIDEO_SIGNED_TTL)
+      : item.videoUrl;
+    const thumbUrl = await resolveStorageSignedUrl(
+      resolveThumbPath(item.slug, item.thumbUrl),
+      THUMB_SIGNED_TTL,
+    );
+    return { ...item, videoUrl, thumbUrl };
+  }
+  return item;
+}
+
+function mapRowToItemBase(row: TutorialRow): TutorialItem {
+  const categorySlug = row.tutorial_categories?.slug ?? "parametres";
+  const categoryLabel = row.tutorial_categories?.label_fr ?? "Paramètres";
+  const videoPath = row.video_path;
+  const thumbPath = resolveThumbPath(row.slug, row.thumb_path);
+  const provider = row.provider ?? "storage";
+
+  const videoUrl =
+    provider === "storage" && videoPath
+      ? videoPath
+      : row.external_url ?? videoPath ?? "";
+
+  return {
+    id: row.slug,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    durationSec: row.duration_sec,
+    durationMin: Math.max(1, Math.ceil(row.duration_sec / 60)),
+    categorySlug,
+    categoryLabel,
+    provider,
+    videoUrl,
+    thumbUrl: thumbPath,
+    videoPath,
+    externalUrl: row.external_url,
+    tags: row.tags ?? [],
+    sortOrder: row.sort_order,
+    chapters: row.chapters ?? [],
+    isPublished: row.is_published,
+  };
+}
+
+async function enrichRowItem(item: TutorialItem): Promise<TutorialItem> {
+  if (item.provider === "storage") {
+    const videoUrl = item.videoPath
+      ? await resolveStorageSignedUrl(item.videoPath, VIDEO_SIGNED_TTL)
+      : item.videoUrl;
+    const thumbUrl = await resolveStorageSignedUrl(item.thumbUrl, THUMB_SIGNED_TTL);
+    return { ...item, videoUrl, thumbUrl };
+  }
+  return item;
+}
+
+export class TutorialRepository {
+  async listFromSeed(): Promise<TutorialItem[]> {
+    const base = TUTORIAL_CATALOG_SEEDS.map(mapSeedToItemBase).sort(
+      (a, b) => a.sortOrder - b.sortOrder,
+    );
+    return Promise.all(base.map(enrichSeedItem));
+  }
+
+  async findAllFromDb(limit = 50, offset = 0): Promise<TutorialItem[]> {
+    const { data, error } = await supabase
+      .from("tutorials")
+      .select(
+        `
+        id,
+        slug,
+        title,
+        description,
+        duration_sec,
+        provider,
+        video_path,
+        external_url,
+        thumb_path,
+        sort_order,
+        is_published,
+        tags,
+        chapters,
+        tutorial_categories ( slug, label_fr )
+      `,
+      )
+      .eq("is_published", true)
+      .order("sort_order", { ascending: true })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error("Error fetching tutorials from DB:", error);
+      return [];
+    }
+
+    const items = ((data ?? []) as TutorialRow[]).map(mapRowToItemBase);
+    return Promise.all(items.map(enrichRowItem));
+  }
+
+  async findAll(limit = 50, offset = 0): Promise<TutorialItem[]> {
+    const fromDb = await this.findAllFromDb(limit, offset);
+    if (fromDb.length > 0) return fromDb;
+    return this.listFromSeed();
+  }
+
+  async findById(tutorialId: string): Promise<TutorialItem | null> {
+    const normalized = tutorialId.trim();
+    if (!normalized) return null;
+
+    const { data, error } = await supabase
+      .from("tutorials")
+      .select(
+        `
+        id,
+        slug,
+        title,
+        description,
+        duration_sec,
+        provider,
+        video_path,
+        external_url,
+        thumb_path,
+        sort_order,
+        is_published,
+        tags,
+        chapters,
+        tutorial_categories ( slug, label_fr )
+      `,
+      )
+      .eq("slug", normalized)
+      .eq("is_published", true)
+      .maybeSingle();
+
+    if (!error && data) {
+      return enrichRowItem(mapRowToItemBase(data as TutorialRow));
+    }
+
+    const seed = TUTORIAL_CATALOG_SEEDS.find(
+      (t) => t.id === normalized || t.slug === normalized,
+    );
+    return seed ? enrichSeedItem(mapSeedToItemBase(seed)) : null;
+  }
+
+  /** @deprecated Utiliser findAll — conservé pour compatibilité tests */
+  list(): TutorialItem[] {
+    return TUTORIAL_CATALOG_SEEDS.map(mapSeedToItemBase).sort(
+      (a, b) => a.sortOrder - b.sortOrder,
+    );
+  }
+}
