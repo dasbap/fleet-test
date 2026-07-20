@@ -1,14 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-
-function isMissingFuelStore(error: { code?: string; message?: string } | null | undefined) {
-  return (
-    error?.code === "PGRST205" ||
-    error?.code === "42P01" ||
-    error?.code === "PGRST202" ||
-    error?.message?.includes("journal_carburant") ||
-    error?.message?.includes("enregistrer_carburant_offline")
-  );
-}
+import { throwIfSupabaseInfrastructureError } from "@/lib/supabase-runtime-errors";
 
 export interface FuelEntry {
   id: string;
@@ -53,10 +44,10 @@ export class FuelRepository {
       .select("liters, amount_xof")
       .eq("fleet_id", fleetId)
       .gte("purchased_at", since.toISOString());
-    if (isMissingFuelStore(error)) {
-      return { totalLiters: 0, totalAmountXof: 0, entryCount: 0 };
+    if (error) {
+      throwIfSupabaseInfrastructureError(error, "fuel summary");
+      throw new Error(error.message);
     }
-    if (error) throw new Error(error.message);
     const rows = data ?? [];
     return {
       totalLiters: rows.reduce((s, r) => s + Number(r.liters ?? 0), 0),
@@ -78,8 +69,10 @@ export class FuelRepository {
       .order("purchased_at", { ascending: false })
       .range(options.offset ?? 0, (options.offset ?? 0) + (options.limit ?? 50) - 1);
 
-    if (isMissingFuelStore(error)) return [];
-    if (error) throw new Error(error.message);
+    if (error) {
+      throwIfSupabaseInfrastructureError(error, "fuel entries");
+      throw new Error(error.message);
+    }
     return (data ?? []) as unknown as FuelEntry[];
   }
 
@@ -92,8 +85,10 @@ export class FuelRepository {
       .eq("vehicle_id", vehicleId)
       .order("purchased_at", { ascending: false })
       .limit(limit);
-    if (isMissingFuelStore(error)) return [];
-    if (error) throw new Error(error.message);
+    if (error) {
+      throwIfSupabaseInfrastructureError(error, "vehicle fuel entries");
+      throw new Error(error.message);
+    }
     return (data ?? []) as FuelEntry[];
   }
 
@@ -112,9 +107,7 @@ export class FuelRepository {
     });
 
     if (error) {
-      if (isMissingFuelStore(error)) {
-        throw new Error("Le module carburant n'est pas disponible sur ce projet.");
-      }
+      throwIfSupabaseInfrastructureError(error, "fuel entry create");
       console.error("Error creating fuel entry:", error);
       throw new Error(error.message);
     }

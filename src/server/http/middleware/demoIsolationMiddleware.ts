@@ -16,6 +16,7 @@
  */
 
 import type { Context, MiddlewareHandler } from "hono";
+import { throwIfSupabaseInfrastructureError } from "@/lib/supabase-runtime-errors";
 import { getBearerToken } from "@/server/http/auth";
 import { createSupabaseServiceClient } from "@/server/infra/supabaseServiceClient";
 
@@ -42,15 +43,19 @@ async function resolveUserKind(userId: string): Promise<UserKind> {
   }
 
   const admin = createSupabaseServiceClient();
-  if (!admin) return "unknown";
+  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY missing for demo isolation");
 
   // Vérifier admin plateforme
-  const { data: adminRow } = await admin
+  const { data: adminRow, error: adminError } = await admin
     .from("admin_profiles")
     .select("user_id")
     .eq("user_id", userId)
     .eq("is_active", true)
     .maybeSingle();
+
+  if (adminError) {
+    throwIfSupabaseInfrastructureError(adminError, "demo isolation admin lookup");
+  }
 
   if (adminRow) {
     USER_KIND_CACHE.set(userId, { kind: "admin", ts: Date.now() });
@@ -58,12 +63,16 @@ async function resolveUserKind(userId: string): Promise<UserKind> {
   }
 
   // Vérifier démo/prospect
-  const { data: demoRow } = await admin
+  const { data: demoRow, error: demoError } = await admin
     .from("demo_profiles")
     .select("user_id, account_type, is_active")
     .eq("user_id", userId)
     .eq("is_active", true)
     .maybeSingle();
+
+  if (demoError) {
+    throwIfSupabaseInfrastructureError(demoError, "demo isolation profile lookup");
+  }
 
   if (demoRow) {
     const kind: UserKind =
@@ -81,13 +90,18 @@ async function resolveUserKind(userId: string): Promise<UserKind> {
 
 async function isFleetDemo(fleetId: string): Promise<boolean | null> {
   const admin = createSupabaseServiceClient();
-  if (!admin) return null;
+  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY missing for demo isolation");
 
-  const { data } = await admin
+  const { data, error } = await admin
     .from("flottes")
     .select("is_demo")
     .eq("id", fleetId)
     .maybeSingle();
+
+  if (error) {
+    throwIfSupabaseInfrastructureError(error, "demo isolation fleet lookup");
+    return null;
+  }
 
   if (!data) return null;
   return (data as { is_demo: boolean }).is_demo ?? false;
@@ -98,10 +112,14 @@ async function resolveUserId(c: Context): Promise<string | null> {
   if (!token) return null;
 
   const admin = createSupabaseServiceClient();
-  if (!admin) return null;
+  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY missing for demo isolation");
 
   const { data: { user }, error } = await admin.auth.getUser(token);
-  if (error || !user) return null;
+  if (error) {
+    throwIfSupabaseInfrastructureError(error, "demo isolation token verification");
+    return null;
+  }
+  if (!user) return null;
   return user.id;
 }
 

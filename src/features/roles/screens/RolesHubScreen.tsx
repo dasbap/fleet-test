@@ -79,6 +79,21 @@ function MemberInitials({ name }: { name: string | null }) {
   );
 }
 
+export function getAssignableRoleOptions(member: MemberRow, members: MemberRow[]): RoleType[] {
+  const hasAnotherActiveOrganizer = members.some(
+    (candidate) =>
+      candidate.is_active &&
+      candidate.role === "organizer" &&
+      candidate.user_id !== member.user_id,
+  );
+
+  if (!hasAnotherActiveOrganizer) {
+    return FLEET_ROLES;
+  }
+
+  return FLEET_ROLES.filter((role) => role !== "organizer");
+}
+
 // ─── Onglet Membres ───────────────────────────────────────────────────────────
 
 function MembersTab() {
@@ -233,7 +248,7 @@ function MembersTab() {
                 <Select value={member.role} onValueChange={(v) => void handleRoleChange(member, v as RoleType)} disabled={isPending || !member.is_active}>
                   <SelectTrigger className="w-36 h-7 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {FLEET_ROLES.map((r) => (
+                    {getAssignableRoleOptions(member, members).map((r) => (
                       <SelectItem key={r} value={r} className="text-xs">{ROLE_LABELS[r]}</SelectItem>
                     ))}
                   </SelectContent>

@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Permission, PlatformRole } from '@/types/rbac';
 import { hasPermission as roleHasPermission, roleIsAtLeast } from '@/lib/rbac/permissions';
 import { RbacError } from '@/lib/rbac/errors';
+import { throwIfSupabaseInfrastructureError } from '@/lib/supabase-runtime-errors';
 import type { FleetMember } from '@/repositories/fleet-member.repository';
 
 export { RbacError };
@@ -65,6 +66,7 @@ export async function hasPermission(
       return fallback.allowed;
     }
 
+    throwIfSupabaseInfrastructureError(error, 'rbac permission check');
     console.error('[rbac] rbac_check_permission:', error.message);
     return false;
   }
@@ -113,6 +115,7 @@ export async function requirePermission(
       );
     }
 
+    throwIfSupabaseInfrastructureError(error, 'rbac permission requirement');
     throw new RbacError(error.message, 'RBAC_DENIED', permission);
   }
 
@@ -177,6 +180,7 @@ export async function getCurrentUserMembership(
 
   if (error) {
     console.error('[rbac] getCurrentUserMembership:', error.message);
+    throwIfSupabaseInfrastructureError(error, 'current fleet membership');
     return null;
   }
 
