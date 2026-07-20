@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { asSingleRelation } from '@/lib/supabaseRelation';
 import type {
   VehicleDto,
   VehicleInsertDto,
@@ -20,19 +21,6 @@ export interface VehicleUpdate {
   current_km?: number;
   status?: VehicleStatusDto;
   blocked_reason?: string | null;
-}
-
-/** Affectation active d'un conducteur avec le véhicule associé. */
-export interface DriverActiveVehicleAssignment {
-  assignmentId: string;
-  fleetId: string;
-  vehicle: {
-    id: string;
-    registration: string;
-    brand: string | null;
-    model: string | null;
-    current_km: number;
-  };
 }
 
 export interface VehicleListItemDto extends VehicleDto {
@@ -346,23 +334,29 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
   }
 
   /**
-   * Affectation active et véhicule assigné pour un conducteur (vue « Ma journée »).
+   * Véhicule de l’affectation active d’un conducteur (vue « Ma journée »).
    */
   async findActiveAssignmentVehicleForDriver(
     driverUserId: string,
-  ): Promise<DriverActiveVehicleAssignment | null> {
+  ): Promise<VehicleDto | null> {
     const { data, error } = await supabase
       .from("affectations_vehicules")
       .select(
         `
         id,
         fleet_id,
+        driver_user_id,
         vehicle:vehicules!affectations_vehicules_vehicle_id_fkey(
           id,
+          fleet_id,
           registration,
           brand,
           model,
-          current_km
+          year,
+          current_km,
+          status,
+          blocked_reason,
+          created_at
         )
       `,
       )
@@ -380,7 +374,8 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
       | {
           id: string;
           fleet_id: string;
-          vehicle: DriverActiveVehicleAssignment["vehicle"] | DriverActiveVehicleAssignment["vehicle"][] | null;
+          driver_user_id: string;
+          vehicle: VehicleDto | VehicleDto[] | null;
         }
       | undefined;
 
@@ -388,23 +383,19 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
       return null;
     }
 
-    const rawVehicle = row.vehicle;
-    const vehicleRow = Array.isArray(rawVehicle) ? rawVehicle[0] : rawVehicle;
-    if (!vehicleRow || typeof vehicleRow !== "object") {
+    const vehicle = asSingleRelation(row.vehicle);
+    if (!vehicle) {
       return null;
     }
 
-    const vehicle = vehicleRow as DriverActiveVehicleAssignment["vehicle"];
-
     return {
-      assignmentId: row.id,
-      fleetId: row.fleet_id,
-      vehicle: {
-        id: vehicle.id,
-        registration: vehicle.registration,
-        brand: vehicle.brand,
-        model: vehicle.model,
-        current_km: vehicle.current_km ?? 0,
+      ...vehicle,
+      fleet_id: vehicle.fleet_id || row.fleet_id,
+      current_km: vehicle.current_km ?? 0,
+      active_assignment: {
+        id: row.id,
+        driver_user_id: row.driver_user_id,
+        driver: null,
       },
     };
   }

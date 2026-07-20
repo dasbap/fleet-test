@@ -28,7 +28,7 @@ env:
 jobs:
   validate-baseline-delta:
     name: Validate baseline + deltas on fresh local DB
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
 
     steps:
       - name: Checkout Code
@@ -78,7 +78,7 @@ jobs:
 
   validate-delta-file-list:
     name: Validate delta files exist
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
 
     steps:
       - name: Checkout Code
