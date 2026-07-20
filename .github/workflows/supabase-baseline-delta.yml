@@ -6,6 +6,7 @@ on:
       - "supabase/**"
       - "scripts/test-baseline-delta.ps1"
       - "scripts/test-sql-security.ps1"
+      - "scripts/_local-supabase-ports.ps1"
       - "scripts/freeze-remote-schema.ps1"
       - "package.json"
   push:
@@ -17,6 +18,7 @@ on:
       - "supabase/**"
       - "scripts/test-baseline-delta.ps1"
       - "scripts/test-sql-security.ps1"
+      - "scripts/_local-supabase-ports.ps1"
       - "scripts/freeze-remote-schema.ps1"
       - "package.json"
   workflow_dispatch:

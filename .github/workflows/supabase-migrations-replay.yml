@@ -6,12 +6,14 @@ on:
     paths:
       - "supabase/migrations/**"
       - "supabase/config.toml"
+      - "scripts/_local-supabase-ports.ps1"
       - ".github/workflows/supabase-migrations-replay.yml"
   push:
     branches: [main, master, PRINCIPALE, fix/ci-green-main, release/**]
     paths:
       - "supabase/migrations/**"
       - "supabase/config.toml"
+      - "scripts/_local-supabase-ports.ps1"
       - ".github/workflows/supabase-migrations-replay.yml"
   workflow_dispatch:
 
@@ -90,6 +92,13 @@ jobs:
           )
           path.write_text(text, encoding="utf-8")
           PY
+
+      - name: Prepare dynamic Supabase local ports
+        shell: pwsh
+        run: |
+          . ./scripts/_local-supabase-ports.ps1
+          $portConfig = Set-LocalSupabaseTestPorts -ConfigFile "supabase/config.toml"
+          Write-Host "Supabase ports: api=$($portConfig.Ports.api), db=$($portConfig.Ports.db), studio=$($portConfig.Ports.studio), inbucket=$($portConfig.Ports.inbucket), analytics=$($portConfig.Ports.analytics)."
 
       - name: Start Supabase local stack
         run: supabase start -x vector,logflare

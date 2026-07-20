@@ -32,6 +32,13 @@ jobs:
         with:
           version: 2.102.0
 
+      - name: Prepare dynamic Supabase local ports
+        shell: pwsh
+        run: |
+          . ./scripts/_local-supabase-ports.ps1
+          $portConfig = Set-LocalSupabaseTestPorts -ConfigFile "supabase/config.toml"
+          Write-Host "Supabase ports: api=$($portConfig.Ports.api), db=$($portConfig.Ports.db), studio=$($portConfig.Ports.studio), inbucket=$($portConfig.Ports.inbucket), analytics=$($portConfig.Ports.analytics)."
+
       # Démarrer une instance Supabase locale fraîche (sans services optionnels lourds)
       - name: Start Supabase local
         run: supabase start -x vector,logflare

@@ -15,6 +15,8 @@ $ProjectId = "smart-fleet-africa"
 $DbContainerName = "supabase_db_$ProjectId"
 $RepoRoot = Split-Path $PSScriptRoot -Parent
 $MigrationsDir = Join-Path $RepoRoot "supabase\migrations"
+$ConfigFile = Join-Path $RepoRoot "supabase\config.toml"
+$PortsHelper = Join-Path $PSScriptRoot "_local-supabase-ports.ps1"
 
 $tests = @(
   "supabase/tests/01_security_invariants.sql",
@@ -25,6 +27,13 @@ $tests = @(
   "supabase/tests/07_fermer_creneau_behavior.sql",
   "supabase/tests/08_vehicle_limit_billing.sql"
 )
+
+if (-not (Test-Path $PortsHelper)) {
+  Write-Host "ERREUR: Helper ports Supabase introuvable: $PortsHelper" -ForegroundColor Red
+  exit 1
+}
+
+. $PortsHelper
 
 function Repair-SupabaseTelemetryJson {
   $paths = @()
@@ -203,6 +212,8 @@ Write-Host "TESTS SQL SECURITE (RLS/RPC)" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Cible Supabase: $Target" -ForegroundColor Gray
 
+$supabaseConfigBackupPath = $null
+
 foreach ($testFile in $tests) {
   if (-not (Test-Path $testFile)) {
     Write-Host "ERREUR: Fichier de test introuvable: $testFile" -ForegroundColor Red
@@ -212,6 +223,12 @@ foreach ($testFile in $tests) {
 
 try {
   if ($Target -eq "local") {
+    if (-not (Test-DbContainerRunning)) {
+      $portConfig = Set-LocalSupabaseTestPorts -ConfigFile $ConfigFile
+      $supabaseConfigBackupPath = $portConfig.BackupPath
+      Write-Host "INFO: Ports Supabase locaux temporaires: api=$($portConfig.Ports.api), db=$($portConfig.Ports.db), studio=$($portConfig.Ports.studio), inbucket=$($portConfig.Ports.inbucket), analytics=$($portConfig.Ports.analytics)." -ForegroundColor Yellow
+    }
+
     Write-Host "1) Verification stack Supabase locale (Docker)..." -ForegroundColor Cyan
     Ensure-SupabaseDbRunning
 
@@ -252,4 +269,17 @@ catch {
   Write-Host "ERREUR: Echec des tests SQL securite." -ForegroundColor Red
   Write-Host $_.Exception.Message -ForegroundColor Yellow
   exit 1
+}
+finally {
+  if ($Target -eq "local") {
+    if ($null -ne $supabaseConfigBackupPath) {
+      try {
+        Invoke-SupabaseCommand -CommandArgs @("stop", "--no-backup")
+      }
+      catch {
+        Write-Host "INFO: Arret stack Supabase ignore pendant le nettoyage." -ForegroundColor DarkYellow
+      }
+    }
+    Restore-LocalSupabaseConfig -ConfigFile $ConfigFile -BackupPath $supabaseConfigBackupPath
+  }
 }
