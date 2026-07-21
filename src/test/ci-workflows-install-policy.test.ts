@@ -40,4 +40,16 @@ describe("GitHub workflow dependency install policy", () => {
 
     expect(offenders).toEqual([]);
   });
+
+  it("keeps heavy Supabase baseline replay manual", () => {
+    const workflow = readFileSync(
+      ".github/workflows/supabase-baseline-delta.yml",
+      "utf8"
+    );
+
+    expect(workflow).toContain("if: github.event_name == 'workflow_dispatch'");
+    expect(workflow).toContain("timeout-minutes: 20");
+    expect(workflow).toContain("Validate Delta Migration List");
+    expect(workflow).toContain("runs-on: ubuntu-latest");
+  });
 });

@@ -66,6 +66,45 @@ try {
   );
 
   await exists(
+    "flottes_is_demo_column",
+    `
+      select exists (
+        select 1
+        from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'flottes'
+          and column_name = 'is_demo'
+          and data_type = 'boolean'
+      ) as ok
+    `,
+  );
+
+  await exists(
+    "demo_fleets_queryable",
+    `
+      select exists (
+        select 1
+        from public.flottes
+        where is_demo = true
+      ) as ok
+    `,
+  );
+
+  await exists(
+    "flottes_platform_admin_policy",
+    `
+      select exists (
+        select 1
+        from pg_policies
+        where schemaname = 'public'
+          and tablename = 'flottes'
+          and policyname = 'flottes_select_platform_admin'
+          and qual like '%is_platform_admin%'
+      ) as ok
+    `,
+  );
+
+  await exists(
     "platform_admin_rpc",
     `
       select exists (
