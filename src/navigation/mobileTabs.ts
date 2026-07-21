@@ -89,7 +89,9 @@ export function isTabActive(
       ROUTE_PATHS.dashboardHistory,
       ROUTE_PATHS.dashboardIncidents,
       ROUTE_PATHS.dashboardShiftClosure,
-      "/dashboard/admin/users",
+      ROUTE_PATHS.dashboardAdmin,
+      ROUTE_PATHS.dashboardAdminUsers,
+      ROUTE_PATHS.dashboardAdminDemo,
       ROUTE_PATHS.dashboardRoles,
       ROUTE_PATHS.dashboardRetentionAnalytics,
     ];

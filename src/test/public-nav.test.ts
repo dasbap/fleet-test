@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { FONCTIONNALITES } from "@/data/marketing/fonctionnalites";
 import { MODULES } from "@/data/marketing/modules";
 import {
@@ -22,9 +22,10 @@ import { getMarketingUrl } from "@/lib/marketing-url";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const MARKETING_PATH_PATTERN = /^\/(guides|fonctionnalites|solutions)\//;
+const findPublicNavByHref = (href: string) => PUBLIC_NAV.find((item) => item.href === href);
 
-describe("données marketing publiques", () => {
-  it("expose des guidePath relatifs valides pour les fonctionnalités", () => {
+describe("donnees marketing publiques", () => {
+  it("expose des guidePath relatifs valides pour les fonctionnalites", () => {
     for (const item of FONCTIONNALITES) {
       expect(item.guidePath.startsWith("/")).toBe(true);
       expect(getMarketingUrl(item.guidePath)).toMatch(/^https:\/\//);
@@ -38,11 +39,12 @@ describe("données marketing publiques", () => {
     }
   });
 
-  it("pointe les deep-links vers le hub marketing (Option A)", () => {
+  it("pointe les deep-links vers le hub marketing", () => {
     const allPaths = [
       ...FONCTIONNALITES.map((f) => f.guidePath),
       ...MODULES.map((m) => m.guidePath),
     ];
+
     for (const path of allPaths) {
       expect(
         path.startsWith("/guides/") ||
@@ -53,36 +55,37 @@ describe("données marketing publiques", () => {
     }
   });
 
-  it("inclut Guides dans la navbar publique", () => {
-    const labels = PUBLIC_NAV.map((l) => l.label);
-    expect(labels).toContain("Guides");
-    expect(PUBLIC_NAV.some((l) => l.href === ROUTE_PATHS.help)).toBe(true);
+  it("n'affiche plus Guides dans la navbar publique", () => {
+    expect(PUBLIC_NAV.some((l) => l.label === "Guides")).toBe(false);
   });
 
-  it("utilise des ancres landing pour fonctionnalités et modules", () => {
-    expect(PUBLIC_NAV.find((l) => l.label === "Fonctionnalités")?.href).toBe("/#features");
-    expect(PUBLIC_NAV.find((l) => l.label === "Modules")?.href).toBe("/#modules");
+  it("n'utilise plus d'ancres dans la navbar publique", () => {
+    expect(PUBLIC_NAV.every((l) => !l.href.includes("#"))).toBe(true);
+    expect(findPublicNavByHref(ROUTE_PATHS.fonctionnalites)?.type).toBe("route");
+    expect(findPublicNavByHref(ROUTE_PATHS.modules)?.type).toBe("route");
   });
 
-  it("utilise des routes www pour tarifs, faq, contact et guides", () => {
+  it("utilise des routes www pour tarifs, faq et contact", () => {
     const hrefs = PUBLIC_NAV.filter((l) => l.type === "route").map((l) => l.href);
     expect(hrefs).toContain("/pricing");
     expect(hrefs).toContain("/faq");
     expect(hrefs).toContain("/contact");
-    expect(hrefs).toContain("/help");
   });
 
-  it("conserve la compatibilité PUBLIC_NAV_LINKS", () => {
+  it("conserve la compatibilite PUBLIC_NAV_LINKS", () => {
     const names = PUBLIC_NAV_LINKS.map((l) => l.name);
-    expect(names).toContain("Guides");
-    expect(names).toContain("Fonctionnalités");
+    expect(names).not.toContain("Guides");
+    expect(PUBLIC_NAV_LINKS.some((l) => l.to === ROUTE_PATHS.fonctionnalites)).toBe(true);
   });
 
-  it("pointe le CTA démo vers /contact#demo", () => {
-    expect(PUBLIC_DEMO_HREF).toBe(`${ROUTE_PATHS.contact}#demo`);
-    expect(AUTH_NAV.find((item) => item.label === "Demander une démo")?.href).toBe(
-      PUBLIC_DEMO_HREF,
-    );
+  it("pointe le CTA demo vers /contact sans ancre", () => {
+    expect(PUBLIC_DEMO_HREF).toBe(ROUTE_PATHS.contact);
+    expect(AUTH_NAV.some((item) => item.href === PUBLIC_DEMO_HREF)).toBe(true);
+    expect(AUTH_NAV.every((item) => !item.href.includes("#"))).toBe(true);
+  });
+
+  it("ne publie plus le CTA Demander un acces dans la navbar", () => {
+    expect(AUTH_NAV.some((item) => item.label === "Demander un acces")).toBe(false);
   });
 
   it("centralise le lien WhatsApp", () => {
@@ -90,24 +93,24 @@ describe("données marketing publiques", () => {
     expect(SOCIAL.whatsappNumber.length).toBeGreaterThan(0);
   });
 
-  it("détecte l'état actif des liens de navigation", () => {
+  it("detecte l'etat actif des liens de navigation", () => {
     const pricing = PUBLIC_NAV.find((item) => item.label === "Tarifs")!;
     expect(isPublicNavActive(pricing, "/pricing", "")).toBe(true);
     expect(isPublicNavActive(pricing, "/contact", "")).toBe(false);
 
-    const features = PUBLIC_NAV.find((item) => item.label === "Fonctionnalités")!;
-    expect(isPublicNavActive(features, "/", "#features")).toBe(true);
+    const features = findPublicNavByHref(ROUTE_PATHS.fonctionnalites)!;
+    expect(isPublicNavActive(features, ROUTE_PATHS.fonctionnalites, "")).toBe(true);
     expect(isPublicNavActive(features, "/", "")).toBe(false);
   });
 
-  it("expose des liens support footer sans pages verrouillées", () => {
+  it("expose des liens support footer sans pages verrouillees", () => {
     const paths = FOOTER_SUPPORT_LINKS.map((link) => link.to);
     expect(paths).not.toContain("/documentation");
     expect(paths).not.toContain("/api");
     expect(paths).toContain("/help");
   });
 
-  it("détecte l'état actif sidebar avec sous-routes", () => {
+  it("detecte l'etat actif sidebar avec sous-routes", () => {
     expect(
       isDashboardNavActive("/dashboard/vehicles/abc-123", ROUTE_PATHS.dashboardVehicles),
     ).toBe(true);
@@ -116,14 +119,14 @@ describe("données marketing publiques", () => {
     expect(isDashboardNavActive("/dashboard/vehicles", ROUTE_PATHS.dashboard)).toBe(false);
   });
 
-  it("expose DASHBOARD_NAV pour tous les rôles métier", () => {
+  it("expose DASHBOARD_NAV pour tous les roles metier", () => {
     expect(DASHBOARD_NAV.organizer.length).toBeGreaterThan(10);
     expect(DASHBOARD_NAV.manager.some((item) => item.label === "Chauffeurs")).toBe(true);
     expect(DASHBOARD_NAV.driver.every((item) => item.href.startsWith("/dashboard"))).toBe(true);
     expect(DASHBOARD_NAV.mechanic.some((item) => item.label === "Historique")).toBe(true);
   });
 
-  it("centralise les coordonnées contact publiques", () => {
+  it("centralise les coordonnees contact publiques", () => {
     expect(CONTACT.email).toContain("@");
     expect(CONTACT.telHref).toMatch(/^tel:/);
     expect(CONTACT.phoneDisplay.length).toBeGreaterThan(8);
@@ -134,12 +137,12 @@ describe("données marketing publiques", () => {
     expect(SUPPORT.mailtoHref).toMatch(/^mailto:/);
   });
 
-  it("centralise l'email confidentialité", () => {
+  it("centralise l'email confidentialite", () => {
     expect(PRIVACY.email).toContain("@");
     expect(PRIVACY.mailtoHref).toMatch(/^mailto:/);
   });
 
-  it("centralise les emails département", () => {
+  it("centralise les emails departement", () => {
     expect(Object.values(DEPARTMENT_EMAILS).every((e) => e.includes("@"))).toBe(true);
   });
 

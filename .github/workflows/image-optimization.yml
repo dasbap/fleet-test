@@ -2,21 +2,12 @@ name: Image Optimization CI
 
 on:
   pull_request:
-    branches:
-      - main
-      - master
-      - develop
-      - release/**
-    paths:
-      - "src/assets/**"
-      - "resources/**"
-      - "store-assets/**"
-      - "scripts/optimize-images.mjs"
-      - "scripts/image-profiles.json"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/image-optimization.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -27,9 +18,40 @@ defaults:
     shell: bash
 
 jobs:
+  changes:
+    name: Detect image changes
+    runs-on: [self-hosted, Linux, X64]
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        name: Check changed files
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          changed="$(git diff --name-only "origin/$BASE_REF"...HEAD)"
+          if echo "$changed" | grep -Eq '^(src/assets/|resources/|store-assets/|scripts/optimize-images\.mjs$|scripts/image-profiles\.json$|package(-lock)?\.json$|\.github/workflows/image-optimization\.yml$)'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
   optimize-images-strict:
     name: Optimize images strict (prod)
-    runs-on: [self-hosted, Linux, X64]
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
+    runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
@@ -40,10 +62,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
 
       - name: Execute strict optimization profile (prod)
         run: npm run optimize:images:strict:prod
