@@ -46,7 +46,6 @@ import {
 } from "@/navigation/postLoginRedirect";
 import {
   DEMO_DEV_PASSWORD,
-  DEMO_UI_ENABLED,
   IS_PROD,
   loadDemoAuthUiData,
 } from "@/features/auth/lib/demoAuthUi";
@@ -71,6 +70,7 @@ const Auth = () => {
       ROUTE_PATHS.dashboard,
     [searchParams],
   );
+  const showDemoUi = false;
 
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -110,7 +110,7 @@ const Auth = () => {
   /** Connexion démo rapide — uniquement en dev/staging (IS_PROD = false). */
   const handleDemoQuickLogin = async (demoEmail: string) => {
     // Guard : ne jamais s'exécuter en production
-    if (!DEMO_UI_ENABLED) return;
+    if (!showDemoUi) return;
     setIsLoading(true);
     setFormData((prev) => ({
       ...prev,
@@ -161,14 +161,14 @@ const Auth = () => {
 
   // Chargement dynamique des données démo — chunk séparé, jamais dans le bundle prod
   useEffect(() => {
-    if (!DEMO_UI_ENABLED) return;
+    if (!showDemoUi) return;
     void (async () => {
       const { demoAccounts, demoQuickAccounts, demoRoleColors } = await loadDemoAuthUiData();
       setDemoAccounts(demoAccounts);
       setDemoQuickAccounts(demoQuickAccounts);
       setDemoRoleColors(demoRoleColors);
     })();
-  }, []);
+  }, [showDemoUi]);
 
   const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -563,7 +563,7 @@ const Auth = () => {
               </div>
             </div>
 
-            {DEMO_UI_ENABLED && isMockAuthEnabled() && !isSignup && (
+            {showDemoUi && isMockAuthEnabled() && !isSignup && (
               <div className="space-y-2">
                 <Label htmlFor="mock-role">Rôle (session démo)</Label>
                 <Select
@@ -665,7 +665,7 @@ const Auth = () => {
               </p>
 
               {/* Accès démo rapide — uniquement si DEMO_UI_ENABLED (dev/staging explicite) */}
-              {DEMO_UI_ENABLED && !isSignup && (
+              {showDemoUi && !isSignup && (
                 <>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mt-8">
                     <div className="flex-1 h-px bg-border" />
@@ -714,7 +714,7 @@ const Auth = () => {
       </div>
 
       {/* Dialog identifiants démo — visible uniquement si DEMO_UI_ENABLED */}
-      {DEMO_UI_ENABLED && (
+      {showDemoUi && (
         <Dialog open={showDemoCredentials} onOpenChange={setShowDemoCredentials}>
           <DialogContent>
             <DialogHeader>

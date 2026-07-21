@@ -34,7 +34,7 @@ defaults:
 jobs:
   apply-migrations:
     name: Apply migrations to Supabase
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     environment: production
 
     steps:

@@ -45,8 +45,11 @@ create policy "failure_predictions_select_member"
       where fa.fleet_id = failure_predictions.fleet_id
         and fa.user_id = auth.uid()
         and fa.is_active = true
-    )
+      )
   );
+
+drop function if exists public.predict_failure_risk(uuid, uuid);
+drop view if exists public.vehicle_failure_features_v1;
 
 create or replace view public.vehicle_failure_features_v1 as
 with incidents_30d as (
@@ -104,7 +107,7 @@ fuel_metrics as (
 select
   v.fleet_id,
   v.id as vehicle_id,
-  v.status::text as vehicle_status,
+  v.status as vehicle_status,
   coalesce(i.incident_count_30d, 0) as incident_count_30d,
   coalesce(i.critical_incident_count_30d, 0) as critical_incident_count_30d,
   coalesce(m.maintenance_jobs_30d, 0) as maintenance_jobs_30d,

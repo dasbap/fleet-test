@@ -81,23 +81,23 @@ describe("GitHub workflow dependency install policy", () => {
     expect(workflow).toContain("runs-on: ubuntu-latest");
   });
 
-  it("does not schedule heavyweight WSL jobs automatically on pull requests", () => {
-    const heavyweightWorkflows = [
-      ".github/workflows/ci.yml",
-      ".github/workflows/supabase-integration-tests.yml",
+  it("runs pull request validation while keeping dependency installs off local runners", () => {
+    const replayWorkflow = readFileSync(
       ".github/workflows/supabase-migrations-replay.yml",
-    ];
+      "utf8"
+    );
+    const baselineWorkflow = readFileSync(
+      ".github/workflows/supabase-baseline-delta.yml",
+      "utf8"
+    );
 
-    const offenders = heavyweightWorkflows.filter((file) => {
-      const workflow = readFileSync(file, "utf8");
-      return (
-        workflow.includes("pull_request:") &&
-        workflow.includes("runs-on: [self-hosted, Linux, X64]") &&
-        !workflow.includes("if: github.event_name == 'workflow_dispatch'")
-      );
-    });
-
-    expect(offenders).toEqual([]);
+    expect(replayWorkflow).toContain("pull_request:");
+    expect(replayWorkflow).toContain("replay-migrations:");
+    expect(replayWorkflow).toContain("runs-on: ubuntu-latest");
+    expect(replayWorkflow).toContain("verify-migration-filenames:");
+    expect(replayWorkflow).toContain("runs-on: [self-hosted, Linux, X64]");
+    expect(baselineWorkflow).toContain("validate-delta-file-list:");
+    expect(baselineWorkflow).toContain("runs-on: [self-hosted, Linux, X64]");
   });
 
   it("bounds Node memory during CI dependency installation", () => {

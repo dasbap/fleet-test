@@ -51,13 +51,9 @@ jobs:
         run: mkdir -p supabase-ci-logs
 
       - name: Run Baseline + Delta Validation
-        env:
-          CI_SUPABASE_DEBUG: "true"
         run: npm run test:baseline-delta:node -- --target local 2>&1 | tee supabase-ci-logs/baseline-delta.log
 
       - name: Run SQL Security Tests
-        env:
-          CI_SUPABASE_DEBUG: "true"
         run: npm run test:sql-security:node -- --target local 2>&1 | tee supabase-ci-logs/sql-security.log
 
       - name: Upload Supabase Debug Logs
@@ -70,7 +66,7 @@ jobs:
 
   validate-delta-file-list:
     name: Validate delta files exist
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
 
     steps:
       - name: Checkout Code

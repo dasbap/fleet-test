@@ -2,6 +2,8 @@ import { copyFileSync, existsSync, readFileSync, renameSync, writeFileSync } fro
 import { createServer } from 'node:net';
 
 const PORT_NAMES = ['api', 'db', 'shadow', 'pooler', 'studio', 'inbucket', 'analytics', 'edgeInspector'];
+const MIN_TEST_PORT = 20000;
+const MAX_TEST_PORT = 60999;
 
 function isPortAvailable(port) {
   return new Promise((resolve) => {
@@ -14,21 +16,7 @@ function isPortAvailable(port) {
 
 async function getFreePort(exclude = new Set()) {
   for (let attempt = 0; attempt < 200; attempt += 1) {
-    const port = await new Promise((resolve, reject) => {
-      const server = createServer();
-      server.once('error', reject);
-      server.listen(0, '0.0.0.0', () => {
-        const address = server.address();
-        const selectedPort = typeof address === 'object' && address ? address.port : null;
-        server.close(() => {
-          if (selectedPort === null) {
-            reject(new Error('Unable to resolve free TCP port.'));
-            return;
-          }
-          resolve(selectedPort);
-        });
-      });
-    });
+    const port = MIN_TEST_PORT + Math.floor(Math.random() * (MAX_TEST_PORT - MIN_TEST_PORT + 1));
 
     if (!exclude.has(port) && (await isPortAvailable(port))) {
       return port;

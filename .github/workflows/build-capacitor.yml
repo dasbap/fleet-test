@@ -19,7 +19,7 @@ defaults:
 jobs:
   changes:
     name: Detect Capacitor changes
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     outputs:
       relevant: ${{ steps.filter.outputs.relevant }}
     steps:

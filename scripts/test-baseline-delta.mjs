@@ -22,14 +22,51 @@ function run(command, args, { input, ignoreFailure = false, capture = false } = 
   const result = spawnSync(command, args, {
     input,
     encoding: 'utf8',
-    stdio: capture ? ['pipe', 'pipe', 'pipe'] : input ? ['pipe', 'inherit', 'inherit'] : 'inherit',
+    shell: process.platform === 'win32' && command.endsWith('.cmd'),
+    stdio: ['pipe', 'pipe', 'pipe'],
   });
 
+  if (!capture) {
+    if (result.stdout) {
+      process.stdout.write(result.stdout);
+    }
+    if (result.stderr) {
+      process.stderr.write(result.stderr);
+    }
+  }
+
   if (!ignoreFailure && result.status !== 0) {
-    throw new Error(`Command failed: ${command} ${args.join(' ')}`);
+    const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim();
+    const spawnError = result.error ? `\n${result.error.message}` : '';
+    throw new Error(
+      `Command failed (${result.status ?? 'no-status'}${result.signal ? `, signal ${result.signal}` : ''}): ${command} ${args.join(' ')}${spawnError}${output ? `\n${output}` : ''}`,
+    );
   }
 
   return result;
+}
+
+function wait(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function withFsRetry(action, description) {
+  const retryableCodes = new Set(['EBUSY', 'ENOTEMPTY', 'EPERM']);
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    try {
+      return action();
+    } catch (error) {
+      lastError = error;
+      if (!retryableCodes.has(error?.code) || attempt === 6) {
+        break;
+      }
+      wait(250 * attempt);
+    }
+  }
+
+  throw new Error(`${description} failed: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
 function supabase(args, options = {}) {
@@ -79,6 +116,7 @@ if (!searchFleetMigrationFile) {
   console.error('Missing search_fleet migration in expected locations.');
   process.exit(1);
 }
+const searchFleetMigrationSql = readFileSync(searchFleetMigrationFile, 'utf8');
 
 const tempRoot = 'supabase/migrations_tmp_baseline_test';
 const legacyRoot = 'supabase/migrations_legacy_saved';
@@ -96,7 +134,7 @@ deltas.forEach((delta, index) => {
     throw new Error(`Missing delta migration: ${delta}`);
   }
 
-  const targetName = `0000000000000${index + 1}_delta_${basename(delta)}`;
+  const targetName = `${String(index + 1).padStart(14, '0')}_delta_${basename(delta)}`;
   writeFileSync(join(tempRoot, targetName), readFileSync(delta));
 });
 
@@ -111,9 +149,9 @@ try {
   supabase(['stop', '--no-backup'], { ignoreFailure: true });
 
   console.log('1) Preparing temporary baseline + delta migration chain...');
-  renameSync(migrationsRoot, legacyRoot);
-  renameSync(tempRoot, migrationsRoot);
+  withFsRetry(() => renameSync(migrationsRoot, legacyRoot), `Rename ${migrationsRoot} to ${legacyRoot}`);
   migrationSwapped = true;
+  withFsRetry(() => renameSync(tempRoot, migrationsRoot), `Rename ${tempRoot} to ${migrationsRoot}`);
 
   console.log('2) Starting local Supabase stack...');
   supabase(['start', '-x', 'vector,logflare']);
@@ -125,7 +163,7 @@ try {
   run(
     'docker',
     ['exec', '-i', 'supabase_db_smart-fleet-africa', 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-f', '-'],
-    { input: readFileSync(searchFleetMigrationFile, 'utf8') },
+    { input: searchFleetMigrationSql },
   );
 
   const searchFleetExists = dbScalar("select to_regprocedure('public.search_fleet(text,integer,uuid)') is not null;");
@@ -147,12 +185,12 @@ try {
   process.exitCode = 1;
 } finally {
   if (migrationSwapped) {
-    rmSync(migrationsRoot, { recursive: true, force: true });
+    withFsRetry(() => rmSync(migrationsRoot, { recursive: true, force: true }), `Remove temporary ${migrationsRoot}`);
     if (existsSync(legacyRoot)) {
-      renameSync(legacyRoot, migrationsRoot);
+      withFsRetry(() => renameSync(legacyRoot, migrationsRoot), `Restore ${migrationsRoot}`);
     }
   }
-  rmSync(tempRoot, { recursive: true, force: true });
+  withFsRetry(() => rmSync(tempRoot, { recursive: true, force: true }), `Remove ${tempRoot}`);
 
   if (supabaseConfigBackupPath) {
     supabase(['stop', '--no-backup'], { ignoreFailure: true });
