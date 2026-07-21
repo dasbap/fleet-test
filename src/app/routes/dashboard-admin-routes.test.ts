@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-
+// todo remove
 describe("dashboard admin routes", () => {
   it("protege toutes les routes /dashboard/admin avec AdminGuard", () => {
     const source = readFileSync(
