@@ -34,6 +34,7 @@ import {
   MapPin,
   CalendarClock,
   CreditCard,
+  KeyRound,
   Mic,
   Video,
 } from "lucide-react";
@@ -86,7 +87,11 @@ const DASHBOARD_NAV_ICONS: Record<string, LucideIcon> = {
   [ROUTE_PATHS.dashboardHistory]: Fuel,
   [ROUTE_PATHS.dashboardRetentionAnalytics]: LineChart,
   [ROUTE_PATHS.dashboardRoles]: Shield,
+  [ROUTE_PATHS.dashboardAdmin]: Shield,
   [ROUTE_PATHS.dashboardAdminUsers]: Shield,
+  [ROUTE_PATHS.dashboardAdminDemo]: KeyRound,
+  [ROUTE_PATHS.dashboardHelpAdmin]: Shield,
+  [ROUTE_PATHS.dashboardHelpAnalytics]: LineChart,
 };
 
 function withIcons(items: readonly DashboardNavItem[]): SidebarNavItem[] {
@@ -132,12 +137,10 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
     mechanic: withIcons(DASHBOARD_NAV.mechanic),
   };
 
-  const items = isAdmin
-    ? [
-        ...menuItems[userRole],
-        { label: "Admin comptes", href: ROUTE_PATHS.dashboardAdminUsers, icon: Shield },
-      ]
-    : menuItems[userRole];
+  const items = isAdmin ? withIcons(DASHBOARD_NAV.admin) : menuItems[userRole];
+  const footerLinks = isAdmin
+    ? DASHBOARD_SIDEBAR_FOOTER.filter((link) => link.href === ROUTE_PATHS.dashboardProfile)
+    : DASHBOARD_SIDEBAR_FOOTER;
 
   const containerVariants = {
     hidden: {},
@@ -207,7 +210,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
 
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarMenu>
-          {DASHBOARD_SIDEBAR_FOOTER.map((link) => {
+          {footerLinks.map((link) => {
             const isActive = location.pathname === link.href;
             const Icon = link.href === ROUTE_PATHS.dashboardProfile ? User : Settings;
             return (

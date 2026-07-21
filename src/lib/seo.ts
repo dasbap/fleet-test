@@ -155,7 +155,7 @@ export const SEO_BY_ROUTE_KEY: Record<SeoRouteKey, SeoRouteConfig> = {
   pricing: {
     title: "Tarifs E-Samba | Plans Starter, Pro et Enterprise",
     description:
-      "Tarifs transparents en FCFA par véhicule. Essai gratuit jusqu'à 3 véhicules, Mobile Money et cartes bancaires acceptées.",
+      "Tarifs transparents en FCFA par véhicule pour les plans Starter, Pro et Organizer. Mobile Money et cartes bancaires acceptées.",
     canonicalPath: "/pricing",
   },
   help: {
@@ -229,4 +229,3 @@ export function resolveSeoRouteKey(pathname: string): SeoRouteKey {
   const normalized = normalizePathname(pathname);
   return PATH_TO_ROUTE_KEY[normalized] ?? SEO_ROUTE_KEYS.notFound;
 }
-

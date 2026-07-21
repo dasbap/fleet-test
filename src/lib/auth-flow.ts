@@ -12,6 +12,7 @@ export const AUTH_INIT_TIMEOUT_MS = 15_000;
 
 export type AuthFlowReason =
   | "auth_required"
+  | "platform_admin"
   | "tenant_bootstrap"
   | "onboarding"
   | "lapsed_paid"
@@ -37,6 +38,7 @@ export function detectFirstLogin(
 export interface AuthFlowComputeInput {
   /** Utilisateur authentifié présent. */
   hasUser: boolean;
+  isPlatformAdmin?: boolean;
   /** Au moins une adhésion flotte. */
   hasMemberships: boolean;
   userCreatedAt?: string;
@@ -71,6 +73,15 @@ export interface AuthFlowComputeResult {
 export function computeAuthFlowDecision(input: AuthFlowComputeInput): AuthFlowComputeResult {
   if (!input.hasUser) {
     return { path: ROUTE_PATHS.auth, reason: "auth_required" };
+  }
+
+  if (input.isPlatformAdmin) {
+    const adminNext =
+      input.safeNextPath === ROUTE_PATHS.dashboardAdmin ||
+      input.safeNextPath.startsWith(`${ROUTE_PATHS.dashboardAdmin}/`)
+        ? input.safeNextPath
+        : ROUTE_PATHS.dashboardAdmin;
+    return { path: adminNext, reason: "platform_admin" };
   }
 
   if (!input.hasMemberships) {

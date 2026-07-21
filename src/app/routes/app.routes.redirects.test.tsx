@@ -130,6 +130,12 @@ vi.mock("@/pages/public/FonctionnalitesPage", () => ({
   default: () => <div data-testid="fonctionnalites-page">Fonctionnalites</div>,
 }));
 
+vi.mock("@/pages/public/FonctionnaliteSectionPage", () => ({
+  default: ({ slug }: { slug: string }) => (
+    <div data-testid={`fonctionnalites-section-${slug}`}>{slug}</div>
+  ),
+}));
+
 vi.mock("@/pages/public/FaqPage", () => ({
   default: () => <div data-testid="faq-page">FAQ</div>,
 }));
@@ -221,7 +227,7 @@ describe("app.routes redirections critiques", () => {
     expect(await screen.findByTestId("help-home-page")).toBeInTheDocument();
   });
 
-  it("redirige /demo vers /contact#demo", async () => {
+  it("redirige /demo vers /contact", async () => {
     renderRoutes("/demo");
     expect(await screen.findByTestId("contact-page")).toBeInTheDocument();
   });
@@ -258,6 +264,11 @@ describe("app.routes redirections critiques", () => {
 });
 
 describe("app.routes routes métier racine", () => {
+  it("rend la page fille unique de fonctionnalites", async () => {
+    renderRoutes("/fonctionnalites/piloter-flotte");
+    expect(await screen.findByTestId("fonctionnalites-section-piloter-flotte")).toBeInTheDocument();
+  });
+
   it("rend /fuel", async () => {
     renderRoutes("/fuel");
     expect(await screen.findByTestId("fuel-page")).toBeInTheDocument();

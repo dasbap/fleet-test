@@ -1,5 +1,6 @@
 import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
+import { AdminGuard } from "@/components/auth/RoleGuard";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { RoleGuard } from "@/navigation/guards/RequireRole";
 import {
@@ -11,9 +12,12 @@ import {
   DASHBOARD_ROLES_HUB_ROLES,
 } from "@/navigation/dashboardRouteRoles";
 import { MODULE_ACCESS } from "@/navigation/dashboardRouteRoles";
-import { DEMO_FEATURE_ENABLED } from "@/lib/demo/demoFeatureFlag";
 
-const MobileHomePage = lazy(() => import("@/features/home/screens/MobileHomePage"));
+const DashboardIndexRoute = lazy(() =>
+  import("@/app/routes/DashboardIndexRoute").then((m) => ({
+    default: m.DashboardIndexRoute,
+  })),
+);
 const FleetVehicleDetailPage = lazy(
   () => import("@/features/fleet/screens/FleetVehicleDetailPage")
 );
@@ -97,9 +101,8 @@ const DashcamPage = lazy(
   () => import("@/features/dashcam/screens/DashcamPage")
 );
 const Scan = lazy(() => import("@/pages/Scan"));
-const DemoAdminPage = DEMO_FEATURE_ENABLED
-  ? lazy(() => import("@/pages/admin/DemoAdminPage"))
-  : null;
+const DemoAdminPage = lazy(() => import("@/pages/admin/DemoAdminPage"));
+const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
 const HelpAnalyticsDashboard = lazy(
   () => import("@/features/help/screens/HelpAnalyticsDashboard"),
 );
@@ -121,7 +124,7 @@ const ProtectedRoute = lazy(() =>
 export const dashboardRoutes = (
   <Route path="/dashboard" element={<ProtectedRoute />}>
     <Route element={<DashboardLayout />}>
-      <Route index element={<MobileHomePage />} />
+      <Route index element={<DashboardIndexRoute />} />
       <Route
         path="vehicles/new"
         element={<Navigate to={ROUTE_PATHS.dashboardVehiclesNew} replace />}
@@ -282,31 +285,43 @@ export const dashboardRoutes = (
         }
       />
       <Route
+        path="admin"
+        element={
+          <AdminGuard redirectIfDenied showLoadingState>
+            <AdminDashboardPage />
+          </AdminGuard>
+        }
+      />
+      <Route
         path="admin/demo"
         element={
-          DEMO_FEATURE_ENABLED && DemoAdminPage
-            ? <DemoAdminPage />
-            : <Navigate to={ROUTE_PATHS.dashboard} replace />
+          <AdminGuard redirectIfDenied showLoadingState>
+            <DemoAdminPage />
+          </AdminGuard>
         }
       />
       <Route
         path="admin/users"
-        element={<AdminUsersPage />}
+        element={
+          <AdminGuard redirectIfDenied showLoadingState>
+            <AdminUsersPage />
+          </AdminGuard>
+        }
       />
       <Route
         path="admin/help-analytics"
         element={
-          <RoleGuard allow={["organizer"]}>
+          <AdminGuard redirectIfDenied showLoadingState>
             <HelpAnalyticsDashboard />
-          </RoleGuard>
+          </AdminGuard>
         }
       />
       <Route
         path="admin/help"
         element={
-          <RoleGuard allow={["organizer"]}>
+          <AdminGuard redirectIfDenied showLoadingState>
             <HelpAdminPage />
-          </RoleGuard>
+          </AdminGuard>
         }
       />
       <Route path="*" element={<DashboardNotFound />} />
