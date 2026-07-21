@@ -41,13 +41,41 @@ describe("GitHub workflow dependency install policy", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("keeps heavy Supabase baseline replay manual", () => {
+  it("runs the Supabase PR validation jobs automatically outside WSL", () => {
+    const supabasePrJobs = [
+      {
+        file: ".github/workflows/supabase-baseline-delta.yml",
+        jobName: "Validate baseline + deltas on fresh local DB",
+      },
+      {
+        file: ".github/workflows/supabase-integration-tests.yml",
+        jobName: "supabase-integration:",
+      },
+      {
+        file: ".github/workflows/supabase-migrations-replay.yml",
+        jobName: "Replay migrations on clean local stack",
+      },
+    ];
+
+    const offenders = supabasePrJobs.filter(({ file, jobName }) => {
+      const workflow = readFileSync(file, "utf8");
+      return (
+        !workflow.includes("pull_request:") ||
+        !workflow.includes(jobName) ||
+        workflow.includes("if: github.event_name == 'workflow_dispatch'") ||
+        !workflow.includes("runs-on: ubuntu-latest")
+      );
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps the Supabase baseline delta lightweight guard", () => {
     const workflow = readFileSync(
       ".github/workflows/supabase-baseline-delta.yml",
       "utf8"
     );
 
-    expect(workflow).toContain("if: github.event_name == 'workflow_dispatch'");
     expect(workflow).toContain("timeout-minutes: 20");
     expect(workflow).toContain("Validate Delta Migration List");
     expect(workflow).toContain("runs-on: ubuntu-latest");
