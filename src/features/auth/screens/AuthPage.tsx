@@ -49,6 +49,7 @@ import {
   IS_PROD,
   loadDemoAuthUiData,
 } from "@/features/auth/lib/demoAuthUi";
+import { DEMO_FEATURE_ENABLED } from "@/lib/demo/demoFeatureFlag";
 
 /**
  * Page d’authentification E-Samba (connexion, inscription, réinitialisation).
@@ -70,7 +71,7 @@ const Auth = () => {
       ROUTE_PATHS.dashboard,
     [searchParams],
   );
-  const showDemoUi = false;
+  const showDemoUi = DEMO_FEATURE_ENABLED;
 
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);

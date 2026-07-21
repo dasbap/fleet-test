@@ -138,6 +138,9 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
   };
 
   const items = isAdmin ? withIcons(DASHBOARD_NAV.admin) : menuItems[userRole];
+  const footerLinks = isAdmin
+    ? DASHBOARD_SIDEBAR_FOOTER.filter((link) => link.href === ROUTE_PATHS.dashboardProfile)
+    : DASHBOARD_SIDEBAR_FOOTER;
 
   const containerVariants = {
     hidden: {},
@@ -207,7 +210,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
 
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarMenu>
-          {DASHBOARD_SIDEBAR_FOOTER.map((link) => {
+          {footerLinks.map((link) => {
             const isActive = location.pathname === link.href;
             const Icon = link.href === ROUTE_PATHS.dashboardProfile ? User : Settings;
             return (

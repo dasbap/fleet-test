@@ -18,7 +18,7 @@ import { CreateDemoForm } from "@/components/admin/CreateDemoForm";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 export default function DemoAdminPage() {
-  const { isAdmin, rbac } = useRoleAccess();
+  const { isAdmin, isLoading: isRoleAccessLoading } = useRoleAccess();
   const {
     sessions,
     demoFleets,
@@ -31,7 +31,7 @@ export default function DemoAdminPage() {
     generateMagicLink,
   } = useAdminDemoAccounts();
 
-  if (rbac.isLoading) {
+  if (isRoleAccessLoading) {
     return null;
   }
 
