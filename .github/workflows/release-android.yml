@@ -21,7 +21,7 @@ defaults:
 jobs:
   bundle-release:
     name: bundleRelease (AAB)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     env:
       # Injectés depuis les secrets du dépôt — requis : VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (voir docs/publication-stores.md).
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -62,10 +62,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
 
       - name: Version applicative (analytics / Sentry release)
         run: echo "VITE_APP_VERSION=$(node -p \"require('./package.json').version\")" >> "$GITHUB_ENV"

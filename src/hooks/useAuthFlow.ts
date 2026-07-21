@@ -11,6 +11,7 @@ import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useBilling } from "@/hooks/useBilling";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import {
   AUTH_FLOW_MAX_WAIT_MS,
   computeAuthFlowDecision,
@@ -76,6 +77,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
     refreshMemberships,
     refreshUser,
   } = useAuth();
+  const { isAdmin, isLoading: isRoleAccessLoading } = useRoleAccess();
 
   const fleetId = activeTenantContext?.fleetId ?? null;
   const hasMemberships = memberships.length > 0;
@@ -127,6 +129,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
 
   const isReady =
     !authLoading &&
+    !isRoleAccessLoading &&
     !isTenantOrgLoading &&
     (timedOut || (orgAndFleetReady && billingReady && onboardingReady));
 
@@ -134,6 +137,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
     if (!isReady) return null;
     return computeAuthFlowDecision({
       hasUser: Boolean(user),
+      isPlatformAdmin: isAdmin,
       hasMemberships,
       userCreatedAt: user?.created_at,
       lastSignInAt: session?.user?.last_sign_in_at ?? null,
@@ -145,6 +149,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
   }, [
     isReady,
     user,
+    isAdmin,
     hasMemberships,
     session?.user?.last_sign_in_at,
     onboardingCompleted,
@@ -240,11 +245,13 @@ export function useAuthFlow(): UseAuthFlowReturn {
   const isLoading = useMemo(
     () =>
       authLoading ||
+      isRoleAccessLoading ||
       isTenantOrgLoading ||
       (Boolean(user) && !isReady) ||
       (Boolean(user) && hasMemberships && Boolean(orgId && fleetId) && !fleetBillingReady),
     [
       authLoading,
+      isRoleAccessLoading,
       isTenantOrgLoading,
       user,
       isReady,

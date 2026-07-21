@@ -78,8 +78,12 @@ export default defineConfig({
      * Les tests unitaires ne doivent pas dépendre d’un `.env.local` local ou CI.
      */
     env: {
-      VITE_SUPABASE_URL: "http://127.0.0.1:54321",
-      VITE_SUPABASE_ANON_KEY: "vitest-placeholder-anon-key",
+      VITE_SUPABASE_URL: runSupabaseIntegration
+        ? process.env.VITE_SUPABASE_URL || "http://127.0.0.1:54321"
+        : "http://127.0.0.1:54321",
+      VITE_SUPABASE_ANON_KEY: runSupabaseIntegration
+        ? process.env.VITE_SUPABASE_ANON_KEY || "vitest-placeholder-anon-key"
+        : "vitest-placeholder-anon-key",
     },
   },
   resolve: {

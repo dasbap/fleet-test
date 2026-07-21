@@ -12,6 +12,7 @@ $ErrorActionPreference = "Stop"
 $baselineFile = "supabase/baseline/00000000000000_baseline_schema.sql"
 $deltaListFile = "supabase/baseline/delta-migrations.txt"
 $configFile = "supabase/config.toml"
+$portsHelper = Join-Path $PSScriptRoot "_local-supabase-ports.ps1"
 $searchFleetMigrationCandidates = @(
     "supabase/migrations/20260415193000_unified_fleet_search.sql",
     "supabase/supabase/migrations/20260415193000_unified_fleet_search.sql"
@@ -32,6 +33,13 @@ if ($Target -eq "linked") {
 if (-not (Get-Command supabase -ErrorAction SilentlyContinue)) {
     Write-Host "INFO: Supabase CLI globale introuvable, utilisation via npx." -ForegroundColor Yellow
 }
+
+if (-not (Test-Path $portsHelper)) {
+    Write-Host "ERREUR: Helper ports Supabase introuvable: $portsHelper" -ForegroundColor Red
+    exit 1
+}
+
+. $portsHelper
 
 if (-not (Test-Path $baselineFile)) {
     Write-Host "ERREUR: Baseline introuvable: $baselineFile" -ForegroundColor Red
@@ -72,37 +80,6 @@ function Invoke-SupabaseCommand {
     }
 }
 
-function Test-PortAvailable {
-    param(
-        [int]$Port
-    )
-
-    $listener = $null
-    try {
-        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, $Port)
-        $listener.Start()
-        return $true
-    }
-    catch {
-        return $false
-    }
-    finally {
-        if ($null -ne $listener) {
-            $listener.Stop()
-        }
-    }
-}
-
-function Write-Utf8NoBom {
-    param(
-        [string]$Path,
-        [string]$Content
-    )
-
-    $encoding = New-Object System.Text.UTF8Encoding($false)
-    [System.IO.File]::WriteAllText((Resolve-Path $Path), $Content, $encoding)
-}
-
 function Invoke-DbScalar {
     param(
         [string]$Sql
@@ -120,7 +97,7 @@ $tempRoot = "supabase/migrations_tmp_baseline_test"
 $legacyRoot = "supabase/migrations_legacy_saved"
 $migrationsRoot = "supabase/migrations"
 $migrationSwapped = $false
-$configBackupPath = $null
+$supabaseConfigBackupPath = $null
 
 if (Test-Path $tempRoot) { Remove-Item -Path $tempRoot -Recurse -Force }
 if (Test-Path $legacyRoot) { Remove-Item -Path $legacyRoot -Recurse -Force }
@@ -144,35 +121,10 @@ foreach ($delta in $deltas) {
 
 try {
     if (Test-Path $configFile) {
-        $originalDbPort = 54322
-        $targetDbPort = $originalDbPort
-        $configRaw = Get-Content $configFile -Raw
-        $updatedConfigRaw = $configRaw
-
-        if (-not (Test-PortAvailable -Port $originalDbPort)) {
-            $fallbackPorts = @(54332, 54333, 54334, 54335, 54336, 54337, 54338, 54339, 54340)
-            $freePort = $fallbackPorts | Where-Object { Test-PortAvailable -Port $_ } | Select-Object -First 1
-            if ($null -eq $freePort) {
-                throw "Aucun port DB libre trouvé pour Supabase local."
-            }
-            $targetDbPort = [int]$freePort
-        }
-
-        if ($targetDbPort -ne $originalDbPort) {
-            Write-Host "INFO: Port 54322 occupe, bascule temporaire sur le port $targetDbPort." -ForegroundColor Yellow
-            $updatedConfigRaw = $updatedConfigRaw -replace '(?ms)(\[db\]\s*.*?port\s*=\s*)\d+', "`$1$targetDbPort"
-        }
-        # Désactiver temporairement Storage pour éviter un faux négatif infra
-        # pendant la validation SQL baseline+deltas (erreurs 502 hors SQL).
-        $updatedConfigRaw = $updatedConfigRaw -replace '(?ms)(\[storage\]\s*.*?enabled\s*=\s*)true', "`$1false"
-        $updatedConfigRaw = $updatedConfigRaw -replace '(?ms)(\[storage\.s3_protocol\]\s*.*?enabled\s*=\s*)true', "`$1false"
-
-        if ($updatedConfigRaw -ne $configRaw) {
-            $configBackupPath = "$configFile.ci-backup"
-            Copy-Item $configFile $configBackupPath -Force
-            Write-Utf8NoBom -Path $configFile -Content $updatedConfigRaw
-            Write-Host "INFO: Ajustements temporaires de config appliques (port/Storage)." -ForegroundColor Yellow
-        }
+        $portConfig = Set-LocalSupabaseTestPorts -ConfigFile $configFile -DisableStorage
+        $supabaseConfigBackupPath = $portConfig.BackupPath
+        Write-Host "INFO: Ports Supabase locaux temporaires: api=$($portConfig.Ports.api), db=$($portConfig.Ports.db), studio=$($portConfig.Ports.studio), inbucket=$($portConfig.Ports.inbucket), analytics=$($portConfig.Ports.analytics)." -ForegroundColor Yellow
+        Write-Host "INFO: Storage desactive temporairement pour isoler la validation SQL baseline+deltas." -ForegroundColor Yellow
     }
 
     Write-Host "0) Nettoyage stack Supabase existante..." -ForegroundColor Cyan
@@ -236,7 +188,13 @@ finally {
     if (Test-Path $tempRoot) {
         Remove-Item -Path $tempRoot -Recurse -Force
     }
-    if ($null -ne $configBackupPath -and (Test-Path $configBackupPath)) {
-        Move-Item -Path $configBackupPath -Destination $configFile -Force
+    if ($null -ne $supabaseConfigBackupPath) {
+        try {
+            Invoke-SupabaseCommand -CommandArgs @("stop", "--no-backup")
+        }
+        catch {
+            Write-Host "INFO: Arret stack Supabase ignore pendant le nettoyage." -ForegroundColor DarkYellow
+        }
     }
+    Restore-LocalSupabaseConfig -ConfigFile $configFile -BackupPath $supabaseConfigBackupPath
 }

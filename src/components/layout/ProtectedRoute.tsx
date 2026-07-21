@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { RequireAuth } from "@/navigation/guards/RequireAuth";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import { useRouteAccess } from "@/hooks/useRouteAccess";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useAuth } from "@/hooks/useAuth";
 import type { AppRole } from "@/types/auth";
 import { getLoginPathPreservingReturn } from "@/navigation/loginRedirectPath";
@@ -27,6 +28,7 @@ export function ProtectedRoute({
   roleFallbackTo = ROUTE_PATHS.dashboard,
 }: ProtectedRouteProps) {
   const access = useRouteAccess();
+  const { isAdmin } = useRoleAccess();
   const { activeTenantContext } = useAuth();
   const location = useLocation();
   const loginWithReturn = getLoginPathPreservingReturn(location);
@@ -35,6 +37,11 @@ export function ProtectedRoute({
     !allowedRoles?.length ||
     (Boolean(activeTenantContext?.role) &&
       allowedRoles.includes(activeTenantContext!.role));
+  const adminPathAllowed =
+    location.pathname === ROUTE_PATHS.dashboard ||
+    location.pathname === ROUTE_PATHS.dashboardProfile ||
+    location.pathname === ROUTE_PATHS.dashboardAdmin ||
+    location.pathname.startsWith(`${ROUTE_PATHS.dashboardAdmin}/`);
 
   return (
     <RequireAuth>
@@ -49,10 +56,13 @@ export function ProtectedRoute({
       {access.state === "upgrade" && (
         <Navigate to={ROUTE_PATHS.upgrade} replace />
       )}
-      {access.state === "ready" && !roleAllowed && (
+      {access.state === "ready" && !isAdmin && !roleAllowed && (
         <Navigate to={roleFallbackTo} replace />
       )}
-      {access.state === "ready" && roleAllowed && <Outlet />}
+      {access.state === "ready" && isAdmin && !adminPathAllowed && (
+        <Navigate to={ROUTE_PATHS.dashboardAdmin} replace />
+      )}
+      {access.state === "ready" && roleAllowed && (!isAdmin || adminPathAllowed) && <Outlet />}
     </RequireAuth>
   );
 }

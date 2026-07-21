@@ -26,7 +26,7 @@ export const FONCTIONNALITES: readonly FonctionnaliteItem[] = [
     icon: Car,
     title: "Samba-Fleet",
     description:
-      "Gestion complète de vos véhicules : immatriculation, affectations, historique et statuts en temps réel.",
+      "Vue claire de vos véhicules, de leur disponibilité et des actions à suivre au quotidien.",
     color: "primary",
     guidePath: "/guides/gestion-flotte-pme-cemac",
   },
@@ -34,7 +34,7 @@ export const FONCTIONNALITES: readonly FonctionnaliteItem[] = [
     icon: Fuel,
     title: "Samba-Fuel",
     description:
-      "Planification et suivi des entretiens. Alertes automatiques pour ne jamais manquer une maintenance.",
+      "Suivi carburant et signaux d'écart pour garder les dépenses terrain sous contrôle.",
     color: "accent",
     guidePath: "/fonctionnalites/carburant",
   },
@@ -42,7 +42,7 @@ export const FONCTIONNALITES: readonly FonctionnaliteItem[] = [
     icon: Wrench,
     title: "Samba-Care",
     description:
-      "Gestion atelier avec photos obligatoires, checklists et suivi qualité des interventions.",
+      "Entretien mieux cadré, interventions plus faciles à suivre et historique exploitable.",
     color: "primary",
     guidePath: "/fonctionnalites/maintenance",
   },
@@ -50,7 +50,7 @@ export const FONCTIONNALITES: readonly FonctionnaliteItem[] = [
     icon: DollarSign,
     title: "Samba-Cash",
     description:
-      "Encaissements journaliers, Mobile Money intégré, clôture obligatoire et écarts visibles.",
+      "Recettes journalières plus lisibles, rapprochements simplifiés et suivi des écarts.",
     color: "accent",
     guidePath: "/guides/reduire-ecarts-encaissements",
   },
@@ -58,7 +58,7 @@ export const FONCTIONNALITES: readonly FonctionnaliteItem[] = [
     icon: ShieldCheck,
     title: "Samba-Check",
     description:
-      "Gestion des rôles et permissions. Chaque utilisateur voit uniquement ce qui le concerne.",
+      "Accès cadré pour que chaque équipe travaille dans un espace adapté à son rôle.",
     color: "primary",
     guidePath: "/solutions/gestionnaires-flotte",
   },
@@ -66,15 +66,15 @@ export const FONCTIONNALITES: readonly FonctionnaliteItem[] = [
     icon: Bell,
     title: "Alertes intelligentes",
     description:
-      "Notifications push, email et SMS pour les seuils critiques et rappels importants.",
+      "Rappels et signaux utiles pour réagir avant que les petits oublis deviennent coûteux.",
     color: "accent",
     guidePath: "/fonctionnalites/alertes",
   },
   {
     icon: Users,
-    title: "Multi-tenant",
+    title: "Multi-flottes",
     description:
-      "Architecture multi-organisations avec flottes isolées et données sécurisées.",
+      "Organisation claire pour suivre plusieurs flottes sans mélanger les responsabilités.",
     color: "primary",
     guidePath: "/guides/kpi-gestionnaire-multi-flottes",
   },
@@ -82,7 +82,7 @@ export const FONCTIONNALITES: readonly FonctionnaliteItem[] = [
     icon: BarChart3,
     title: "Scoring & KPIs",
     description:
-      "Système de scoring chauffeurs et mécaniciens avec incitations et sanctions automatiques.",
+      "Indicateurs simples pour repérer les tendances, comparer les périodes et décider plus vite.",
     color: "accent",
     guidePath: "/fonctionnalites/score-conducteur",
   },

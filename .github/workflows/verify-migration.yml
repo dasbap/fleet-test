@@ -2,22 +2,14 @@ name: Verify Migration Status
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - release/**
-    paths:
-      - 'supabase/migrations/**'
-      - 'supabase/scripts/verify/verify-migration-status.sql'
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   pull_request:
-    branches:
-      - main
-      - master
-      - release/**
-    paths:
-      - 'supabase/migrations/**'
-      - 'supabase/scripts/verify/verify-migration-status.sql'
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch: # Permet d'exécuter manuellement depuis GitHub
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -44,7 +36,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1

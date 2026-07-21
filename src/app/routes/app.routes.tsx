@@ -78,6 +78,7 @@ const PredictiveMaintenancePage = lazy(
 );
 const PricingPage = lazy(() => import("@/pages/Pricing"));
 const FonctionnalitesPage = lazy(() => import("@/pages/public/FonctionnalitesPage"));
+const FonctionnaliteSectionPage = lazy(() => import("@/pages/public/FonctionnaliteSectionPage"));
 const ModulesPage = lazy(() => import("@/pages/public/ModulesPage"));
 const FaqPage = lazy(() => import("@/pages/public/FaqPage"));
 const ContactPage = lazy(() => import("@/pages/public/ContactPage"));
@@ -148,6 +149,10 @@ export const appRoutes = (
     />
     <Route path="/securite" element={<SecuritePage />} />
     <Route path="/fonctionnalites" element={<FonctionnalitesPage />} />
+    <Route
+      path="/fonctionnalites/piloter-flotte"
+      element={<FonctionnaliteSectionPage slug="piloter-flotte" />}
+    />
     <Route path="/modules" element={<ModulesPage />} />
     <Route path="/faq" element={<FaqPage />} />
     <Route path="/guides" element={<Navigate to={ROUTE_PATHS.help} replace />} />

@@ -95,6 +95,7 @@ export default async function handler(
   const body = req.body as {
     email?:        string;
     company_name?: string;
+    account_type?: string;
     fleet_id?:     string;
     trial_days?:   number;
     send_email?:   boolean;
@@ -124,6 +125,7 @@ export default async function handler(
       body: JSON.stringify({
         email:        body.email,
         company_name: body.company_name,
+        account_type: body.account_type ?? "prospect",
         fleet_id:     body.fleet_id,
         trial_days:   body.trial_days ?? 7,
         send_email:   body.send_email ?? false,
