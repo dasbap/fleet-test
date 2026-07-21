@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import {
   Check,
   ExternalLink,
@@ -19,8 +18,6 @@ import { PublicPageHero } from "@/components/landing/PublicPageHero";
 import { useBillingCheckout } from "@/hooks/useBillingCheckout";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { formatPublicPriceXaf } from "@/lib/public-pricing";
-import { ROUTE_PATHS } from "@/navigation/routePaths";
-import { buildSupportMailto } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 
 // ─── Constantes pricing ───────────────────────────────────────────────────
@@ -61,8 +58,6 @@ const PLANS: PlanConfig[] = [
       "Module Finance & collectes",
       "Exports PDF / Excel",
       "Scoring conducteurs",
-      "Alertes avancées",
-      "Support prioritaire",
     ],
     notIncluded: [
       "IA Pulse+",
@@ -86,6 +81,8 @@ const PLANS: PlanConfig[] = [
       "Rapports programmés",
       "Géofencing",
       "Monitoring fraude carburant",
+      "Alertes avancées",
+      "Support prioritaire",
       "API (future)",
     ],
     ctaLabel: "Payer avec Notch Pay",
@@ -133,10 +130,6 @@ export default function PricingPage() {
 
   async function handlePay(plan: PlanConfig) {
     if (plan.code === "enterprise") {
-      window.location.href = buildSupportMailto(
-        "Devis Organizer E-Samba",
-        "Bonjour, je souhaite un devis pour le plan Organizer.",
-      );
       return;
     }
     await initiate({
@@ -223,10 +216,7 @@ export default function PricingPage() {
             </span>
           </div>
           <p>
-            Paiement en XAF (FCFA) · Mobile Money (MTN, Orange) via Notch Pay ·{" "}
-            <Link to={ROUTE_PATHS.contact} className="underline underline-offset-2">
-              Nous contacter
-            </Link>
+            Paiement en XAF (FCFA) · Mobile Money (MTN, Orange) via Notch Pay.
           </p>
         </div>
       </div>
@@ -348,11 +338,8 @@ function PlanCard({
         )}
 
         {isEnterprise ? (
-          <Button variant="outline" className="w-full" asChild>
-            <a href={buildSupportMailto("Devis Organizer")}>
-              {plan.ctaLabel}
-              <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
-            </a>
+          <Button variant="outline" className="w-full" disabled>
+            {plan.ctaLabel}
           </Button>
         ) : showPayButton ? (
           <Button
@@ -369,10 +356,8 @@ function PlanCard({
             {isLoading ? "Connexion Notch Pay…" : plan.ctaLabel}
           </Button>
         ) : !bffAvailable ? (
-          <Button variant="outline" className="w-full" asChild>
-            <a href={buildSupportMailto(`Abonnement E-Samba ${plan.name}`)}>
-              Nous contacter
-            </a>
+          <Button variant="outline" className="w-full" disabled>
+            Paiement indisponible
           </Button>
         ) : null}
 

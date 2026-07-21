@@ -17,11 +17,8 @@ defaults:
 
 jobs:
   supabase-integration:
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 25
-    defaults:
-      run:
-        shell: pwsh
 
     steps:
       - name: Checkout
@@ -48,11 +45,7 @@ jobs:
           version: 2.102.0
 
       - name: Prepare dynamic Supabase local ports
-        shell: pwsh
-        run: |
-          . ./scripts/_local-supabase-ports.ps1
-          $portConfig = Set-LocalSupabaseTestPorts -ConfigFile "supabase/config.toml"
-          Write-Host "Supabase ports: api=$($portConfig.Ports.api), db=$($portConfig.Ports.db), studio=$($portConfig.Ports.studio), inbucket=$($portConfig.Ports.inbucket), analytics=$($portConfig.Ports.analytics)."
+        run: node scripts/prepare-local-supabase-ports.mjs
 
       - name: Start Supabase local
         run: supabase start --ignore-health-check

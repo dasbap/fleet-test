@@ -61,4 +61,41 @@ describe("PricingPage", () => {
     expect(screen.queryByText(/Prêt à/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Démarrer gratuitement")).not.toBeInTheDocument();
   });
+  it("reserve les alertes avancees et le support prioritaire au plan Pro", () => {
+    render(
+      <MemoryRouter>
+        <PricingPage />
+      </MemoryRouter>,
+    );
+
+    const starterCard = screen.getByRole("heading", { name: "Starter" }).closest(".relative");
+    const proCard = screen.getByRole("heading", { name: "Pro" }).closest(".relative");
+
+    expect(starterCard).toBeInTheDocument();
+    expect(proCard).toBeInTheDocument();
+    expect(starterCard).not.toHaveTextContent("Alertes avanc");
+    expect(starterCard).not.toHaveTextContent("Support prioritaire");
+    expect(proCard).toHaveTextContent("Alertes avanc");
+    expect(proCard).toHaveTextContent("Support prioritaire");
+  });
+
+  it("ne propose aucun lien Outlook WhatsApp ou contact sur les tarifs", () => {
+    render(
+      <MemoryRouter>
+        <PricingPage />
+      </MemoryRouter>,
+    );
+
+    const hrefs = screen
+      .queryAllByRole("link")
+      .map((link) => link.getAttribute("href") ?? "");
+
+    expect(hrefs.every((href) => !href.startsWith("mailto:"))).toBe(true);
+    expect(hrefs.every((href) => !href.includes("wa.me"))).toBe(true);
+    const mainHrefs = Array.from(document.querySelectorAll("main a"))
+      .map((link) => link.getAttribute("href") ?? "");
+
+    expect(mainHrefs).not.toContain("/contact");
+    expect(screen.queryByText(/whatsapp/i)).not.toBeInTheDocument();
+  });
 });

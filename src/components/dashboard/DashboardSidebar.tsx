@@ -87,8 +87,11 @@ const DASHBOARD_NAV_ICONS: Record<string, LucideIcon> = {
   [ROUTE_PATHS.dashboardHistory]: Fuel,
   [ROUTE_PATHS.dashboardRetentionAnalytics]: LineChart,
   [ROUTE_PATHS.dashboardRoles]: Shield,
+  [ROUTE_PATHS.dashboardAdmin]: Shield,
   [ROUTE_PATHS.dashboardAdminUsers]: Shield,
   [ROUTE_PATHS.dashboardAdminDemo]: KeyRound,
+  [ROUTE_PATHS.dashboardHelpAdmin]: Shield,
+  [ROUTE_PATHS.dashboardHelpAnalytics]: LineChart,
 };
 
 function withIcons(items: readonly DashboardNavItem[]): SidebarNavItem[] {
@@ -134,13 +137,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
     mechanic: withIcons(DASHBOARD_NAV.mechanic),
   };
 
-  const items = isAdmin
-    ? [
-        ...menuItems[userRole],
-        { label: "Admin comptes", href: ROUTE_PATHS.dashboardAdminUsers, icon: Shield },
-        { label: "Comptes demo", href: ROUTE_PATHS.dashboardAdminDemo, icon: KeyRound },
-      ]
-    : menuItems[userRole];
+  const items = isAdmin ? withIcons(DASHBOARD_NAV.admin) : menuItems[userRole];
 
   const containerVariants = {
     hidden: {},

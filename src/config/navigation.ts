@@ -214,6 +214,13 @@ export const DASHBOARD_NAV = {
     { label: "Véhicules", href: ROUTE_PATHS.dashboardVehicles },
     { label: "Historique", href: ROUTE_PATHS.dashboardHistory },
   ],
+  admin: [
+    { label: "Administration", href: ROUTE_PATHS.dashboardAdmin },
+    { label: "Admin comptes", href: ROUTE_PATHS.dashboardAdminUsers },
+    { label: "Comptes demo", href: ROUTE_PATHS.dashboardAdminDemo },
+    { label: "Aide admin", href: ROUTE_PATHS.dashboardHelpAdmin },
+    { label: "Analytics aide", href: ROUTE_PATHS.dashboardHelpAnalytics },
+  ],
   organizerExtras: {
     retention: { label: "Rétention", href: ROUTE_PATHS.dashboardRetentionAnalytics },
     roles: { label: "Rôles", href: ROUTE_PATHS.dashboardRoles },

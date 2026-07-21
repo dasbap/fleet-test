@@ -180,7 +180,7 @@ describe("DashboardSidebar", () => {
     expect(screen.queryByText("activation-checklist")).not.toBeInTheDocument();
   });
 
-  it("affiche le panneau de creation demo aux administrateurs plateforme", async () => {
+  it("affiche uniquement les entrees utiles aux administrateurs plateforme", async () => {
     roleAccessMock.mockReturnValue({
       isAdmin: true,
       rbac: { platformRole: "admin" },
@@ -189,9 +189,20 @@ describe("DashboardSidebar", () => {
 
     renderSidebar("organizer");
 
-    expect(await screen.findByRole("link", { name: /Comptes demo/i })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: /Administration/i })).toHaveAttribute(
+      "href",
+      ROUTE_PATHS.dashboardAdmin,
+    );
+    expect(screen.getByRole("link", { name: /Admin comptes/i })).toHaveAttribute(
+      "href",
+      ROUTE_PATHS.dashboardAdminUsers,
+    );
+    expect(screen.getByRole("link", { name: /Comptes demo/i })).toHaveAttribute(
       "href",
       ROUTE_PATHS.dashboardAdminDemo,
     );
+    expect(screen.queryByRole("link", { name: /VÃ©hicules/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Incidents/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Finances/i })).not.toBeInTheDocument();
   });
 });

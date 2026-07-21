@@ -22,10 +22,7 @@ defaults:
 jobs:
   validate-baseline-delta:
     name: Validate baseline + deltas on fresh local DB
-    runs-on: [self-hosted, Windows, X64]
-    defaults:
-      run:
-        shell: pwsh
+    runs-on: [self-hosted, Linux, X64]
 
     steps:
       - name: Checkout Code
@@ -50,20 +47,17 @@ jobs:
           supabase --version
 
       - name: Prepare CI Log Directory
-        shell: pwsh
-        run: New-Item -ItemType Directory -Path "supabase-ci-logs" -Force | Out-Null
+        run: mkdir -p supabase-ci-logs
 
       - name: Run Baseline + Delta Validation
-        shell: pwsh
         env:
           CI_SUPABASE_DEBUG: "true"
-        run: ./scripts/test-baseline-delta.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/baseline-delta.log"
+        run: npm run test:baseline-delta:node -- --target local 2>&1 | tee supabase-ci-logs/baseline-delta.log
 
       - name: Run SQL Security Tests
-        shell: pwsh
         env:
           CI_SUPABASE_DEBUG: "true"
-        run: ./scripts/test-sql-security.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/sql-security.log"
+        run: npm run test:sql-security:node -- --target local 2>&1 | tee supabase-ci-logs/sql-security.log
 
       - name: Upload Supabase Debug Logs
         if: always()

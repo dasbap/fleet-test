@@ -138,6 +138,8 @@ export const ROUTE_PATHS = {
   aide: "/aide",
   /** Analytics centre d'aide (organisateur). */
   dashboardHelpAnalytics: "/dashboard/admin/help-analytics",
+  /** Hub administration plateforme. */
+  dashboardAdmin: "/dashboard/admin",
   /** Backoffice articles aide (v2). */
   dashboardHelpAdmin: "/dashboard/admin/help",
   /** Administration des comptes utilisateur. */
