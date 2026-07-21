@@ -66,7 +66,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
 
       - name: Enable local email auth for integration tests
         run: |
@@ -96,7 +95,8 @@ jobs:
             sed -E 's/="(.*)"$/=\1/' >> "$GITHUB_ENV"
 
       - name: Install dependencies
-        run: npm ci
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
 
       - name: Run Supabase Vitest integration tests
         run: npm run test:integration:supabase:vitest

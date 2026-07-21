@@ -1,0 +1,43 @@
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+const workflowDir = ".github/workflows";
+const workflowFiles = readdirSync(workflowDir)
+  .filter((file) => file.endsWith(".yml") || file.endsWith(".yaml"))
+  .map((file) => path.join(workflowDir, file).replaceAll("\\", "/"));
+
+describe("GitHub workflow dependency install policy", () => {
+  it("does not run npm ci directly on self-hosted runners", () => {
+    const offenders = workflowFiles.filter((file) => {
+      const workflow = readFileSync(file, "utf8");
+      return /\brun:\s+npm ci(?:\s|$)/m.test(workflow);
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("uses the bounded CI install script for dependency installs", () => {
+    const workflowsWithInstall = workflowFiles.filter((file) => {
+      const workflow = readFileSync(file, "utf8");
+      return workflow.includes("Install dependencies");
+    });
+
+    const offenders = workflowsWithInstall.filter((file) => {
+      const workflow = readFileSync(file, "utf8");
+      return !workflow.includes("node scripts/ci-install.mjs");
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("does not use setup-node npm cache on self-hosted runners", () => {
+    const offenders = workflowFiles.filter((file) => {
+      const workflow = readFileSync(file, "utf8");
+      return /^\s+cache:\s+['"]?npm['"]?\s*$/m.test(workflow);
+    });
+
+    expect(offenders).toEqual([]);
+  });
+});

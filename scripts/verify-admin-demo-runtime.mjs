@@ -111,6 +111,21 @@ try {
   );
 
   await exists(
+    "demo_session_rpc",
+    `
+      select exists (
+        select 1
+        from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public'
+          and p.proname = 'demo_upsert_session'
+          and pg_get_function_arguments(p.oid) like '%p_ip_address text%'
+          and pg_get_function_arguments(p.oid) like '%p_user_agent text%'
+      ) as ok
+    `,
+  );
+
+  await exists(
     "active_demo_accounts_have_expiration",
     `
       select not exists (
