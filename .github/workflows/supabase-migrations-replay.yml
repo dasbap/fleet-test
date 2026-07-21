@@ -18,7 +18,7 @@ defaults:
 jobs:
   verify-migration-filenames:
     name: Verify migration filenames
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,6 +51,7 @@ jobs:
 
   replay-migrations:
     name: Replay migrations on clean local stack
+    if: github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, Linux, X64]
     needs: verify-migration-filenames
     steps:

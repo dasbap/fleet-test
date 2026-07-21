@@ -35,7 +35,7 @@ defaults:
 jobs:
   changes:
     name: Detect Lighthouse changes
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     outputs:
       relevant: ${{ steps.filter.outputs.relevant }}
     steps:
@@ -66,7 +66,7 @@ jobs:
     name: Lighthouse CI (placeholders)
     needs: changes
     if: needs.changes.outputs.relevant == 'true'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
       VITE_SUPABASE_URL: https://placeholder-build.supabase.co

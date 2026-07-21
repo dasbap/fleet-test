@@ -17,6 +17,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NODE_OPTIONS: --max-old-space-size=2048
+
 defaults:
   run:
     shell: bash
@@ -24,6 +27,7 @@ defaults:
 jobs:
   db-migrations:
     name: Supabase migrations (fresh DB)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 20
 
@@ -77,8 +81,7 @@ jobs:
   # ── Job 2 : TypeScript build ────────────────────────────────────────────
   build:
     name: TypeScript build
-    runs-on: [self-hosted, Linux, X64]
-    needs: db-migrations
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -119,7 +122,7 @@ jobs:
   # ── Job 3 : Lint ────────────────────────────────────────────────────────
   lint:
     name: ESLint
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -135,7 +138,7 @@ jobs:
   # ── Job 4 : Qualité + métriques consolidées ───────────────────────────────
   quality-metrics:
     name: Test layers metrics
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: build
     env:

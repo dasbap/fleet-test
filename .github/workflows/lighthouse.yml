@@ -44,7 +44,7 @@ defaults:
 jobs:
   changes:
     name: Detect Lighthouse changes
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     outputs:
       relevant: ${{ steps.filter.outputs.relevant }}
     steps:
@@ -75,7 +75,7 @@ jobs:
     name: Core Web Vitals audit
     needs: changes
     if: needs.changes.outputs.relevant == 'true'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:

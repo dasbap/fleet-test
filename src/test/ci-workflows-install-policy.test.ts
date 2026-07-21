@@ -52,4 +52,30 @@ describe("GitHub workflow dependency install policy", () => {
     expect(workflow).toContain("Validate Delta Migration List");
     expect(workflow).toContain("runs-on: ubuntu-latest");
   });
+
+  it("does not schedule heavyweight WSL jobs automatically on pull requests", () => {
+    const heavyweightWorkflows = [
+      ".github/workflows/ci.yml",
+      ".github/workflows/supabase-integration-tests.yml",
+      ".github/workflows/supabase-migrations-replay.yml",
+    ];
+
+    const offenders = heavyweightWorkflows.filter((file) => {
+      const workflow = readFileSync(file, "utf8");
+      return (
+        workflow.includes("pull_request:") &&
+        workflow.includes("runs-on: [self-hosted, Linux, X64]") &&
+        !workflow.includes("if: github.event_name == 'workflow_dispatch'")
+      );
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("bounds Node memory during CI dependency installation", () => {
+    const installScript = readFileSync("scripts/ci-install.mjs", "utf8");
+
+    expect(installScript).toContain("NODE_OPTIONS");
+    expect(installScript).toContain("--max-old-space-size=2048");
+  });
 });

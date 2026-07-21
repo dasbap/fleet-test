@@ -20,7 +20,7 @@ defaults:
 jobs:
   changes:
     name: Detect image changes
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     outputs:
       relevant: ${{ steps.filter.outputs.relevant }}
     steps:
@@ -51,7 +51,7 @@ jobs:
     name: Optimize images strict (prod)
     needs: changes
     if: needs.changes.outputs.relevant == 'true'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:

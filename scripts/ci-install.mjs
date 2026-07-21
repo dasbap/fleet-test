@@ -8,6 +8,7 @@ const run = (command, args) => {
     shell: process.platform === "win32",
     env: {
       ...process.env,
+      NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=2048",
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1",
     },
   });
