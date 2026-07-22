@@ -6,6 +6,7 @@ const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const email = (process.env.ADMIN_EMAIL || process.argv[2] || "").trim().toLowerCase();
 const password = (process.env.ADMIN_PASSWORD || process.argv[3] || "").trim();
 const fullName = (process.env.ADMIN_FULL_NAME || process.argv[4] || "Administrateur E-Samba").trim();
+const isSuperAdmin = process.env.SUPER_ADMIN === "true" || process.argv.includes("--super-admin");
 
 if (!url || !key || !email) {
   console.error(
@@ -60,10 +61,11 @@ const { error: adminProfileError } = await admin.from("admin_profiles").upsert(
   {
     user_id: user.id,
     is_active: true,
+    internal_role: isSuperAdmin ? "super_admin" : "admin",
     notes: "Bootstrap platform admin",
   },
   { onConflict: "user_id" },
 );
 if (adminProfileError) throw adminProfileError;
 
-console.log(JSON.stringify({ ok: true, user_id: user.id, email }, null, 2));
+console.log(JSON.stringify({ ok: true, user_id: user.id, email, super_admin: isSuperAdmin }, null, 2));

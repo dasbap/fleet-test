@@ -103,9 +103,6 @@ const DashcamPage = lazy(
 const Scan = lazy(() => import("@/pages/Scan"));
 const DemoAdminPage = lazy(() => import("@/pages/admin/DemoAdminPage"));
 const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
-const HelpAnalyticsDashboard = lazy(
-  () => import("@/features/help/screens/HelpAnalyticsDashboard"),
-);
 const HelpAdminPage = lazy(() => import("@/features/help/screens/HelpAdminPage"));
 const AdminUsersPage = lazy(() => import("@/pages/admin/AdminUsersPage"));
 const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
@@ -305,14 +302,6 @@ export const dashboardRoutes = (
         element={
           <AdminGuard redirectIfDenied showLoadingState>
             <AdminUsersPage />
-          </AdminGuard>
-        }
-      />
-      <Route
-        path="admin/help-analytics"
-        element={
-          <AdminGuard redirectIfDenied showLoadingState>
-            <HelpAnalyticsDashboard />
           </AdminGuard>
         }
       />

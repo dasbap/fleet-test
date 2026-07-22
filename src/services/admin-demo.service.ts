@@ -25,6 +25,9 @@ export interface AdminDemoDashboardData {
   demoFleets: DemoFleet[];
 }
 
+export const MAX_DEMO_TRIAL_DAYS = 31;
+export const MAX_DEMO_EXTENSION_HOURS = MAX_DEMO_TRIAL_DAYS * 24;
+
 /**
  * Logique métier administration des comptes démo.
  */
@@ -53,6 +56,10 @@ export class AdminDemoService {
     const email = payload.email.trim();
     if (!email) {
       return { ok: false, error: "email_requis" };
+    }
+
+    if (payload.trial_days > MAX_DEMO_TRIAL_DAYS) {
+      return { ok: false, error: "duree_demo_max_31_jours" };
     }
 
     try {
@@ -109,6 +116,10 @@ export class AdminDemoService {
   async reactivateAccount(userId: string, adminId: string, extendHours?: number): Promise<boolean> {
     if (!userId || !adminId) {
       throw new Error("Identifiants utilisateur requis");
+    }
+
+    if (extendHours !== undefined && extendHours > MAX_DEMO_EXTENSION_HOURS) {
+      throw new Error("Une demo ne peut pas depasser un mois depuis sa creation");
     }
 
     const result = await this.repository.reactivateAccount(userId, adminId, extendHours ?? null);

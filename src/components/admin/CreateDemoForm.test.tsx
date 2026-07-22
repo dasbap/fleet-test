@@ -71,4 +71,15 @@ describe("CreateDemoForm", () => {
     const payload = onSubmit.mock.calls[0][0] as CreateDemoPayload;
     expect(payload.fleet_id).toBeUndefined();
   });
+
+  it("borne la duree de creation demo a 31 jours dans le formulaire", () => {
+    render(
+      <CreateDemoForm
+        demoFleets={demoFleets}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText(/dur.e d'essai/i)).toHaveAttribute("max", "31");
+  });
 });

@@ -219,7 +219,6 @@ export const DASHBOARD_NAV = {
     { label: "Admin comptes", href: ROUTE_PATHS.dashboardAdminUsers },
     { label: "Comptes demo", href: ROUTE_PATHS.dashboardAdminDemo },
     { label: "Aide admin", href: ROUTE_PATHS.dashboardHelpAdmin },
-    { label: "Analytics aide", href: ROUTE_PATHS.dashboardHelpAnalytics },
   ],
   organizerExtras: {
     retention: { label: "Rétention", href: ROUTE_PATHS.dashboardRetentionAnalytics },
@@ -257,6 +256,7 @@ export const DASHBOARD_SIDEBAR_FOOTER = [
 export function isDashboardNavActive(pathname: string, href: string): boolean {
   if (pathname === href) return true;
   if (href === ROUTE_PATHS.dashboard) return false;
+  if (href === ROUTE_PATHS.dashboardAdmin) return false;
   return pathname.startsWith(`${href}/`);
 }
 

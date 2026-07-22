@@ -136,8 +136,6 @@ export const ROUTE_PATHS = {
   helpArticle: (category: string, slug: string) => `/help/${category}/${slug}` as const,
   /** Legacy — redirection vers /help. */
   aide: "/aide",
-  /** Analytics centre d'aide (organisateur). */
-  dashboardHelpAnalytics: "/dashboard/admin/help-analytics",
   /** Hub administration plateforme. */
   dashboardAdmin: "/dashboard/admin",
   /** Backoffice articles aide (v2). */

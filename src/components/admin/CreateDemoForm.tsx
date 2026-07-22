@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Copy, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { MAX_DEMO_TRIAL_DAYS } from "@/services/admin-demo.service";
 import type { CreateDemoPayload, DemoFleet } from "@/hooks/useAdminDemoAccounts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -233,7 +234,7 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
           id="demo-days"
           type="number"
           min={1}
-          max={90}
+          max={MAX_DEMO_TRIAL_DAYS}
           value={trialDays}
           onChange={(e) => setTrialDays(Number(e.target.value))}
         />

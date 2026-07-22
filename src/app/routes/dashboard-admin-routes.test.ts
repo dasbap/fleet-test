@@ -13,7 +13,6 @@ describe("dashboard admin routes", () => {
       "admin",
       "admin/demo",
       "admin/users",
-      "admin/help-analytics",
       "admin/help",
     ]) {
       const routeIndex = source.indexOf(`path="${path}"`);
@@ -25,5 +24,7 @@ describe("dashboard admin routes", () => {
 
       expect(routeBlock).toContain("<AdminGuard");
     }
+
+    expect(source).not.toContain('path="admin/help-analytics"');
   });
 });

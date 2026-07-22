@@ -22,10 +22,9 @@ export default function FonctionnalitesPage() {
   ];
 
   return (
-    <PublicPageLayout showFooter={false} showWhatsApp={false}>
+    <PublicPageLayout showWhatsApp={false}>
       <header className="border-b border-border bg-background pt-24 pb-10 md:pt-28 md:pb-12">
         <div className="container mx-auto max-w-4xl px-4 text-center">
-          <p className="mb-3 text-xs font-medium uppercase text-primary">Fonctionnalites</p>
           <h1 className="font-heading text-4xl font-bold leading-tight md:text-6xl">
             Une flotte plus <span className="text-gradient">lisible</span>, sans tout devoiler
           </h1>
@@ -44,9 +43,6 @@ export default function FonctionnalitesPage() {
             className="group grid gap-6 rounded-xl border border-border bg-card p-6 shadow-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:grid-cols-[0.85fr_1.15fr] md:items-center md:p-8"
           >
             <div>
-              <p className="mb-3 text-xs font-medium uppercase text-primary">
-                Capacite metier
-              </p>
               <h2 className="font-heading text-3xl font-bold group-hover:text-primary md:text-4xl">
                 {section.title}
               </h2>

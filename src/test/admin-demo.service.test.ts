@@ -95,6 +95,32 @@ describe("AdminDemoService", () => {
     });
   });
 
+  it("refuse une duree de creation demo superieure a 31 jours", async () => {
+    const createProspect = vi.fn();
+    const service = createService({}, { createProspect });
+
+    const result = await service.createAccess("token", {
+      email: "prospect@example.com",
+      account_type: "prospect",
+      trial_days: 32,
+      send_email: false,
+    });
+
+    expect(result).toEqual({ ok: false, error: "duree_demo_max_31_jours" });
+    expect(createProspect).not.toHaveBeenCalled();
+  });
+
+  it("refuse de reactiver une demo avec plus de 31 jours d'extension demandee", async () => {
+    const reactivateAccount = vi.fn();
+    const service = createService({ reactivateAccount }, {});
+
+    await expect(service.reactivateAccount("user-1", "admin-1", 745)).rejects.toThrow(
+      "Une demo ne peut pas depasser un mois depuis sa creation",
+    );
+
+    expect(reactivateAccount).not.toHaveBeenCalled();
+  });
+
   it("suspendAccount exige les identifiants", async () => {
     const service = createService({}, {});
 

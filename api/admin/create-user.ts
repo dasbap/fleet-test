@@ -7,7 +7,7 @@ import {
   requireAuthenticatedUser,
 } from "../_lib/vercel-api";
 
-const VALID_ROLES = new Set(["organizer", "manager", "driver", "mechanic"]);
+const VALID_FLEET_ROLES = new Set(["organizer", "manager", "driver", "mechanic"]);
 
 function generateTempPassword(): string {
   const words = ["Samba", "Flotte", "Route", "Cargo"];
@@ -27,8 +27,11 @@ async function requireAccountProvisioner(
   const auth = await requireAuthenticatedUser(req, res);
   if (!auth) return null;
 
-  const { data: isAdmin } = await auth.client.rpc("is_platform_admin");
-  return { ...auth, isAdmin: isAdmin === true };
+  const [{ data: isAdmin }, { data: isSuperAdmin }] = await Promise.all([
+    auth.client.rpc("is_platform_admin"),
+    auth.client.rpc("is_platform_super_admin"),
+  ]);
+  return { ...auth, isAdmin: isAdmin === true, isSuperAdmin: isSuperAdmin === true };
 }
 
 type AccountProvisioner = NonNullable<Awaited<ReturnType<typeof requireAccountProvisioner>>>;
@@ -39,7 +42,7 @@ async function assertCanProvisionFleetRole(
   role: string,
 ): Promise<"allowed" | "forbidden_fleet_scope"> {
   if (auth.isAdmin) return "allowed";
-  if (!fleetId || !VALID_ROLES.has(role)) return "forbidden_fleet_scope";
+  if (!fleetId || !VALID_FLEET_ROLES.has(role)) return "forbidden_fleet_scope";
 
   const { data, error } = await auth.client
     .from("flotte_adhesions")
@@ -83,26 +86,39 @@ export default async function handler(
   const fleetId = asString(body.fleet_id);
   const role = asString(body.role);
   const providedPassword = asString(body.password);
-
-  if (body.platform_admin === true) {
-    res.status(403).json({ ok: false, error: "forbidden_platform_admin_creation" });
-    return;
-  }
+  const platformAdminRequested = body.platform_admin === true || role === "admin";
 
   if (!email || !email.includes("@")) {
     res.status(400).json({ ok: false, error: "invalid_email" });
     return;
   }
 
-  if (fleetId && !VALID_ROLES.has(role)) {
+  if (platformAdminRequested && !auth.isSuperAdmin) {
+    res.status(403).json({ ok: false, error: "forbidden_super_admin_required" });
+    return;
+  }
+
+  if (!platformAdminRequested && !fleetId && role !== "organizer") {
+    res.status(400).json({ ok: false, error: "missing_fleet" });
+    return;
+  }
+
+  if (!platformAdminRequested && !VALID_FLEET_ROLES.has(role)) {
     res.status(400).json({ ok: false, error: "invalid_role" });
     return;
   }
 
-  const provisioning = await assertCanProvisionFleetRole(auth, fleetId, role);
-  if (provisioning !== "allowed") {
-    res.status(403).json({ ok: false, error: provisioning });
+  if (!platformAdminRequested && !fleetId && !auth.isAdmin) {
+    res.status(403).json({ ok: false, error: "forbidden_fleet_scope" });
     return;
+  }
+
+  if (!platformAdminRequested && fleetId) {
+    const provisioning = await assertCanProvisionFleetRole(auth, fleetId, role);
+    if (provisioning !== "allowed") {
+      res.status(403).json({ ok: false, error: provisioning });
+      return;
+    }
   }
 
   const password = providedPassword || generateTempPassword();
@@ -148,7 +164,26 @@ export default async function handler(
     return;
   }
 
-  if (fleetId) {
+  if (platformAdminRequested) {
+    const { error: adminProfileError } = await admin.from("admin_profiles").upsert(
+      {
+        user_id: userId,
+        is_active: true,
+        created_by: auth.user.id,
+        internal_role: "admin",
+        notes: "Created by super admin from admin users panel",
+      },
+      { onConflict: "user_id" },
+    );
+
+    if (adminProfileError) {
+      await admin.auth.admin.deleteUser(userId);
+      res.status(500).json({ ok: false, error: adminProfileError.message });
+      return;
+    }
+  }
+
+  if (!platformAdminRequested && fleetId) {
     const { error: membershipError } = await admin.from("flotte_adhesions").upsert(
       {
         fleet_id: fleetId,

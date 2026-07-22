@@ -119,6 +119,18 @@ describe("donnees marketing publiques", () => {
     expect(isDashboardNavActive("/dashboard/vehicles", ROUTE_PATHS.dashboard)).toBe(false);
   });
 
+  it("n'active pas le hub administration sur les sous-pages admin dediees", () => {
+    expect(isDashboardNavActive(ROUTE_PATHS.dashboardAdminUsers, ROUTE_PATHS.dashboardAdmin)).toBe(false);
+    expect(isDashboardNavActive(ROUTE_PATHS.dashboardAdminDemo, ROUTE_PATHS.dashboardAdmin)).toBe(false);
+    expect(isDashboardNavActive(ROUTE_PATHS.dashboardHelpAdmin, ROUTE_PATHS.dashboardAdmin)).toBe(false);
+    expect(isDashboardNavActive(ROUTE_PATHS.dashboardAdmin, ROUTE_PATHS.dashboardAdmin)).toBe(true);
+    expect(isDashboardNavActive(ROUTE_PATHS.dashboardAdminUsers, ROUTE_PATHS.dashboardAdminUsers)).toBe(true);
+  });
+
+  it("ne publie pas la page analytics aide dans le panel admin", () => {
+    expect(DASHBOARD_NAV.admin.map((item) => item.href)).not.toContain("/dashboard/admin/help-analytics");
+  });
+
   it("expose DASHBOARD_NAV pour tous les roles metier", () => {
     expect(DASHBOARD_NAV.organizer.length).toBeGreaterThan(10);
     expect(DASHBOARD_NAV.manager.some((item) => item.label === "Chauffeurs")).toBe(true);
