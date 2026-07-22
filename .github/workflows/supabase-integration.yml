@@ -2,18 +2,18 @@ name: Supabase Integration (Remote)
 
 on:
   pull_request:
-    branches: [main, develop]
-    paths:
-      - "tests/integration/**"
-      - "supabase/seed/**"
-      - ".github/workflows/supabase-integration.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   push:
-    branches: [main, develop]
-    paths:
-      - "tests/integration/**"
-      - "supabase/seed/**"
-      - ".github/workflows/supabase-integration.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   integration-remote:
@@ -33,7 +33,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
 
       - name: Validate required secrets
         shell: bash
@@ -51,7 +50,8 @@ jobs:
           fi
 
       - name: Install dependencies
-        run: npm ci
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
 
       - name: Run targeted Supabase integration tests
         run: |

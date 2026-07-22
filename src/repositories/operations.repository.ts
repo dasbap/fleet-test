@@ -206,13 +206,12 @@ export class OperationsRepository {
       };
     }
 
-    const assign = await this.vehicles.findActiveAssignmentVehicleForDriver(userId);
-    if (assign) {
-      const v = assign.vehicle;
+    const vehicle = await this.vehicles.findActiveAssignmentVehicleForDriver(userId);
+    if (vehicle) {
       const { departureChecklist, arrivalChecklist } = await this.enrichDriverChecklists(
         userId,
-        assign.fleetId,
-        v.id,
+        vehicle.fleet_id,
+        vehicle.id,
         null,
         null,
       );
@@ -222,12 +221,12 @@ export class OperationsRepository {
         missionRoute: "Démarrez un créneau lorsque vous prenez le véhicule, ou contactez la régulation.",
         missionStatus: "planned",
         missionTime: "—",
-        vehicleLabel: vehicleLabelParts(v.brand, v.model, v.registration),
-        vehiclePlate: v.registration,
-        vehicleKm: formatKm(v.current_km ?? 0),
+        vehicleLabel: vehicleLabelParts(vehicle.brand, vehicle.model, vehicle.registration),
+        vehiclePlate: vehicle.registration,
+        vehicleKm: formatKm(vehicle.current_km ?? 0),
         activeShiftId: null,
-        vehicleId: v.id,
-        fleetId: assign.fleetId,
+        vehicleId: vehicle.id,
+        fleetId: vehicle.fleet_id,
         departureChecklist,
         arrivalChecklist,
       };

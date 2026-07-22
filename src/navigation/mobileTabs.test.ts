@@ -24,6 +24,7 @@ describe("mobileTabs", () => {
     const menuTab = tabs.find((tab) => tab.id === "menu");
     expect(menuTab).toBeDefined();
     expect(isTabActive(menuTab!, ROUTE_PATHS.dashboardVehicles)).toBe(true);
+    expect(isTabActive(menuTab!, ROUTE_PATHS.dashboardAdminDemo)).toBe(true);
     expect(isTabActive(menuTab!, "/dashboard/tutorials/tuto-01")).toBe(true);
     expect(isTabActive(menuTab!, ROUTE_PATHS.dashboardReports)).toBe(true);
   });

@@ -5,6 +5,7 @@ import { useRouteAccess } from "@/hooks/useRouteAccess";
 const mockUseAuth = vi.fn();
 const mockUseBilling = vi.fn();
 const mockUseFleetBillingContext = vi.fn();
+const mockUseRoleAccess = vi.fn();
 const mockUseQuery = vi.fn();
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -17,6 +18,10 @@ vi.mock("@/hooks/useBilling", () => ({
 
 vi.mock("@/hooks/useFleetBillingContext", () => ({
   useFleetBillingContext: (...args: unknown[]) => mockUseFleetBillingContext(...args),
+}));
+
+vi.mock("@/hooks/useRoleAccess", () => ({
+  useRoleAccess: () => mockUseRoleAccess(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -49,6 +54,10 @@ describe("useRouteAccess", () => {
         driverScoringEnabled: false,
         anomalyInsightsEnabled: false,
       },
+    });
+    mockUseRoleAccess.mockReturnValue({
+      isAdmin: false,
+      isLoading: false,
     });
     mockUseQuery.mockReturnValue({
       isLoading: false,
@@ -160,5 +169,29 @@ describe("useRouteAccess", () => {
 
     const { result } = renderHook(() => useRouteAccess());
     expect(result.current).toEqual({ state: "ready", orgId: "o1" });
+  });
+
+  it("autorise un admin plateforme sans flotte active", () => {
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: "admin-1",
+        created_at: "2026-04-25T10:00:00.000Z",
+      },
+      session: {
+        user: { last_sign_in_at: "2026-04-25T10:00:05.000Z" },
+      },
+      orgId: null,
+      memberships: [],
+      activeTenantContext: null,
+      isLoading: false,
+      isTenantOrgLoading: false,
+    });
+    mockUseRoleAccess.mockReturnValue({
+      isAdmin: true,
+      isLoading: false,
+    });
+
+    const { result } = renderHook(() => useRouteAccess());
+    expect(result.current).toEqual({ state: "ready", orgId: null });
   });
 });

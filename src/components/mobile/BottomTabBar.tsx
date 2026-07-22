@@ -42,6 +42,13 @@ function buildMobileMenuItems(
   planOptions: { financeEnabled: boolean; reportsEnabled: boolean },
   isAdmin: boolean,
 ): DashboardNavItem[] {
+  if (isAdmin) {
+    return uniqueMenuItems([
+      ...DASHBOARD_NAV.admin,
+      ...DASHBOARD_SIDEBAR_FOOTER,
+    ]);
+  }
+
   const effectiveRole = role ?? "driver";
   const baseByRole: Record<AppRole, readonly DashboardNavItem[]> = {
     organizer: filterDashboardNavByPlan(DASHBOARD_NAV.organizer, planOptions),
@@ -62,9 +69,6 @@ function buildMobileMenuItems(
 
   return uniqueMenuItems([
     ...baseByRole[effectiveRole],
-    ...(isAdmin
-      ? [{ label: "Admin comptes", href: "/dashboard/admin/users" }]
-      : []),
     { label: "Guides", href: ROUTE_PATHS.dashboardTutorials },
     ...extras,
     ...DASHBOARD_SIDEBAR_FOOTER,

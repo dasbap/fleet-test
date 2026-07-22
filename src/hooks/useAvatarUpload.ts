@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
+import type { AuthUser } from '@/types/auth';
 import { toast } from '@/hooks/use-toast';
 import { mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
 import { AvatarService } from '@/services/avatar.service';
@@ -15,7 +15,7 @@ interface UseAvatarUploadOptions {
 /**
  * Hook pour gérer l'upload de l'avatar utilisateur (délègue au service).
  */
-export function useAvatarUpload(user: User, options?: UseAvatarUploadOptions) {
+export function useAvatarUpload(user: AuthUser, options?: UseAvatarUploadOptions) {
   const [isUploading, setIsUploading] = useState(false);
   const onAvatarUpdated = options?.onAvatarUpdated;
 

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,27 @@ const proofTypes = [
   { value: 'doc' as const, label: 'Document', icon: FileText, description: 'Télécharger un document' },
 ];
 
+const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+};
+
+function inferImageMimeType(file: File): string | null {
+  if (file.type.startsWith("image/")) {
+    return file.type;
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  return extension ? IMAGE_MIME_BY_EXTENSION[extension] ?? null : null;
+}
+
+function normalizeImageDataUrl(dataUrl: string, mimeType: string): string {
+  return dataUrl.replace(/^data:[^;,]*;/, `data:${mimeType};`);
+}
+
 const ProofUpload = ({
   proofType,
   onProofTypeChange,
@@ -36,11 +57,11 @@ const ProofUpload = ({
   const photoPreviewUrl =
     previewUrl ?? (proofType === "photo" && proofValue.startsWith("data:image/") ? proofValue : null);
 
-  const readFileAsDataUrl = (file: File) => {
+  const readFileAsDataUrl = (file: File, mimeType: string) => {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        onProofValueChange(reader.result);
+        onProofValueChange(normalizeImageDataUrl(reader.result, mimeType));
         return;
       }
       onProofValueChange("");
@@ -61,33 +82,57 @@ const ProofUpload = ({
     reader.readAsDataURL(file);
   };
 
+  useEffect(() => {
+    if (!proofFile) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const mimeType = inferImageMimeType(proofFile);
+    if (!mimeType) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    let isCurrent = true;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (!isCurrent || typeof reader.result !== "string") {
+        return;
+      }
+      setPreviewUrl(normalizeImageDataUrl(reader.result, mimeType));
+    };
+    reader.onerror = () => {
+      if (isCurrent) {
+        setPreviewUrl(null);
+      }
+    };
+    reader.readAsDataURL(proofFile);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [proofFile]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       onProofFileChange(file);
-      
-      // Create preview for images
-      if (file.type.startsWith('image/')) {
-        const url =
-          typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : null;
-        setPreviewUrl(url);
-      } else {
+
+      const mimeType = inferImageMimeType(file);
+      if (proofType === "photo" && mimeType) {
+        readFileAsDataUrl(file, mimeType);
+      } else if (!mimeType) {
         setPreviewUrl(null);
         onProofValueChange("");
-      }
-      if (proofType === "photo" && file.type.startsWith("image/")) {
-        readFileAsDataUrl(file);
       }
     }
   };
 
   const handleRemoveFile = () => {
     onProofFileChange(null);
+    setPreviewUrl(null);
     onProofValueChange("");
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -144,7 +189,7 @@ const ProofUpload = ({
             <div className="relative aspect-video w-full">
               <img
                 src={photoPreviewUrl}
-                alt="Preuve"
+                alt="Apercu de la preuve photo"
                 className="w-full h-full object-cover rounded-lg border"
               />
               <Button

@@ -103,11 +103,13 @@ export function RevenueTimelineChart({ closures, startDate, endDate }: RevenueTi
                   tick={{ fontSize: 11 }}
                 />
                 <Tooltip 
-                  formatter={(value: number, name: string) => [
-                    `${value.toLocaleString('fr-FR')} FCFA`, 
+                  formatter={(value: number | string, name: string) => [
+                    `${Number(value).toLocaleString('fr-FR')} FCFA`, 
                     name === 'total' ? 'Total' : 'Validés'
                   ]}
-                  labelFormatter={(_, payload) => payload?.[0]?.payload?.fullDate || ''}
+                  labelFormatter={(_label: string, payload?: Array<{ payload?: Record<string, string> }>) =>
+                    payload?.[0]?.payload?.fullDate || ''
+                  }
                   contentStyle={{ 
                     backgroundColor: 'hsl(var(--background))', 
                     border: '1px solid hsl(var(--border))',

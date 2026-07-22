@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createBillingCheckoutForUser } from "@/server/domain/billingCheckout";
 import { getPaymentProvider } from "@/server/env";
 import { getBearerToken } from "@/server/http/auth";
+import { jsonInternalServerError } from "@/server/http/errorResponse";
 import { createSupabaseUserClient } from "@/server/infra/supabaseUserClient";
 
 const checkoutBodySchema = z.object({
@@ -38,8 +39,7 @@ async function handleBillingCheckout(c: Context) {
     );
     return c.json(result);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Erreur serveur";
-    return c.json({ error: msg }, 500);
+    return jsonInternalServerError(c, e);
   }
 }
 

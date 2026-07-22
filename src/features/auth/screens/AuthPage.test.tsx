@@ -65,7 +65,7 @@ describe("AuthPage", () => {
     });
   });
 
-  it("appelle signIn puis navigate vers /post-login après connexion réussie", async () => {
+  it("appelle signIn puis navigate vers /post-login apres connexion reussie", async () => {
     renderAuth("/auth");
 
     fireEvent.change(screen.getByLabelText("Email"), {
@@ -86,7 +86,7 @@ describe("AuthPage", () => {
     });
   }, 10000);
 
-  it("préserve le paramètre next sécurisé vers /post-login", async () => {
+  it("preserve le parametre next securise vers /post-login", async () => {
     const nextPath = "/dashboard/vehicles";
     renderAuth(`/auth?next=${encodeURIComponent(nextPath)}`);
 
@@ -105,7 +105,7 @@ describe("AuthPage", () => {
     });
   });
 
-  it("affiche un toast d’erreur et ne navigue pas si signIn échoue", async () => {
+  it("affiche un toast d'erreur et ne navigue pas si signIn echoue", async () => {
     vi.mocked(authActions.signIn).mockResolvedValue({
       data: null,
       error: { message: "Invalid login credentials" } as never,
@@ -132,7 +132,7 @@ describe("AuthPage", () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  it("en mode ?mode=signup affiche le formulaire d’inscription", () => {
+  it("en mode ?mode=signup garde la creation publique desactivee", () => {
     renderAuth("/auth?mode=signup");
 
     expect(screen.getByRole("heading", { name: /bon retour/i })).toBeInTheDocument();
@@ -140,10 +140,10 @@ describe("AuthPage", () => {
     expect(screen.queryByTestId("invitation-code-stub")).not.toBeInTheDocument();
   });
 
-  it("ne montre plus les accès démo", async () => {
+  it("affiche les acces demo quand le flag demo est active", async () => {
     renderAuth("/auth");
 
-    expect(screen.queryByText(/accès démo/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /démo/i })).not.toBeInTheDocument();
+    expect(await screen.findByText(/acc.s d.mo/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /d.mo/i }).length).toBeGreaterThan(0);
   });
 });

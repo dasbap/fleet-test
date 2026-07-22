@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useBilling } from "@/hooks/useBilling";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { isMockAuthEnabled } from "@/lib/authMode";
 import { getE2eMockOrgId, isE2eOnboardingMode } from "@/lib/e2e-onboarding";
 import { AUTH_FLOW_MAX_WAIT_MS, computeAuthFlowDecision } from "@/lib/auth-flow";
@@ -23,6 +24,7 @@ export function useRouteAccess(): RouteAccessResult {
     isLoading,
     isTenantOrgLoading,
   } = useAuth();
+  const { isAdmin, isLoading: isRoleAccessLoading } = useRoleAccess();
   const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
@@ -86,6 +88,14 @@ export function useRouteAccess(): RouteAccessResult {
 
   if (!user?.id) {
     return { state: "unauth", orgId: null };
+  }
+
+  if (isRoleAccessLoading) {
+    return { state: "loading", orgId: null };
+  }
+
+  if (isAdmin) {
+    return { state: "ready", orgId: null };
   }
 
   if (memberships.length === 0) {

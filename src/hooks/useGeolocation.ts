@@ -5,7 +5,7 @@ import { geolocationService } from "@/services/geolocation.service";
 import type { GeoPermissionDisplay, GeoPositionSnapshot } from "@/types/geolocation";
 
 function mapPermission(state: PermissionState): GeoPermissionDisplay {
-  if (state === "granted" || state === "limited") return "granted";
+  if (state === "granted") return "granted";
   if (state === "denied") return "denied";
   if (state === "prompt") return "prompt";
   return "unknown";

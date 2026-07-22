@@ -4,6 +4,7 @@ const BFF_GENERATE_MAGIC_LINK = "/api/admin/generate-magic-link";
 export interface CreateProspectPayload {
   email: string;
   company_name?: string;
+  account_type?: "prospect" | "investor" | "internal" | "dev";
   fleet_id?: string;
   trial_days: number;
   send_email: boolean;

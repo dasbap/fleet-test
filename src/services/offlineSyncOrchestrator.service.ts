@@ -11,6 +11,7 @@ import { recordOfflineSyncTelemetry } from "@/lib/offline/offline-telemetry";
 import { deletePendingOfflineMedia } from "@/services/offline-media-storage.service";
 import { OfflineQueueService } from "@/services/offlineQueue.service";
 import { IncidentRepository } from "@/repositories/incident.repository";
+import type { IncidentSeverity } from "@/repositories/incident.repository";
 import { IncidentEvidenceRepository } from "@/repositories/incident-evidence.repository";
 import { IncidentService } from "@/services/incident.service";
 import { DriverShiftRepository } from "@/repositories/driver-shift.repository";
@@ -160,13 +161,14 @@ async function processIncidentCreateJob(job: OfflineIncidentCreateJob): Promise<
   try {
     const payload: OfflineIncidentCreatePayload = marked.payload;
     const evidenceDataUrl = await resolveEvidenceDataUrl(payload);
+    const rawSeverity = payload.severity;
     await incidentService.declareIncidentWithOptionalEvidence({
       fleetId: payload.fleetId,
       incident: {
         vehicle_id: payload.vehicleId,
         driver_user_id: payload.driverUserId,
         description: payload.description,
-        severity: payload.severity,
+        severity: rawSeverity as IncidentSeverity,
         incident_category: payload.incidentCategory ?? null,
         latitude: payload.latitude ?? null,
         longitude: payload.longitude ?? null,

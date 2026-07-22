@@ -54,11 +54,16 @@ export function createQueueManager<TJob extends QueueJob>(
 
   async function getPendingJobs(now: Date = new Date()): Promise<TJob[]> {
     const jobs = await storage.read();
-    return jobs.filter((job) => {
-      if (job.status === "succeeded") return false;
-      if (job.nextRetryAt == null) return true;
-      return new Date(job.nextRetryAt).getTime() <= now.getTime();
-    });
+    return jobs
+      .map((job) => ({
+        ...job,
+        status: job.status as TJob["status"],
+      }))
+      .filter((job) => {
+        if (job.status === "succeeded") return false;
+        if (job.nextRetryAt == null) return true;
+        return new Date(job.nextRetryAt).getTime() <= now.getTime();
+      });
   }
 
   async function markSyncing(jobId: string): Promise<TJob | null> {
@@ -88,13 +93,13 @@ export function createQueueManager<TJob extends QueueJob>(
       const reachedMax = attemptCount >= policy.maxAttempts;
       return {
         ...job,
-        status: reachedMax ? "failed" : "pending",
+        status: (reachedMax ? "failed" : "pending") as TJob["status"],
         attemptCount,
         nextRetryAt: reachedMax ? null : nextRetry(attemptCount),
         lastError: errorMessage,
         updatedAt: nowIso(),
-      };
-    }) as TJob[];
+      } as TJob;
+    });
     await storage.write(next);
   }
 
