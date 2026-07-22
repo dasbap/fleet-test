@@ -1,15 +1,15 @@
 BEGIN;
 
 -- Option simple: helper minimal pour les checks de permission de flotte.
-CREATE OR REPLACE FUNCTION public.can_manage_fleet(p_fleet_id uuid)
+CREATE OR REPLACE FUNCTION public.can_manage_fleet(p_flotte_id uuid)
 RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT public.has_role(p_fleet_id, 'manager')
-      OR public.has_role(p_fleet_id, 'organizer');
+  SELECT public.has_role(p_flotte_id, 'manager'::public.role_type)
+      OR public.has_role(p_flotte_id, 'organizer'::public.role_type);
 $$;
 
 -- Option scalable: helper dédié aux checks d'accès sur une affectation.
@@ -32,14 +32,15 @@ AS $$
 $$;
 
 -- Vue d'observabilité des accès pour faciliter les audits de sécurité.
+DROP VIEW IF EXISTS public.v_access_matrix;
+
 CREATE OR REPLACE VIEW public.v_access_matrix AS
 SELECT
   fa.user_id,
   fa.fleet_id,
   fa.role,
   fa.is_active,
-  (fa.role IN ('manager', 'organizer')) AS can_manage_fleet
+  (fa.role IN ('manager'::public.role_type, 'organizer'::public.role_type)) AS can_manage_fleet
 FROM public.flotte_adhesions fa;
 
 COMMIT;
-

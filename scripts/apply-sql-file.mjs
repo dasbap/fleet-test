@@ -1,12 +1,14 @@
-#!/usr/bin/env node
 /**
  * Applique un fichier SQL via DATABASE_URL (postgres).
  * Usage: node --env-file=.env.local scripts/apply-sql-file.mjs supabase/migrations/....sql [...]
  */
 
 import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import pg from 'pg';
+import { isAbsolute, resolve as resolvePath } from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+
+const DIRECT_DATA_MUTATION_PATTERN =
+  /^\s*(insert\s+into|update\s+\S+|delete\s+from|truncate\s+table|merge\s+into)\b/i;
 
 export function resolveDatabaseUrl(env = process.env) {
   const direct = env.DATABASE_URL?.trim() || env.DIRECT_URL?.trim();
@@ -58,6 +60,136 @@ export function buildPgClientConfig({ databaseUrl, env = process.env }) {
   };
 }
 
+export function resolvePgModuleSpecifier(env = process.env) {
+  const specifier = env.SQL_RUNNER_PG_MODULE?.trim();
+  if (!specifier) return 'pg';
+  if (specifier.startsWith('file:')) return specifier;
+  if (!specifier.startsWith('.') && !isAbsolute(specifier)) return specifier;
+
+  const absolutePath = isAbsolute(specifier) ? specifier : resolvePath(process.cwd(), specifier);
+  return pathToFileURL(absolutePath).href;
+}
+
+async function loadPgModule(env = process.env) {
+  const module = await import(resolvePgModuleSpecifier(env));
+  return module.default ?? module;
+}
+
+export function splitSqlStatements(sql) {
+  const statements = [];
+  let current = '';
+  let dollarTag = null;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+
+  for (let index = 0; index < sql.length; index += 1) {
+    const char = sql[index];
+    const next = sql[index + 1] ?? '';
+
+    if (inLineComment) {
+      current += char;
+      if (char === '\n') inLineComment = false;
+      continue;
+    }
+
+    if (inBlockComment) {
+      current += char;
+      if (char === '*' && next === '/') {
+        current += next;
+        index += 1;
+        inBlockComment = false;
+      }
+      continue;
+    }
+
+    if (dollarTag) {
+      if (sql.startsWith(dollarTag, index)) {
+        current += dollarTag;
+        index += dollarTag.length - 1;
+        dollarTag = null;
+      } else {
+        current += char;
+      }
+      continue;
+    }
+
+    if (inSingleQuote) {
+      current += char;
+      if (char === "'" && next === "'") {
+        current += next;
+        index += 1;
+      } else if (char === "'") {
+        inSingleQuote = false;
+      }
+      continue;
+    }
+
+    if (inDoubleQuote) {
+      current += char;
+      if (char === '"') inDoubleQuote = false;
+      continue;
+    }
+
+    if (char === '-' && next === '-') {
+      current += char + next;
+      index += 1;
+      inLineComment = true;
+      continue;
+    }
+
+    if (char === '/' && next === '*') {
+      current += char + next;
+      index += 1;
+      inBlockComment = true;
+      continue;
+    }
+
+    if (char === "'") {
+      current += char;
+      inSingleQuote = true;
+      continue;
+    }
+
+    if (char === '"') {
+      current += char;
+      inDoubleQuote = true;
+      continue;
+    }
+
+    if (char === '$') {
+      const match = sql.slice(index).match(/^\$[A-Za-z0-9_]*\$/);
+      if (match) {
+        dollarTag = match[0];
+        current += dollarTag;
+        index += dollarTag.length - 1;
+        continue;
+      }
+    }
+
+    if (char === ';') {
+      const statement = `${current};`;
+      if (statement.trim()) statements.push(statement);
+      current = '';
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current.trim()) statements.push(current);
+  return statements;
+}
+
+export function prepareSqlForExecution(sql, env = process.env) {
+  if (env.SKIP_DIRECT_DATA_MUTATIONS !== '1') return sql;
+
+  return splitSqlStatements(sql)
+    .filter((statement) => !DIRECT_DATA_MUTATION_PATTERN.test(statement))
+    .join('\n');
+}
+
 export async function applySqlFiles(files, env = process.env) {
   if (files.length === 0) {
     throw new Error('Usage: node scripts/apply-sql-file.mjs <fichier.sql> [...]');
@@ -70,12 +202,17 @@ export async function applySqlFiles(files, env = process.env) {
     );
   }
 
+  const pg = await loadPgModule(env);
   const client = new pg.Client(buildPgClientConfig({ databaseUrl: url, env }));
 
   try {
     await client.connect();
     for (const file of files) {
-      const sql = readFileSync(file, 'utf8');
+      const sql = prepareSqlForExecution(readFileSync(file, 'utf8'), env);
+      if (!sql.trim()) {
+        console.log(`SKIP: ${file}`);
+        continue;
+      }
       await client.query(sql);
       console.log(`OK: ${file}`);
     }

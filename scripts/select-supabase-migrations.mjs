@@ -34,17 +34,12 @@ function assertMigrationFilesExist(files) {
 
 export function selectMigrationFiles(selection) {
   if (selection === "runtime") {
-    const packageJson = JSON.parse(
-      readFileSync(path.join(rootDir, "package.json"), "utf8"),
+    const deltaList = readFileSync(
+      path.join(rootDir, "supabase", "baseline", "delta-migrations.txt"),
+      "utf8",
     );
-    const runtimeScript = packageJson.scripts?.["supabase:setup:runtime"];
-
-    if (!runtimeScript) {
-      throw new Error("Missing package script: supabase:setup:runtime");
-    }
-
-    const files = [...runtimeScript.matchAll(MIGRATION_PATH_PATTERN)].map(
-      ([file]) => normalizeMigrationPath(file),
+    const files = [...deltaList.matchAll(MIGRATION_PATH_PATTERN)].map(([file]) =>
+      normalizeMigrationPath(file),
     );
     const uniqueFiles = [...new Set(files)];
     assertMigrationFilesExist(uniqueFiles);

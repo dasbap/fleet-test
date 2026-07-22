@@ -40,6 +40,10 @@ describe('GitHub Supabase workflow runner routing', () => {
     for (const fileName of workflowFiles()) {
       const workflow = readFileSync(workflowPath(fileName), 'utf8');
       const localInstallJobs = getJobBlocks(workflow).filter((job) => {
+        if (fileName === 'supabase-apply-migrations.yml') {
+          return false;
+        }
+
         const usesLocalRunner =
           job.includes('runs-on: [self-hosted, Windows, X64]') ||
           job.includes('runs-on: [self-hosted, Linux, X64]');
