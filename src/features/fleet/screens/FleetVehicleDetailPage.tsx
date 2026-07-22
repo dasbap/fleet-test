@@ -100,10 +100,11 @@ function VehicleHero({
   declareIncidentHref,
   maintenanceHref,
 }: {
-  vehicle: VehicleDto;
+  vehicle: VehicleDto | null;
   declareIncidentHref: string;
   maintenanceHref: string;
 }) {
+  if (!vehicle) return null;
   const st = vehicleStatusUi(vehicle);
   return (
     <Card className="overflow-hidden border-border">

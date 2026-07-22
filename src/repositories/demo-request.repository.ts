@@ -2,9 +2,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface DemoRequestInsert {
   full_name: string;
+  email: string;
   company?: string | null;
   phone: string;
-  fleet_size?: number | null;
+  company_identifier: string;
+  country_code: string;
 }
 
 /**
@@ -14,9 +16,11 @@ export class DemoRequestRepository {
   async create(input: DemoRequestInsert): Promise<void> {
     const { error } = await supabase.from("demo_requests").insert({
       full_name: input.full_name,
+      email: input.email,
       company: input.company ?? null,
       phone: input.phone,
-      fleet_size: input.fleet_size ?? null,
+      company_identifier: input.company_identifier,
+      country_code: input.country_code,
     });
 
     if (error) {

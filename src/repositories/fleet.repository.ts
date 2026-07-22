@@ -8,16 +8,17 @@ export interface FleetInfo {
 }
 
 /**
- * Repository pour l'accès aux données des flottes (liste utilisateur, etc.)
+ * Repository pour l'accès aux données des flottes (liste utilisateur, etc.).
+ * Note : le join `organisations(...)` est volontairement évité (cache FK PostgREST instable) ;
+ * on lit `org_id` directement. Si un join est réintroduit, passer par `asSingleRelation`.
  */
 export class FleetRepository {
   /**
-   * Récupère les flottes par liste d'IDs avec country_code via organisations.
+   * Récupère les flottes par liste d'IDs (org via `org_id`).
    */
   async findByIds(fleetIds: string[]): Promise<FleetInfo[]> {
     if (fleetIds.length === 0) return [];
 
-    // Sélection directe de org_id sur flottes — évite le join PostgREST (FK schema cache instable)
     const { data, error } = await supabase
       .from('flottes')
       .select('id, name, org_id')

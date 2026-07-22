@@ -13,7 +13,10 @@
 export type { Permission, PlatformRole, RbacCheckResult, RbacContext } from "@/types/rbac";
 export type { AppRole } from "@/types/auth";
 
-/** Alias sémantique : Role = PlatformRole (usage dans les composants). */
+/**
+ * Alias sémantique unique pour les composants : Role = PlatformRole.
+ * Ne pas redéfinir `Role` ailleurs (types/role, mobile-app-role, barrel).
+ */
 export type { PlatformRole as Role } from "@/types/rbac";
 
 export { ROLE_HIERARCHY } from "@/types/rbac";

@@ -145,6 +145,9 @@ const Drivers = () => {
         ...driver,
         currentAssignment: assignment || null,
         terrainFlags: flags ?? null,
+        score: undefined as
+          | { score_level: "green" | "orange" | "red"; financial_score: number }
+          | undefined,
       };
     })
     .filter((driver) => {

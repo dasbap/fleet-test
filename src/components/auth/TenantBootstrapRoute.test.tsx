@@ -4,9 +4,14 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { TenantBootstrapRoute } from "@/components/auth/TenantBootstrapRoute";
 
 const mockUseAuth = vi.fn();
+const mockUseRoleAccess = vi.fn();
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuth(),
+}));
+
+vi.mock("@/hooks/useRoleAccess", () => ({
+  useRoleAccess: () => mockUseRoleAccess(),
 }));
 
 vi.mock("@/hooks/useWaitForProfileReady", () => ({
@@ -25,6 +30,11 @@ vi.mock("@/pages/CreateFleet", () => ({
 describe("TenantBootstrapRoute", () => {
   beforeEach(() => {
     mockUseAuth.mockReset();
+    mockUseRoleAccess.mockReset();
+    mockUseRoleAccess.mockReturnValue({
+      isAdmin: false,
+      isLoading: false,
+    });
   });
 
   function renderAtStart() {
@@ -33,6 +43,7 @@ describe("TenantBootstrapRoute", () => {
         <Routes>
           <Route path="/start" element={<TenantBootstrapRoute />} />
           <Route path="/dashboard" element={<div data-testid="dashboard" />} />
+          <Route path="/dashboard/admin" element={<div data-testid="admin-dashboard" />} />
         </Routes>
       </MemoryRouter>
     );
@@ -81,5 +92,24 @@ describe("TenantBootstrapRoute", () => {
     });
     renderAtStart();
     expect(screen.getByTestId("create-fleet")).toBeInTheDocument();
+  });
+
+  it("redirige un admin plateforme sans flotte vers le dashboard admin", () => {
+    mockUseRoleAccess.mockReturnValue({
+      isAdmin: true,
+      isLoading: false,
+    });
+    mockUseAuth.mockReturnValue({
+      user: { id: "admin1" },
+      isLoading: false,
+      isTenantOrgLoading: false,
+      memberships: [],
+      activeTenantContext: null,
+    });
+
+    renderAtStart();
+
+    expect(screen.getByTestId("admin-dashboard")).toBeInTheDocument();
+    expect(screen.queryByTestId("create-fleet")).not.toBeInTheDocument();
   });
 });

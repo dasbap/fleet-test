@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createServerApp } from "@/server/http/app";
+import { toSupabaseInfrastructureError } from "@/lib/supabase-runtime-errors";
 
 describe("BFF routes (Hono)", () => {
   const originalEnv = { ...process.env };
@@ -110,5 +111,24 @@ describe("BFF routes (Hono)", () => {
     });
     expect(res.headers.get("Deprecation")).toBe("true");
     expect(res.status).toBe(401);
+  });
+
+  it("renvoie un 500 JSON stable quand une erreur schema Supabase remonte du serveur", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const app = createServerApp();
+    app.get("/__test/schema-missing", () => {
+      throw toSupabaseInfrastructureError(
+        { code: "42P01", message: 'relation "journal_carburant" does not exist' },
+        "test route",
+      );
+    });
+
+    const res = await app.request("/__test/schema-missing");
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({
+      ok: false,
+      error: "SUPABASE_SCHEMA_MISSING",
+    });
   });
 });

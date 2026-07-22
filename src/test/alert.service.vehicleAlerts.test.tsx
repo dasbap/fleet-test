@@ -35,6 +35,10 @@ describe("AlertService.getVehicleAlertsForFleet", () => {
     resolved_by: null,
     resolved_at: null,
     created_at: new Date().toISOString(),
+    status: "NOUVEAU",
+    assignee_user_id: null,
+    assigned_at: null,
+    status_updated_at: null,
   };
 
   it("retourne les alertes non résolues pour le véhicule et la flotte donnés", async () => {

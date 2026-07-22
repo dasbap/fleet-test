@@ -2,23 +2,23 @@ name: Supabase Migrations Replay
 
 on:
   pull_request:
-    branches: [main, master, PRINCIPALE, fix/ci-green-main, release/**]
-    paths:
-      - "supabase/migrations/**"
-      - "supabase/config.toml"
-      - ".github/workflows/supabase-migrations-replay.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   push:
-    branches: [main, master, PRINCIPALE, fix/ci-green-main, release/**]
-    paths:
-      - "supabase/migrations/**"
-      - "supabase/config.toml"
-      - ".github/workflows/supabase-migrations-replay.yml"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   verify-migration-filenames:
     name: Verify migration filenames
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,14 +62,24 @@ jobs:
         with:
           version: 2.102.0
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Enable local email auth for integration tests
-        shell: pwsh
         run: |
-          $config = Get-Content supabase/config.toml -Raw
-          $config = $config -replace '(?ms)(\[auth\]\s*.*?enable_signup\s*=\s*)false', '${1}true'
-          $config = $config -replace '(?ms)(\[auth\.email\]\s*.*?enable_signup\s*=\s*)false', '${1}true'
-          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-          [System.IO.File]::WriteAllText((Resolve-Path supabase/config.toml), $config, $utf8NoBom)
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = 'supabase/config.toml';
+          let text = fs.readFileSync(path, 'utf8');
+          text = text.replace(/(\[auth\]\s*(?:(?!\r?\n\[)[\s\S])*?\r?\n\s*enable_signup\s*=\s*)false/m, '$1true');
+          text = text.replace(/(\[auth\.email\]\s*(?:(?!\r?\n\[)[\s\S])*?\r?\n\s*enable_signup\s*=\s*)false/m, '$1true');
+          fs.writeFileSync(path, text, 'utf8');
+          NODE
+
+      - name: Prepare dynamic Supabase local ports
+        run: node scripts/prepare-local-supabase-ports.mjs
 
       - name: Start Supabase local stack
         run: supabase start -x vector,logflare
@@ -80,16 +90,13 @@ jobs:
       - name: Export local Supabase env
         # supabase status -o env peut entourer les valeurs de guillemets ("eyJ...").
         # On les supprime pour éviter que SERVICE_ROLE_KEY commence par un " invalide en base64.
-        run: supabase status -o env | sed 's/="\(.*\)"$/=\1/' >> "$GITHUB_ENV"
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
+        run: |
+          supabase status -o env |
+            sed -E 's/="(.*)"$/=\1/' >> "$GITHUB_ENV"
 
       - name: Install dependencies
-        run: npm ci
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
 
       - name: Run Supabase Vitest integration tests
         run: npm run test:integration:supabase:vitest

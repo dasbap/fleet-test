@@ -1,3 +1,11 @@
+/**
+ * Bridge mobile ↔ persistance.
+ *
+ * Source de vérité : {@link AppRole}.
+ * {@link MobileAppRole} n’est qu’une nomenclature produit / UI mobile.
+ * Ne pas réintroduire d’alias `Role` ici — utiliser AppRole, MobileAppRole
+ * ou PlatformRole (`@/config/permissions`) selon la couche.
+ */
 import type { AppRole } from "@/types/auth";
 import type { MobileAppRole } from "@/types/mobile-app-role";
 

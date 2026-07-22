@@ -14,6 +14,10 @@ concurrency:
   group: release-android-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   bundle-release:
     name: bundleRelease (AAB)
@@ -58,10 +62,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
 
       - name: Version applicative (analytics / Sentry release)
         run: echo "VITE_APP_VERSION=$(node -p \"require('./package.json').version\")" >> "$GITHUB_ENV"

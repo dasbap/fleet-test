@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Car, Calendar, Clock } from "lucide-react";
 import { useDriverAssignmentHistory } from "@/hooks/useAssignments";
+import { asSingleRelation } from "@/lib/supabaseRelation";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -43,7 +44,9 @@ const DriverHistoryDialog = ({ open, onOpenChange, driverId }: DriverHistoryDial
             </div>
           ) : (
             <div className="space-y-3">
-              {history.map((assignment) => (
+              {history.map((assignment) => {
+                const vehicle = asSingleRelation(assignment.vehicle);
+                return (
                 <Card key={assignment.id}>
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
@@ -53,10 +56,10 @@ const DriverHistoryDialog = ({ open, onOpenChange, driverId }: DriverHistoryDial
                         </div>
                         <div>
                           <div className="font-medium font-mono">
-                            {assignment.vehicle?.registration || "Véhicule inconnu"}
+                            {vehicle?.registration || "Véhicule inconnu"}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {assignment.vehicle?.brand} {assignment.vehicle?.model}
+                            {vehicle?.brand} {vehicle?.model}
                           </div>
                         </div>
                       </div>
@@ -90,7 +93,8 @@ const DriverHistoryDialog = ({ open, onOpenChange, driverId }: DriverHistoryDial
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

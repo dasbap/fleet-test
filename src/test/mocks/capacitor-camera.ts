@@ -37,7 +37,15 @@ export const Camera = {
   }): Promise<PermissionStatus> {
     return { camera: "granted", photos: "granted" };
   },
-  async getPhoto(): Promise<Photo> {
+  async getPhoto(_options?: {
+    quality?: number;
+    allowEditing?: boolean;
+    resultType?: string;
+    source?: string;
+    correctOrientation?: boolean;
+    width?: number;
+    height?: number;
+  }): Promise<Photo> {
     throw new Error("Mock Camera : utiliser vi.mock dans le test ciblé.");
   },
 };

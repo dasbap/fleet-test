@@ -7,36 +7,36 @@ export interface PublicFaqEntry {
 
 export const PUBLIC_FAQ_ENTRIES: readonly PublicFaqEntry[] = [
   {
-    q: "E-Samba fonctionne-t-il sans connexion internet ?",
-    a: "Oui. L'application conducteur fonctionne hors ligne grâce à une synchronisation intelligente. Les données sont stockées localement et synchronisées automatiquement dès que la connexion revient — essentiel dans les zones à faible couverture réseau.",
+    q: "A qui s'adresse E-Samba ?",
+    a: "E-Samba s'adresse aux proprietaires, gestionnaires et equipes terrain qui veulent mieux suivre leurs vehicules, leurs conducteurs et leurs operations sans multiplier les fichiers, appels et messages disperses.",
   },
   {
-    q: "Quels moyens de paiement sont acceptés ?",
-    a: "MTN Mobile Money, Orange Money, et cartes bancaires Visa / Mastercard. Les paiements sont sécurisés et traités en FCFA. Vous pouvez choisir un abonnement mensuel ou trimestriel avec remise.",
+    q: "Qu'est-ce que je peux suivre avec E-Samba ?",
+    a: "Vous gardez une vue claire sur les vehicules, les equipes, les alertes, le carburant, l'entretien et les principaux mouvements financiers. Le site reste volontairement general : la demo permet de voir ce qui correspond a votre organisation.",
   },
   {
-    q: "Est-ce que je peux gérer plusieurs flottes avec un seul compte ?",
-    a: "Oui, avec le plan Pro ou Enterprise. Vous pouvez superviser plusieurs flottes (filiales, agences, partenaires) depuis un tableau de bord unique — idéal pour les groupes de transport.",
+    q: "Est-ce adapte aux flottes en Afrique centrale ?",
+    a: "Oui. E-Samba est pense pour les usages de terrain en Afrique centrale : plusieurs pays, plusieurs equipes, connectivite variable et besoin de decisions rapides au quotidien.",
   },
   {
-    q: "Comment fonctionne l'essai gratuit ?",
-    a: "Le plan Gratuit vous permet de gérer jusqu'à 3 véhicules sans limite de durée. Pas de carte bancaire requise. Vous passez au plan payant uniquement quand vous en avez besoin.",
+    q: "Combien de temps faut-il pour demarrer ?",
+    a: "Le demarrage peut etre rapide sur une petite flotte. Pour une organisation plus large, l'equipe vous accompagne afin de cadrer les vehicules, les roles et les priorites avant la mise en route.",
   },
   {
-    q: "Le bot WhatsApp est-il inclus dans tous les plans ?",
-    a: "Le bot WhatsApp conducteur (commandes /statut, /incident, /km) est disponible à partir du plan Starter. Il fonctionne en français, anglais et lingala.",
+    q: "Puis-je commencer avec une petite flotte ?",
+    a: "Oui. Vous pouvez commencer avec quelques vehicules, valider l'interet pour votre equipe, puis elargir progressivement quand les usages sont clairs.",
   },
   {
-    q: "Comment sont sécurisées mes données ?",
-    a: "Vos données sont hébergées sur Supabase (infrastructure AWS) avec chiffrement en transit et au repos. Chaque flotte est strictement isolée via Row Level Security (RLS) PostgreSQL — aucun opérateur ne peut voir les données d'une autre flotte.",
+    q: "Comment se deroule la mise en place ?",
+    a: "Apres votre demande, l'equipe prend contact pour comprendre votre flotte, votre zone d'activite, vos contraintes terrain et vos objectifs. La mise en place est adaptee a votre contexte plutot qu'a un parcours generique.",
   },
   {
-    q: "Puis-je importer mes données existantes ?",
-    a: "Oui. Notre équipe vous accompagne pour importer votre parc de véhicules, vos conducteurs et votre historique depuis un fichier Excel ou CSV lors de l'onboarding.",
+    q: "Mes donnees restent-elles protegees ?",
+    a: "Oui. L'acces aux informations est encadre par role et par organisation. Les donnees de votre flotte ne sont pas exposees aux autres clients, et les informations sensibles restent limitees aux personnes autorisees.",
   },
   {
-    q: "Y a-t-il un engagement minimum ?",
-    a: "Non. Tous les plans sont sans engagement, avec facturation mensuelle. Vous pouvez changer de plan ou résilier à tout moment depuis votre tableau de bord.",
+    q: "Comment demander une demo ?",
+    a: "Utilisez la page contact et renseignez les informations demandees. L'equipe commerciale revient vers vous pour qualifier votre besoin et vous accorder un compte sous 48h.",
   },
 ] as const;
 

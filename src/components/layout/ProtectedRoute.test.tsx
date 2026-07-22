@@ -4,9 +4,10 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import type { ReactNode } from "react";
 
-const { mockUseRouteAccess, mockUseAuth } = vi.hoisted(() => ({
+const { mockUseRouteAccess, mockUseAuth, mockUseRoleAccess } = vi.hoisted(() => ({
   mockUseRouteAccess: vi.fn(),
   mockUseAuth: vi.fn(),
+  mockUseRoleAccess: vi.fn(),
 }));
 
 vi.mock("@/hooks/useRouteAccess", () => ({
@@ -15,6 +16,10 @@ vi.mock("@/hooks/useRouteAccess", () => ({
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuth(),
+}));
+
+vi.mock("@/hooks/useRoleAccess", () => ({
+  useRoleAccess: () => mockUseRoleAccess(),
 }));
 
 vi.mock("@/navigation/guards/RequireAuth", () => ({
@@ -27,6 +32,9 @@ describe("ProtectedRoute", () => {
     mockUseAuth.mockReset();
     mockUseAuth.mockReturnValue({
       activeTenantContext: { role: "driver" },
+    });
+    mockUseRoleAccess.mockReturnValue({
+      isAdmin: false,
     });
   });
 
@@ -82,5 +90,28 @@ describe("ProtectedRoute", () => {
     );
 
     expect(screen.getByTestId("dashboard-page")).toBeInTheDocument();
+  });
+  it("redirige un admin plateforme hors pages admin vers /dashboard/admin", () => {
+    mockUseRouteAccess.mockReturnValue({ state: "ready" });
+    mockUseRoleAccess.mockReturnValue({
+      isAdmin: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard/vehicles"]}>
+        <Routes>
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard/vehicles" element={<div>Vehicles</div>} />
+          </Route>
+          <Route
+            path="/dashboard/admin"
+            element={<div data-testid="admin-page">Admin</div>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("admin-page")).toBeInTheDocument();
+    expect(screen.queryByText("Vehicles")).not.toBeInTheDocument();
   });
 });

@@ -1,5 +1,4 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-// todo to update vercel
 type TestAuthContext = {
   admin: SupabaseClient;
   user: SupabaseClient;
@@ -27,7 +26,7 @@ export async function bootstrapIntegrationAuth(): Promise<TestAuthContext> {
   if (missing.length > 0) {
     throw new Error(
       `[integration auth] Variables manquantes: ${missing.join(", ")}. ` +
-        "Configurez les secrets CI ou .env.local avant d'executer les tests d'integration.",
+        "Configurez les secrets CI ou .env.local avant d'executer les tests d'integration."
     );
   }
 
@@ -49,16 +48,19 @@ export async function bootstrapIntegrationAuth(): Promise<TestAuthContext> {
   const email = `integration-${runId}@esamba.test`;
   const password = `Integration-${runId}-A1!`;
 
-  const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: "Integration Test User", test_run_id: runId },
-  });
+  const { data: created, error: createError } =
+    await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name: "Integration Test User", test_run_id: runId },
+    });
 
   if (createError || !created.user) {
     throw new Error(
-      `[integration auth] Creation utilisateur de test impossible: ${createError?.message ?? "utilisateur absent"}`,
+      `[integration auth] Creation utilisateur de test impossible: ${
+        createError?.message ?? "utilisateur absent"
+      }`
     );
   }
 
@@ -67,13 +69,13 @@ export async function bootstrapIntegrationAuth(): Promise<TestAuthContext> {
       user_id: created.user.id,
       full_name: "Integration Test User",
     },
-    { onConflict: "user_id" },
+    { onConflict: "user_id" }
   );
 
   if (profileError) {
     await admin.auth.admin.deleteUser(created.user.id);
     throw new Error(
-      `[integration auth] Creation profil utilisateur impossible: ${profileError.message}`,
+      `[integration auth] Creation profil utilisateur impossible: ${profileError.message}`
     );
   }
 
@@ -83,7 +85,9 @@ export async function bootstrapIntegrationAuth(): Promise<TestAuthContext> {
   });
   if (error || !data.user) {
     throw new Error(
-      `[integration auth] Echec de connexion utilisateur de test: ${error?.message ?? "utilisateur introuvable"}`,
+      `[integration auth] Echec de connexion utilisateur de test: ${
+        error?.message ?? "utilisateur introuvable"
+      }`
     );
   }
 

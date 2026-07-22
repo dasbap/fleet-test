@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { throwIfSupabaseInfrastructureError } from '@/lib/supabase-runtime-errors';
 
 export type PlannedShiftStatus = 'draft' | 'confirmed' | 'started' | 'cancelled' | 'missed';
 
@@ -38,21 +39,9 @@ const SELECT_WITH_JOINS = `
   vehicle:vehicules!planning_creneaux_vehicle_id_fkey(id, registration, brand, model)
 `;
 
-type PostgrestLikeError = {
-  code?: string;
-  message?: string;
-  details?: string;
-};
-
-function isMissingPlanningTableError(error: PostgrestLikeError): boolean {
-  const text = `${error.code ?? ''} ${error.message ?? ''} ${error.details ?? ''}`.toLowerCase();
-  return (
-    text.includes('planning_creneaux') &&
-    (error.code === 'PGRST205' ||
-      text.includes('could not find the table') ||
-      text.includes('relation') ||
-      text.includes('does not exist'))
-  );
+function throwPlannedShiftRepositoryError(error: { message: string }, context: string): never {
+  throwIfSupabaseInfrastructureError(error, context);
+  throw new Error(error.message);
 }
 
 /**
@@ -75,16 +64,8 @@ export class PlannedShiftRepository {
       .order('planned_start', { ascending: true });
 
     if (error) {
-      if (isMissingPlanningTableError(error)) {
-        console.warn(
-          'Planning shifts table is unavailable; returning an empty planning until migration 20260531120000 is applied.',
-          error,
-        );
-        return [];
-      }
-
       console.error('Error fetching planned shifts for fleet:', error);
-      throw new Error(error.message);
+      throwPlannedShiftRepositoryError(error, 'planned shifts by fleet');
     }
 
     return (data || []) as PlannedShift[];
@@ -105,16 +86,8 @@ export class PlannedShiftRepository {
       .maybeSingle();
 
     if (error) {
-      if (isMissingPlanningTableError(error)) {
-        console.warn(
-          'Planning shifts table is unavailable; returning no upcoming planning until migration 20260531120000 is applied.',
-          error,
-        );
-        return null;
-      }
-
       console.error('Error fetching upcoming planned shift:', error);
-      throw new Error(error.message);
+      throwPlannedShiftRepositoryError(error, 'planned shifts by driver');
     }
 
     return data as PlannedShift | null;
@@ -138,7 +111,7 @@ export class PlannedShiftRepository {
 
     if (error) {
       console.error('Error creating planned shift:', error);
-      throw new Error(error.message);
+      throwPlannedShiftRepositoryError(error, 'planned shift create');
     }
 
     return data as PlannedShift;
@@ -153,7 +126,7 @@ export class PlannedShiftRepository {
 
     if (error) {
       console.error('Error linking planned shift to creneau:', error);
-      throw new Error(error.message);
+      throwPlannedShiftRepositoryError(error, 'planned shift link');
     }
   }
 
@@ -166,7 +139,7 @@ export class PlannedShiftRepository {
 
     if (error) {
       console.error('Error cancelling planned shift:', error);
-      throw new Error(error.message);
+      throwPlannedShiftRepositoryError(error, 'planned shift cancel');
     }
   }
 }

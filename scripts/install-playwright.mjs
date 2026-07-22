@@ -14,6 +14,16 @@ if (process.env.VERCEL) {
   process.exit(0);
 }
 
+if (
+  process.env.CI === "true" ||
+  process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD === "1"
+) {
+  console.log(
+    "CI détectée — installation Playwright ignorée pendant npm ci."
+  );
+  process.exit(0);
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(__dirname, "..");
 
