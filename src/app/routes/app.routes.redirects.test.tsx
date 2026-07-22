@@ -32,6 +32,14 @@ vi.mock("@/features/auth/routes", () => ({
   ),
 }));
 
+vi.mock("@/pages/DemoMagicLinkPage", () => ({
+  default: () => <div data-testid="demo-magic-link-page">Demo access</div>,
+}));
+
+vi.mock("@/features/demo/ProspectOnboarding", () => ({
+  ProspectOnboarding: () => <div data-testid="demo-onboarding-page">Demo onboarding</div>,
+}));
+
 vi.mock("@/app/routes/dashboard.routes", () => ({
   dashboardRoutes: (
     <Route path="/dashboard">
@@ -230,6 +238,16 @@ describe("app.routes redirections critiques", () => {
   it("redirige /demo vers /contact", async () => {
     renderRoutes("/demo");
     expect(await screen.findByTestId("contact-page")).toBeInTheDocument();
+  });
+
+  it("rend le point d'entree magic link demo sans le rediriger vers la demande demo", async () => {
+    renderRoutes("/demo/access?token=00000000-0000-4000-8000-000000000001");
+    expect(await screen.findByTestId("demo-magic-link-page")).toBeInTheDocument();
+  });
+
+  it("rend l'onboarding demo utilise apres validation du magic link", async () => {
+    renderRoutes("/demo/onboarding");
+    expect(await screen.findByTestId("demo-onboarding-page")).toBeInTheDocument();
   });
 
   it("redirige /help/faq vers /faq", async () => {

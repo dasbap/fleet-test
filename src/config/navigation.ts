@@ -4,8 +4,17 @@
  */
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
+const viteEnv =
+  typeof import.meta !== "undefined" && "env" in import.meta
+    ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+    : undefined;
+const processEnv =
+  typeof process !== "undefined"
+    ? (process.env as Record<string, string | undefined>)
+    : undefined;
+
 const WHATSAPP_NUMBER =
-  (import.meta.env.VITE_WHATSAPP_NUMBER as string | undefined) ?? "237641341857";
+  viteEnv?.VITE_WHATSAPP_NUMBER ?? processEnv?.VITE_WHATSAPP_NUMBER ?? "237641341857";
 
 export type PublicNavItemType = "anchor" | "route" | "external";
 

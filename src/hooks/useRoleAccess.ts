@@ -93,10 +93,13 @@ export function useRoleAccess(): UseRoleAccessReturn {
   /** Rôle dans la flotte active (pas le max multi-flotte). */
   const fleetRole = activeTenantContext?.role ?? globalFleetRole;
   const { isDemo } = useDemoSession();
+  const cachedAdmin = user?.id ? adminCache.get(user.id) : undefined;
+  const cachedSuperAdmin = user?.id ? superAdminCache.get(user.id) : undefined;
+  const hasCachedAdminStatus = cachedAdmin !== undefined && cachedSuperAdmin !== undefined;
 
-  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
-  const [isPlatformSuperAdmin, setIsPlatformSuperAdmin] = useState(false);
-  const [isLoading, setIsLoading]             = useState(true);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(() => Boolean(cachedAdmin && !isDemo));
+  const [isPlatformSuperAdmin, setIsPlatformSuperAdmin] = useState(() => Boolean(cachedSuperAdmin && !isDemo));
+  const [isLoading, setIsLoading]             = useState(() => Boolean(user?.id && !hasCachedAdminStatus));
 
   // Évite les setState après démontage
   const mountedRef = useRef(true);
