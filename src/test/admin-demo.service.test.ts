@@ -65,6 +65,36 @@ describe("AdminDemoService", () => {
     expect(result).toEqual({ ok: true, magic_url: "https://example.com/magic" });
   });
 
+  it("transmet le type de compte et la duree au BFF de creation", async () => {
+    const createProspect = vi.fn().mockResolvedValue({
+      ok: true,
+      user_id: "user-1",
+      fleet_id: "fleet-1",
+    });
+    const generateMagicLink = vi.fn().mockResolvedValue({
+      ok: true,
+      magic_url: "https://example.com/magic",
+    });
+
+    const service = createService({}, { createProspect, generateMagicLink });
+
+    await service.createAccess("token", {
+      email: "investor@example.com",
+      account_type: "investor",
+      trial_days: 2,
+      send_email: false,
+    });
+
+    expect(createProspect).toHaveBeenCalledWith("token", {
+      email: "investor@example.com",
+      account_type: "investor",
+      company_name: undefined,
+      fleet_id: undefined,
+      trial_days: 2,
+      send_email: false,
+    });
+  });
+
   it("suspendAccount exige les identifiants", async () => {
     const service = createService({}, {});
 

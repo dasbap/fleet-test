@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { formatPostgrestError, mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
+import { throwIfSupabaseInfrastructureError } from '@/lib/supabase-runtime-errors';
 
 export type JobStatus = 'queued' | 'in_progress' | 'ready' | 'blocked';
 export type Priority = 'low' | 'medium' | 'high' | 'critical';
@@ -247,10 +248,11 @@ export class MaintenanceRepository {
       isUndefinedMaintenanceColumn(overdueRes.error, 'planned_at') ||
       isUndefinedMaintenanceColumn(upcomingRes.error, 'planned_at')
     ) {
-      console.warn(
-        'Maintenance planning columns unavailable; returning empty dashboard maintenance window. Apply migration 20260702004000_restore_maintenance_planning_columns.sql.',
-      );
-      return [];
+      const error = overdueRes.error ?? upcomingRes.error;
+      if (error) {
+        throwIfSupabaseInfrastructureError(error, 'maintenance planning window');
+        throw new Error(error.message);
+      }
     }
 
     if (

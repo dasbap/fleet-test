@@ -52,6 +52,8 @@ const ACCOUNT_TYPE_LABELS = {
   dev:      "Dev (30j)",
 };
 
+const AUTO_FLEET_VALUE = "auto";
+
 // ─── Composant ────────────────────────────────────────────────────────────────
 
 export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFormProps) {
@@ -60,7 +62,7 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
   const [email,        setEmail]        = useState("");
   const [companyName,  setCompanyName]  = useState("");
   const [accountType,  setAccountType]  = useState<string>("prospect");
-  const [fleetId,      setFleetId]      = useState<string>("");
+  const [fleetId,      setFleetId]      = useState<string>(AUTO_FLEET_VALUE);
   const [trialDays,    setTrialDays]    = useState(7);
   const [label,        setLabel]        = useState("");
   const [sendEmail,    setSendEmail]    = useState(false);
@@ -88,7 +90,7 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
       email:        email.trim(),
       company_name: companyName.trim() || undefined,
       account_type: accountType as CreateDemoPayload["account_type"],
-      fleet_id:     fleetId || undefined,
+      fleet_id:     fleetId === AUTO_FLEET_VALUE ? undefined : fleetId,
       trial_days:   trialDays,
       label:        label.trim() || undefined,
       send_email:   sendEmail,
@@ -120,7 +122,7 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
     setEmail("");
     setCompanyName("");
     setAccountType("prospect");
-    setFleetId("");
+    setFleetId(AUTO_FLEET_VALUE);
     setTrialDays(7);
     setLabel("");
     setSendEmail(false);
@@ -246,7 +248,7 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
               <SelectValue placeholder="Auto (aucune flotte spécifique)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Auto</SelectItem>
+              <SelectItem value={AUTO_FLEET_VALUE}>Auto</SelectItem>
               {demoFleets.map((f) => (
                 <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
               ))}

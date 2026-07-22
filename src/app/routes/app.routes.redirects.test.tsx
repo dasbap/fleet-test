@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { appRoutes } from "@/app/routes/app.routes";
 
+const mockUseAuth = vi.fn();
+
 vi.mock("@/app/RootLayout", () => ({
   RootLayout: () => (
     <div data-testid="root-layout">
@@ -20,6 +22,10 @@ vi.mock("@/components/auth/AuthProviderLayout", () => ({
   ),
 }));
 
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => mockUseAuth(),
+}));
+
 vi.mock("@/features/auth/routes", () => ({
   authPublicRoutes: (
     <Route path="/auth" element={<div data-testid="auth-page">Auth</div>} />
@@ -29,6 +35,7 @@ vi.mock("@/features/auth/routes", () => ({
 vi.mock("@/app/routes/dashboard.routes", () => ({
   dashboardRoutes: (
     <Route path="/dashboard">
+      <Route index element={<div data-testid="dashboard-fallback">Dashboard</div>} />
       <Route path="maintenance" element={<div data-testid="dashboard-maintenance">Maintenance</div>} />
       <Route path="*" element={<div data-testid="dashboard-fallback">Dashboard</div>} />
     </Route>
@@ -56,7 +63,7 @@ vi.mock("@/pages/Scan", () => ({
 }));
 
 vi.mock("@/pages/Index", () => ({
-  default: () => <div>Index</div>,
+  default: () => <div data-testid="index-page">Index</div>,
 }));
 
 vi.mock("@/pages/Aide", () => ({
@@ -123,6 +130,12 @@ vi.mock("@/pages/public/FonctionnalitesPage", () => ({
   default: () => <div data-testid="fonctionnalites-page">Fonctionnalites</div>,
 }));
 
+vi.mock("@/pages/public/FonctionnaliteSectionPage", () => ({
+  default: ({ slug }: { slug: string }) => (
+    <div data-testid={`fonctionnalites-section-${slug}`}>{slug}</div>
+  ),
+}));
+
 vi.mock("@/pages/public/FaqPage", () => ({
   default: () => <div data-testid="faq-page">FAQ</div>,
 }));
@@ -160,6 +173,25 @@ function renderRoutes(initialPath: string) {
 }
 
 describe("app.routes redirections critiques", () => {
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue({ user: null, isLoading: false });
+  });
+
+  it("rend / pour un visiteur non connecte", async () => {
+    renderRoutes("/");
+    expect(await screen.findByTestId("index-page")).toBeInTheDocument();
+  });
+
+  it("redirige / vers /dashboard quand une session est active", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "user-1", email: "demo@esamba.test" },
+      isLoading: false,
+    });
+
+    renderRoutes("/");
+    expect(await screen.findByTestId("dashboard-fallback")).toBeInTheDocument();
+  });
+
   it("redirige /maintenance vers /dashboard/maintenance", async () => {
     renderRoutes("/maintenance");
     expect(await screen.findByTestId("dashboard-maintenance")).toBeInTheDocument();
@@ -195,7 +227,7 @@ describe("app.routes redirections critiques", () => {
     expect(await screen.findByTestId("help-home-page")).toBeInTheDocument();
   });
 
-  it("redirige /demo vers /contact#demo", async () => {
+  it("redirige /demo vers /contact", async () => {
     renderRoutes("/demo");
     expect(await screen.findByTestId("contact-page")).toBeInTheDocument();
   });
@@ -232,6 +264,11 @@ describe("app.routes redirections critiques", () => {
 });
 
 describe("app.routes routes métier racine", () => {
+  it("rend la page fille unique de fonctionnalites", async () => {
+    renderRoutes("/fonctionnalites/piloter-flotte");
+    expect(await screen.findByTestId("fonctionnalites-section-piloter-flotte")).toBeInTheDocument();
+  });
+
   it("rend /fuel", async () => {
     renderRoutes("/fuel");
     expect(await screen.findByTestId("fuel-page")).toBeInTheDocument();

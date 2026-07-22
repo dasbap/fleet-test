@@ -58,6 +58,7 @@ export class AdminDemoService {
     try {
       const prospectData = await this.bffRepository.createProspect(accessToken, {
         email,
+        account_type: payload.account_type,
         company_name: payload.company_name,
         fleet_id: payload.fleet_id,
         trial_days: payload.trial_days,

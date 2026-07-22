@@ -27,6 +27,7 @@ export default tseslint.config(
       "node_modules/**",
       "public/icons/**",
       "apps/mobile/.expo/**",
+      "apps/**/.next/**",
       "apps/marketing/.astro/**",
       "apps/marketing/src/env.d.ts",
       "supabase/functions/**",

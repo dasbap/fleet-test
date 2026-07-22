@@ -3,40 +3,53 @@ name: Build Capacitor
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - release/**
-    paths:
-      - "src/**"
-      - "vite.config.ts"
-      - "package.json"
-      - "package-lock.json"
-      - "index.html"
-      - "capacitor.config.ts"
-      - "android/**"
-      - "resources/**"
-      - "scripts/export-resources-icon-png.mjs"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   pull_request:
-    branches:
-      - main
-      - master
-      - release/**
-    paths:
-      - "src/**"
-      - "vite.config.ts"
-      - "package.json"
-      - "package-lock.json"
-      - "index.html"
-      - "capacitor.config.ts"
-      - "android/**"
-      - "resources/**"
-      - "scripts/export-resources-icon-png.mjs"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
+  changes:
+    name: Detect Capacitor changes
+    runs-on: [self-hosted, Linux, X64]
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        name: Check changed files
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          changed="$(git diff --name-only "origin/$BASE_REF"...HEAD)"
+          if echo "$changed" | grep -Eq '^(src/|android/|resources/|vite\.config\.ts$|package(-lock)?\.json$|index\.html$|capacitor\.config\.ts$|scripts/export-resources-icon-png\.mjs$|\.github/workflows/build-capacitor\.yml$)'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-capacitor:
     name: vite build (mode capacitor)
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
     env:
       # Valeurs factices : le client Supabase n’est pas exécuté pendant le build statique.
@@ -49,15 +62,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
 
       - name: Install libvips (requis par @capacitor/assets/sharp en fallback compilation)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libvips-dev
 
       - name: Install dependencies
-        run: npm ci
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
 
       - name: Guardrail - no critical Vite externals
         run: npm run check:vite-external
@@ -79,4 +93,10 @@ jobs:
 
       - name: Android assembleDebug
         working-directory: android
-        run: chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
+        shell: bash
+        run: |
+          if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
+          if [ -f ./gradlew ]; then ./gradlew :app:assembleDebug --no-daemon
+          elif [ -f ./gradlew.bat ]; then ./gradlew.bat :app:assembleDebug --no-daemon
+          else echo "gradlew introuvable" && exit 1
+          fi

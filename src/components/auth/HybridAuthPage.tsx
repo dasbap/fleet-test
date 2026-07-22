@@ -180,7 +180,7 @@ export default function HybridAuthPage() {
           </div>
 
           <Link
-            to={`${ROUTE_PATHS.contact}#demo`}
+            to={ROUTE_PATHS.contact}
             className="mt-3 flex w-full items-center justify-center rounded-xl border border-border py-2.5 text-sm font-medium hover:bg-muted transition-colors"
           >
             Demander un acces E-Samba

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Vérifie sans interaction que la migration plan gates (rapports / scoring / anomalies)
- * est appliquée et que la ligne plan `free` est cohérente.
+ * Vérifie sans interaction que les plan gates (rapports / scoring / anomalies)
+ * sont appliqués et que les lignes plan `free` et `starter` sont cohérentes.
  *
  * Requis : .env.local avec VITE_SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY
  * Usage : node scripts/verify-plan-gates-migration.mjs
@@ -112,6 +112,53 @@ async function main() {
     process.exit(1);
   }
   console.log('OK: plan free (3 véhicules, rapports/scoring/anomalies désactivés).');
+
+  const { data: starterPlan, error: errStarterPlan } = await supabase
+    .from('plans')
+    .select(
+      [
+        'code',
+        'price_per_vehicle',
+        'max_vehicles',
+        'enables_finance',
+        'enables_ai',
+        'enables_reports',
+        'enables_driver_scoring',
+        'enables_anomaly_insights',
+        'enables_geofencing',
+        'enables_scheduled_reports',
+      ].join(', '),
+    )
+    .eq('code', 'starter')
+    .maybeSingle();
+
+  if (errStarterPlan) {
+    console.error('ERREUR lecture plans (starter):', errStarterPlan.message);
+    process.exit(1);
+  }
+  if (!starterPlan) {
+    console.error('ERREUR: aucune ligne plans.code = starter.');
+    process.exit(1);
+  }
+
+  const starterOk =
+    starterPlan.price_per_vehicle === 15000 &&
+    starterPlan.max_vehicles === 25 &&
+    starterPlan.enables_finance === true &&
+    starterPlan.enables_ai === false &&
+    starterPlan.enables_reports === true &&
+    starterPlan.enables_driver_scoring === true &&
+    starterPlan.enables_anomaly_insights === false &&
+    starterPlan.enables_geofencing === false &&
+    starterPlan.enables_scheduled_reports === false;
+
+  if (!starterOk) {
+    console.error('ERREUR: ligne plan starter incohérente:', starterPlan);
+    process.exit(1);
+  }
+  console.log(
+    'OK: plan starter (25 véhicules, finance/rapports/scoring activés, options Pro désactivées).',
+  );
   console.log('Vérification plan gates terminée avec succès.');
 }
 

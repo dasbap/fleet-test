@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { Shield, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { supabase } from "@/integrations/supabase/client";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 import type { AppRole } from "@/types/auth";
 
 const ROLE_LABELS: Record<AppRole, string> = {
@@ -115,16 +116,21 @@ export default function AdminUsersPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <Shield className="h-5 w-5" aria-hidden />
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Shield className="h-5 w-5" aria-hidden />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Administration des comptes</h1>
+            <p className="text-sm text-muted-foreground">
+              Creation de comptes reservee aux administrateurs E-Samba.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Administration des comptes</h1>
-          <p className="text-sm text-muted-foreground">
-            Creation de comptes reservee aux administrateurs E-Samba.
-          </p>
-        </div>
+        <Button asChild variant="outline">
+          <Link to={ROUTE_PATHS.dashboardAdminDemo}>Comptes demo</Link>
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5 rounded-lg border bg-card p-5">

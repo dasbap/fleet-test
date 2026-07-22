@@ -10,6 +10,7 @@ import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const base = {
   hasUser: true,
+  isPlatformAdmin: false,
   hasMemberships: true,
   onboardingCompleted: true,
   lapsedPaid: false,
@@ -56,6 +57,27 @@ describe("computeAuthFlowDecision", () => {
         hasMemberships: false,
       }),
     ).toEqual({ path: ROUTE_PATHS.tenantBootstrap, reason: "tenant_bootstrap" });
+  });
+
+  it("admin plateforme sans adhesion -> administration", () => {
+    expect(
+      computeAuthFlowDecision({
+        ...base,
+        isPlatformAdmin: true,
+        hasMemberships: false,
+      }),
+    ).toEqual({ path: ROUTE_PATHS.dashboardAdmin, reason: "platform_admin" });
+  });
+
+  it("admin plateforme conserve une destination admin sure", () => {
+    expect(
+      computeAuthFlowDecision({
+        ...base,
+        isPlatformAdmin: true,
+        hasMemberships: false,
+        safeNextPath: ROUTE_PATHS.dashboardAdminDemo,
+      }),
+    ).toEqual({ path: ROUTE_PATHS.dashboardAdminDemo, reason: "platform_admin" });
   });
 
   it("onboarding incomplet → /onboarding (organisateur uniquement)", () => {

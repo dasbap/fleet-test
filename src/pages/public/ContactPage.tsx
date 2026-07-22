@@ -1,37 +1,21 @@
-import { useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { PublicPageLayout } from "@/components/landing/PublicPageLayout";
-import { PublicPageHero } from "@/components/landing/PublicPageHero";
-import { PublicCtaSection } from "@/components/landing/PublicCtaSection";
 import { ContactDemoForm } from "@/components/landing/ContactDemoForm";
 import { CONTACT } from "@/config/navigation";
 import { usePageSeo } from "@/hooks/usePageSeo";
 
 export default function ContactPage() {
   usePageSeo("contact");
-  const location = useLocation();
-  const demoRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (location.hash === "#demo" && demoRef.current) {
-      demoRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [location.hash]);
 
   return (
     <PublicPageLayout>
-      <PublicPageHero
-        eyebrow="Contact"
-        title="Parlons de votre flotte"
-        description="Demandez une démo personnalisée ou contactez notre équipe commerciale."
-      />
-
       <section className="py-20 md:py-32">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             <div>
-              <h2 className="text-2xl font-heading font-bold mb-6">Nous contacter</h2>
+              <h2 className="text-2xl font-heading font-bold mb-6">
+                Nous contacter
+              </h2>
               <div className="space-y-4 mb-8">
                 <a
                   href={CONTACT.mailtoHref}
@@ -53,23 +37,20 @@ export default function ContactPage() {
                 </div>
               </div>
               <p className="text-muted-foreground leading-relaxed text-sm md:text-base">
-                Un expert E-Samba vous configure une démonstration personnalisée en 30 minutes —
-                taxis, logistique, transport scolaire ou inter-urbain. Sans engagement.
+                Un compte vous sera créé après votre demande de démo sous 48h.
+                Vous pourrez ensuite accéder à votre tableau de bord et
+                commencer à gérer votre flotte.
               </p>
             </div>
 
             <div
-              id="demo"
-              ref={demoRef}
-              className="bg-card border border-border rounded-2xl p-8 shadow-lg scroll-mt-24"
+              className="bg-card border border-border rounded-2xl p-8 shadow-lg"
             >
               <ContactDemoForm />
             </div>
           </div>
         </div>
       </section>
-
-      <PublicCtaSection />
     </PublicPageLayout>
   );
 }

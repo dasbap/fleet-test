@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { PublicPageLayout } from "@/components/landing/PublicPageLayout";
 import { PublicPageHero } from "@/components/landing/PublicPageHero";
-import { PublicCtaSection } from "@/components/landing/PublicCtaSection";
 import { FaqSchemaOrg } from "@/components/faq/FaqSchemaOrg";
 import { FaqSearch } from "@/components/faq/FaqSearch";
 import { PUBLIC_FAQ_ENTRIES, toPublicFaqItems } from "@/data/marketing/faq-public";
@@ -110,8 +109,6 @@ export default function FaqPage() {
           </p>
         </div>
       </section>
-
-      <PublicCtaSection />
     </PublicPageLayout>
   );
 }

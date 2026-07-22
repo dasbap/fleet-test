@@ -1,5 +1,9 @@
 # Reset DB locale Supabase via Docker (sans supabase db reset).
-# Usage: powershell -File scripts/reset-local-db-docker.ps1
+# Usage: powershell -File scripts/reset-local-db-docker.ps1 [-HostPort 0]
+
+param(
+  [int]$HostPort = 0
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -10,6 +14,17 @@ $NetworkName = "supabase_network_$ProjectId"
 $PostgresImage = "public.ecr.aws/supabase/postgres:17.6.1.063"
 $RepoRoot = Split-Path $PSScriptRoot -Parent
 $MigrationsDir = Join-Path $RepoRoot "supabase\migrations"
+$PortsHelper = Join-Path $PSScriptRoot "_local-supabase-ports.ps1"
+
+if (-not (Test-Path $PortsHelper)) {
+  throw "Helper ports Supabase introuvable: $PortsHelper"
+}
+
+. $PortsHelper
+
+if ($HostPort -eq 0) {
+  $HostPort = Get-FreeLocalTcpPort
+}
 
 function Wait-DbHealthy {
   param([int]$TimeoutSec = 180)
@@ -43,6 +58,7 @@ function Invoke-DockerDbReset {
   }
 
   Write-Host "Recreation conteneur Postgres ($PostgresImage)..." -ForegroundColor Cyan
+  Write-Host "Port Postgres local publie: $HostPort -> 5432" -ForegroundColor Yellow
   docker run -d `
     --name $ContainerName `
     --label "com.supabase.cli.project=$ProjectId" `
@@ -50,7 +66,7 @@ function Invoke-DockerDbReset {
     -v "${VolumeName}:/var/lib/postgresql/data" `
     -e POSTGRES_PASSWORD=postgres `
     -e POSTGRES_HOST=/var/run/postgresql `
-    -p 54322:5432 `
+    -p "${HostPort}:5432" `
     --health-cmd "pg_isready -U postgres -h localhost" `
     --health-interval 5s `
     --health-timeout 5s `

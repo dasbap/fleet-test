@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { asSingleRelation } from '@/lib/supabaseRelation';
 
 export interface FleetReportRawRow {
   fleet: { name: string } | null;
@@ -34,6 +35,19 @@ export interface FleetReportRawRow {
     driver?: { user_id: string; full_name: string | null };
   }>;
 }
+
+type NestedVehicle = { registration: string };
+type NestedDriver = { full_name: string | null };
+type NestedAssignment = {
+  vehicle?: NestedVehicle | NestedVehicle[] | null;
+  driver?: NestedDriver | NestedDriver[] | null;
+};
+type NestedShift = {
+  id: string;
+  km_start: number;
+  km_end: number | null;
+  assignment?: NestedAssignment | NestedAssignment[] | null;
+};
 
 /**
  * Repository pour les données du rapport de flotte
@@ -96,11 +110,50 @@ export class FleetReportRepository {
     return {
       fleet: fleetResult.data as FleetReportRawRow['fleet'],
       vehicles: (vehiclesResult.data || []) as FleetReportRawRow['vehicles'],
-      closures: (closuresResult.data || []) as FleetReportRawRow['closures'],
-      incidents: (incidentsResult.data || []) as FleetReportRawRow['incidents'],
+      closures: (closuresResult.data || []).map((row) => {
+        const shift = asSingleRelation(row.shift as NestedShift | NestedShift[] | null);
+        const assignment = asSingleRelation(shift?.assignment);
+        return {
+          id: row.id,
+          revenue_declared: row.revenue_declared,
+          status: row.status,
+          created_at: row.created_at,
+          shift: shift
+            ? {
+                id: shift.id,
+                km_start: shift.km_start,
+                km_end: shift.km_end,
+                assignment: assignment
+                  ? {
+                      vehicle: asSingleRelation(assignment.vehicle) ?? undefined,
+                      driver: asSingleRelation(assignment.driver) ?? undefined,
+                    }
+                  : undefined,
+              }
+            : undefined,
+        };
+      }),
+      incidents: (incidentsResult.data || []).map((row) => ({
+        id: row.id,
+        description: row.description,
+        severity: row.severity,
+        created_at: row.created_at,
+        vehicle: asSingleRelation(row.vehicle as NestedVehicle | NestedVehicle[] | null) ?? undefined,
+      })),
       maintenance: (maintenanceResult.data || []) as FleetReportRawRow['maintenance'],
       members: (membersResult.data || []) as FleetReportRawRow['members'],
-      scores: (scoresResult.data || []) as FleetReportRawRow['scores'],
+      scores: (scoresResult.data || []).map((row) => ({
+        driver_user_id: row.driver_user_id,
+        score_level: row.score_level,
+        financial_score: row.financial_score,
+        driver:
+          asSingleRelation(
+            row.driver as
+              | { user_id: string; full_name: string | null }
+              | { user_id: string; full_name: string | null }[]
+              | null,
+          ) ?? undefined,
+      })),
     };
   }
 }

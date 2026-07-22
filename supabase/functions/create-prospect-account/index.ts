@@ -34,6 +34,7 @@ const APP_URL          = Deno.env.get("APP_URL") ?? "https://app.e-samba.com";
 interface CreateProspectBody {
   email:        string;
   company_name?: string;
+  account_type?: "prospect" | "investor" | "internal" | "dev";
   invited_by?:  string; // UUID de l'utilisateur interne qui invite
   fleet_id?:    string; // UUID flotte démo cible (optionnel — auto-sélection)
   trial_days?:  number; // Défaut : 7
@@ -56,10 +57,12 @@ interface ProspectResult {
 function generateTempPassword(): string {
   // Format mémorisable : Mot-4Chiffres-Symbole
   const words  = ["Samba", "Route", "Flotte", "Camion", "Cargo", "Africa"];
-  const word   = words[Math.floor(Math.random() * words.length)];
-  const digits = Math.floor(1000 + Math.random() * 9000);
+  const random = new Uint32Array(2);
+  crypto.getRandomValues(random);
+  const word   = words[random[0] % words.length];
+  const digits = 1000 + (random[1] % 9000);
   const syms   = ["!", "@", "#", "$"];
-  const sym    = syms[Math.floor(Math.random() * syms.length)];
+  const sym    = syms[random[1] % syms.length];
   return `${word}${digits}${sym}`;
 }
 
@@ -129,14 +132,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // ── Validation ────────────────────────────────────────────────────────────
-  const { email, company_name, invited_by, fleet_id, trial_days = 7, send_email = false } = body;
+  const {
+    email,
+    company_name,
+    account_type = "prospect",
+    invited_by,
+    fleet_id,
+    trial_days = 7,
+    send_email = false,
+  } = body;
 
   if (!email || !email.includes("@")) {
     return Response.json({ ok: false, error: "invalid_email" }, { status: 400 });
   }
 
-  if (trial_days < 1 || trial_days > 30) {
-    return Response.json({ ok: false, error: "trial_days_must_be_1_to_30" }, { status: 400 });
+  if (!["prospect", "investor", "internal", "dev"].includes(account_type)) {
+    return Response.json({ ok: false, error: "invalid_account_type" }, { status: 400 });
+  }
+
+  if (trial_days < 1 || trial_days > 90) {
+    return Response.json({ ok: false, error: "trial_days_must_be_1_to_90" }, { status: 400 });
   }
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -166,7 +181,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       password:      tempPassword,
       email_confirm: true, // Confirmer directement (pas de validation email nécessaire pour prospect)
       user_metadata: {
-        account_type:  "prospect",
+        account_type,
         company_name:  company_name ?? null,
         trial_days,
         created_by_demo: true,
@@ -191,6 +206,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       p_invited_by:   invited_by  ?? null,
       p_fleet_id:     fleet_id    ?? null,
       p_trial_days:   trial_days,
+      p_account_type: account_type,
     });
 
     if (regErr) {

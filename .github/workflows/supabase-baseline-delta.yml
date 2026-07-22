@@ -2,33 +2,28 @@ name: Supabase Baseline and Delta Validation
 
 on:
   pull_request:
-    paths:
-      - "supabase/**"
-      - "scripts/test-baseline-delta.ps1"
-      - "scripts/test-sql-security.ps1"
-      - "scripts/freeze-remote-schema.ps1"
-      - "package.json"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   push:
-    branches:
-      - main
-      - master
-      - release/**
-    paths:
-      - "supabase/**"
-      - "scripts/test-baseline-delta.ps1"
-      - "scripts/test-sql-security.ps1"
-      - "scripts/freeze-remote-schema.ps1"
-      - "package.json"
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   SUPABASE_CLI_VERSION: 2.102.0
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   validate-baseline-delta:
     name: Validate baseline + deltas on fresh local DB
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Code
@@ -38,10 +33,10 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "22"
-          cache: "npm"
 
-      - name: Install Dependencies
-        run: npm ci
+      - name: Install dependencies
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
@@ -53,20 +48,13 @@ jobs:
           supabase --version
 
       - name: Prepare CI Log Directory
-        shell: pwsh
-        run: New-Item -ItemType Directory -Path "supabase-ci-logs" -Force | Out-Null
+        run: mkdir -p supabase-ci-logs
 
       - name: Run Baseline + Delta Validation
-        shell: pwsh
-        env:
-          CI_SUPABASE_DEBUG: "true"
-        run: ./scripts/test-baseline-delta.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/baseline-delta.log"
+        run: npm run test:baseline-delta:node -- --target local 2>&1 | tee supabase-ci-logs/baseline-delta.log
 
       - name: Run SQL Security Tests
-        shell: pwsh
-        env:
-          CI_SUPABASE_DEBUG: "true"
-        run: ./scripts/test-sql-security.ps1 *>&1 | Tee-Object -FilePath "supabase-ci-logs/sql-security.log"
+        run: npm run test:sql-security:node -- --target local 2>&1 | tee supabase-ci-logs/sql-security.log
 
       - name: Upload Supabase Debug Logs
         if: always()
@@ -78,7 +66,7 @@ jobs:
 
   validate-delta-file-list:
     name: Validate delta files exist
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
 
     steps:
       - name: Checkout Code
