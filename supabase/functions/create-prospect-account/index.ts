@@ -39,6 +39,7 @@ interface CreateProspectBody {
   fleet_id?:    string; // UUID flotte démo cible (optionnel — auto-sélection)
   trial_days?:  number; // Défaut : 7
   send_email?:  boolean;
+  permanent_access?: boolean;
 }
 
 interface ProspectResult {
@@ -49,6 +50,7 @@ interface ProspectResult {
   trial_end?:   string;
   login_url?:   string;
   temp_password?: string; // Uniquement si send_email = false
+  permanent_access?: boolean;
   error?:       string;
 }
 
@@ -137,9 +139,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     company_name,
     account_type = "prospect",
     invited_by,
-    fleet_id,
     trial_days = 7,
     send_email = false,
+    permanent_access = false,
   } = body;
 
   if (!email || !email.includes("@")) {
@@ -157,6 +159,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   });
+
+  if (permanent_access && !invited_by) {
+    return Response.json({ ok: false, error: "forbidden_super_admin_required" }, { status: 403 });
+  }
+
+  if (permanent_access && invited_by) {
+    const { data: superAdminProfile, error: superAdminErr } = await admin
+      .from("admin_profiles")
+      .select("user_id")
+      .eq("user_id", invited_by)
+      .eq("internal_role", "super_admin")
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (superAdminErr || !superAdminProfile) {
+      return Response.json({ ok: false, error: "forbidden_super_admin_required" }, { status: 403 });
+    }
+  }
 
   const runId = crypto.randomUUID();
   console.log(`[create-prospect-account] Run ${runId} — email: ${email}`);
@@ -184,6 +204,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         account_type,
         company_name:  company_name ?? null,
         trial_days,
+        permanent_access,
         created_by_demo: true,
       },
     });
@@ -204,9 +225,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
       p_email:        email,
       p_company_name: company_name ?? null,
       p_invited_by:   invited_by  ?? null,
-      p_fleet_id:     fleet_id    ?? null,
+      p_fleet_id:     null,
       p_trial_days:   trial_days,
       p_account_type: account_type,
+      p_permanent_access: permanent_access,
     });
 
     if (regErr) {
@@ -243,6 +265,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           company_name:  company_name ?? email,
           trial_days,
           trial_end:     result.trial_end,
+          permanent_access,
           login_url:     APP_URL,
           temp_password: tempPassword,
         },
@@ -260,6 +283,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       fleet_id:     result.fleet_id,
       trial_end:    result.trial_end,
       login_url:    loginUrl,
+      permanent_access,
       // Retourner le mot de passe uniquement si pas d'email envoyé
       ...(send_email ? {} : { temp_password: tempPassword }),
     };

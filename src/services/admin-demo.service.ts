@@ -1,17 +1,17 @@
 import { AdminDemoRepository } from "@/repositories/admin-demo.repository";
-import type { DemoAccountType, DemoFleet, DemoSession } from "@/repositories/admin-demo.repository";
+import type { DemoAccountType, DemoSession } from "@/repositories/admin-demo.repository";
 import { AdminDemoBffRepository } from "@/repositories/admin-demo-bff.repository";
 
-export type { DemoAccountType, DemoRole, DemoFleet, DemoSession } from "@/repositories/admin-demo.repository";
+export type { DemoAccountType, DemoRole, DemoSession } from "@/repositories/admin-demo.repository";
 
 export interface CreateDemoPayload {
   email: string;
   company_name?: string;
   account_type: DemoAccountType;
-  fleet_id?: string;
   trial_days: number;
   label?: string;
   send_email: boolean;
+  permanent_access?: boolean;
 }
 
 export interface CreateDemoAccessResult {
@@ -22,7 +22,6 @@ export interface CreateDemoAccessResult {
 
 export interface AdminDemoDashboardData {
   sessions: DemoSession[];
-  demoFleets: DemoFleet[];
 }
 
 export const MAX_DEMO_TRIAL_DAYS = 31;
@@ -38,11 +37,8 @@ export class AdminDemoService {
   ) {}
 
   async loadDashboardData(): Promise<AdminDemoDashboardData> {
-    const [sessions, demoFleets] = await Promise.all([
-      this.repository.listSessions(false),
-      this.repository.listDemoFleets(),
-    ]);
-    return { sessions, demoFleets };
+    const sessions = await this.repository.listSessions(false);
+    return { sessions };
   }
 
   async createAccess(
@@ -67,9 +63,9 @@ export class AdminDemoService {
         email,
         account_type: payload.account_type,
         company_name: payload.company_name,
-        fleet_id: payload.fleet_id,
         trial_days: payload.trial_days,
         send_email: payload.send_email,
+        permanent_access: payload.permanent_access,
       });
 
       if (prospectData.rateLimited) {
@@ -85,7 +81,7 @@ export class AdminDemoService {
 
       const linkData = await this.bffRepository.generateMagicLink(accessToken, {
         user_id: prospectData.user_id,
-        fleet_id: prospectData.fleet_id ?? payload.fleet_id,
+        fleet_id: prospectData.fleet_id ?? null,
         email,
         label: payload.label,
       });
@@ -126,6 +122,40 @@ export class AdminDemoService {
     return result.ok;
   }
 
+  async updateAccountExpiration(
+    userId: string,
+    adminId: string,
+    expiresAt: string | null,
+  ): Promise<{ ok: boolean; expires_at?: string; max_expires_at?: string }> {
+    if (!userId || !adminId) {
+      throw new Error("Identifiants utilisateur requis");
+    }
+
+    if (expiresAt !== null && Number.isNaN(new Date(expiresAt).getTime())) {
+      throw new Error("Date d'expiration invalide");
+    }
+
+    const result = await this.repository.updateAccountExpiration(userId, adminId, expiresAt);
+    return {
+      ok: result.ok,
+      expires_at: result.expires_at,
+      max_expires_at: result.max_expires_at,
+    };
+  }
+
+  async deleteAccount(userId: string, adminId: string): Promise<{ ok: boolean }> {
+    if (!userId || !adminId) {
+      throw new Error("Identifiants utilisateur requis");
+    }
+
+    const result = await this.repository.deleteAccount(
+      userId,
+      adminId,
+      "suppression manuelle depuis admin UI",
+    );
+    return { ok: result.ok };
+  }
+
   async resetFleet(fleetId: string): Promise<{ ok: boolean; vehiclesDeleted: number }> {
     if (!fleetId) {
       throw new Error("L'identifiant de flotte est requis");
@@ -142,17 +172,17 @@ export class AdminDemoService {
     accessToken: string | null | undefined,
     userId: string,
     email: string,
-    fleetId: string,
+    fleetId?: string | null,
     label?: string,
   ): Promise<string | null> {
-    if (!accessToken || !userId || !email || !fleetId) {
+    if (!accessToken || !userId || !email) {
       return null;
     }
 
     try {
       const data = await this.bffRepository.generateMagicLink(accessToken, {
         user_id: userId,
-        fleet_id: fleetId,
+        fleet_id: fleetId ?? null,
         email: email.trim(),
         label,
       });

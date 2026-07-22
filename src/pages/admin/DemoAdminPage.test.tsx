@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,7 +21,9 @@ vi.mock("@/components/admin/DemoSessionsPanel", () => ({
 }));
 
 vi.mock("@/components/admin/CreateDemoForm", () => ({
-  CreateDemoForm: () => <div data-testid="create-demo-form" />,
+  CreateDemoForm: ({ canCreatePermanentAccess }: { canCreatePermanentAccess?: boolean }) => (
+    <div data-testid="create-demo-form" data-permanent={String(canCreatePermanentAccess)} />
+  ),
 }));
 
 describe("DemoAdminPage", () => {
@@ -75,5 +79,12 @@ describe("DemoAdminPage", () => {
 
     expect(screen.getByRole("heading", { name: /acces demo e-samba/i })).toBeInTheDocument();
     expect(screen.getByTestId("demo-sessions-panel")).toBeInTheDocument();
+  });
+
+  it("passe le droit acces permanent depuis le role super admin", () => {
+    const source = readFileSync(join(process.cwd(), "src/pages/admin/DemoAdminPage.tsx"), "utf8");
+
+    expect(source).toContain("isSuperAdmin");
+    expect(source).toContain("canCreatePermanentAccess={isSuperAdmin}");
   });
 });
