@@ -42,7 +42,6 @@ export default function AdminUsersPage() {
   const [fleetId, setFleetId] = useState("");
   const [role, setRole] = useState<AppRole>("driver");
   const [password, setPassword] = useState("");
-  const [platformAdmin, setPlatformAdmin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [created, setCreated] = useState<CreateUserResult | null>(null);
 
@@ -77,7 +76,6 @@ export default function AdminUsersPage() {
           fleet_id: fleetId || undefined,
           role: fleetId ? role : undefined,
           password: password || undefined,
-          platform_admin: platformAdmin,
         }),
       });
       const result = (await response.json()) as CreateUserResult;
@@ -202,16 +200,6 @@ export default function AdminUsersPage() {
             </Select>
           </div>
         </div>
-
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={platformAdmin}
-            onChange={(event) => setPlatformAdmin(event.target.checked)}
-            className="h-4 w-4"
-          />
-          Donner aussi le statut administrateur plateforme
-        </label>
 
         <Button type="submit" disabled={isSubmitting} className="gap-2">
           <UserPlus className="h-4 w-4" aria-hidden />
