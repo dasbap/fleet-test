@@ -14,6 +14,7 @@ describe("dashboard admin routes", () => {
       "admin/demo",
       "admin/users",
       "admin/help",
+      "admin/faq",
     ]) {
       const routeIndex = source.indexOf(`path="${path}"`);
       expect(routeIndex).toBeGreaterThan(-1);

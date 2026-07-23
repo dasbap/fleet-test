@@ -123,8 +123,10 @@ describe("donnees marketing publiques", () => {
     expect(isDashboardNavActive(ROUTE_PATHS.dashboardAdminUsers, ROUTE_PATHS.dashboardAdmin)).toBe(false);
     expect(isDashboardNavActive(ROUTE_PATHS.dashboardAdminDemo, ROUTE_PATHS.dashboardAdmin)).toBe(false);
     expect(isDashboardNavActive(ROUTE_PATHS.dashboardHelpAdmin, ROUTE_PATHS.dashboardAdmin)).toBe(false);
+    expect(isDashboardNavActive(ROUTE_PATHS.dashboardAdminFaq, ROUTE_PATHS.dashboardAdmin)).toBe(false);
     expect(isDashboardNavActive(ROUTE_PATHS.dashboardAdmin, ROUTE_PATHS.dashboardAdmin)).toBe(true);
     expect(isDashboardNavActive(ROUTE_PATHS.dashboardAdminUsers, ROUTE_PATHS.dashboardAdminUsers)).toBe(true);
+    expect(isDashboardNavActive(ROUTE_PATHS.dashboardAdminFaq, ROUTE_PATHS.dashboardAdminFaq)).toBe(true);
   });
 
   it("ne publie pas la page analytics aide dans le panel admin", () => {

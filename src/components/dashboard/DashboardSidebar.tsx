@@ -90,6 +90,7 @@ const DASHBOARD_NAV_ICONS: Record<string, LucideIcon> = {
   [ROUTE_PATHS.dashboardAdmin]: Shield,
   [ROUTE_PATHS.dashboardAdminUsers]: Shield,
   [ROUTE_PATHS.dashboardAdminDemo]: KeyRound,
+  [ROUTE_PATHS.dashboardAdminFaq]: Shield,
   [ROUTE_PATHS.dashboardHelpAdmin]: Shield,
 };
 

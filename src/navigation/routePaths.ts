@@ -140,6 +140,8 @@ export const ROUTE_PATHS = {
   dashboardAdmin: "/dashboard/admin",
   /** Backoffice articles aide (v2). */
   dashboardHelpAdmin: "/dashboard/admin/help",
+  /** Backoffice FAQ publique. */
+  dashboardAdminFaq: "/dashboard/admin/faq",
   /** Administration des comptes utilisateur. */
   dashboardAdminUsers: "/dashboard/admin/users",
   /** Administration des comptes de demonstration. */

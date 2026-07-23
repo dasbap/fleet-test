@@ -4,9 +4,11 @@ import {
   HELP_ARTICLES_SEED_EN,
   HELP_ARTICLES_SEED_LN,
 } from '@/data/help/articles.seed';
+import { PUBLIC_FAQ_ENTRIES } from '@/data/marketing/faq-public';
 import { HELP_ROUTE_DEFAULTS } from '@/types/help';
 import type {
   HelpArticleRecord,
+  HelpArticleInsert,
   HelpArticleCategory,
   HelpLocale,
   HelpUserContext,
@@ -120,6 +122,58 @@ export class HelpService {
     } catch {
       return this.getFallbackArticles(locale).filter((a) => a.category === category);
     }
+  }
+
+  getFallbackFaq(locale: HelpLocale = 'fr'): HelpArticleRecord[] {
+    return PUBLIC_FAQ_ENTRIES.map((entry, index) => ({
+      id: `fallback-public-faq-${index + 1}`,
+      slug: `public-faq-${index + 1}`,
+      title: entry.q,
+      category: 'faq',
+      role: [],
+      locale,
+      keywords: [],
+      content: entry.a,
+      route_context: ['/faq'],
+      plan_min: null,
+      module_keys: [],
+      error_codes: [],
+      sort_order: index + 1,
+      is_published: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+  }
+
+  async getPublicFaq(locale: HelpLocale = 'fr'): Promise<HelpArticleRecord[]> {
+    try {
+      const articles = await this.repository.findPublicFaq(locale);
+      return articles.length > 0 ? articles : this.getFallbackFaq(locale);
+    } catch {
+      return this.getFallbackFaq(locale);
+    }
+  }
+
+  async getFaqForAdmin(locale: HelpLocale = 'fr'): Promise<HelpArticleRecord[]> {
+    return this.repository.findFaqForAdmin(locale);
+  }
+
+  async saveFaqArticle(
+    payload: Pick<
+      HelpArticleInsert,
+      'slug' | 'title' | 'content' | 'sort_order' | 'is_published'
+    > & {
+      id?: string;
+      locale?: HelpLocale;
+    },
+  ): Promise<HelpArticleRecord> {
+    return this.repository.upsertArticle({
+      ...payload,
+      category: 'faq',
+      locale: payload.locale ?? 'fr',
+      route_context: ['/faq'],
+      keywords: payload.title.split(/\s+/).filter((word) => word.length > 2),
+    });
   }
 
   /** Filtre articles selon rôle, plan et modules activés. */
