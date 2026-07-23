@@ -3,15 +3,21 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const MIGRATION_PATH_PATTERN = /supabase\/migrations\/[^\s]+\.sql/g;
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const MIGRATION_PATH_PATTERN = /supabase\/migration(?:s)?\/[^\s]+\.sql/g;
+const rootDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  ".."
+);
 
 function toPosixPath(filePath) {
   return filePath.split(path.sep).join("/");
 }
 
 function normalizeMigrationPath(filePath) {
-  const normalized = toPosixPath(filePath);
+  const normalized = toPosixPath(filePath).replace(
+    /^supabase\/migration\//,
+    "supabase/migrations/"
+  );
 
   if (
     !normalized.startsWith("supabase/migrations/") ||
@@ -36,10 +42,10 @@ export function selectMigrationFiles(selection) {
   if (selection === "runtime") {
     const deltaList = readFileSync(
       path.join(rootDir, "supabase", "baseline", "delta-migrations.txt"),
-      "utf8",
+      "utf8"
     );
-    const files = [...deltaList.matchAll(MIGRATION_PATH_PATTERN)].map(([file]) =>
-      normalizeMigrationPath(file),
+    const files = [...deltaList.matchAll(MIGRATION_PATH_PATTERN)].map(
+      ([file]) => normalizeMigrationPath(file)
     );
     const uniqueFiles = [...new Set(files)];
     assertMigrationFilesExist(uniqueFiles);
