@@ -8,7 +8,7 @@ import { isAbsolute, resolve as resolvePath } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 const DIRECT_DATA_MUTATION_PATTERN =
-  /^\s*(insert\s+into|update\s+\S+|delete\s+from|truncate\s+table|merge\s+into)\b/i;
+  /^\s*(insert\s+into|update\s+\S+|delete\s+from|truncate\s+table|merge\s+into|with\b[\s\S]*?\)\s*(insert\s+into|update\s+\S+|delete\s+from|merge\s+into)\b)/i;
 
 export function resolveDatabaseUrl(env = process.env) {
   const direct = env.DATABASE_URL?.trim() || env.DIRECT_URL?.trim();

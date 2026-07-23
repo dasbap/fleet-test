@@ -52,6 +52,10 @@ describe("apply-sql-file database connection", () => {
     const sql = `
       create table if not exists public.example (id uuid);
       insert into public.example (id) values ('00000000-0000-0000-0000-000000000001');
+      with targets as (select id from public.example)
+      update public.example set id = null where id in (select id from targets);
+      with targets as (select id from public.example)
+      delete from public.example where id in (select id from targets);
       create or replace function public.demo_delete()
       returns void
       language sql
@@ -70,5 +74,6 @@ describe("apply-sql-file database connection", () => {
     expect(prepared).toContain("delete from public.example");
     expect(prepared).not.toContain("insert into public.example");
     expect(prepared).not.toContain("update public.example set");
+    expect(prepared).not.toContain("with targets as");
   });
 });
