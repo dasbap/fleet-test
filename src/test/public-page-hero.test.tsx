@@ -13,8 +13,8 @@ describe("PublicPageHero", () => {
 
     expect(screen.queryByRole("link", { name: /Accueil/i })).not.toBeInTheDocument();
     expect(screen.queryByText("Tarifs")).toBeInTheDocument();
-    expect(container.firstElementChild).toHaveClass("pt-20", "pb-6");
-    expect(container.firstElementChild).not.toHaveClass("pt-28", "pb-12");
+    expect(container.firstElementChild).toHaveClass("pt-24", "pb-6", "md:pt-28");
+    expect(container.firstElementChild).not.toHaveClass("pb-12");
   });
 
   it("ne rend plus le nom de page en libelle vert", () => {

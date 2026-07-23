@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { PublicPageLayout } from "@/components/landing/PublicPageLayout";
+import { PublicPageHero } from "@/components/landing/PublicPageHero";
 import { FONCTIONNALITE_SECTIONS } from "@/data/marketing/fonctionnalite-sections";
 import { usePageSeo } from "@/hooks/usePageSeo";
 
@@ -23,18 +24,15 @@ export default function FonctionnalitesPage() {
 
   return (
     <PublicPageLayout showWhatsApp={false}>
-      <header className="border-b border-border bg-background pt-24 pb-10 md:pt-28 md:pb-12">
-        <div className="container mx-auto max-w-4xl px-4 text-center">
-          <h1 className="font-heading text-4xl font-bold leading-tight md:text-6xl">
+      <PublicPageHero
+        eyebrow="Fonctionnalites"
+        title={
+          <>
             Une flotte plus <span className="text-gradient">lisible</span>, sans tout devoiler
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            E-Samba presente la valeur de votre pilotage de flotte de facon claire,
-            rassurante et volontairement generale : assez concret pour convaincre,
-            assez discret pour proteger votre approche.
-          </p>
-        </div>
-      </header>
+          </>
+        }
+        description="E-Samba presente la valeur de votre pilotage de flotte de facon claire, rassurante et volontairement generale."
+      />
 
       <section className="py-10 md:py-14">
         <div className="container mx-auto max-w-5xl px-4">
