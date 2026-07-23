@@ -128,6 +128,11 @@ begin
      where user_id = p_user_id;
   end if;
 
+  if to_regclass('public.demo_audit_logs') is not null then
+    delete from public.demo_audit_logs
+     where user_id = p_user_id;
+  end if;
+
   delete from public.demo_profiles
    where user_id = p_user_id;
 
