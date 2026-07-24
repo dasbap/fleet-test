@@ -51,6 +51,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: |
+          if command -v unzip >/dev/null 2>&1; then
+            unzip -v | head -n 1
+            exit 0
+          fi
+
+          if command -v apt-get >/dev/null 2>&1; then
+            if command -v sudo >/dev/null 2>&1; then
+              sudo apt-get update
+              sudo apt-get install -y unzip curl ca-certificates
+            else
+              apt-get update
+              apt-get install -y unzip curl ca-certificates
+            fi
+          else
+            echo "::error::apt-get indisponible. Installez unzip sur le runner."
+            exit 1
+          fi
+
+          command -v unzip >/dev/null 2>&1 || {
+            echo "::error::unzip reste indisponible après installation"
+            exit 1
+          }
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -73,6 +98,9 @@ jobs:
           version: latest
           github-token: ${{ github.token }}
 
+      - name: Verify Supabase CLI
+        run: supabase --version
+
       - name: Prepare dynamic Supabase local ports
         run: node scripts/prepare-local-supabase-ports.mjs
 
@@ -84,11 +112,35 @@ jobs:
 
       - name: Export local Supabase credentials
         run: |
-          supabase status -o env \
-            --override-name api.url=VITE_SUPABASE_URL \
-            --override-name auth.anon_key=VITE_SUPABASE_ANON_KEY \
-            --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
-            >> "$GITHUB_ENV"
+          supabase status -o env > /tmp/supabase-status.env
+
+          set -a
+          source /tmp/supabase-status.env
+          set +a
+
+          test -n "${API_URL:-}" || {
+            echo "::error::API_URL is missing from Supabase local status"
+            exit 1
+          }
+
+          test -n "${ANON_KEY:-}" || {
+            echo "::error::ANON_KEY is missing from Supabase local status"
+            exit 1
+          }
+
+          test -n "${SERVICE_ROLE_KEY:-}" || {
+            echo "::error::SERVICE_ROLE_KEY is missing from Supabase local status"
+            exit 1
+          }
+
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+
+          {
+            echo "VITE_SUPABASE_URL=$API_URL"
+            echo "VITE_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
 
       - name: Verify local Supabase credentials
         run: |
@@ -116,9 +168,6 @@ jobs:
               exit 1
               ;;
           esac
-
-          echo "::add-mask::$VITE_SUPABASE_ANON_KEY"
-          echo "::add-mask::$SUPABASE_SERVICE_ROLE_KEY"
 
           node <<'NODE'
           const token = process.env.SUPABASE_SERVICE_ROLE_KEY
