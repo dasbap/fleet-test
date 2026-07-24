@@ -39,7 +39,7 @@ jobs:
         run: node scripts/ci-install.mjs
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v4
+        uses: supabase/setup-cli@v2
         with:
           version: ${{ env.SUPABASE_CLI_VERSION }}
 
