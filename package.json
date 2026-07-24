@@ -25,6 +25,7 @@
     "dev": "vite",
     "marketing:dev": "npm --prefix apps/marketing run dev",
     "marketing:build": "npm --prefix apps/marketing run build",
+    "check:storage-migrations": "node scripts/check-storage-migrations.mjs",
     "marketing:deploy": "powershell -ExecutionPolicy Bypass -File scripts/deploy-marketing-vercel.ps1",
     "esamba": "npm --prefix apps/esamba-web run dev",
     "esamba-web:deploy:preview": "node scripts/deploy-esamba-web-preview.mjs",
