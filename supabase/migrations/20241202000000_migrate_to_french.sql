@@ -484,16 +484,20 @@ DROP POLICY IF EXISTS memberships_read_manager_org ON flotte_adhesions;
 -- Supprimer l'ancienne fonction si elle existe (avec l'ancien nom de paramètre)
 -- Inspection : la fonction has_role permet de vérifier si l'utilisateur authentifié possède un rôle actif donné (p_role) dans une flotte (p_flotte_id).
 -- Elle recherche une adhésion active correspondant à ces critères dans flotte_adhesions.
-DROP FUNCTION IF EXISTS has_role(uuid, role_type);
-
-CREATE OR REPLACE FUNCTION has_role(p_flotte_id uuid, p_role role_type)
-RETURNS boolean LANGUAGE sql STABLE AS $$
+CREATE OR REPLACE FUNCTION public.has_role(uuid, role_type)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
   SELECT EXISTS (
-    SELECT 1 FROM flotte_adhesions
-    WHERE fleet_id = p_flotte_id
-      AND user_id = auth.uid()
-      AND role = p_role
-      AND is_active = true
+    SELECT 1
+    FROM public.flotte_adhesions fa
+    WHERE fa.flotte_id = $1
+      AND fa.user_id = auth.uid()
+      AND fa.role = $2
+      AND fa.actif = true
   );
 $$;
 
