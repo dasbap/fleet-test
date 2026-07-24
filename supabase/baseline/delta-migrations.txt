@@ -1,4 +1,4 @@
-﻿supabase/migrations/20240101000000_greenfield_core_schema.sql
+supabase/migrations/20240101000000_greenfield_core_schema.sql
 supabase/migrations/20241201000000_add_search_users_rpc.sql
 supabase/migrations/20241202000000_migrate_to_french.sql
 supabase/migrations/20250205000000_fix_schema_metier.sql
