@@ -42,10 +42,10 @@ jobs:
   supabase-integration:
     name: Supabase local integration tests
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     env:
-      CI: true
+      CI: "true"
 
     steps:
       - name: Checkout
@@ -53,28 +53,23 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          if command -v unzip >/dev/null 2>&1; then
-            unzip -v | head -n 1
-            exit 0
-          fi
-
-          if command -v apt-get >/dev/null 2>&1; then
-            if command -v sudo >/dev/null 2>&1; then
-              sudo apt-get update
-              sudo apt-get install -y unzip curl ca-certificates
+          if ! command -v unzip >/dev/null 2>&1; then
+            if command -v apt-get >/dev/null 2>&1; then
+              if command -v sudo >/dev/null 2>&1; then
+                sudo apt-get update
+                sudo apt-get install -y unzip curl ca-certificates
+              else
+                apt-get update
+                apt-get install -y unzip curl ca-certificates
+              fi
             else
-              apt-get update
-              apt-get install -y unzip curl ca-certificates
+              echo "::error::unzip est requis sur ce runner"
+              exit 1
             fi
-          else
-            echo "::error::apt-get indisponible. Installez unzip sur le runner."
-            exit 1
           fi
 
-          command -v unzip >/dev/null 2>&1 || {
-            echo "::error::unzip reste indisponible après installation"
-            exit 1
-          }
+          command -v unzip
+          command -v curl
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -86,7 +81,7 @@ jobs:
         timeout-minutes: 8
         run: node scripts/ci-install.mjs
 
-      - name: TypeScript
+      - name: TypeScript check
         run: npx tsc --noEmit
         env:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
@@ -95,7 +90,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
-          version: latest
+          version: 2.109.1
           github-token: ${{ github.token }}
 
       - name: Verify Supabase CLI
@@ -105,110 +100,156 @@ jobs:
         run: node scripts/prepare-local-supabase-ports.mjs
 
       - name: Start Supabase local
-        run: supabase start --ignore-health-check
+        run: supabase start -x vector,logflare
 
-      - name: Apply migrations
-        run: supabase db push --local
+      - name: Reset local database
+        run: supabase db reset --no-seed
 
-      - name: Export local Supabase credentials
+      - name: Create isolated local test environment
         run: |
-          supabase status -o env > /tmp/supabase-status.env
+          status_file="/tmp/supabase-status.env"
+          test_file="/tmp/supabase-integration.env"
+
+          supabase status -o env > "$status_file"
+
+          unset VITE_SUPABASE_URL
+          unset VITE_SUPABASE_ANON_KEY
+          unset SUPABASE_SERVICE_ROLE_KEY
+          unset SUPABASE_URL
+          unset SUPABASE_ANON_KEY
 
           set -a
-          source /tmp/supabase-status.env
+          source "$status_file"
           set +a
 
           test -n "${API_URL:-}" || {
-            echo "::error::API_URL is missing from Supabase local status"
+            echo "::error::API_URL absente de supabase status"
             exit 1
           }
 
           test -n "${ANON_KEY:-}" || {
-            echo "::error::ANON_KEY is missing from Supabase local status"
+            echo "::error::ANON_KEY absente de supabase status"
             exit 1
           }
 
           test -n "${SERVICE_ROLE_KEY:-}" || {
-            echo "::error::SERVICE_ROLE_KEY is missing from Supabase local status"
+            echo "::error::SERVICE_ROLE_KEY absente de supabase status"
             exit 1
           }
+
+          case "$API_URL" in
+            http://127.0.0.1:*|http://localhost:*)
+              ;;
+            *)
+              echo "::error::URL Supabase non locale : $API_URL"
+              exit 1
+              ;;
+          esac
+
+          API_URL="$API_URL" \
+          ANON_KEY="$ANON_KEY" \
+          SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+          node <<'NODE'
+          const decode = (part) =>
+            JSON.parse(
+              Buffer.from(part, "base64url").toString("utf8"),
+            )
+
+          const validate = (name, token, expectedRole) => {
+            const parts = token.split(".")
+
+            if (parts.length !== 3) {
+              throw new Error(`${name} n'est pas un JWT valide`)
+            }
+
+            const header = decode(parts[0])
+            const payload = decode(parts[1])
+
+            if (header.alg !== "HS256") {
+              throw new Error(
+                `${name} utilise ${header.alg}; HS256 attendu pour Supabase local`,
+              )
+            }
+
+            if (payload.role !== expectedRole) {
+              throw new Error(
+                `${name} contient le rôle ${payload.role ?? "absent"}; ${expectedRole} attendu`,
+              )
+            }
+          }
+
+          validate(
+            "ANON_KEY",
+            process.env.ANON_KEY,
+            "anon",
+          )
+
+          validate(
+            "SERVICE_ROLE_KEY",
+            process.env.SERVICE_ROLE_KEY,
+            "service_role",
+          )
+
+          console.log("Identifiants Supabase locaux valides")
+          NODE
 
           echo "::add-mask::$ANON_KEY"
           echo "::add-mask::$SERVICE_ROLE_KEY"
 
           {
-            echo "VITE_SUPABASE_URL=$API_URL"
-            echo "VITE_SUPABASE_ANON_KEY=$ANON_KEY"
-            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
-          } >> "$GITHUB_ENV"
+            printf 'VITE_SUPABASE_URL=%q\n' "$API_URL"
+            printf 'VITE_SUPABASE_ANON_KEY=%q\n' "$ANON_KEY"
+            printf 'SUPABASE_SERVICE_ROLE_KEY=%q\n' "$SERVICE_ROLE_KEY"
+          } > "$test_file"
 
-      - name: Verify local Supabase credentials
+          chmod 600 "$test_file"
+
+      - name: Run integration tests
         run: |
-          test -n "${VITE_SUPABASE_URL:-}" || {
-            echo "::error::VITE_SUPABASE_URL is missing"
-            exit 1
-          }
+          unset VITE_SUPABASE_URL
+          unset VITE_SUPABASE_ANON_KEY
+          unset SUPABASE_SERVICE_ROLE_KEY
+          unset SUPABASE_URL
+          unset SUPABASE_ANON_KEY
 
-          test -n "${VITE_SUPABASE_ANON_KEY:-}" || {
-            echo "::error::VITE_SUPABASE_ANON_KEY is missing"
-            exit 1
-          }
-
-          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
-            echo "::error::SUPABASE_SERVICE_ROLE_KEY is missing"
-            exit 1
-          }
+          set -a
+          source /tmp/supabase-integration.env
+          set +a
 
           case "$VITE_SUPABASE_URL" in
             http://127.0.0.1:*|http://localhost:*)
-              echo "Using local Supabase instance: $VITE_SUPABASE_URL"
               ;;
             *)
-              echo "::error::Integration tests must target local Supabase, received: $VITE_SUPABASE_URL"
+              echo "::error::Les tests ne ciblent pas Supabase local"
               exit 1
               ;;
           esac
 
-          node <<'NODE'
-          const token = process.env.SUPABASE_SERVICE_ROLE_KEY
+          algorithm="$(
+            node -e "
+              const token = process.env.SUPABASE_SERVICE_ROLE_KEY;
+              const header = JSON.parse(
+                Buffer.from(
+                  token.split('.')[0],
+                  'base64url'
+                ).toString('utf8')
+              );
+              process.stdout.write(header.alg || '');
+            "
+          )"
 
-          if (!token) {
-            throw new Error("SUPABASE_SERVICE_ROLE_KEY manquante")
-          }
+          if [ "$algorithm" != "HS256" ]; then
+            echo "::error::Clé service_role invalide : $algorithm"
+            exit 1
+          fi
 
-          const parts = token.split(".")
-
-          if (parts.length !== 3) {
-            throw new Error(
-              "La clé service_role locale n'est pas un JWT valide",
-            )
-          }
-
-          const header = JSON.parse(
-            Buffer.from(parts[0], "base64url").toString("utf8"),
-          )
-
-          const payload = JSON.parse(
-            Buffer.from(parts[1], "base64url").toString("utf8"),
-          )
-
-          if (payload.role !== "service_role") {
-            throw new Error(
-              `Rôle JWT incorrect : ${payload.role ?? "absent"}`,
-            )
-          }
-
-          console.log(
-            `Identifiants Supabase locaux valides, algorithme JWT : ${header.alg}`,
-          )
-          NODE
-
-      - name: Run integration tests
-        run: |
           mkdir -p test-results
 
           npx vitest run \
             --config vitest.integration.config.ts \
+            tests/integration/rls.fleet-access.test.ts \
+            tests/integration/triggers.vehicle-limit.test.ts \
+            tests/integration/fuel.fraud-scoring.test.ts \
             --reporter=default \
             --reporter=json \
             --outputFile=test-results/supabase-integration.json
@@ -225,6 +266,13 @@ jobs:
       - name: Supabase status
         if: always()
         run: supabase status || true
+
+      - name: Remove temporary credentials
+        if: always()
+        run: |
+          rm -f \
+            /tmp/supabase-status.env \
+            /tmp/supabase-integration.env
 
       - name: Stop Supabase local
         if: always()
