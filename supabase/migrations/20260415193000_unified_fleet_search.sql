@@ -7,8 +7,12 @@
 -- les éventuels problèmes de RLS en contexte CI.
 -- ============================================================================
 
--- ── 0. Extension pg_trgm (requise pour extensions.similarity()) ──────────────────────
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- ── 0. Extension pg_trgm (requise pour similarity()) ──────────────────────
+CREATE SCHEMA IF NOT EXISTS extensions;
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm
+WITH SCHEMA extensions;
+
 
 -- ── 1. Guard : s'assurer que les tables dépendantes existent ──────────────
 -- Ces CREATE TABLE IF NOT EXISTS sont des no-ops si les tables existent déjà.
@@ -147,7 +151,7 @@ RETURNS TABLE (
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
   WITH params AS (
     SELECT
@@ -204,7 +208,7 @@ AS $$
       CASE
         WHEN lower(v.registration) LIKE lower((SELECT q FROM params)) || '%' THEN 10
         WHEN v.registration ILIKE '%' || (SELECT q FROM params) || '%'       THEN 8
-        WHEN extensions.similarity(coalesce(v.registration, ''), (SELECT q FROM params)) >= 0.1 THEN 6
+        WHEN similarity(coalesce(v.registration, ''), (SELECT q FROM params)) >= 0.1 THEN 6
         ELSE 4
       END                                                   AS score
     FROM public.vehicules v
@@ -215,7 +219,7 @@ AS $$
         v.registration ILIKE '%' || (SELECT q FROM params) || '%'
         OR coalesce(v.brand, '')  ILIKE '%' || (SELECT q FROM params) || '%'
         OR coalesce(v.model, '') ILIKE '%' || (SELECT q FROM params) || '%'
-        OR extensions.similarity(coalesce(v.registration, ''), (SELECT q FROM params)) >= 0.1
+        OR similarity(coalesce(v.registration, ''), (SELECT q FROM params)) >= 0.1
       )
     ORDER BY score DESC, v.registration ASC
     LIMIT (SELECT per_type FROM params)
@@ -233,7 +237,7 @@ AS $$
       CASE
         WHEN lower(coalesce(p.full_name, '')) LIKE lower((SELECT q FROM params)) || '%' THEN 10
         WHEN coalesce(p.full_name, '') ILIKE '%' || (SELECT q FROM params) || '%'       THEN 8
-        WHEN extensions.similarity(coalesce(p.full_name, ''), (SELECT q FROM params)) >= 0.1       THEN 6
+        WHEN similarity(coalesce(p.full_name, ''), (SELECT q FROM params)) >= 0.1       THEN 6
         WHEN coalesce(p.phone, '') ILIKE '%' || (SELECT q FROM params) || '%'           THEN 5
         ELSE 4
       END                                                  AS score
@@ -246,7 +250,7 @@ AS $$
       AND (
         coalesce(p.full_name, '') ILIKE '%' || (SELECT q FROM params) || '%'
         OR coalesce(p.phone, '') ILIKE '%' || (SELECT q FROM params) || '%'
-        OR extensions.similarity(coalesce(p.full_name, ''), (SELECT q FROM params)) >= 0.1
+        OR similarity(coalesce(p.full_name, ''), (SELECT q FROM params)) >= 0.1
       )
     ORDER BY score DESC, title ASC
     LIMIT (SELECT per_type FROM params)
@@ -280,7 +284,7 @@ AS $$
       AND (
         aa.message ILIKE '%' || (SELECT q FROM params) || '%'
         OR coalesce(aa.severity, '') ILIKE '%' || (SELECT q FROM params) || '%'
-        OR extensions.similarity(coalesce(aa.message, ''), (SELECT q FROM params)) >= 0.1
+        OR similarity(coalesce(aa.message, ''), (SELECT q FROM params)) >= 0.1
       )
     ORDER BY score DESC, aa.created_at DESC
     LIMIT (SELECT per_type FROM params)
@@ -308,7 +312,7 @@ AS $$
         coalesce(tm.notes, '')     ILIKE '%' || (SELECT q FROM params) || '%'
         OR coalesce(tm.status, '') ILIKE '%' || (SELECT q FROM params) || '%'
         OR coalesce(tm.priority,'')ILIKE '%' || (SELECT q FROM params) || '%'
-        OR extensions.similarity(coalesce(tm.notes, ''), (SELECT q FROM params)) >= 0.1
+        OR similarity(coalesce(tm.notes, ''), (SELECT q FROM params)) >= 0.1
       )
     ORDER BY score DESC, tm.planned_at DESC NULLS LAST, tm.created_at DESC
     LIMIT (SELECT per_type FROM params)
@@ -334,7 +338,10 @@ COMMENT ON FUNCTION public.search_fleet IS
 -- Recherche unifiée multi-entités pour la flotte
 -- Remplacement progressif de la recherche existante avec compatibilité RPC.
 
-create extension if not exists pg_trgm;
+CREATE SCHEMA IF NOT EXISTS extensions;
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm
+WITH SCHEMA extensions;
 
 -- Index trigram: véhicules
 -- Garde : ignoré si la table n'existe pas encore (ex. rejoue depuis un baseline squashé).
@@ -484,7 +491,7 @@ begin
           case
             when lower(v.registration) like lower((select q from params)) || '%' then 10
             when v.registration ilike '%' || (select q from params) || '%' then 8
-            when extensions.similarity(coalesce(v.registration, ''), (select q from params)) >= 0.1 then 6
+            when similarity(coalesce(v.registration, ''), (select q from params)) >= 0.1 then 6
             else 4
           end as score
         from public.vehicules v
@@ -494,7 +501,7 @@ begin
             v.registration ilike '%' || (select q from params) || '%'
             or coalesce(v.brand, '') ilike '%' || (select q from params) || '%'
             or coalesce(v.model, '') ilike '%' || (select q from params) || '%'
-            or extensions.similarity(coalesce(v.registration, ''), (select q from params)) >= 0.1
+            or similarity(coalesce(v.registration, ''), (select q from params)) >= 0.1
           )
         order by score desc, v.registration asc
         limit (select per_type from params)
@@ -511,7 +518,7 @@ begin
           case
             when lower(coalesce(p.full_name, '')) like lower((select q from params)) || '%' then 10
             when coalesce(p.full_name, '') ilike '%' || (select q from params) || '%' then 8
-            when extensions.similarity(coalesce(p.full_name, ''), (select q from params)) >= 0.1 then 6
+            when similarity(coalesce(p.full_name, ''), (select q from params)) >= 0.1 then 6
             when coalesce(p.phone, '') ilike '%' || (select q from params) || '%' then 5
             else 4
           end as score
@@ -523,7 +530,7 @@ begin
           and (
             coalesce(p.full_name, '') ilike '%' || (select q from params) || '%'
             or coalesce(p.phone, '') ilike '%' || (select q from params) || '%'
-            or extensions.similarity(coalesce(p.full_name, ''), (select q from params)) >= 0.1
+            or similarity(coalesce(p.full_name, ''), (select q from params)) >= 0.1
           )
         order by score desc, title asc
         limit (select per_type from params)
@@ -555,7 +562,7 @@ begin
           and (
             aa.message ilike '%' || (select q from params) || '%'
             or coalesce(aa.severity, '') ilike '%' || (select q from params) || '%'
-            or extensions.similarity(coalesce(aa.message, ''), (select q from params)) >= 0.1
+            or similarity(coalesce(aa.message, ''), (select q from params)) >= 0.1
           )
         order by score desc, aa.created_at desc
         limit (select per_type from params)
@@ -584,7 +591,7 @@ begin
             coalesce(tm.notes, '') ilike '%' || (select q from params) || '%'
             or coalesce(tm.status, '') ilike '%' || (select q from params) || '%'
             or coalesce(tm.priority, '') ilike '%' || (select q from params) || '%'
-            or extensions.similarity(coalesce(tm.notes, ''), (select q from params)) >= 0.1
+            or similarity(coalesce(tm.notes, ''), (select q from params)) >= 0.1
           )
         order by score desc, tm.planned_at desc nulls last, tm.created_at desc
         limit (select per_type from params)
@@ -706,10 +713,10 @@ begin
         coalesce(drv.full_name, '')
       ) as search_text,
       greatest(
-        extensions.similarity(coalesce(v.registration, ''), left(trim(coalesce(p_query, '')), 80)),
-        extensions.similarity(coalesce(v.brand, ''), left(trim(coalesce(p_query, '')), 80)),
-        extensions.similarity(coalesce(v.model, ''), left(trim(coalesce(p_query, '')), 80)),
-        extensions.similarity(coalesce(drv.full_name, ''), left(trim(coalesce(p_query, '')), 80))
+        similarity(coalesce(v.registration, ''), left(trim(coalesce(p_query, '')), 80)),
+        similarity(coalesce(v.brand, ''), left(trim(coalesce(p_query, '')), 80)),
+        similarity(coalesce(v.model, ''), left(trim(coalesce(p_query, '')), 80)),
+        similarity(coalesce(drv.full_name, ''), left(trim(coalesce(p_query, '')), 80))
       ) as similarity
     from public.vehicules v
     left join lateral (
@@ -729,7 +736,7 @@ begin
           or coalesce(v.brand, '') ilike '%' || left(trim(coalesce(p_query, '')), 80) || '%'
           or coalesce(v.model, '') ilike '%' || left(trim(coalesce(p_query, '')), 80) || '%'
           or coalesce(drv.full_name, '') ilike '%' || left(trim(coalesce(p_query, '')), 80) || '%'
-          or extensions.similarity(coalesce(v.registration, ''), left(trim(coalesce(p_query, '')), 80)) >= 0.1
+          or similarity(coalesce(v.registration, ''), left(trim(coalesce(p_query, '')), 80)) >= 0.1
         )
       )
       and (

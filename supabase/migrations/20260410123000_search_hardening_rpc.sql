@@ -38,7 +38,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+SET search_path = public, extensions
 as $$
 declare
   v_query text := left(trim(coalesce(p_query, '')), 80);
@@ -65,9 +65,9 @@ begin
       case
         when v_query = '' then 0::double precision
         else greatest(
-          extensions.similarity(coalesce(vsv.search_text, ''), v_query),
-          extensions.similarity(coalesce(vsv.plate, ''), v_query),
-          extensions.similarity(coalesce(vsv.driver_name, ''), v_query)
+          similarity(coalesce(vsv.search_text, ''), v_query),
+          similarity(coalesce(vsv.plate, ''), v_query),
+          similarity(coalesce(vsv.driver_name, ''), v_query)
         )
       end as sim
     from public.vehicles_search_view vsv
@@ -75,7 +75,7 @@ begin
       and (
         v_query = ''
         or vsv.search_text ilike ('%' || v_query || '%')
-        or extensions.similarity(coalesce(vsv.search_text, ''), v_query) >= 0.2
+        or similarity(coalesce(vsv.search_text, ''), v_query) >= 0.2
       )
       and (
         coalesce(array_length(p_status, 1), 0) = 0
