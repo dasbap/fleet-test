@@ -24,10 +24,10 @@ jobs:
   verify-migration:
     name: Verify Migration to French
     runs-on: [self-hosted, Linux, X64]
-    
+
     env:
-      SUPABASE_CLI_VERSION: 2.102.0  # Version de Supabase CLI à installer
-    
+      SUPABASE_CLI_version: latest # Version de Supabase CLI à installer
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -35,10 +35,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v4
         with:
           version: ${{ env.SUPABASE_CLI_VERSION }}
 
@@ -62,17 +62,17 @@ jobs:
         run: |
           echo "Executing migration verification script..."
           supabase db query < supabase/scripts/verify/verify-migration-status.sql > migration-report.txt 2>&1 || true
-          
+
           # Afficher le rapport
           echo "=== MIGRATION VERIFICATION REPORT ==="
           cat migration-report.txt
-          
+
           # Vérifier s'il y a des erreurs critiques
           if grep -q "❌ ERREURS" migration-report.txt; then
             echo "::error::Critical errors detected in migration verification"
             exit 1
           fi
-          
+
           if grep -q "⚠️ AVERTISSEMENTS" migration-report.txt; then
             echo "::warning::Warnings detected in migration verification"
           fi

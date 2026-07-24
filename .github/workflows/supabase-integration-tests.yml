@@ -68,9 +68,10 @@ jobs:
           VITE_SUPABASE_ANON_KEY: placeholder_key
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v2
         with:
-          version: 2.102.0
+          version: latest
+          github-token: ${{ github.token }}
 
       - name: Prepare dynamic Supabase local ports
         run: node scripts/prepare-local-supabase-ports.mjs
@@ -83,38 +84,29 @@ jobs:
 
       - name: Export local Supabase credentials
         run: |
-          supabase status -o env > /tmp/supabase-status.env
+          supabase status -o env \
+            --override-name api.url=VITE_SUPABASE_URL \
+            --override-name auth.anon_key=VITE_SUPABASE_ANON_KEY \
+            --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
+            >> "$GITHUB_ENV"
 
-          set -a
-          source /tmp/supabase-status.env
-          set +a
-
-          test -n "${API_URL:-}" || {
-            echo "::error::API_URL is missing from Supabase local status"
-            exit 1
-          }
-
-          test -n "${ANON_KEY:-}" || {
-            echo "::error::ANON_KEY is missing from Supabase local status"
-            exit 1
-          }
-
-          test -n "${SERVICE_ROLE_KEY:-}" || {
-            echo "::error::SERVICE_ROLE_KEY is missing from Supabase local status"
-            exit 1
-          }
-
-          echo "::add-mask::$ANON_KEY"
-          echo "::add-mask::$SERVICE_ROLE_KEY"
-
-          {
-            echo "VITE_SUPABASE_URL=$API_URL"
-            echo "VITE_SUPABASE_ANON_KEY=$ANON_KEY"
-            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
-          } >> "$GITHUB_ENV"
-
-      - name: Verify local Supabase environment
+      - name: Verify local Supabase credentials
         run: |
+          test -n "${VITE_SUPABASE_URL:-}" || {
+            echo "::error::VITE_SUPABASE_URL is missing"
+            exit 1
+          }
+
+          test -n "${VITE_SUPABASE_ANON_KEY:-}" || {
+            echo "::error::VITE_SUPABASE_ANON_KEY is missing"
+            exit 1
+          }
+
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
+            echo "::error::SUPABASE_SERVICE_ROLE_KEY is missing"
+            exit 1
+          }
+
           case "$VITE_SUPABASE_URL" in
             http://127.0.0.1:*|http://localhost:*)
               echo "Using local Supabase instance: $VITE_SUPABASE_URL"
@@ -124,6 +116,43 @@ jobs:
               exit 1
               ;;
           esac
+
+          echo "::add-mask::$VITE_SUPABASE_ANON_KEY"
+          echo "::add-mask::$SUPABASE_SERVICE_ROLE_KEY"
+
+          node <<'NODE'
+          const token = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+          if (!token) {
+            throw new Error("SUPABASE_SERVICE_ROLE_KEY manquante")
+          }
+
+          const parts = token.split(".")
+
+          if (parts.length !== 3) {
+            throw new Error(
+              "La clé service_role locale n'est pas un JWT valide",
+            )
+          }
+
+          const header = JSON.parse(
+            Buffer.from(parts[0], "base64url").toString("utf8"),
+          )
+
+          const payload = JSON.parse(
+            Buffer.from(parts[1], "base64url").toString("utf8"),
+          )
+
+          if (payload.role !== "service_role") {
+            throw new Error(
+              `Rôle JWT incorrect : ${payload.role ?? "absent"}`,
+            )
+          }
+
+          console.log(
+            `Identifiants Supabase locaux valides, algorithme JWT : ${header.alg}`,
+          )
+          NODE
 
       - name: Run integration tests
         run: |

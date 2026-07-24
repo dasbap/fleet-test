@@ -13,7 +13,7 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  SUPABASE_CLI_VERSION: 2.102.0
+  SUPABASE_CLI_version: latest
 
 defaults:
   run:
@@ -39,7 +39,7 @@ jobs:
         run: node scripts/ci-install.mjs
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v4
         with:
           version: ${{ env.SUPABASE_CLI_VERSION }}
 
