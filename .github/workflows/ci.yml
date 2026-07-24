@@ -445,58 +445,131 @@ jobs:
         id: layer_integration
         continue-on-error: true
         run: |
+          set -euo pipefail
+
           unset VITE_SUPABASE_URL
           unset VITE_SUPABASE_ANON_KEY
           unset SUPABASE_SERVICE_ROLE_KEY
           unset SUPABASE_URL
           unset SUPABASE_ANON_KEY
+          unset SUPABASE_LOCAL_URL
+          unset SUPABASE_LOCAL_ANON_KEY
+          unset SUPABASE_LOCAL_SERVICE_ROLE_KEY
 
           set -a
           source /tmp/supabase-integration.env
           set +a
 
+          test -n "${VITE_SUPABASE_URL:-}" || {
+            echo "::error::VITE_SUPABASE_URL absente"
+            exit 1
+          }
+
+          test -n "${VITE_SUPABASE_ANON_KEY:-}" || {
+            echo "::error::VITE_SUPABASE_ANON_KEY absente"
+            exit 1
+          }
+
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
+            echo "::error::SUPABASE_SERVICE_ROLE_KEY absente"
+            exit 1
+          }
+
           case "$VITE_SUPABASE_URL" in
             http://127.0.0.1:*|http://localhost:*)
               ;;
             *)
-              echo "::error::Les tests d'intégration ne ciblent pas Supabase local"
+              echo "::error::Les tests d'intégration ne ciblent pas Supabase local : $VITE_SUPABASE_URL"
               exit 1
               ;;
           esac
 
-          algorithm="$(
-            node -e "
-              const token = process.env.SUPABASE_SERVICE_ROLE_KEY;
+          SUPABASE_LOCAL_URL="$VITE_SUPABASE_URL"
+          SUPABASE_LOCAL_ANON_KEY="$VITE_SUPABASE_ANON_KEY"
+          SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY"
 
-              const header = JSON.parse(
-                Buffer.from(
-                  token.split('.')[0],
-                  'base64url'
-                ).toString('utf8')
-              );
+          export SUPABASE_LOCAL_URL
+          export SUPABASE_LOCAL_ANON_KEY
+          export SUPABASE_LOCAL_SERVICE_ROLE_KEY
 
-              process.stdout.write(header.alg || '');
-            "
-          )"
+          SUPABASE_LOCAL_ANON_KEY="$SUPABASE_LOCAL_ANON_KEY" \
+          SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SUPABASE_LOCAL_SERVICE_ROLE_KEY" \
+          node <<'NODE'
+          function decodeJwt(token, name) {
+            const parts = token.split(".")
 
-          if [ "$algorithm" != "HS256" ]; then
-            echo "::error::Clé service_role invalide : $algorithm"
-            exit 1
-          fi
+            if (parts.length !== 3) {
+              throw new Error(`${name} n'est pas un JWT valide`)
+            }
+
+            return {
+              header: JSON.parse(
+                Buffer.from(parts[0], "base64url").toString("utf8"),
+              ),
+              payload: JSON.parse(
+                Buffer.from(parts[1], "base64url").toString("utf8"),
+              ),
+            }
+          }
+
+          function validate(token, name, expectedRole) {
+            const { header, payload } = decodeJwt(token, name)
+
+            if (header.alg !== "HS256") {
+              throw new Error(
+                `${name} utilise ${header.alg ?? "aucun algorithme"}; HS256 attendu`,
+              )
+            }
+
+            if (payload.role !== expectedRole) {
+              throw new Error(
+                `${name} contient le rôle ${payload.role ?? "absent"}; ${expectedRole} attendu`,
+              )
+            }
+          }
+
+          validate(
+            process.env.SUPABASE_LOCAL_ANON_KEY,
+            "Clé anon locale",
+            "anon",
+          )
+
+          validate(
+            process.env.SUPABASE_LOCAL_SERVICE_ROLE_KEY,
+            "Clé service_role locale",
+            "service_role",
+          )
+
+          console.log("Identifiants Supabase locaux validés")
+          NODE
+
+          echo "::add-mask::$SUPABASE_LOCAL_ANON_KEY"
+          echo "::add-mask::$SUPABASE_LOCAL_SERVICE_ROLE_KEY"
 
           mkdir -p ci-metrics test-results
 
           start=$(date +%s%3N)
 
           set +e
-          npx vitest run \
-            --config vitest.integration.config.ts \
-            tests/integration/rls.fleet-access.test.ts \
-            tests/integration/triggers.vehicle-limit.test.ts \
-            tests/integration/fuel.fraud-scoring.test.ts \
-            --reporter=default \
-            --reporter=json \
-            --outputFile=test-results/integration.json
+          env \
+            SUPABASE_LOCAL_URL="$SUPABASE_LOCAL_URL" \
+            SUPABASE_LOCAL_ANON_KEY="$SUPABASE_LOCAL_ANON_KEY" \
+            SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SUPABASE_LOCAL_SERVICE_ROLE_KEY" \
+            VITE_SUPABASE_URL="$SUPABASE_LOCAL_URL" \
+            VITE_SUPABASE_ANON_KEY="$SUPABASE_LOCAL_ANON_KEY" \
+            SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_LOCAL_SERVICE_ROLE_KEY" \
+            npx vitest run \
+              --config vitest.integration.config.ts \
+              --pool=forks \
+              --maxWorkers=1 \
+              --minWorkers=1 \
+              --no-file-parallelism \
+              tests/integration/rls.fleet-access.test.ts \
+              tests/integration/triggers.vehicle-limit.test.ts \
+              tests/integration/fuel.fraud-scoring.test.ts \
+              --reporter=default \
+              --reporter=json \
+              --outputFile=test-results/integration.json
           code=$?
           set -e
 
@@ -557,7 +630,6 @@ jobs:
               )
             );
           "
-
       - name: Run E2E layer
         id: layer_e2e
         continue-on-error: true
