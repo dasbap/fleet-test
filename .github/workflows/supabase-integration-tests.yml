@@ -2,13 +2,36 @@ name: Supabase Integration Tests
 
 on:
   pull_request:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+    branches:
+      - main
+    paths:
+      - "supabase/**"
+      - "tests/integration/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vitest.integration.config.ts"
+      - ".github/workflows/supabase-integration-tests.yml"
+
   push:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+    branches:
+      - main
+    paths:
+      - "supabase/**"
+      - "tests/integration/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vitest.integration.config.ts"
+      - ".github/workflows/supabase-integration-tests.yml"
+
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: supabase-integration-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
@@ -17,8 +40,12 @@ defaults:
 
 jobs:
   supabase-integration:
+    name: Supabase local integration tests
     runs-on: ubuntu-latest
     timeout-minutes: 25
+
+    env:
+      CI: true
 
     steps:
       - name: Checkout
@@ -28,6 +55,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
 
       - name: Install dependencies
         timeout-minutes: 8
@@ -36,8 +64,8 @@ jobs:
       - name: TypeScript
         run: npx tsc --noEmit
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder_key' }}
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: placeholder_key
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
@@ -53,13 +81,73 @@ jobs:
       - name: Apply migrations
         run: supabase db push --local
 
+      - name: Export local Supabase credentials
+        run: |
+          supabase status -o env > /tmp/supabase-status.env
+
+          set -a
+          source /tmp/supabase-status.env
+          set +a
+
+          test -n "${API_URL:-}" || {
+            echo "::error::API_URL is missing from Supabase local status"
+            exit 1
+          }
+
+          test -n "${ANON_KEY:-}" || {
+            echo "::error::ANON_KEY is missing from Supabase local status"
+            exit 1
+          }
+
+          test -n "${SERVICE_ROLE_KEY:-}" || {
+            echo "::error::SERVICE_ROLE_KEY is missing from Supabase local status"
+            exit 1
+          }
+
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+
+          {
+            echo "VITE_SUPABASE_URL=$API_URL"
+            echo "VITE_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify local Supabase environment
+        run: |
+          case "$VITE_SUPABASE_URL" in
+            http://127.0.0.1:*|http://localhost:*)
+              echo "Using local Supabase instance: $VITE_SUPABASE_URL"
+              ;;
+            *)
+              echo "::error::Integration tests must target local Supabase, received: $VITE_SUPABASE_URL"
+              exit 1
+              ;;
+          esac
+
       - name: Run integration tests
-        run: npx vitest run -c vitest.integration.config.ts
+        run: |
+          mkdir -p test-results
 
-      - name: Supabase status (always)
-        if: always()
-        run: supabase status
+          npx vitest run \
+            --config vitest.integration.config.ts \
+            --reporter=default \
+            --reporter=json \
+            --outputFile=test-results/supabase-integration.json
 
-      - name: Stop Supabase local (always)
+      - name: Upload integration test report
         if: always()
-        run: supabase stop
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-integration-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Supabase status
+        if: always()
+        run: supabase status || true
+
+      - name: Stop Supabase local
+        if: always()
+        run: supabase stop --no-backup || true
