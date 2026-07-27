@@ -37,10 +37,12 @@ defaults:
 jobs:
   verify-migration:
     name: Verify Supabase migration status
+
     runs-on:
       - self-hosted
       - Linux
       - X64
+      - ipv6
 
     timeout-minutes: 15
 
@@ -64,6 +66,20 @@ jobs:
         run: |
           set -euo pipefail
           supabase --version
+
+      - name: Install PostgreSQL client
+        run: |
+          set -euo pipefail
+
+          if command -v psql >/dev/null 2>&1; then
+            psql --version
+            exit 0
+          fi
+
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-client
+
+          psql --version
 
       - name: Validate Supabase configuration
         run: |
@@ -89,13 +105,16 @@ jobs:
             exit 1
           fi
 
+          if ! command -v psql >/dev/null 2>&1; then
+            echo "::error::Le client PostgreSQL psql est introuvable"
+            exit 1
+          fi
+
       - name: Check runner IPv6 connectivity
         run: |
           set -euo pipefail
 
           DB_HOST="db.${SUPABASE_PROJECT_REF}.supabase.co"
-
-          echo "Résolution IPv6 de ${DB_HOST} :"
 
           IPV6_ADDRESS="$(
             getent ahosts "$DB_HOST" |
@@ -107,27 +126,30 @@ jobs:
             exit 1
           fi
 
-          echo "Adresse IPv6 Supabase détectée : ${IPV6_ADDRESS}"
+          echo "Adresse IPv6 Supabase : ${IPV6_ADDRESS}"
 
-          if [ ! -f /proc/net/if_inet6 ]; then
-            echo "::error::IPv6 est désactivé dans le noyau du runner"
+          GLOBAL_IPV6="$(
+            ip -6 address show scope global |
+              awk '/inet6/ { print $2; exit }'
+          )"
+
+          if [ -z "$GLOBAL_IPV6" ]; then
+            echo "::error::Le runner ne possède aucune adresse IPv6 globale"
             exit 1
           fi
 
+          echo "Adresse IPv6 du runner : ${GLOBAL_IPV6}"
+
           if ! ip -6 route show default | grep -q '^default'; then
             echo "::error::Le runner ne possède aucune route IPv6 par défaut"
-            echo "::error::Configure une adresse IPv6 publique et une passerelle IPv6 sur la machine hôte"
             exit 1
           fi
 
           echo "Route IPv6 par défaut :"
           ip -6 route show default
 
-          echo "Test TCP IPv6 vers Supabase..."
-
           if ! timeout 10 bash -c "exec 3<>/dev/tcp/${DB_HOST}/5432"; then
             echo "::error::Le runner ne peut pas joindre ${DB_HOST}:5432 en IPv6"
-            echo "::error::Vérifie la passerelle IPv6, le pare-feu sortant et les règles réseau Supabase"
             exit 1
           fi
 
@@ -139,16 +161,21 @@ jobs:
           set -euo pipefail
 
           DB_HOST="db.${SUPABASE_PROJECT_REF}.supabase.co"
-          DB_URL="postgresql://postgres@${DB_HOST}:5432/postgres"
+          SQL_FILE="supabase/scripts/verify/verify-migration-status.sql"
 
           echo "Executing migration verification script..."
           echo "Database host: ${DB_HOST}"
 
           set +e
 
-          supabase db query \
-            --db-url "$DB_URL" \
-            --file supabase/scripts/verify/verify-migration-status.sql \
+          psql \
+            --host="$DB_HOST" \
+            --port="5432" \
+            --username="postgres" \
+            --dbname="postgres" \
+            --file="$SQL_FILE" \
+            --set=ON_ERROR_STOP=1 \
+            --no-password \
             > migration-report.txt 2>&1
 
           STATUS=$?
@@ -171,7 +198,7 @@ jobs:
           fi
 
           if grep -Eqi \
-            "❌ ERREURS|failed to parse connection string|failed to connect|connection refused|network is unreachable|no route to host|password authentication failed|FATAL:|ERROR:" \
+            "❌ ERREURS|failed to connect|connection refused|network is unreachable|no route to host|password authentication failed|FATAL:|ERROR:" \
             migration-report.txt
           then
             echo "::error::Des erreurs critiques ont été détectées dans le rapport"
@@ -220,11 +247,9 @@ jobs:
               ? fs.readFileSync(reportPath, "utf8")
               : "Rapport indisponible.";
 
-            const maximumLength = 60000;
-
-            if (report.length > maximumLength) {
+            if (report.length > 60000) {
               report =
-                report.slice(0, maximumLength) +
+                report.slice(0, 60000) +
                 "\n\n... rapport tronqué. Consultez l’artifact complet.";
             }
 
