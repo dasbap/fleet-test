@@ -16,7 +16,7 @@ export async function createFleetContextForUser(
     countryCode?: string;
     role?: "organizer" | "manager" | "mechanic" | "driver";
     runId?: string;
-  },
+  }
 ): Promise<TestFleetContext> {
   const runId = options?.runId ?? createTestRunId("fleet");
   const role = options?.role ?? "organizer";
@@ -32,46 +32,63 @@ export async function createFleetContextForUser(
     .single();
 
   if (orgError || !org) {
-    throw new Error(`[integration setup] Creation organisation impossible: ${orgError?.message ?? "inconnu"}`);
+    throw new Error(
+      `[integration setup] Creation organisation impossible: ${
+        orgError?.message ?? "inconnu"
+      }`
+    );
   }
 
-  const { data: fleetId, error: fleetError } = await admin.rpc("creer_flotte_esamba", {
-    p_org_id: org.id,
-    p_name: `IT Fleet ${runId}`,
-    p_collection_policy: "mix",
-  });
+  const { data: fleetId, error: fleetError } = await admin.rpc(
+    "creer_flotte_esamba",
+    {
+      p_org_id: org.id,
+      p_name: `IT Fleet ${runId}`,
+      p_collection_policy: "mix",
+    }
+  );
 
   if (fleetError || !fleetId) {
-    throw new Error(`[integration setup] Creation flotte impossible: ${fleetError?.message ?? "inconnu"}`);
+    throw new Error(
+      `[integration setup] Creation flotte impossible: ${
+        fleetError?.message ?? "inconnu"
+      }`
+    );
   }
 
   const membershipClient = options?.user ?? admin;
   const bootstrapRole = role === "organizer" ? role : "organizer";
 
-  const { error: bootstrapError } = await membershipClient.rpc("creer_ou_mettre_a_jour_adhesion_flotte", {
-    p_fleet_id: fleetId,
-    p_user_id: userId,
-    p_role: bootstrapRole,
-    p_is_active: true,
-  });
+  const { error: bootstrapError } = await membershipClient.rpc(
+    "creer_ou_mettre_a_jour_adhesion_flotte",
+    {
+      p_fleet_id: fleetId,
+      p_user_id: userId,
+      p_role: bootstrapRole,
+      p_is_active: true,
+    }
+  );
 
   if (bootstrapError) {
     throw new Error(
-      `[integration setup] Creation adhesion impossible (${bootstrapRole}): ${bootstrapError.message}`,
+      `[integration setup] Creation adhesion impossible (${bootstrapRole}): ${bootstrapError.message}`
     );
   }
 
   if (role !== bootstrapRole) {
-    const { error: roleError } = await membershipClient.rpc("creer_ou_mettre_a_jour_adhesion_flotte", {
-      p_fleet_id: fleetId,
-      p_user_id: userId,
-      p_role: role,
-      p_is_active: true,
-    });
+    const { error: roleError } = await membershipClient.rpc(
+      "creer_ou_mettre_a_jour_adhesion_flotte",
+      {
+        p_fleet_id: fleetId,
+        p_user_id: userId,
+        p_role: role,
+        p_is_active: true,
+      }
+    );
 
     if (roleError) {
       throw new Error(
-        `[integration setup] Mise a jour adhesion impossible (${role}): ${roleError.message}`,
+        `[integration setup] Mise a jour adhesion impossible (${role}): ${roleError.message}`
       );
     }
   }
@@ -87,10 +104,12 @@ export async function createFleetContextForUser(
 export async function createVehicleForFleet(
   admin: SupabaseClient,
   fleetId: string,
-  registrationPrefix = "IT",
+  registrationPrefix = "IT"
 ): Promise<string> {
   const runId = createTestRunId("vh");
-  const registration = `${registrationPrefix}-${runId}`.slice(0, 30).toUpperCase();
+  const registration = `${registrationPrefix}-${runId}`
+    .slice(0, 30)
+    .toUpperCase();
   const { data, error } = await admin.rpc("creer_vehicule_esamba", {
     p_fleet_id: fleetId,
     p_registration: registration,
@@ -101,7 +120,11 @@ export async function createVehicleForFleet(
   });
 
   if (error || !data) {
-    throw new Error(`[integration setup] Creation vehicule impossible: ${error?.message ?? "inconnu"}`);
+    throw new Error(
+      `[integration setup] Creation vehicule impossible: ${
+        error?.message ?? "inconnu"
+      }`
+    );
   }
 
   return data;
@@ -109,7 +132,7 @@ export async function createVehicleForFleet(
 
 export async function cleanupFleetContext(
   admin: SupabaseClient,
-  context: Partial<TestFleetContext>,
+  context: Partial<TestFleetContext>
 ): Promise<void> {
   const fleetId = context.fleetId;
   const orgId = context.orgId;
