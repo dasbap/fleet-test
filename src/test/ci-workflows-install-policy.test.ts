@@ -147,4 +147,11 @@ describe("GitHub workflow dependency install policy", () => {
     expect(installScript).toContain("NODE_OPTIONS");
     expect(installScript).toContain("--max-old-space-size=2048");
   });
+
+  it("runs Playwright E2E with the E2E Vite server guard", () => {
+    const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
+
+    expect(workflow).toContain("ESAMBA_E2E: \"1\"");
+    expect(workflow).toContain("npx playwright test --reporter=line,json");
+  });
 });
