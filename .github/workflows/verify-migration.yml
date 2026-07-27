@@ -42,7 +42,6 @@ jobs:
       - self-hosted
       - Linux
       - X64
-      - ipv6
 
     timeout-minutes: 15
 
