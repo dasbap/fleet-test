@@ -89,8 +89,49 @@ jobs:
             exit 1
           fi
 
-          echo "Configuration Supabase validée."
-          echo "Projet Supabase : ${SUPABASE_PROJECT_REF}"
+      - name: Check runner IPv6 connectivity
+        run: |
+          set -euo pipefail
+
+          DB_HOST="db.${SUPABASE_PROJECT_REF}.supabase.co"
+
+          echo "Résolution IPv6 de ${DB_HOST} :"
+
+          IPV6_ADDRESS="$(
+            getent ahosts "$DB_HOST" |
+              awk '$1 ~ /:/ { print $1; exit }'
+          )"
+
+          if [ -z "$IPV6_ADDRESS" ]; then
+            echo "::error::Aucune adresse IPv6 trouvée pour ${DB_HOST}"
+            exit 1
+          fi
+
+          echo "Adresse IPv6 Supabase détectée : ${IPV6_ADDRESS}"
+
+          if [ ! -f /proc/net/if_inet6 ]; then
+            echo "::error::IPv6 est désactivé dans le noyau du runner"
+            exit 1
+          fi
+
+          if ! ip -6 route show default | grep -q '^default'; then
+            echo "::error::Le runner ne possède aucune route IPv6 par défaut"
+            echo "::error::Configure une adresse IPv6 publique et une passerelle IPv6 sur la machine hôte"
+            exit 1
+          fi
+
+          echo "Route IPv6 par défaut :"
+          ip -6 route show default
+
+          echo "Test TCP IPv6 vers Supabase..."
+
+          if ! timeout 10 bash -c "exec 3<>/dev/tcp/${DB_HOST}/5432"; then
+            echo "::error::Le runner ne peut pas joindre ${DB_HOST}:5432 en IPv6"
+            echo "::error::Vérifie la passerelle IPv6, le pare-feu sortant et les règles réseau Supabase"
+            exit 1
+          fi
+
+          echo "Connexion TCP IPv6 vers Supabase disponible."
 
       - name: Execute migration verification
         id: migration
