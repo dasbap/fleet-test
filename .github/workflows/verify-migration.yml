@@ -2,10 +2,22 @@ name: Verify Migration Status
 
 on:
   push:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
   pull_request:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
-  workflow_dispatch: # Permet d'exécuter manuellement depuis GitHub
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,7 +25,6 @@ concurrency:
 
 permissions:
   contents: read
-  issues: write
   pull-requests: write
 
 defaults:
@@ -22,103 +33,142 @@ defaults:
 
 jobs:
   verify-migration:
-    name: Verify Migration to French
-    runs-on: [self-hosted, Linux, X64]
+    name: Verify Supabase migration status
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+
+    timeout-minutes: 15
 
     env:
-      SUPABASE_CLI_version: latest # Version de Supabase CLI à installer
+      SUPABASE_CLI_VERSION: 2.109.1
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
+      - name: Checkout
+        uses: actions/checkout@v5
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
           version: ${{ env.SUPABASE_CLI_VERSION }}
+          github-token: ${{ github.token }}
 
-      - name: Verify Supabase CLI Installation
+      - name: Validate configuration
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          test -n "$SUPABASE_DB_URL" || {
+            echo "::error::Le secret SUPABASE_DB_URL est absent"
+            exit 1
+          }
+
+          test -f supabase/scripts/verify/verify-migration-status.sql || {
+            echo "::error::Le script de vérification est introuvable"
+            exit 1
+          }
+
           supabase --version
 
-      - name: Link Supabase Project
+      - name: Execute migration verification
+        id: migration
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          echo "Linking to Supabase project: $SUPABASE_PROJECT_REF"
-          supabase link --project-ref $SUPABASE_PROJECT_REF --password ${{ secrets.SUPABASE_DB_PASSWORD }}
-        continue-on-error: true
+          set +e
 
-      - name: Execute Migration Verification Script
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-        run: |
-          echo "Executing migration verification script..."
-          supabase db query < supabase/scripts/verify/verify-migration-status.sql > migration-report.txt 2>&1 || true
+          supabase db query \
+            --db-url "$SUPABASE_DB_URL" \
+            --file supabase/scripts/verify/verify-migration-status.sql \
+            > migration-report.txt 2>&1
 
-          # Afficher le rapport
-          echo "=== MIGRATION VERIFICATION REPORT ==="
+          status=$?
+
           cat migration-report.txt
 
-          # Vérifier s'il y a des erreurs critiques
-          if grep -q "❌ ERREURS" migration-report.txt; then
-            echo "::error::Critical errors detected in migration verification"
+          {
+            echo "status=$status"
+            echo "report<<MIGRATION_REPORT_EOF"
+            cat migration-report.txt
+            echo "MIGRATION_REPORT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ "$status" -ne 0 ]; then
+            echo "::error::La vérification des migrations a échoué"
+            exit "$status"
+          fi
+
+          if grep -Eq "❌ ERREURS|connection refused|failed to connect|FATAL:|ERROR:" migration-report.txt; then
+            echo "::error::Des erreurs ont été détectées dans le rapport"
             exit 1
           fi
 
           if grep -q "⚠️ AVERTISSEMENTS" migration-report.txt; then
-            echo "::warning::Warnings detected in migration verification"
+            echo "::warning::Des avertissements ont été détectés"
           fi
 
-      - name: Upload Migration Report
-        uses: actions/upload-artifact@v4
+      - name: Upload migration report
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: migration-verification-report
+          name: migration-verification-report-${{ github.run_id }}
           path: migration-report.txt
+          if-no-files-found: warn
           retention-days: 30
 
-      - name: Log PR Comment Skip Reason
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
-        run: |
-          echo "ℹ️ Commentaire PR ignoré : la PR provient d'un fork, le token GitHub Actions n'a pas les permissions d'écriture nécessaires."
-
-      - name: Comment PR with Results
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v7
+      - name: Comment pull request
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v8
+        env:
+          MIGRATION_STATUS: ${{ steps.migration.outcome }}
         with:
           script: |
-            const fs = require('fs');
-            let report = '';
-            try {
-              report = fs.readFileSync('migration-report.txt', 'utf8');
-            } catch (e) {
-              report = '(Rapport non disponible - exécution du script de vérification en échec ou fichier absent.)';
-            }
-            const comment = `## 🔍 Migration Verification Report
+            const fs = require("fs");
+
+            const marker = "<!-- migration-verification-report -->";
+            const report = fs.existsSync("migration-report.txt")
+              ? fs.readFileSync("migration-report.txt", "utf8")
+              : "Rapport indisponible.";
+
+            const body = `${marker}
+            ## Vérification des migrations Supabase
+
+            **Statut :** ${process.env.MIGRATION_STATUS}
 
             <details>
-            <summary>Click to expand report</summary>
+            <summary>Afficher le rapport</summary>
 
+            \`\`\`text
+            ${report.slice(0, 60000)}
             \`\`\`
-            ${report}
-            \`\`\`
 
-            </details>
+            </details>`;
 
-            **Note:** Vérification automatique. Consulter le rapport et agir si besoin.
-            `;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: comment
+              issue_number: context.issue.number,
+              per_page: 100
             });
+
+            const existing = comments.find(
+              comment =>
+                comment.user?.type === "Bot" &&
+                comment.body?.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            }
