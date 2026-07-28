@@ -1,33 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-
-const demoFleetId = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
-
-async function seedMockSession(page: Page): Promise<void> {
-  await page.addInitScript((fleetId) => {
-    const nowIso = new Date().toISOString();
-    window.localStorage.setItem("esamba-demo-auth-fallback", "true");
-    window.localStorage.setItem(
-      "esamba-mock-auth-v1",
-      JSON.stringify({
-        user: {
-          id: "11111111-1111-4111-8111-111111111111",
-          email: "organizer@esamba.test",
-          created_at: nowIso,
-          user_metadata: { full_name: "E2E Billing User" },
-        },
-        role: "organizer",
-        memberships: [
-          {
-            id: "22222222-2222-4222-8222-222222222222",
-            fleet_id: fleetId,
-            role: "organizer",
-            is_active: true,
-          },
-        ],
-      }),
-    );
-  }, demoFleetId);
-}
+import { enableMockAuthSession } from "./helpers/mock-auth";
 
 /**
  * Mocks Supabase pour la page billing.
@@ -73,7 +45,7 @@ async function mockSupabaseForBilling(page: Page): Promise<void> {
 
 test.describe("BillingPage e2e", () => {
   test("affiche le contexte facturation et le badge Actif", async ({ page }) => {
-    await seedMockSession(page);
+    await enableMockAuthSession(page);
     await mockSupabaseForBilling(page);
 
     await page.goto("/dashboard/billing", { waitUntil: "domcontentloaded", timeout: 30_000 });
