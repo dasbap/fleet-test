@@ -158,7 +158,7 @@ jobs:
         run: node scripts/ci-install.mjs
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: timeout 300s npx playwright install chromium firefox webkit
 
       - name: Run lint layer
         id: layer_lint

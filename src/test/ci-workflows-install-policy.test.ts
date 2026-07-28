@@ -111,6 +111,8 @@ describe("GitHub workflow dependency install policy", () => {
     const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
 
     expect(workflow).toContain("ESAMBA_E2E: \"1\"");
+    expect(workflow).toContain("timeout 300s npx playwright install chromium firefox webkit");
+    expect(workflow).not.toContain("npx playwright install --with-deps chromium firefox webkit");
     expect(workflow).toContain("source /tmp/supabase-integration.env");
     expect(workflow).toContain('VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \\');
     expect(workflow).toContain('VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY" \\');
