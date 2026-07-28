@@ -154,4 +154,11 @@ describe("GitHub workflow dependency install policy", () => {
     expect(workflow).toContain("ESAMBA_E2E: \"1\"");
     expect(workflow).toContain("npx playwright test --reporter=line,json");
   });
+
+  it("keeps the E2E Vite dependency scan scoped to app entries", () => {
+    const viteConfig = readFileSync("vite.config.ts", "utf8");
+
+    expect(viteConfig).toContain('["index.html", "src/main.tsx", "src/App.tsx"]');
+    expect(viteConfig).not.toContain('src/**/*.{tsx,ts,jsx,js}');
+  });
 });
