@@ -179,10 +179,14 @@ describe("GitHub workflow dependency install policy", () => {
     expect(workflow).toContain('DB_PORT="5432"');
     expect(workflow).toContain('DB_PORT="${DB_TARGET##*:}"');
     expect(workflow).toContain('psql \\');
-    expect(workflow).toContain('"$DB_URL" \\');
+    expect(workflow).toContain('--host="$DB_HOST" \\');
+    expect(workflow).toContain('--port="$DB_PORT" \\');
+    expect(workflow).toContain('--username="$DB_USER" \\');
+    expect(workflow).not.toContain('"$DB_URL" \\');
     expect(workflow).toContain("SUPABASE_POOLER_HOST");
     expect(workflow).toContain("aws-1-eu-west-1.pooler.supabase.com");
     expect(workflow).toContain('DB_USER="postgres.${SUPABASE_PROJECT_REF}"');
+    expect(workflow).toContain('DB_USER="postgres"');
     expect(workflow).not.toContain('DB_HOST="db.${SUPABASE_PROJECT_REF}.supabase.co"');
     expect(workflow).not.toContain("Le runner ne possède aucune adresse IPv6 globale");
   });

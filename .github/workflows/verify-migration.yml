@@ -146,7 +146,7 @@ jobs:
             exit 1
           fi
 
-          echo "Adresse Supabase pooler : ${DB_ADDRESS}"
+          echo "Adresse Supabase database : ${DB_ADDRESS}"
 
           if ! timeout 10 bash -c "exec 3<>/dev/tcp/${DB_HOST}/${DB_PORT}"; then
             echo "::error::Le runner ne peut pas joindre ${DB_HOST}:${DB_PORT}"
@@ -162,66 +162,60 @@ jobs:
 
           DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"
           DB_HOST="${SUPABASE_POOLER_HOST:-aws-1-eu-west-1.pooler.supabase.com}"
+          DB_PORT="5432"
           DB_USER="postgres.${SUPABASE_PROJECT_REF}"
           SQL_FILE="supabase/scripts/verify/verify-migration-status.sql"
 
+          if [ -n "$DB_URL" ]; then
+            DB_TARGET="$(
+              printf '%s' "$DB_URL" |
+                sed -E 's#^[^/]+//([^@]+@)?([^/?]+).*#\2#'
+            )"
+            DB_HOST="${DB_TARGET%%:*}"
+
+            if [ "$DB_TARGET" != "$DB_HOST" ]; then
+              DB_PORT="${DB_TARGET##*:}"
+            fi
+
+            if [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
+              DB_USER="postgres"
+            fi
+          fi
+
           echo "Executing migration verification script..."
           echo "Database host: ${DB_HOST}"
+          echo "Database port: ${DB_PORT}"
+          echo "Database user: ${DB_USER}"
 
           set +e
 
           if command -v psql >/dev/null 2>&1; then
-            if [ -n "$DB_URL" ]; then
-              psql \
-                "$DB_URL" \
-                --file="$SQL_FILE" \
-                --set=ON_ERROR_STOP=1 \
-                --no-password \
-                > migration-report.txt 2>&1
-            else
+            psql \
+              --host="$DB_HOST" \
+              --port="$DB_PORT" \
+              --username="$DB_USER" \
+              --dbname="postgres" \
+              --file="$SQL_FILE" \
+              --set=ON_ERROR_STOP=1 \
+              --no-password \
+              > migration-report.txt 2>&1
+          else
+            docker run \
+              --rm \
+              --network host \
+              -e PGPASSWORD \
+              -e PGSSLMODE \
+              -v "$PWD/$SQL_FILE:/verify-migration-status.sql:ro" \
+              postgres:16-alpine \
               psql \
                 --host="$DB_HOST" \
-                --port="5432" \
+                --port="$DB_PORT" \
                 --username="$DB_USER" \
                 --dbname="postgres" \
-                --file="$SQL_FILE" \
+                --file="/verify-migration-status.sql" \
                 --set=ON_ERROR_STOP=1 \
                 --no-password \
-                > migration-report.txt 2>&1
-            fi
-          else
-            if [ -n "$DB_URL" ]; then
-              docker run \
-                --rm \
-                --network host \
-                -e DB_URL \
-                -e PGSSLMODE \
-                -v "$PWD/$SQL_FILE:/verify-migration-status.sql:ro" \
-                postgres:16-alpine \
-                psql \
-                  "$DB_URL" \
-                  --file="/verify-migration-status.sql" \
-                  --set=ON_ERROR_STOP=1 \
-                  --no-password \
-                > migration-report.txt 2>&1
-            else
-              docker run \
-                --rm \
-                --network host \
-                -e PGPASSWORD \
-                -e PGSSLMODE \
-                -v "$PWD/$SQL_FILE:/verify-migration-status.sql:ro" \
-                postgres:16-alpine \
-                psql \
-                  --host="$DB_HOST" \
-                  --port="5432" \
-                  --username="$DB_USER" \
-                  --dbname="postgres" \
-                  --file="/verify-migration-status.sql" \
-                  --set=ON_ERROR_STOP=1 \
-                  --no-password \
-                > migration-report.txt 2>&1
-            fi
+              > migration-report.txt 2>&1
           fi
 
           STATUS=$?
