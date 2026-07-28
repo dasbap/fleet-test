@@ -595,7 +595,7 @@ jobs:
             ci-metrics.json
             ci-metrics/*.json
             test-results/*.json
-            test-results/**/*.json
+            test-results/**
           if-no-files-found: warn
 
       - name: Fail workflow if any layer failed
