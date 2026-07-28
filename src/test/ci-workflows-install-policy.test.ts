@@ -174,6 +174,10 @@ describe("GitHub workflow dependency install policy", () => {
   it("uses the Supabase pooler for remote migration verification", () => {
     const workflow = readFileSync(".github/workflows/verify-migration.yml", "utf8");
 
+    expect(workflow).toContain("DATABASE_URL: ${{ secrets.DATABASE_URL }}");
+    expect(workflow).toContain('DB_URL="${DATABASE_URL:-${DIRECT_URL:-${SUPABASE_DB_URL:-}}}"');
+    expect(workflow).toContain('psql \\');
+    expect(workflow).toContain('"$DB_URL" \\');
     expect(workflow).toContain("SUPABASE_POOLER_HOST");
     expect(workflow).toContain("aws-1-eu-west-1.pooler.supabase.com");
     expect(workflow).toContain('DB_USER="postgres.${SUPABASE_PROJECT_REF}"');

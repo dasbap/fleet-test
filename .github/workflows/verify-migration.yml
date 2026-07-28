@@ -50,6 +50,9 @@ jobs:
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_POOLER_HOST: ${{ secrets.SUPABASE_POOLER_HOST }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PGSSLMODE: require
 
@@ -117,7 +120,15 @@ jobs:
         run: |
           set -euo pipefail
 
+          DB_URL="${DATABASE_URL:-${DIRECT_URL:-${SUPABASE_DB_URL:-}}}"
           DB_HOST="${SUPABASE_POOLER_HOST:-aws-1-eu-west-1.pooler.supabase.com}"
+
+          if [ -n "$DB_URL" ]; then
+            DB_HOST="$(
+              printf '%s' "$DB_URL" |
+                sed -E 's#^[^/]+//([^@]+@)?([^/:?]+).*#\2#'
+            )"
+          fi
 
           DB_ADDRESS="$(
             getent ahosts "$DB_HOST" |
@@ -143,6 +154,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          DB_URL="${DATABASE_URL:-${DIRECT_URL:-${SUPABASE_DB_URL:-}}}"
           DB_HOST="${SUPABASE_POOLER_HOST:-aws-1-eu-west-1.pooler.supabase.com}"
           DB_USER="postgres.${SUPABASE_PROJECT_REF}"
           SQL_FILE="supabase/scripts/verify/verify-migration-status.sql"
@@ -153,32 +165,57 @@ jobs:
           set +e
 
           if command -v psql >/dev/null 2>&1; then
-            psql \
-              --host="$DB_HOST" \
-              --port="5432" \
-              --username="$DB_USER" \
-              --dbname="postgres" \
-              --file="$SQL_FILE" \
-              --set=ON_ERROR_STOP=1 \
-              --no-password \
-              > migration-report.txt 2>&1
-          else
-            docker run \
-              --rm \
-              --network host \
-              -e PGPASSWORD \
-              -e PGSSLMODE \
-              -v "$PWD/$SQL_FILE:/verify-migration-status.sql:ro" \
-              postgres:16-alpine \
+            if [ -n "$DB_URL" ]; then
+              psql \
+                "$DB_URL" \
+                --file="$SQL_FILE" \
+                --set=ON_ERROR_STOP=1 \
+                --no-password \
+                > migration-report.txt 2>&1
+            else
               psql \
                 --host="$DB_HOST" \
                 --port="5432" \
                 --username="$DB_USER" \
                 --dbname="postgres" \
-                --file="/verify-migration-status.sql" \
+                --file="$SQL_FILE" \
                 --set=ON_ERROR_STOP=1 \
                 --no-password \
-              > migration-report.txt 2>&1
+                > migration-report.txt 2>&1
+            fi
+          else
+            if [ -n "$DB_URL" ]; then
+              docker run \
+                --rm \
+                --network host \
+                -e DB_URL \
+                -e PGSSLMODE \
+                -v "$PWD/$SQL_FILE:/verify-migration-status.sql:ro" \
+                postgres:16-alpine \
+                psql \
+                  "$DB_URL" \
+                  --file="/verify-migration-status.sql" \
+                  --set=ON_ERROR_STOP=1 \
+                  --no-password \
+                > migration-report.txt 2>&1
+            else
+              docker run \
+                --rm \
+                --network host \
+                -e PGPASSWORD \
+                -e PGSSLMODE \
+                -v "$PWD/$SQL_FILE:/verify-migration-status.sql:ro" \
+                postgres:16-alpine \
+                psql \
+                  --host="$DB_HOST" \
+                  --port="5432" \
+                  --username="$DB_USER" \
+                  --dbname="postgres" \
+                  --file="/verify-migration-status.sql" \
+                  --set=ON_ERROR_STOP=1 \
+                  --no-password \
+                > migration-report.txt 2>&1
+            fi
           fi
 
           STATUS=$?
