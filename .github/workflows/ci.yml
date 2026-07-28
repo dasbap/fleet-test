@@ -360,7 +360,8 @@ jobs:
                   status: '$status',
                   duration_ms: $duration,
                   test_count: null,
-                  flaky_count: null
+                  flaky_count: null,
+                  skipped_count: null
                 },
                 null,
                 2
@@ -433,7 +434,8 @@ jobs:
                   duration_ms: $duration,
                   test_count:
                     '$count' === 'null' ? null : Number('$count'),
-                  flaky_count: null
+                  flaky_count: null,
+                  skipped_count: null
                 },
                 null,
                 2
@@ -623,7 +625,8 @@ jobs:
                   duration_ms: $duration,
                   test_count:
                     '$count' === 'null' ? null : Number('$count'),
-                  flaky_count: null
+                  flaky_count: null,
+                  skipped_count: null
                 },
                 null,
                 2
@@ -636,11 +639,56 @@ jobs:
         env:
           ESAMBA_E2E: "1"
         run: |
+          set -euo pipefail
+
           mkdir -p ci-metrics test-results/e2e
+
+          unset VITE_SUPABASE_URL
+          unset VITE_SUPABASE_ANON_KEY
+          unset SUPABASE_SERVICE_ROLE_KEY
+          unset SUPABASE_URL
+          unset SUPABASE_ANON_KEY
+          unset SUPABASE_LOCAL_URL
+          unset SUPABASE_LOCAL_ANON_KEY
+          unset SUPABASE_LOCAL_SERVICE_ROLE_KEY
+
+          set -a
+          source /tmp/supabase-integration.env
+          set +a
+
+          test -n "${VITE_SUPABASE_URL:-}" || {
+            echo "::error::VITE_SUPABASE_URL absente"
+            exit 1
+          }
+
+          test -n "${VITE_SUPABASE_ANON_KEY:-}" || {
+            echo "::error::VITE_SUPABASE_ANON_KEY absente"
+            exit 1
+          }
+
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
+            echo "::error::SUPABASE_SERVICE_ROLE_KEY absente"
+            exit 1
+          }
+
+          case "$VITE_SUPABASE_URL" in
+            http://127.0.0.1:*|http://localhost:*)
+              ;;
+            *)
+              echo "::error::Les tests E2E ne ciblent pas Supabase local : $VITE_SUPABASE_URL"
+              exit 1
+              ;;
+          esac
+
+          echo "::add-mask::$VITE_SUPABASE_ANON_KEY"
+          echo "::add-mask::$SUPABASE_SERVICE_ROLE_KEY"
 
           start=$(date +%s%3N)
 
           set +e
+          VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \
+          VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY" \
+          SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
           PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/e2e/results.json \
             npx playwright test --reporter=line,json
           code=$?
@@ -660,7 +708,8 @@ jobs:
               const fs = require('fs');
               const output = {
                 tests: null,
-                flaky: null
+                flaky: null,
+                skipped: null
               };
 
               try {
@@ -701,6 +750,15 @@ jobs:
                     ).length,
                   0
                 );
+
+                output.skipped = specs.reduce(
+                  (total, spec) =>
+                    total +
+                    (spec.tests || []).filter(
+                      (test) => test.outcome === 'skipped'
+                    ).length,
+                  0
+                );
               } catch {}
 
               process.stdout.write(JSON.stringify(output));
@@ -731,6 +789,22 @@ jobs:
             " "$counts"
           )"
 
+          skipped_count="$(
+            node -e "
+              const counts = JSON.parse(process.argv[1]);
+
+              process.stdout.write(
+                counts.skipped === null
+                  ? 'null'
+                  : String(counts.skipped)
+              );
+            " "$counts"
+          )"
+
+          if [ "$skipped_count" != "null" ] && [ "$skipped_count" -ne 0 ]; then
+            status="failed"
+          fi
+
           node -e "
             const fs = require('fs');
 
@@ -748,7 +822,11 @@ jobs:
                   flaky_count:
                     '$flaky_count' === 'null'
                       ? null
-                      : Number('$flaky_count')
+                      : Number('$flaky_count'),
+                  skipped_count:
+                    '$skipped_count' === 'null'
+                      ? null
+                      : Number('$skipped_count')
                 },
                 null,
                 2
@@ -782,6 +860,7 @@ jobs:
                 duration_ms: 0,
                 test_count: null,
                 flaky_count: null,
+                skipped_count: null,
               }
             }
 
@@ -803,15 +882,15 @@ jobs:
           const rows = layers
             .map(
               (layer) =>
-                `| ${layer.layer} | ${layer.status} | ${layer.duration_ms} | ${layer.test_count ?? "n/a"} | ${layer.flaky_count ?? "n/a"} |`,
+                `| ${layer.layer} | ${layer.status} | ${layer.duration_ms} | ${layer.test_count ?? "n/a"} | ${layer.flaky_count ?? "n/a"} | ${layer.skipped_count ?? "n/a"} |`,
             )
             .join("\n")
 
           const markdown = [
             "## CI metrics",
             "",
-            "| Couche | Statut | Durée (ms) | Tests | Flaky E2E |",
-            "|---|---:|---:|---:|---:|",
+            "| Couche | Statut | Durée (ms) | Tests | Flaky E2E | Skipped |",
+            "|---|---:|---:|---:|---:|---:|",
             rows,
             "",
           ].join("\n")

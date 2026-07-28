@@ -152,6 +152,11 @@ describe("GitHub workflow dependency install policy", () => {
     const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
 
     expect(workflow).toContain("ESAMBA_E2E: \"1\"");
+    expect(workflow).toContain("source /tmp/supabase-integration.env");
+    expect(workflow).toContain('VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \\');
+    expect(workflow).toContain('VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY" \\');
+    expect(workflow).toContain("skipped_count");
+    expect(workflow).toContain("test.outcome === 'skipped'");
     expect(workflow).toContain("npx playwright test --reporter=line,json");
   });
 
@@ -160,6 +165,18 @@ describe("GitHub workflow dependency install policy", () => {
 
     expect(playwrightConfig).toContain("workers: 1");
     expect(playwrightConfig).not.toContain("workers: isCI ? 2 : 1");
+  });
+
+  it("does not retry Playwright tests or serialize HelpCenter locales in CI", () => {
+    const playwrightConfig = readFileSync("playwright.config.ts", "utf8");
+    const helpCenterI18nSpec = readFileSync(
+      "tests/e2e/help-center-i18n.spec.ts",
+      "utf8",
+    );
+
+    expect(playwrightConfig).toContain("retries: 0");
+    expect(playwrightConfig).not.toContain("retries: isCI ? 2 : 0");
+    expect(helpCenterI18nSpec).not.toContain('test.describe.configure({ mode: "serial" })');
   });
 
   it("does not apt-install psql in verify migration status", () => {
