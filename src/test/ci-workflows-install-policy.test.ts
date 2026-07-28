@@ -155,6 +155,22 @@ describe("GitHub workflow dependency install policy", () => {
     expect(workflow).toContain("npx playwright test --reporter=line,json");
   });
 
+  it("keeps Playwright E2E sequential in CI", () => {
+    const playwrightConfig = readFileSync("playwright.config.ts", "utf8");
+
+    expect(playwrightConfig).toContain("workers: 1");
+    expect(playwrightConfig).not.toContain("workers: isCI ? 2 : 1");
+  });
+
+  it("does not apt-install psql in verify migration status", () => {
+    const workflow = readFileSync(".github/workflows/verify-migration.yml", "utf8");
+
+    expect(workflow).toContain("Validate PostgreSQL client availability");
+    expect(workflow).toContain("docker run");
+    expect(workflow).toContain("postgres:16-alpine");
+    expect(workflow).not.toContain("apt-get install -y postgresql-client");
+  });
+
   it("pins Supabase CLI setup versions in CI workflows", () => {
     const offenders = workflowFiles.filter((file) => {
       const workflow = readFileSync(file, "utf8");

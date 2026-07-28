@@ -66,7 +66,7 @@ jobs:
           set -euo pipefail
           supabase --version
 
-      - name: Install PostgreSQL client
+      - name: Validate PostgreSQL client availability
         run: |
           set -euo pipefail
 
@@ -75,10 +75,13 @@ jobs:
             exit 0
           fi
 
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-client
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "::error::psql ou docker est requis sur le runner pour vérifier les migrations"
+            exit 1
+          fi
 
-          psql --version
+          timeout 180 docker pull postgres:16-alpine
+          docker run --rm postgres:16-alpine psql --version
 
       - name: Validate Supabase configuration
         run: |
@@ -104,8 +107,8 @@ jobs:
             exit 1
           fi
 
-          if ! command -v psql >/dev/null 2>&1; then
-            echo "::error::Le client PostgreSQL psql est introuvable"
+          if ! command -v psql >/dev/null 2>&1 && ! command -v docker >/dev/null 2>&1; then
+            echo "::error::Le client PostgreSQL psql est introuvable et docker n'est pas disponible"
             exit 1
           fi
 
@@ -167,15 +170,34 @@ jobs:
 
           set +e
 
-          psql \
-            --host="$DB_HOST" \
-            --port="5432" \
-            --username="postgres" \
-            --dbname="postgres" \
-            --file="$SQL_FILE" \
-            --set=ON_ERROR_STOP=1 \
-            --no-password \
-            > migration-report.txt 2>&1
+          if command -v psql >/dev/null 2>&1; then
+            psql \
+              --host="$DB_HOST" \
+              --port="5432" \
+              --username="postgres" \
+              --dbname="postgres" \
+              --file="$SQL_FILE" \
+              --set=ON_ERROR_STOP=1 \
+              --no-password \
+              > migration-report.txt 2>&1
+          else
+            docker run \
+              --rm \
+              --network host \
+              -e PGPASSWORD \
+              -e PGSSLMODE \
+              -v "$PWD/$SQL_FILE:/verify-migration-status.sql:ro" \
+              postgres:16-alpine \
+              psql \
+                --host="$DB_HOST" \
+                --port="5432" \
+                --username="postgres" \
+                --dbname="postgres" \
+                --file="/verify-migration-status.sql" \
+                --set=ON_ERROR_STOP=1 \
+                --no-password \
+              > migration-report.txt 2>&1
+          fi
 
           STATUS=$?
 
