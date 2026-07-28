@@ -1,6 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const BASE_URL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:5173";
+const E2E_HOST = process.env.E2E_HOST ?? "127.0.0.1";
+const E2E_PORT = process.env.E2E_PORT ?? "5173";
+const E2E_URL_HOST = E2E_HOST.includes(":") ? `[${E2E_HOST}]` : E2E_HOST;
+const BASE_URL = process.env.E2E_BASE_URL ?? `http://${E2E_URL_HOST}:${E2E_PORT}`;
 const isCI = !!process.env.CI;
 const isLiveE2EEnabled =
   process.env.RUN_E2E_LIVE === "1" || process.env.RUN_E2E_LIVE === "true";
@@ -13,12 +16,13 @@ export default defineConfig({
   testDir: "./tests/e2e",
   testIgnore: generalTestIgnore,
   timeout: 30_000,
-  // Stabilise l'exécution : séquentiel en local, parallèle maîtrisé en CI.
-  workers: isCI ? 2 : 1,
+  // Les specs E2E manipulent les mêmes mocks et routes applicatives; garder
+  // l'ordre séquentiel en CI évite les timeouts de montage SPA inter-specs.
+  workers: 1,
   expect: {
     timeout: 5_000,
   },
-  retries: isCI ? 2 : 0,
+  retries: 0,
   reporter: [
     ["list"],
     ["json", { outputFile: "test-results/e2e-report.json" }],
@@ -31,7 +35,11 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: "npm run dev -- --host 127.0.0.1 --port 5173 --strictPort",
+    command: `npm run dev -- --host ${E2E_HOST} --port ${E2E_PORT} --strictPort`,
+    env: {
+      ESAMBA_E2E: "1",
+      VITE_USE_MOCK_AUTH: "true",
+    },
     url: BASE_URL,
     reuseExistingServer: !isCI,
     timeout: 120_000,

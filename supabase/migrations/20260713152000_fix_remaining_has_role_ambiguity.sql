@@ -3,15 +3,15 @@
 
 BEGIN;
 
-CREATE OR REPLACE FUNCTION public.can_manage_fleet(p_fleet_id uuid)
+CREATE OR REPLACE FUNCTION public.can_manage_fleet(p_flotte_id uuid)
 RETURNS boolean
 LANGUAGE sql
 STABLE
 SET search_path = public
 AS $$
   SELECT
-    public.has_role(p_fleet_id, 'manager'::public.role_type)
-    OR public.has_role(p_fleet_id, 'organizer'::public.role_type);
+    public.has_role(p_flotte_id, 'manager'::public.role_type)
+    OR public.has_role(p_flotte_id, 'organizer'::public.role_type);
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_fleet_dashboard_metrics(p_fleet_id uuid)

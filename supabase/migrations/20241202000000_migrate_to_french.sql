@@ -484,16 +484,27 @@ DROP POLICY IF EXISTS memberships_read_manager_org ON flotte_adhesions;
 -- Supprimer l'ancienne fonction si elle existe (avec l'ancien nom de paramètre)
 -- Inspection : la fonction has_role permet de vérifier si l'utilisateur authentifié possède un rôle actif donné (p_role) dans une flotte (p_flotte_id).
 -- Elle recherche une adhésion active correspondant à ces critères dans flotte_adhesions.
-DROP FUNCTION IF EXISTS has_role(uuid, role_type);
+-- === FONCTION has_role ===
+-- Vérifie si l'utilisateur authentifié possède un rôle actif dans une flotte.
+-- CREATE OR REPLACE conserve les politiques RLS qui dépendent déjà de la fonction.
 
-CREATE OR REPLACE FUNCTION has_role(p_flotte_id uuid, p_role role_type)
-RETURNS boolean LANGUAGE sql STABLE AS $$
+CREATE OR REPLACE FUNCTION public.has_role(
+  p_flotte_id uuid,
+  p_role role_type
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
   SELECT EXISTS (
-    SELECT 1 FROM flotte_adhesions
-    WHERE fleet_id = p_flotte_id
-      AND user_id = auth.uid()
-      AND role = p_role
-      AND is_active = true
+    SELECT 1
+    FROM public.flotte_adhesions AS fa
+    WHERE fa.fleet_id = p_flotte_id
+      AND fa.user_id = auth.uid()
+      AND fa.role = p_role
+      AND fa.is_active = true
   );
 $$;
 
@@ -513,120 +524,42 @@ ALTER TABLE jetons_qr ENABLE ROW LEVEL SECURITY;
 ALTER TABLE flotte_invitations ENABLE ROW LEVEL SECURITY;
 
 -- Recréation des politiques cohérentes (examiner que les droits sont corrects)
-CREATE POLICY invitations_lecture_publique ON flotte_invitations
-FOR SELECT TO anon, authenticated USING (true);
+-- Recréation idempotente des politiques RLS.
+-- La baseline peut déjà contenir les politiques sous leurs noms français.
 
-CREATE POLICY invitations_ecriture_manager_org ON flotte_invitations
-FOR INSERT WITH CHECK (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+DROP POLICY IF EXISTS invitations_lecture_publique
+ON public.flotte_invitations;
 
-CREATE POLICY invitations_modification_manager_org ON flotte_invitations
-FOR UPDATE USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+DROP POLICY IF EXISTS invitations_ecriture_manager_org
+ON public.flotte_invitations;
 
-CREATE POLICY vehicules_lecture_manager_org ON vehicules
-FOR SELECT USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+DROP POLICY IF EXISTS invitations_modification_manager_org
+ON public.flotte_invitations;
 
-CREATE POLICY vehicules_ecriture_manager_org ON vehicules
-FOR INSERT WITH CHECK (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+CREATE POLICY invitations_lecture_publique
+ON public.flotte_invitations
+FOR SELECT
+TO anon, authenticated
+USING (true);
 
-CREATE POLICY vehicules_modification_manager_org ON vehicules
-FOR UPDATE USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
-
-CREATE POLICY vehicules_lecture_conducteur_affecte ON vehicules
-FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM affectations_vehicules a
-    WHERE a.vehicle_id = vehicules.id
-      AND a.driver_user_id = auth.uid()
-      AND a.is_active = true
-  )
+CREATE POLICY invitations_ecriture_manager_org
+ON public.flotte_invitations
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  public.has_role(fleet_id, 'manager'::role_type)
 );
 
-CREATE POLICY affectations_creation_manager_org ON affectations_vehicules
-FOR INSERT WITH CHECK (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
-
-CREATE POLICY affectations_lecture_manager_org ON affectations_vehicules
-FOR SELECT USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
-
-CREATE POLICY affectations_lecture_conducteur_soi ON affectations_vehicules
-FOR SELECT USING (driver_user_id = auth.uid());
-
-CREATE POLICY creneaux_lecture_conducteur ON creneaux_conducteurs
-FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM affectations_vehicules a
-    WHERE a.id = creneaux_conducteurs.assignment_id
-      AND a.driver_user_id = auth.uid()
-  )
+CREATE POLICY invitations_modification_manager_org
+ON public.flotte_invitations
+FOR UPDATE
+TO authenticated
+USING (
+  public.has_role(fleet_id, 'manager'::role_type)
+)
+WITH CHECK (
+  public.has_role(fleet_id, 'manager'::role_type)
 );
-
-CREATE POLICY creneaux_insertion_conducteur ON creneaux_conducteurs
-FOR INSERT WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM affectations_vehicules a
-    WHERE a.id = creneaux_conducteurs.assignment_id
-      AND a.driver_user_id = auth.uid()
-      AND a.is_active = true
-  )
-);
-
-CREATE POLICY creneaux_lecture_manager_org ON creneaux_conducteurs
-FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM affectations_vehicules a
-    WHERE a.id = creneaux_conducteurs.assignment_id
-      AND (has_role(a.fleet_id,'manager') OR has_role(a.fleet_id,'organizer'))
-  )
-);
-
-CREATE POLICY clotures_insertion_conducteur ON clotures_creneaux
-FOR INSERT WITH CHECK (
-  EXISTS (
-    SELECT 1
-    FROM creneaux_conducteurs c
-    JOIN affectations_vehicules a ON a.id = c.assignment_id
-    WHERE c.id = clotures_creneaux.shift_id
-      AND a.driver_user_id = auth.uid()
-  )
-);
-
-CREATE POLICY clotures_modification_manager ON clotures_creneaux
-FOR UPDATE USING (
-  EXISTS (
-    SELECT 1
-    FROM creneaux_conducteurs c
-    JOIN affectations_vehicules a ON a.id = c.assignment_id
-    WHERE c.id = clotures_creneaux.shift_id
-      AND (has_role(a.fleet_id,'manager') OR has_role(a.fleet_id,'organizer'))
-  )
-);
-
-CREATE POLICY incidents_lecture_flotte ON incidents
-FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM vehicules v
-    WHERE v.id = incidents.vehicle_id
-      AND (has_role(v.fleet_id,'manager') OR has_role(v.fleet_id,'organizer') OR has_role(v.fleet_id,'mechanic'))
-  )
-);
-
-CREATE POLICY incidents_insertion_conducteur ON incidents
-FOR INSERT WITH CHECK (driver_user_id = auth.uid());
-
-CREATE POLICY incidents_lecture_conducteur ON incidents
-FOR SELECT USING (driver_user_id = auth.uid());
-
-CREATE POLICY travaux_lecture_mgr_org_mec ON travaux_maintenance
-FOR SELECT USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer') OR has_role(fleet_id,'mechanic'));
-
-CREATE POLICY preuves_insertion_mec ON preuves_maintenance
-FOR INSERT WITH CHECK (true);
-
-CREATE POLICY adhesions_lecture_soi ON flotte_adhesions
-FOR SELECT USING (user_id = auth.uid());
-
-CREATE POLICY adhesions_lecture_manager_org ON flotte_adhesions
-FOR SELECT USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
-
 -- === ÉTAPE FINALE : NETTOYAGE DES ANCIENNES TABLES ANGLAISES ===
 -- Supprimer définitivement les anciennes tables anglaises qui pourraient encore exister
 -- (au cas où elles n'auraient pas été renommées ou supprimées précédemment)

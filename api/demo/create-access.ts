@@ -75,9 +75,9 @@ export default async function handler(
     }
 
     const userId = typeof prospectData.user_id === "string" ? prospectData.user_id : "";
-    const fleetId = typeof prospectData.fleet_id === "string" ? prospectData.fleet_id : "";
+    const fleetId = typeof prospectData.fleet_id === "string" ? prospectData.fleet_id : null;
 
-    if (!userId || !fleetId) {
+    if (!userId) {
       res.status(502).json({ ok: false, error: "prospect_creation_incomplete" });
       return;
     }

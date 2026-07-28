@@ -58,6 +58,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [isTenantOrgLoading, setIsTenantOrgLoading] = useState<boolean>(false);
   // Vrai si Supabase a émis PASSWORD_RECOVERY (clic lien email reset) — bloque l'aiguillage normal.
   const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(false);
+  const membershipsResolvedRef = useRef(false);
   const authStateRef = useRef({ userId: null as string | null, membershipCount: 0 });
 
   useEffect(() => {
@@ -210,9 +211,11 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             AUTH_INIT_TIMEOUT_MS,
             "AUTH_MEMBERSHIPS",
           );
+          membershipsResolvedRef.current = true;
         } else {
           setSession(localSession);
           setUser(null);
+          membershipsResolvedRef.current = false;
         }
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
@@ -231,6 +234,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         setOrgId(null);
         setActiveFleetIdState(null);
         setTenantOptions([]);
+        membershipsResolvedRef.current = false;
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -268,9 +272,11 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         nextUserId: nextSession?.user?.id ?? null,
         currentUserId: authStateRef.current.userId,
         membershipCount: authStateRef.current.membershipCount,
+        membershipsResolved: membershipsResolvedRef.current,
       });
 
       if (shouldLoadMemberships) {
+        membershipsResolvedRef.current = false;
         setIsLoading(true);
       }
       setSession(nextSession);
@@ -289,13 +295,17 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             .catch((e) =>
               console.error("Erreur memberships (onAuthStateChange):", e),
             )
-            .finally(() => setIsLoading(false));
+            .finally(() => {
+              membershipsResolvedRef.current = true;
+              setIsLoading(false);
+            });
         } else if (!nextSession?.user) {
           setRole(null);
           setMemberships([]);
           setOrgId(null);
           setActiveFleetIdState(null);
           setTenantOptions([]);
+          membershipsResolvedRef.current = false;
           setIsLoading(false);
         } else {
           setIsLoading(false);

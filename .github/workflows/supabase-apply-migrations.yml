@@ -1,10 +1,21 @@
 name: Supabase Apply Migrations
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/baseline/**"
+      - "supabase/tests/04_post_migration_objects.sql"
+      - "scripts/apply-sql-file.mjs"
+      - "scripts/select-supabase-migrations.mjs"
+      - ".github/workflows/supabase-apply-migrations.yml"
+
   workflow_dispatch:
     inputs:
       mode:
-        description: "dry-run liste les migrations, apply les execute sur la BDD cible"
+        description: "dry-run = afficher les migrations, apply = appliquer en production"
         required: true
         default: dry-run
         type: choice
@@ -52,7 +63,7 @@ jobs:
 
       - name: Select migration files
         env:
-          MIGRATION_SET: ${{ inputs.migration_set }}
+          MIGRATION_SET: ${{ inputs.migration_set || 'runtime' }}
         run: node scripts/select-supabase-migrations.mjs "$MIGRATION_SET" migration-files.txt
 
       - name: Print selected migrations
@@ -64,8 +75,8 @@ jobs:
           echo "Dry run uniquement: aucune requete SQL n'a ete executee."
           echo "Relancer cette action avec mode=apply pour appliquer cette liste."
 
-      - name: Apply selected migrations
-        if: ${{ inputs.mode == 'apply' }}
+      - name: Apply selected migrations to Supabase
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'apply') }}
         shell: bash
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -74,6 +85,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           PGSSLMODE: no-verify
+          SKIP_DIRECT_DATA_MUTATIONS: "1"
         run: |
           set -euo pipefail
           mapfile -t migration_files < migration-files.txt
@@ -84,7 +96,7 @@ jobs:
           node scripts/apply-sql-file.mjs "${migration_files[@]}"
 
       - name: Verify critical migration objects
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'apply') }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
@@ -92,4 +104,5 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           PGSSLMODE: no-verify
+          SKIP_DIRECT_DATA_MUTATIONS: "1"
         run: node scripts/apply-sql-file.mjs supabase/tests/04_post_migration_objects.sql

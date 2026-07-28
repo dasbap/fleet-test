@@ -3,15 +3,22 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const MIGRATION_PATH_PATTERN = /supabase\/migrations\/[^\s]+\.sql/g;
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const MIGRATION_PATH_PATTERN = /supabase\/migration(?:s)?\/[^\s]+\.sql/g;
+const RUNTIME_MIGRATION_PREFIX = "202607";
+const rootDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  ".."
+);
 
 function toPosixPath(filePath) {
   return filePath.split(path.sep).join("/");
 }
 
 function normalizeMigrationPath(filePath) {
-  const normalized = toPosixPath(filePath);
+  const normalized = toPosixPath(filePath).replace(
+    /^supabase\/migration\//,
+    "supabase/migrations/"
+  );
 
   if (
     !normalized.startsWith("supabase/migrations/") ||
@@ -34,19 +41,16 @@ function assertMigrationFilesExist(files) {
 
 export function selectMigrationFiles(selection) {
   if (selection === "runtime") {
-    const packageJson = JSON.parse(
-      readFileSync(path.join(rootDir, "package.json"), "utf8"),
+    const deltaList = readFileSync(
+      path.join(rootDir, "supabase", "baseline", "delta-migrations.txt"),
+      "utf8"
     );
-    const runtimeScript = packageJson.scripts?.["supabase:setup:runtime"];
-
-    if (!runtimeScript) {
-      throw new Error("Missing package script: supabase:setup:runtime");
-    }
-
-    const files = [...runtimeScript.matchAll(MIGRATION_PATH_PATTERN)].map(
-      ([file]) => normalizeMigrationPath(file),
+    const files = [...deltaList.matchAll(MIGRATION_PATH_PATTERN)].map(
+      ([file]) => normalizeMigrationPath(file)
     );
-    const uniqueFiles = [...new Set(files)];
+    const uniqueFiles = [...new Set(files)].filter((file) =>
+      path.basename(file).startsWith(RUNTIME_MIGRATION_PREFIX)
+    );
     assertMigrationFilesExist(uniqueFiles);
     return uniqueFiles;
   }

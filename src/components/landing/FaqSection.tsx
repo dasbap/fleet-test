@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PUBLIC_FAQ_ENTRIES } from "@/data/marketing/faq-public";
+import { usePublicFaqEntries } from "@/hooks/useHelpArticles";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
@@ -28,7 +28,8 @@ function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean
 
 export function FaqSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const previewFaqs = PUBLIC_FAQ_ENTRIES.slice(0, 4);
+  const { data: faqEntries = [] } = usePublicFaqEntries();
+  const previewFaqs = faqEntries.slice(0, 4);
 
   return (
     <section id="faq" className="py-20 md:py-32 bg-muted/20">
@@ -45,9 +46,9 @@ export function FaqSection() {
         <div className="max-w-3xl mx-auto space-y-3">
           {previewFaqs.map((faq, i) => (
             <FaqItem
-              key={faq.q}
-              q={faq.q}
-              a={faq.a}
+              key={faq.id}
+              q={faq.title}
+              a={faq.content}
               open={openIndex === i}
               onToggle={() => setOpenIndex(openIndex === i ? null : i)}
             />

@@ -90,4 +90,13 @@ describe("normalizeFleetBillingContext", () => {
     });
     expect(ctx.planName).toBe("Pro");
   });
+
+  it("affiche le forfait Organizer depuis plan_code", () => {
+    const ctx = normalizeFleetBillingContext({
+      plan_code: "organizer",
+      is_paid: true,
+      max_vehicles: 999999,
+    });
+    expect(ctx.planName).toBe("Organizer");
+  });
 });

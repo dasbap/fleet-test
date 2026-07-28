@@ -44,7 +44,6 @@ describe("AdminDemoService", () => {
     const createProspect = vi.fn().mockResolvedValue({
       ok: true,
       user_id: "user-1",
-      fleet_id: "fleet-1",
     });
     const generateMagicLink = vi.fn().mockResolvedValue({
       ok: true,
@@ -61,15 +60,19 @@ describe("AdminDemoService", () => {
     });
 
     expect(createProspect).toHaveBeenCalledOnce();
-    expect(generateMagicLink).toHaveBeenCalledOnce();
+    expect(generateMagicLink).toHaveBeenCalledWith("token", {
+      user_id: "user-1",
+      fleet_id: null,
+      email: "demo@example.com",
+      label: undefined,
+    });
     expect(result).toEqual({ ok: true, magic_url: "https://example.com/magic" });
   });
 
-  it("transmet le type de compte et la duree au BFF de creation", async () => {
+  it("transmet le type de compte et la duree sans flotte demo globale", async () => {
     const createProspect = vi.fn().mockResolvedValue({
       ok: true,
       user_id: "user-1",
-      fleet_id: "fleet-1",
     });
     const generateMagicLink = vi.fn().mockResolvedValue({
       ok: true,
@@ -89,10 +92,92 @@ describe("AdminDemoService", () => {
       email: "investor@example.com",
       account_type: "investor",
       company_name: undefined,
-      fleet_id: undefined,
       trial_days: 2,
       send_email: false,
+      permanent_access: undefined,
     });
+  });
+
+  it("transmet l'acces permanent au BFF quand il est demande", async () => {
+    const createProspect = vi.fn().mockResolvedValue({
+      ok: true,
+      user_id: "user-1",
+    });
+    const generateMagicLink = vi.fn().mockResolvedValue({
+      ok: true,
+      magic_url: "https://example.com/magic",
+    });
+
+    const service = createService({}, { createProspect, generateMagicLink });
+
+    await service.createAccess("token", {
+      email: "permanent@example.com",
+      account_type: "prospect",
+      trial_days: 7,
+      send_email: false,
+      permanent_access: true,
+    });
+
+    expect(createProspect).toHaveBeenCalledWith("token", expect.objectContaining({
+      permanent_access: true,
+    }));
+  });
+
+  it("refuse une duree de creation demo superieure a 31 jours", async () => {
+    const createProspect = vi.fn();
+    const service = createService({}, { createProspect });
+
+    const result = await service.createAccess("token", {
+      email: "prospect@example.com",
+      account_type: "prospect",
+      trial_days: 32,
+      send_email: false,
+    });
+
+    expect(result).toEqual({ ok: false, error: "duree_demo_max_31_jours" });
+    expect(createProspect).not.toHaveBeenCalled();
+  });
+
+  it("refuse de reactiver une demo avec plus de 31 jours d'extension demandee", async () => {
+    const reactivateAccount = vi.fn();
+    const service = createService({ reactivateAccount }, {});
+
+    await expect(service.reactivateAccount("user-1", "admin-1", 745)).rejects.toThrow(
+      "Une demo ne peut pas depasser un mois depuis sa creation",
+    );
+
+    expect(reactivateAccount).not.toHaveBeenCalled();
+  });
+
+  it("modifie la date de fin d'une demo via le repository", async () => {
+    const updateAccountExpiration = vi.fn().mockResolvedValue({
+      ok: true,
+      expires_at: "2026-08-01T12:00:00.000Z",
+    });
+    const service = createService({ updateAccountExpiration }, {});
+
+    const result = await service.updateAccountExpiration(
+      "user-1",
+      "admin-1",
+      "2026-08-01T12:00:00.000Z",
+    );
+
+    expect(updateAccountExpiration).toHaveBeenCalledWith(
+      "user-1",
+      "admin-1",
+      "2026-08-01T12:00:00.000Z",
+    );
+    expect(result).toEqual({ ok: true, expires_at: "2026-08-01T12:00:00.000Z" });
+  });
+
+  it("supprime une demo via le repository", async () => {
+    const deleteAccount = vi.fn().mockResolvedValue({ ok: true });
+    const service = createService({ deleteAccount }, {});
+
+    const result = await service.deleteAccount("user-1", "admin-1");
+
+    expect(deleteAccount).toHaveBeenCalledWith("user-1", "admin-1", "suppression manuelle depuis admin UI");
+    expect(result).toEqual({ ok: true });
   });
 
   it("suspendAccount exige les identifiants", async () => {

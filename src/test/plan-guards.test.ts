@@ -41,6 +41,7 @@ const FREE_CTX    = makeCtx();
 const STARTER_CTX = makeCtx({ planCode: "starter", isPaid: true, billingStatus: "active", maxVehicles: 25, financeEnabled: true, reportsEnabled: true, driverScoringEnabled: true });
 const PRO_CTX     = makeCtx({ planCode: "pro",     isPaid: true, billingStatus: "active", maxVehicles: 75, financeEnabled: true, reportsEnabled: true, driverScoringEnabled: true, aiEnabled: true, anomalyInsightsEnabled: true });
 const ENTERPRISE  = makeCtx({ planCode: "enterprise", isPaid: true, billingStatus: "enterprise" as ReturnType<typeof makeCtx>["billingStatus"], maxVehicles: Infinity, financeEnabled: true, reportsEnabled: true, driverScoringEnabled: true, aiEnabled: true });
+const ORGANIZER   = makeCtx({ planCode: "organizer", isPaid: true, billingStatus: "active", maxVehicles: Infinity, financeEnabled: true, reportsEnabled: true, driverScoringEnabled: true, aiEnabled: true, anomalyInsightsEnabled: true });
 const SUSPENDED   = makeCtx({ billingStatus: "suspended" });
 const GRACE       = makeCtx({ planCode: "starter", billingStatus: "grace_period", isPaid: true, maxVehicles: 25 });
 
@@ -131,6 +132,10 @@ describe("canUseQrPremium", () => {
     expect(canUseQrPremium(ENTERPRISE).allowed).toBe(true);
   });
 
+  it("permet sur Organizer", () => {
+    expect(canUseQrPremium(ORGANIZER).allowed).toBe(true);
+  });
+
   it("requiert plan pro minimum", () => {
     const result = canUseQrPremium(STARTER_CTX);
     expect(result.requiredPlan).toBe("pro");
@@ -194,9 +199,13 @@ describe("canAccessMultiFleet", () => {
     expect(canAccessMultiFleet(ENTERPRISE).allowed).toBe(true);
   });
 
-  it("requiert plan enterprise", () => {
+  it("permet sur Organizer", () => {
+    expect(canAccessMultiFleet(ORGANIZER).allowed).toBe(true);
+  });
+
+  it("requiert plan organizer", () => {
     const result = canAccessMultiFleet(PRO_CTX);
-    expect(result.requiredPlan).toBe("enterprise");
+    expect(result.requiredPlan).toBe("organizer");
   });
 });
 
@@ -249,8 +258,18 @@ describe("getAllPlanAccess — Enterprise", () => {
 
 // ─── Invariants : tous les résultats ont une structure valide ─────────────
 
+describe("getAllPlanAccess - Organizer", () => {
+  const access = getAllPlanAccess(ORGANIZER);
+
+  it("herite des fonctionnalites haut niveau de la flotte", () => {
+    expect(access.multiFleet.allowed).toBe(true);
+    expect(access.qrPremium.allowed).toBe(true);
+    expect(access.pulse.allowed).toBe(true);
+  });
+});
+
 describe("Invariants structure PlanAccessResult", () => {
-  const ctxList = [FREE_CTX, STARTER_CTX, PRO_CTX, ENTERPRISE, SUSPENDED, GRACE];
+  const ctxList = [FREE_CTX, STARTER_CTX, PRO_CTX, ENTERPRISE, ORGANIZER, SUSPENDED, GRACE];
   const guards = [canCreateVehicle, canUsePulse, canUseQrPremium, canExportReports, canUseFinance, canAccessMultiFleet];
 
   ctxList.forEach((ctx) => {
