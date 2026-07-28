@@ -59,6 +59,7 @@ export async function activateMockAuthSession(page: Page): Promise<void> {
     window.localStorage.setItem('esamba.active_fleet_id', fleetId);
     window.sessionStorage.setItem('esamba.e2e.mock_org_id', orgId);
     window.dispatchEvent(new CustomEvent('esamba-auth-mode-changed'));
+    window.dispatchEvent(new CustomEvent('esamba-mock-auth-changed'));
   }, { orgId: E2E_MOCK_ORG_ID, fleetId: E2E_DEMO_FLEET_ID });
 }
 
