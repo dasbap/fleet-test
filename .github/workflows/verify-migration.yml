@@ -49,6 +49,7 @@ jobs:
       SUPABASE_CLI_VERSION: "2.102.0"
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_POOLER_HOST: ${{ secrets.SUPABASE_POOLER_HOST }}
       PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PGSSLMODE: require
 
@@ -112,57 +113,38 @@ jobs:
             exit 1
           fi
 
-      - name: Check runner IPv6 connectivity
+      - name: Check database connectivity
         run: |
           set -euo pipefail
 
-          DB_HOST="db.${SUPABASE_PROJECT_REF}.supabase.co"
+          DB_HOST="${SUPABASE_POOLER_HOST:-aws-1-eu-west-1.pooler.supabase.com}"
 
-          IPV6_ADDRESS="$(
+          DB_ADDRESS="$(
             getent ahosts "$DB_HOST" |
-              awk '$1 ~ /:/ { print $1; exit }'
+              awk '{ print $1; exit }'
           )"
 
-          if [ -z "$IPV6_ADDRESS" ]; then
-            echo "::error::Aucune adresse IPv6 trouvée pour ${DB_HOST}"
+          if [ -z "$DB_ADDRESS" ]; then
+            echo "::error::Aucune adresse trouvée pour ${DB_HOST}"
             exit 1
           fi
 
-          echo "Adresse IPv6 Supabase : ${IPV6_ADDRESS}"
-
-          GLOBAL_IPV6="$(
-            ip -6 address show scope global |
-              awk '/inet6/ { print $2; exit }'
-          )"
-
-          if [ -z "$GLOBAL_IPV6" ]; then
-            echo "::error::Le runner ne possède aucune adresse IPv6 globale"
-            exit 1
-          fi
-
-          echo "Adresse IPv6 du runner : ${GLOBAL_IPV6}"
-
-          if ! ip -6 route show default | grep -q '^default'; then
-            echo "::error::Le runner ne possède aucune route IPv6 par défaut"
-            exit 1
-          fi
-
-          echo "Route IPv6 par défaut :"
-          ip -6 route show default
+          echo "Adresse Supabase pooler : ${DB_ADDRESS}"
 
           if ! timeout 10 bash -c "exec 3<>/dev/tcp/${DB_HOST}/5432"; then
-            echo "::error::Le runner ne peut pas joindre ${DB_HOST}:5432 en IPv6"
+            echo "::error::Le runner ne peut pas joindre ${DB_HOST}:5432"
             exit 1
           fi
 
-          echo "Connexion TCP IPv6 vers Supabase disponible."
+          echo "Connexion TCP vers Supabase disponible."
 
       - name: Execute migration verification
         id: migration
         run: |
           set -euo pipefail
 
-          DB_HOST="db.${SUPABASE_PROJECT_REF}.supabase.co"
+          DB_HOST="${SUPABASE_POOLER_HOST:-aws-1-eu-west-1.pooler.supabase.com}"
+          DB_USER="postgres.${SUPABASE_PROJECT_REF}"
           SQL_FILE="supabase/scripts/verify/verify-migration-status.sql"
 
           echo "Executing migration verification script..."
@@ -174,7 +156,7 @@ jobs:
             psql \
               --host="$DB_HOST" \
               --port="5432" \
-              --username="postgres" \
+              --username="$DB_USER" \
               --dbname="postgres" \
               --file="$SQL_FILE" \
               --set=ON_ERROR_STOP=1 \
@@ -191,7 +173,7 @@ jobs:
               psql \
                 --host="$DB_HOST" \
                 --port="5432" \
-                --username="postgres" \
+                --username="$DB_USER" \
                 --dbname="postgres" \
                 --file="/verify-migration-status.sql" \
                 --set=ON_ERROR_STOP=1 \

@@ -171,6 +171,16 @@ describe("GitHub workflow dependency install policy", () => {
     expect(workflow).not.toContain("apt-get install -y postgresql-client");
   });
 
+  it("uses the Supabase pooler for remote migration verification", () => {
+    const workflow = readFileSync(".github/workflows/verify-migration.yml", "utf8");
+
+    expect(workflow).toContain("SUPABASE_POOLER_HOST");
+    expect(workflow).toContain("aws-1-eu-west-1.pooler.supabase.com");
+    expect(workflow).toContain('DB_USER="postgres.${SUPABASE_PROJECT_REF}"');
+    expect(workflow).not.toContain('DB_HOST="db.${SUPABASE_PROJECT_REF}.supabase.co"');
+    expect(workflow).not.toContain("Le runner ne possède aucune adresse IPv6 globale");
+  });
+
   it("pins Supabase CLI setup versions in CI workflows", () => {
     const offenders = workflowFiles.filter((file) => {
       const workflow = readFileSync(file, "utf8");
