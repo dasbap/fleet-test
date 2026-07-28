@@ -123,6 +123,7 @@ describe("GitHub workflow dependency install policy", () => {
     const playwrightConfig = readFileSync("playwright.config.ts", "utf8");
 
     expect(playwrightConfig).toContain("workers: 1");
+    expect(playwrightConfig).toContain('VITE_USE_MOCK_AUTH: "true"');
     expect(playwrightConfig).not.toContain("workers: isCI ? 2 : 1");
   });
 

@@ -32,6 +32,10 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run dev -- --host 127.0.0.1 --port 5173 --strictPort",
+    env: {
+      ESAMBA_E2E: "1",
+      VITE_USE_MOCK_AUTH: "true",
+    },
     url: BASE_URL,
     reuseExistingServer: !isCI,
     timeout: 120_000,
