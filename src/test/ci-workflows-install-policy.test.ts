@@ -155,6 +155,25 @@ describe("GitHub workflow dependency install policy", () => {
     expect(workflow).toContain("npx playwright test --reporter=line,json");
   });
 
+  it("pins Supabase CLI setup versions in CI workflows", () => {
+    const offenders = workflowFiles.filter((file) => {
+      const workflow = readFileSync(file, "utf8");
+      return (
+        workflow.includes("supabase/setup-cli") &&
+        /version:\s*latest/.test(workflow)
+      );
+    });
+
+    expect(offenders).toEqual([]);
+
+    const envLatestOffenders = workflowFiles.filter((file) => {
+      const workflow = readFileSync(file, "utf8");
+      return /SUPABASE_CLI_[A-Z_]*:\s*latest/i.test(workflow);
+    });
+
+    expect(envLatestOffenders).toEqual([]);
+  });
+
   it("keeps the E2E Vite dependency scan scoped to app entries", () => {
     const viteConfig = readFileSync("vite.config.ts", "utf8");
 
