@@ -174,8 +174,30 @@ jobs:
           end=$(date +%s%3N)
           duration=$((end - start))
           status="passed"
-          if [ "$code" -ne 0 ]; then status="failed"; fi
-          node -e "const fs=require('fs');fs.writeFileSync('ci-metrics/lint.json',JSON.stringify({layer:'lint',status:'$status',duration_ms:$duration,test_count:null,flaky_count:null},null,2));"
+
+          if [ "$code" -ne 0 ]; then
+            status="failed"
+          fi
+
+          node -e "
+            const fs = require('fs');
+
+            fs.writeFileSync(
+              'ci-metrics/lint.json',
+              JSON.stringify(
+                {
+                  layer: 'lint',
+                  status: '$status',
+                  duration_ms: $duration,
+                  test_count: null,
+                  flaky_count: null,
+                  skipped_count: null
+                },
+                null,
+                2
+              )
+            );
+          "
 
       - name: Run unit layer
         id: layer_unit
@@ -191,9 +213,57 @@ jobs:
           end=$(date +%s%3N)
           duration=$((end - start))
           status="passed"
-          if [ "$code" -ne 0 ]; then status="failed"; fi
-          count=$(node -e "const fs=require('fs');let n='null';try{const r=JSON.parse(fs.readFileSync('test-results/unit.json','utf8'));n=String(r.numTotalTests ?? r.testResults?.reduce((a,t)=>a+(t.assertionResults?.length||0),0) ?? 'null')}catch{}process.stdout.write(n)")
-          node -e "const fs=require('fs');fs.writeFileSync('ci-metrics/unit.json',JSON.stringify({layer:'unit',status:'$status',duration_ms:$duration,test_count:($count==='null'?null:Number($count)),flaky_count:null},null,2));"
+
+          if [ "$code" -ne 0 ]; then
+            status="failed"
+          fi
+
+          count="$(
+            node -e "
+              const fs = require('fs');
+              let count = null;
+
+              try {
+                const report = JSON.parse(
+                  fs.readFileSync('test-results/unit.json', 'utf8')
+                );
+
+                count =
+                  report.numTotalTests ??
+                  report.testResults?.reduce(
+                    (total, testFile) =>
+                      total + (testFile.assertionResults?.length || 0),
+                    0
+                  ) ??
+                  null;
+              } catch {}
+
+              process.stdout.write(
+                count === null ? 'null' : String(count)
+              );
+            "
+          )"
+
+          node -e "
+            const fs = require('fs');
+
+            fs.writeFileSync(
+              'ci-metrics/unit.json',
+              JSON.stringify(
+                {
+                  layer: 'unit',
+                  status: '$status',
+                  duration_ms: $duration,
+                  test_count:
+                    '$count' === 'null' ? null : Number('$count'),
+                  flaky_count: null,
+                  skipped_count: null
+                },
+                null,
+                2
+              )
+            );
+          "
 
       - name: Run integration layer
         id: layer_integration
@@ -217,15 +287,115 @@ jobs:
           count=$(node -e "const fs=require('fs');let n='null';try{const r=JSON.parse(fs.readFileSync('test-results/integration.json','utf8'));n=String(r.numTotalTests ?? r.testResults?.reduce((a,t)=>a+(t.assertionResults?.length||0),0) ?? 'null')}catch{}process.stdout.write(n)")
           node -e "const fs=require('fs');fs.writeFileSync('ci-metrics/integration.json',JSON.stringify({layer:'integration',status:'$status',duration_ms:$duration,test_count:($count==='null'?null:Number($count)),flaky_count:null},null,2));"
 
-      - name: Run e2e layer
+          if [ "$code" -ne 0 ]; then
+            status="failed"
+          fi
+
+          count="$(
+            node -e "
+              const fs = require('fs');
+              let count = null;
+
+              try {
+                const report = JSON.parse(
+                  fs.readFileSync(
+                    'test-results/integration.json',
+                    'utf8'
+                  )
+                );
+
+                count =
+                  report.numTotalTests ??
+                  report.testResults?.reduce(
+                    (total, testFile) =>
+                      total + (testFile.assertionResults?.length || 0),
+                    0
+                  ) ??
+                  null;
+              } catch {}
+
+              process.stdout.write(
+                count === null ? 'null' : String(count)
+              );
+            "
+          )"
+
+          node -e "
+            const fs = require('fs');
+
+            fs.writeFileSync(
+              'ci-metrics/integration.json',
+              JSON.stringify(
+                {
+                  layer: 'integration',
+                  status: '$status',
+                  duration_ms: $duration,
+                  test_count:
+                    '$count' === 'null' ? null : Number('$count'),
+                  flaky_count: null,
+                  skipped_count: null
+                },
+                null,
+                2
+              )
+            );
+          "
+      - name: Run E2E layer
         id: layer_e2e
         continue-on-error: true
         shell: bash
         run: |
+          set -euo pipefail
+
           mkdir -p ci-metrics test-results/e2e
+
+          unset VITE_SUPABASE_URL
+          unset VITE_SUPABASE_ANON_KEY
+          unset SUPABASE_SERVICE_ROLE_KEY
+          unset SUPABASE_URL
+          unset SUPABASE_ANON_KEY
+          unset SUPABASE_LOCAL_URL
+          unset SUPABASE_LOCAL_ANON_KEY
+          unset SUPABASE_LOCAL_SERVICE_ROLE_KEY
+
+          set -a
+          source /tmp/supabase-integration.env
+          set +a
+
+          test -n "${VITE_SUPABASE_URL:-}" || {
+            echo "::error::VITE_SUPABASE_URL absente"
+            exit 1
+          }
+
+          test -n "${VITE_SUPABASE_ANON_KEY:-}" || {
+            echo "::error::VITE_SUPABASE_ANON_KEY absente"
+            exit 1
+          }
+
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
+            echo "::error::SUPABASE_SERVICE_ROLE_KEY absente"
+            exit 1
+          }
+
+          case "$VITE_SUPABASE_URL" in
+            http://127.0.0.1:*|http://localhost:*)
+              ;;
+            *)
+              echo "::error::Les tests E2E ne ciblent pas Supabase local : $VITE_SUPABASE_URL"
+              exit 1
+              ;;
+          esac
+
+          echo "::add-mask::$VITE_SUPABASE_ANON_KEY"
+          echo "::add-mask::$SUPABASE_SERVICE_ROLE_KEY"
+
           start=$(date +%s%3N)
           set +e
-          PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/e2e/results.json npx playwright test --reporter=line,json
+          VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \
+          VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY" \
+          SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+          PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/e2e/results.json \
+            npx playwright test --reporter=line,json
           code=$?
           set -e
           end=$(date +%s%3N)
@@ -237,7 +407,142 @@ jobs:
           flaky_count=$(node -e "const c=JSON.parse(process.argv[1]);process.stdout.write(c.flaky===null?'null':String(c.flaky));" "$counts")
           node -e "const fs=require('fs');fs.writeFileSync('ci-metrics/e2e.json',JSON.stringify({layer:'e2e',status:'$status',duration_ms:$duration,test_count:($test_count==='null'?null:Number($test_count)),flaky_count:($flaky_count==='null'?null:Number($flaky_count))},null,2));"
 
-      - name: Build consolidated metrics + summary
+          if [ "$code" -ne 0 ]; then
+            status="failed"
+          fi
+
+          counts="$(
+            node -e "
+              const fs = require('fs');
+              const output = {
+                tests: null,
+                flaky: null,
+                skipped: null
+              };
+
+              try {
+                const report = JSON.parse(
+                  fs.readFileSync(
+                    'test-results/e2e/results.json',
+                    'utf8'
+                  )
+                );
+
+                const specs = [];
+
+                const walk = (suite) => {
+                  for (const spec of suite.specs || []) {
+                    specs.push(spec);
+                  }
+
+                  for (const child of suite.suites || []) {
+                    walk(child);
+                  }
+                };
+
+                for (const suite of report.suites || []) {
+                  walk(suite);
+                }
+
+                output.tests = specs.reduce(
+                  (total, spec) =>
+                    total + (spec.tests?.length || 0),
+                  0
+                );
+
+                output.flaky = specs.reduce(
+                  (total, spec) =>
+                    total +
+                    (spec.tests || []).filter(
+                      (test) => test.outcome === 'flaky'
+                    ).length,
+                  0
+                );
+
+                output.skipped = specs.reduce(
+                  (total, spec) =>
+                    total +
+                    (spec.tests || []).filter(
+                      (test) => test.outcome === 'skipped'
+                    ).length,
+                  0
+                );
+              } catch {}
+
+              process.stdout.write(JSON.stringify(output));
+            "
+          )"
+
+          test_count="$(
+            node -e "
+              const counts = JSON.parse(process.argv[1]);
+
+              process.stdout.write(
+                counts.tests === null
+                  ? 'null'
+                  : String(counts.tests)
+              );
+            " "$counts"
+          )"
+
+          flaky_count="$(
+            node -e "
+              const counts = JSON.parse(process.argv[1]);
+
+              process.stdout.write(
+                counts.flaky === null
+                  ? 'null'
+                  : String(counts.flaky)
+              );
+            " "$counts"
+          )"
+
+          skipped_count="$(
+            node -e "
+              const counts = JSON.parse(process.argv[1]);
+
+              process.stdout.write(
+                counts.skipped === null
+                  ? 'null'
+                  : String(counts.skipped)
+              );
+            " "$counts"
+          )"
+
+          if [ "$skipped_count" != "null" ] && [ "$skipped_count" -ne 0 ]; then
+            status="failed"
+          fi
+
+          node -e "
+            const fs = require('fs');
+
+            fs.writeFileSync(
+              'ci-metrics/e2e.json',
+              JSON.stringify(
+                {
+                  layer: 'e2e',
+                  status: '$status',
+                  duration_ms: $duration,
+                  test_count:
+                    '$test_count' === 'null'
+                      ? null
+                      : Number('$test_count'),
+                  flaky_count:
+                    '$flaky_count' === 'null'
+                      ? null
+                      : Number('$flaky_count'),
+                  skipped_count:
+                    '$skipped_count' === 'null'
+                      ? null
+                      : Number('$skipped_count')
+                },
+                null,
+                2
+              )
+            );
+          "
+
+      - name: Build consolidated metrics and summary
         if: always()
         shell: bash
         run: |
@@ -247,22 +552,34 @@ jobs:
           const dir = 'ci-metrics';
           const files = ['lint.json', 'unit.json', 'integration.json', 'e2e.json'];
           const layers = files.map((file) => {
-            const p = path.join(dir, file);
-            if (!fs.existsSync(p)) {
-              return { layer: file.replace('.json', ''), status: 'failed', duration_ms: 0, test_count: null, flaky_count: null };
+            const filePath = path.join(directory, file)
+
+            if (!fs.existsSync(filePath)) {
+              return {
+                layer: file.replace(".json", ""),
+                status: "failed",
+                duration_ms: 0,
+                test_count: null,
+                flaky_count: null,
+                skipped_count: null,
+              }
             }
             return JSON.parse(fs.readFileSync(p, 'utf8'));
           });
           const payload = { generated_at: new Date().toISOString(), layers };
           fs.writeFileSync('ci-metrics.json', JSON.stringify(payload, null, 2));
           const rows = layers
-            .map((layer) => `| ${layer.layer} | ${layer.status} | ${layer.duration_ms} | ${layer.test_count ?? 'n/a'} | ${layer.flaky_count ?? 'n/a'} |`)
-            .join('\n');
-          const md = [
-            '## CI metrics',
-            '',
-            '| Couche | Statut | Duree (ms) | Tests | Flaky E2E |',
-            '|---|---:|---:|---:|---:|',
+            .map(
+              (layer) =>
+                `| ${layer.layer} | ${layer.status} | ${layer.duration_ms} | ${layer.test_count ?? "n/a"} | ${layer.flaky_count ?? "n/a"} | ${layer.skipped_count ?? "n/a"} |`,
+            )
+            .join("\n")
+
+          const markdown = [
+            "## CI metrics",
+            "",
+            "| Couche | Statut | Durée (ms) | Tests | Flaky E2E | Skipped |",
+            "|---|---:|---:|---:|---:|---:|",
             rows,
             '',
           ].join('\n');

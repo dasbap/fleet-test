@@ -18,7 +18,7 @@ export default defineConfig({
   expect: {
     timeout: 5_000,
   },
-  retries: isCI ? 2 : 0,
+  retries: 0,
   reporter: [
     ["list"],
     ["json", { outputFile: "test-results/e2e-report.json" }],

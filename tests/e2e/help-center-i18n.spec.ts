@@ -114,8 +114,6 @@ async function gotoDashboard(page: Page): Promise<void> {
 }
 
 test.describe("HelpCenter i18n e2e", () => {
-  test.describe.configure({ mode: "serial" });
-
   for (const localeCase of HELP_LOCALE_CASES) {
     test(`ouvre le centre d'aide et affiche les textes ${localeCase.locale}`, async ({ page }) => {
       test.setTimeout(90_000);
