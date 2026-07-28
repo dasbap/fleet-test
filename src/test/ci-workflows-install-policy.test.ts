@@ -175,7 +175,9 @@ describe("GitHub workflow dependency install policy", () => {
     const workflow = readFileSync(".github/workflows/verify-migration.yml", "utf8");
 
     expect(workflow).toContain("DATABASE_URL: ${{ secrets.DATABASE_URL }}");
-    expect(workflow).toContain('DB_URL="${DATABASE_URL:-${DIRECT_URL:-${SUPABASE_DB_URL:-}}}"');
+    expect(workflow).toContain('DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"');
+    expect(workflow).toContain('DB_PORT="5432"');
+    expect(workflow).toContain('DB_PORT="${DB_TARGET##*:}"');
     expect(workflow).toContain('psql \\');
     expect(workflow).toContain('"$DB_URL" \\');
     expect(workflow).toContain("SUPABASE_POOLER_HOST");
