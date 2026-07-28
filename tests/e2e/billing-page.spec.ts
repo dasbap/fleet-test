@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { enableMockAuthSession } from "./helpers/mock-auth";
+import { activateMockAuthSession, enableMockAuthSession } from "./helpers/mock-auth";
 
 /**
  * Mocks Supabase pour la page billing.
@@ -48,6 +48,8 @@ test.describe("BillingPage e2e", () => {
     await enableMockAuthSession(page);
     await mockSupabaseForBilling(page);
 
+    await page.goto("/dashboard/billing", { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await activateMockAuthSession(page);
     await page.goto("/dashboard/billing", { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.waitForSelector("main", { state: "attached", timeout: 15_000 });
 
