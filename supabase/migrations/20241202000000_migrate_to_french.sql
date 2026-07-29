@@ -532,6 +532,29 @@ ALTER TABLE jetons_qr ENABLE ROW LEVEL SECURITY;
 ALTER TABLE flotte_invitations ENABLE ROW LEVEL SECURITY;
 
 -- Recréation des politiques cohérentes (examiner que les droits sont corrects)
+DROP POLICY IF EXISTS invitations_lecture_publique ON flotte_invitations;
+DROP POLICY IF EXISTS invitations_ecriture_manager_org ON flotte_invitations;
+DROP POLICY IF EXISTS invitations_modification_manager_org ON flotte_invitations;
+DROP POLICY IF EXISTS vehicules_lecture_manager_org ON vehicules;
+DROP POLICY IF EXISTS vehicules_ecriture_manager_org ON vehicules;
+DROP POLICY IF EXISTS vehicules_modification_manager_org ON vehicules;
+DROP POLICY IF EXISTS vehicules_lecture_conducteur_affecte ON vehicules;
+DROP POLICY IF EXISTS affectations_creation_manager_org ON affectations_vehicules;
+DROP POLICY IF EXISTS affectations_lecture_manager_org ON affectations_vehicules;
+DROP POLICY IF EXISTS affectations_lecture_conducteur_soi ON affectations_vehicules;
+DROP POLICY IF EXISTS creneaux_lecture_conducteur ON creneaux_conducteurs;
+DROP POLICY IF EXISTS creneaux_insertion_conducteur ON creneaux_conducteurs;
+DROP POLICY IF EXISTS creneaux_lecture_manager_org ON creneaux_conducteurs;
+DROP POLICY IF EXISTS clotures_insertion_conducteur ON clotures_creneaux;
+DROP POLICY IF EXISTS clotures_modification_manager ON clotures_creneaux;
+DROP POLICY IF EXISTS incidents_lecture_flotte ON incidents;
+DROP POLICY IF EXISTS incidents_insertion_conducteur ON incidents;
+DROP POLICY IF EXISTS incidents_lecture_conducteur ON incidents;
+DROP POLICY IF EXISTS travaux_lecture_mgr_org_mec ON travaux_maintenance;
+DROP POLICY IF EXISTS preuves_insertion_mec ON preuves_maintenance;
+DROP POLICY IF EXISTS adhesions_lecture_soi ON flotte_adhesions;
+DROP POLICY IF EXISTS adhesions_lecture_manager_org ON flotte_adhesions;
+
 CREATE POLICY invitations_lecture_publique ON flotte_invitations
 FOR SELECT TO anon, authenticated USING (true);
 
