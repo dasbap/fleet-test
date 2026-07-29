@@ -502,10 +502,8 @@ DROP POLICY IF EXISTS memberships_read_self ON flotte_adhesions;
 DROP POLICY IF EXISTS memberships_read_manager_org ON flotte_adhesions;
 
 -- === FONCTION has_role (après suppression des politiques qui en dépendent) ===
--- Supprimer l'ancienne fonction si elle existe (avec l'ancien nom de paramètre)
 -- Inspection : la fonction has_role permet de vérifier si l'utilisateur authentifié possède un rôle actif donné (p_role) dans une flotte (p_flotte_id).
 -- Elle recherche une adhésion active correspondant à ces critères dans flotte_adhesions.
-DROP FUNCTION IF EXISTS has_role(uuid, role_type);
 
 CREATE OR REPLACE FUNCTION has_role(p_flotte_id uuid, p_role role_type)
 RETURNS boolean LANGUAGE sql STABLE AS $$
