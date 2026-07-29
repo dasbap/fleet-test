@@ -14,6 +14,6 @@ CREATE POLICY memberships_select_self_or_manager_org ON flotte_adhesions
   FOR SELECT TO authenticated
   USING (
     user_id = auth.uid()
-    OR has_role(fleet_id, 'manager')
-    OR has_role(fleet_id, 'organizer')
+    OR has_role(fleet_id, 'manager'::public.role_type)
+    OR has_role(fleet_id, 'organizer'::public.role_type)
   );

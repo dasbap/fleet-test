@@ -100,10 +100,10 @@ DROP POLICY IF EXISTS scheduled_reports_write_policy ON public.scheduled_reports
 CREATE POLICY scheduled_reports_write_policy
   ON public.scheduled_reports FOR ALL
   USING (
-    public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager')
+    public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type)
   )
   WITH CHECK (
-    public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager')
+    public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type)
   );
 
 DROP POLICY IF EXISTS scheduled_report_runs_select_policy ON public.scheduled_report_runs;

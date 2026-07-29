@@ -79,22 +79,22 @@ ALTER TABLE public.dashcam_alerts ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS dashcams_fleet_select ON public.dashcams;
 CREATE POLICY dashcams_fleet_select ON public.dashcams FOR SELECT USING (
-  public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager')
-  OR public.has_role(fleet_id, 'mechanic')
+  public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type)
+  OR public.has_role(fleet_id, 'mechanic'::public.role_type)
 );
 
 DROP POLICY IF EXISTS dashcams_fleet_write ON public.dashcams;
 CREATE POLICY dashcams_fleet_write ON public.dashcams FOR ALL USING (
-  public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type)
 ) WITH CHECK (
-  public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type)
 );
 
 DROP POLICY IF EXISTS dashcam_alerts_fleet_select ON public.dashcam_alerts;
 CREATE POLICY dashcam_alerts_fleet_select ON public.dashcam_alerts FOR SELECT USING (
-  public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager')
-  OR public.has_role(fleet_id, 'mechanic')
-  OR (public.has_role(fleet_id, 'driver') AND auth.uid() = driver_user_id)
+  public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type)
+  OR public.has_role(fleet_id, 'mechanic'::public.role_type)
+  OR (public.has_role(fleet_id, 'driver'::public.role_type) AND auth.uid() = driver_user_id)
 );
 
 DROP POLICY IF EXISTS dashcam_alerts_service_insert ON public.dashcam_alerts;
@@ -102,7 +102,7 @@ CREATE POLICY dashcam_alerts_service_insert ON public.dashcam_alerts FOR INSERT 
 
 DROP POLICY IF EXISTS dashcam_alerts_ack_update ON public.dashcam_alerts;
 CREATE POLICY dashcam_alerts_ack_update ON public.dashcam_alerts FOR UPDATE USING (
-  public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager')
+  public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type)
 );
 
 -- ─── Vue résumé alertes 24h ───────────────────────────────────────────────────

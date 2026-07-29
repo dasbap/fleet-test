@@ -229,8 +229,8 @@ USING (
 CREATE POLICY gps_devices_write_policy
 ON public.gps_devices
 FOR ALL
-USING (public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager'))
-WITH CHECK (public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager'));
+USING (public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type))
+WITH CHECK (public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type));
 
 CREATE POLICY vehicle_positions_select_policy
 ON public.vehicle_positions
@@ -274,8 +274,8 @@ USING (
 CREATE POLICY geofences_write_policy
 ON public.geofences
 FOR ALL
-USING (public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager'))
-WITH CHECK (public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager'));
+USING (public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type))
+WITH CHECK (public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type));
 
 CREATE POLICY geofence_states_select_policy
 ON public.geofence_vehicle_states
