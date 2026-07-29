@@ -5,6 +5,8 @@
 
 DROP POLICY IF EXISTS memberships_update_authenticated ON flotte_adhesions;
 DROP POLICY IF EXISTS memberships_delete_authenticated ON flotte_adhesions;
+DROP POLICY IF EXISTS memberships_update_manager_org ON flotte_adhesions;
+DROP POLICY IF EXISTS memberships_delete_manager_org ON flotte_adhesions;
 
 -- UPDATE : uniquement manager ou organizer de la flotte concernée
 CREATE POLICY memberships_update_manager_org ON flotte_adhesions
