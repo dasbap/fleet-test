@@ -104,7 +104,8 @@ describe("GitHub workflow dependency install policy", () => {
         !workflow.includes("pull_request:") ||
         !workflow.includes(jobName) ||
         workflow.includes("if: github.event_name == 'workflow_dispatch'") ||
-        !workflow.includes("runs-on: ubuntu-latest")
+        (!workflow.includes("runs-on: ubuntu-latest") &&
+          !workflow.includes("runs-on: [self-hosted, Linux, X64]"))
       );
     });
 
@@ -119,7 +120,7 @@ describe("GitHub workflow dependency install policy", () => {
 
     expect(workflow).toContain("timeout-minutes: 20");
     expect(workflow).toContain("Validate Delta Migration List");
-    expect(workflow).toContain("runs-on: ubuntu-latest");
+    expect(workflow).toContain("runs-on: [self-hosted, Linux, X64]");
   });
 
   it("runs pull request validation while keeping dependency installs off local runners", () => {

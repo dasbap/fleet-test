@@ -74,10 +74,28 @@ END $$;
 
 -- vehicles → vehicules (DOUBLON DÉTECTÉ)
 DO $$
+DECLARE
+  v_vehicles_kind "char";
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vehicules') THEN
-    DROP TABLE IF EXISTS vehicles CASCADE;
-  ELSIF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vehicles') THEN
+    SELECT c.relkind INTO v_vehicles_kind
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'vehicles';
+
+    IF v_vehicles_kind = 'v' THEN
+      EXECUTE 'DROP VIEW IF EXISTS public.vehicles CASCADE';
+    ELSIF v_vehicles_kind = 'm' THEN
+      EXECUTE 'DROP MATERIALIZED VIEW IF EXISTS public.vehicles CASCADE';
+    ELSIF v_vehicles_kind IN ('r', 'p') THEN
+      EXECUTE 'DROP TABLE IF EXISTS public.vehicles CASCADE';
+    END IF;
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'vehicles'
+      AND table_type = 'BASE TABLE'
+  ) THEN
     ALTER TABLE vehicles RENAME TO vehicules;
   END IF;
 END $$;
@@ -269,6 +287,7 @@ END $$;
 -- === ÉTAPE 5 : RPC FUNCTIONS (EXAMINER RETOUR ET NOUVEAU NOM) ===
 
 DROP FUNCTION IF EXISTS assign_vehicle(uuid, uuid, uuid, timestamptz);
+DROP FUNCTION IF EXISTS public.affecter_vehicule(uuid, uuid, uuid, timestamptz);
 CREATE OR REPLACE FUNCTION affecter_vehicule(
   p_flotte_id uuid,
   p_vehicule_id uuid,
@@ -314,6 +333,7 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS close_shift(uuid, int, int, text, text, text);
+DROP FUNCTION IF EXISTS public.fermer_creneau(uuid, int, int, text, text, text);
 CREATE OR REPLACE FUNCTION fermer_creneau(
   p_creneau_id uuid,
   p_km_fin int,
@@ -340,6 +360,7 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS search_users(text, int);
+DROP FUNCTION IF EXISTS public.rechercher_utilisateurs(text, int);
 CREATE OR REPLACE FUNCTION rechercher_utilisateurs(
   p_terme_recherche text,
   p_limite int DEFAULT 20
@@ -569,7 +590,23 @@ DROP TABLE IF EXISTS fleets CASCADE;
 DROP TABLE IF EXISTS profiles CASCADE;
 DROP TABLE IF EXISTS fleet_memberships CASCADE;
 DROP TABLE IF EXISTS fleet_invitations CASCADE;
-DROP TABLE IF EXISTS vehicles CASCADE;
+DO $$
+DECLARE
+  v_vehicles_kind "char";
+BEGIN
+  SELECT c.relkind INTO v_vehicles_kind
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'vehicles';
+
+  IF v_vehicles_kind = 'v' THEN
+    EXECUTE 'DROP VIEW IF EXISTS public.vehicles CASCADE';
+  ELSIF v_vehicles_kind = 'm' THEN
+    EXECUTE 'DROP MATERIALIZED VIEW IF EXISTS public.vehicles CASCADE';
+  ELSIF v_vehicles_kind IN ('r', 'p') THEN
+    EXECUTE 'DROP TABLE IF EXISTS public.vehicles CASCADE';
+  END IF;
+END $$;
 DROP TABLE IF EXISTS driver_vehicle_assignments CASCADE;
 DROP TABLE IF EXISTS driver_shifts CASCADE;
 DROP TABLE IF EXISTS driver_shift_closures CASCADE;
