@@ -287,6 +287,7 @@ END $$;
 -- === ÉTAPE 5 : RPC FUNCTIONS (EXAMINER RETOUR ET NOUVEAU NOM) ===
 
 DROP FUNCTION IF EXISTS assign_vehicle(uuid, uuid, uuid, timestamptz);
+DROP FUNCTION IF EXISTS public.affecter_vehicule(uuid, uuid, uuid, timestamptz);
 CREATE OR REPLACE FUNCTION affecter_vehicule(
   p_flotte_id uuid,
   p_vehicule_id uuid,
@@ -332,6 +333,7 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS close_shift(uuid, int, int, text, text, text);
+DROP FUNCTION IF EXISTS public.fermer_creneau(uuid, int, int, text, text, text);
 CREATE OR REPLACE FUNCTION fermer_creneau(
   p_creneau_id uuid,
   p_km_fin int,
@@ -358,6 +360,7 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS search_users(text, int);
+DROP FUNCTION IF EXISTS public.rechercher_utilisateurs(text, int);
 CREATE OR REPLACE FUNCTION rechercher_utilisateurs(
   p_terme_recherche text,
   p_limite int DEFAULT 20
