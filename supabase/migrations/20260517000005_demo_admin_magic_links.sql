@@ -159,7 +159,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION demo_validate_magic_link IS
+COMMENT ON FUNCTION demo_validate_magic_link(uuid) IS
   'Valide un magic link token, incrémente used_count. SECURITY DEFINER.';
 
 -- ─── 5. demo_create_magic_link() ─────────────────────────────────────────────
@@ -203,7 +203,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION demo_create_magic_link IS
+COMMENT ON FUNCTION demo_create_magic_link(uuid, uuid, text, text, timestamptz, uuid) IS
   'Crée un nouveau magic link, désactive les anciens. SECURITY DEFINER.';
 
 -- ─── 6. admin_list_demo_sessions() ───────────────────────────────────────────
@@ -265,7 +265,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION admin_list_demo_sessions IS
+COMMENT ON FUNCTION admin_list_demo_sessions(boolean) IS
   'Vue enrichie des sessions démo pour l''admin UI. Admin plateforme uniquement.';
 
 -- Grant explicite pour RPC côté client
@@ -317,7 +317,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION admin_reset_demo_fleet IS
+COMMENT ON FUNCTION admin_reset_demo_fleet(uuid) IS
   'Réinitialise les données d''une flotte démo (véhicules + logs onboarding).';
 
 GRANT EXECUTE ON FUNCTION admin_reset_demo_fleet(uuid) TO authenticated;
