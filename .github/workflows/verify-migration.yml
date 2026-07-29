@@ -5,7 +5,7 @@ on:
     branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   pull_request:
     branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
-  workflow_dispatch: # Permet d'exécuter manuellement depuis GitHub
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -24,10 +24,7 @@ jobs:
   verify-migration:
     name: Verify Migration to French
     runs-on: [self-hosted, Linux, X64]
-    
-    env:
-      SUPABASE_CLI_VERSION: 2.102.0  # Version de Supabase CLI à installer
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -35,45 +32,44 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: "22"
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: ${{ env.SUPABASE_CLI_VERSION }}
-
-      - name: Verify Supabase CLI Installation
+      - name: Install SQL runner dependencies
+        timeout-minutes: 8
         run: |
-          supabase --version
-
-      - name: Link Supabase Project
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-        run: |
-          echo "Linking to Supabase project: $SUPABASE_PROJECT_REF"
-          supabase link --project-ref $SUPABASE_PROJECT_REF --password ${{ secrets.SUPABASE_DB_PASSWORD }}
-        continue-on-error: true
+          set -euo pipefail
+          mkdir -p .ci-sql-runner
+          npm --prefix .ci-sql-runner install --ignore-scripts --no-package-lock --no-audit --no-fund pg@8.18.0
 
       - name: Execute Migration Verification Script
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SQL_RUNNER_PG_MODULE: .ci-sql-runner/node_modules/pg/lib/index.js
         run: |
+          set -euo pipefail
           echo "Executing migration verification script..."
-          supabase db query < supabase/scripts/verify/verify-migration-status.sql > migration-report.txt 2>&1 || true
-          
-          # Afficher le rapport
+          db_url="$(node scripts/resolve-supabase-db-url.mjs)"
+          echo "::add-mask::$db_url"
+          export DATABASE_URL="$db_url"
+          export DIRECT_URL=""
+          export SUPABASE_DB_URL=""
+          export PGSSLMODE="no-verify"
+
+          node scripts/apply-sql-file.mjs supabase/scripts/verify/verify-migration-status.sql > migration-report.txt 2>&1
+
           echo "=== MIGRATION VERIFICATION REPORT ==="
           cat migration-report.txt
-          
-          # Vérifier s'il y a des erreurs critiques
-          if grep -q "❌ ERREURS" migration-report.txt; then
+
+          if grep -q "ERREURS" migration-report.txt; then
             echo "::error::Critical errors detected in migration verification"
             exit 1
           fi
-          
-          if grep -q "⚠️ AVERTISSEMENTS" migration-report.txt; then
+
+          if grep -q "AVERTISSEMENTS" migration-report.txt; then
             echo "::warning::Warnings detected in migration verification"
           fi
 
@@ -88,7 +84,7 @@ jobs:
       - name: Log PR Comment Skip Reason
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         run: |
-          echo "ℹ️ Commentaire PR ignoré : la PR provient d'un fork, le token GitHub Actions n'a pas les permissions d'écriture nécessaires."
+          echo "PR comment skipped: fork pull request does not have write permissions."
 
       - name: Comment PR with Results
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
@@ -100,9 +96,9 @@ jobs:
             try {
               report = fs.readFileSync('migration-report.txt', 'utf8');
             } catch (e) {
-              report = '(Rapport non disponible - exécution du script de vérification en échec ou fichier absent.)';
+              report = '(Report unavailable: migration verification failed before writing the report.)';
             }
-            const comment = `## 🔍 Migration Verification Report
+            const comment = `## Migration Verification Report
 
             <details>
             <summary>Click to expand report</summary>
@@ -113,7 +109,7 @@ jobs:
 
             </details>
 
-            **Note:** Vérification automatique. Consulter le rapport et agir si besoin.
+            **Note:** Automated verification. Review the report if this job fails.
             `;
 
             github.rest.issues.createComment({
