@@ -236,26 +236,9 @@ END $$;
 -- PHASE 3 : AJOUT DES FOREIGN KEYS MANQUANTES
 -- =====================================================
 
--- Réparer les organisations parentes manquantes avant d'ajouter les FK.
--- Certaines bases historiques peuvent contenir des flottes/paiements orphelins.
-DO $$
-BEGIN
-  INSERT INTO organisations (id, name, country_code)
-  SELECT DISTINCT f.org_id, 'Organisation restaurée', 'CM'
-  FROM flottes f
-  WHERE f.org_id IS NOT NULL
-    AND NOT EXISTS (
-      SELECT 1 FROM organisations o WHERE o.id = f.org_id
-    );
-
-  INSERT INTO organisations (id, name, country_code)
-  SELECT DISTINCT p.org_id, 'Organisation restaurée', 'CM'
-  FROM paiements p
-  WHERE p.org_id IS NOT NULL
-    AND NOT EXISTS (
-      SELECT 1 FROM organisations o WHERE o.id = p.org_id
-    );
-END $$;
+-- Les bases historiques peuvent contenir des lignes orphelines.
+-- NOT VALID ajoute la protection pour les nouvelles écritures sans inventer
+-- ou supprimer de données existantes pendant une migration de production.
 
 -- FK flottes.org_id → organisations.id
 DO $$
@@ -265,7 +248,7 @@ BEGIN
     WHERE conname = 'flottes_org_id_fkey'
   ) THEN
     ALTER TABLE flottes ADD CONSTRAINT flottes_org_id_fkey 
-    FOREIGN KEY (org_id) REFERENCES organisations(id) ON DELETE CASCADE;
+    FOREIGN KEY (org_id) REFERENCES organisations(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -277,7 +260,7 @@ BEGIN
     WHERE conname = 'profils_user_id_fkey'
   ) THEN
     ALTER TABLE profils ADD CONSTRAINT profils_user_id_fkey 
-    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -289,7 +272,7 @@ BEGIN
     WHERE conname = 'flotte_adhesions_fleet_id_fkey'
   ) THEN
     ALTER TABLE flotte_adhesions ADD CONSTRAINT flotte_adhesions_fleet_id_fkey 
-    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE;
+    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -301,7 +284,7 @@ BEGIN
     WHERE conname = 'flotte_adhesions_user_id_fkey'
   ) THEN
     ALTER TABLE flotte_adhesions ADD CONSTRAINT flotte_adhesions_user_id_fkey 
-    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -313,7 +296,7 @@ BEGIN
     WHERE conname = 'flotte_invitations_fleet_id_fkey'
   ) THEN
     ALTER TABLE flotte_invitations ADD CONSTRAINT flotte_invitations_fleet_id_fkey 
-    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE;
+    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -325,7 +308,7 @@ BEGIN
     WHERE conname = 'flotte_invitations_created_by_fkey'
   ) THEN
     ALTER TABLE flotte_invitations ADD CONSTRAINT flotte_invitations_created_by_fkey 
-    FOREIGN KEY (created_by) REFERENCES auth.users(id);
+    FOREIGN KEY (created_by) REFERENCES auth.users(id) NOT VALID;
   END IF;
 END $$;
 
@@ -337,7 +320,7 @@ BEGIN
     WHERE conname = 'vehicules_fleet_id_fkey'
   ) THEN
     ALTER TABLE vehicules ADD CONSTRAINT vehicules_fleet_id_fkey 
-    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE;
+    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -349,7 +332,7 @@ BEGIN
     WHERE conname = 'affectations_vehicules_fleet_id_fkey'
   ) THEN
     ALTER TABLE affectations_vehicules ADD CONSTRAINT affectations_vehicules_fleet_id_fkey 
-    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE;
+    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -361,7 +344,7 @@ BEGIN
     WHERE conname = 'affectations_vehicules_vehicle_id_fkey'
   ) THEN
     ALTER TABLE affectations_vehicules ADD CONSTRAINT affectations_vehicules_vehicle_id_fkey 
-    FOREIGN KEY (vehicle_id) REFERENCES vehicules(id) ON DELETE CASCADE;
+    FOREIGN KEY (vehicle_id) REFERENCES vehicules(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -373,7 +356,7 @@ BEGIN
     WHERE conname = 'affectations_vehicules_driver_user_id_fkey'
   ) THEN
     ALTER TABLE affectations_vehicules ADD CONSTRAINT affectations_vehicules_driver_user_id_fkey 
-    FOREIGN KEY (driver_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    FOREIGN KEY (driver_user_id) REFERENCES auth.users(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -385,7 +368,7 @@ BEGIN
     WHERE conname = 'affectations_vehicules_created_by_fkey'
   ) THEN
     ALTER TABLE affectations_vehicules ADD CONSTRAINT affectations_vehicules_created_by_fkey 
-    FOREIGN KEY (created_by) REFERENCES auth.users(id);
+    FOREIGN KEY (created_by) REFERENCES auth.users(id) NOT VALID;
   END IF;
 END $$;
 
@@ -397,7 +380,7 @@ BEGIN
     WHERE conname = 'creneaux_conducteurs_assignment_id_fkey'
   ) THEN
     ALTER TABLE creneaux_conducteurs ADD CONSTRAINT creneaux_conducteurs_assignment_id_fkey 
-    FOREIGN KEY (assignment_id) REFERENCES affectations_vehicules(id) ON DELETE RESTRICT;
+    FOREIGN KEY (assignment_id) REFERENCES affectations_vehicules(id) ON DELETE RESTRICT NOT VALID;
   END IF;
 END $$;
 
@@ -409,7 +392,7 @@ BEGIN
     WHERE conname = 'clotures_creneaux_validated_by_fkey'
   ) THEN
     ALTER TABLE clotures_creneaux ADD CONSTRAINT clotures_creneaux_validated_by_fkey 
-    FOREIGN KEY (validated_by) REFERENCES auth.users(id);
+    FOREIGN KEY (validated_by) REFERENCES auth.users(id) NOT VALID;
   END IF;
 END $$;
 
@@ -421,7 +404,7 @@ BEGIN
     WHERE conname = 'incidents_vehicle_id_fkey'
   ) THEN
     ALTER TABLE incidents ADD CONSTRAINT incidents_vehicle_id_fkey 
-    FOREIGN KEY (vehicle_id) REFERENCES vehicules(id) ON DELETE CASCADE;
+    FOREIGN KEY (vehicle_id) REFERENCES vehicules(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -433,7 +416,7 @@ BEGIN
     WHERE conname = 'incidents_driver_user_id_fkey'
   ) THEN
     ALTER TABLE incidents ADD CONSTRAINT incidents_driver_user_id_fkey 
-    FOREIGN KEY (driver_user_id) REFERENCES auth.users(id);
+    FOREIGN KEY (driver_user_id) REFERENCES auth.users(id) NOT VALID;
   END IF;
 END $$;
 
@@ -445,7 +428,7 @@ BEGIN
     WHERE conname = 'travaux_maintenance_fleet_id_fkey'
   ) THEN
     ALTER TABLE travaux_maintenance ADD CONSTRAINT travaux_maintenance_fleet_id_fkey 
-    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE;
+    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -457,7 +440,7 @@ BEGIN
     WHERE conname = 'travaux_maintenance_vehicle_id_fkey'
   ) THEN
     ALTER TABLE travaux_maintenance ADD CONSTRAINT travaux_maintenance_vehicle_id_fkey 
-    FOREIGN KEY (vehicle_id) REFERENCES vehicules(id) ON DELETE CASCADE;
+    FOREIGN KEY (vehicle_id) REFERENCES vehicules(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -469,7 +452,7 @@ BEGIN
     WHERE conname = 'preuves_maintenance_created_by_fkey'
   ) THEN
     ALTER TABLE preuves_maintenance ADD CONSTRAINT preuves_maintenance_created_by_fkey 
-    FOREIGN KEY (created_by) REFERENCES auth.users(id);
+    FOREIGN KEY (created_by) REFERENCES auth.users(id) NOT VALID;
   END IF;
 END $$;
 
@@ -481,7 +464,7 @@ BEGIN
     WHERE conname = 'listes_verification_maintenance_signed_by_fkey'
   ) THEN
     ALTER TABLE listes_verification_maintenance ADD CONSTRAINT listes_verification_maintenance_signed_by_fkey 
-    FOREIGN KEY (signed_by) REFERENCES auth.users(id);
+    FOREIGN KEY (signed_by) REFERENCES auth.users(id) NOT VALID;
   END IF;
 END $$;
 
@@ -493,7 +476,7 @@ BEGIN
     WHERE conname = 'paiements_org_id_fkey'
   ) THEN
     ALTER TABLE paiements ADD CONSTRAINT paiements_org_id_fkey 
-    FOREIGN KEY (org_id) REFERENCES organisations(id) ON DELETE CASCADE;
+    FOREIGN KEY (org_id) REFERENCES organisations(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -505,7 +488,7 @@ BEGIN
     WHERE conname = 'abonnements_fleet_id_fkey'
   ) THEN
     ALTER TABLE abonnements ADD CONSTRAINT abonnements_fleet_id_fkey 
-    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE;
+    FOREIGN KEY (fleet_id) REFERENCES flottes(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -517,7 +500,7 @@ BEGIN
     WHERE conname = 'abonnements_plan_id_fkey'
   ) THEN
     ALTER TABLE abonnements ADD CONSTRAINT abonnements_plan_id_fkey 
-    FOREIGN KEY (plan_id) REFERENCES plans(id);
+    FOREIGN KEY (plan_id) REFERENCES plans(id) NOT VALID;
   END IF;
 END $$;
 
@@ -529,7 +512,7 @@ BEGIN
     WHERE conname = 'abonnements_payment_id_fkey'
   ) THEN
     ALTER TABLE abonnements ADD CONSTRAINT abonnements_payment_id_fkey 
-    FOREIGN KEY (payment_id) REFERENCES paiements(id);
+    FOREIGN KEY (payment_id) REFERENCES paiements(id) NOT VALID;
   END IF;
 END $$;
 
@@ -541,7 +524,7 @@ BEGIN
     WHERE conname = 'droits_vehicules_vehicle_id_fkey'
   ) THEN
     ALTER TABLE droits_vehicules ADD CONSTRAINT droits_vehicules_vehicle_id_fkey 
-    FOREIGN KEY (vehicle_id) REFERENCES vehicules(id) ON DELETE CASCADE;
+    FOREIGN KEY (vehicle_id) REFERENCES vehicules(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -553,7 +536,7 @@ BEGIN
     WHERE conname = 'droits_vehicules_subscription_id_fkey'
   ) THEN
     ALTER TABLE droits_vehicules ADD CONSTRAINT droits_vehicules_subscription_id_fkey 
-    FOREIGN KEY (subscription_id) REFERENCES abonnements(id) ON DELETE CASCADE;
+    FOREIGN KEY (subscription_id) REFERENCES abonnements(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -565,7 +548,7 @@ BEGIN
     WHERE conname = 'jetons_qr_vehicle_id_fkey'
   ) THEN
     ALTER TABLE jetons_qr ADD CONSTRAINT jetons_qr_vehicle_id_fkey 
-    FOREIGN KEY (vehicle_id) REFERENCES vehicules(id) ON DELETE CASCADE;
+    FOREIGN KEY (vehicle_id) REFERENCES vehicules(id) ON DELETE CASCADE NOT VALID;
   END IF;
 END $$;
 
@@ -577,7 +560,7 @@ BEGIN
     WHERE conname = 'jetons_qr_created_by_fkey'
   ) THEN
     ALTER TABLE jetons_qr ADD CONSTRAINT jetons_qr_created_by_fkey 
-    FOREIGN KEY (created_by) REFERENCES auth.users(id);
+    FOREIGN KEY (created_by) REFERENCES auth.users(id) NOT VALID;
   END IF;
 END $$;
 
