@@ -58,6 +58,7 @@ CREATE INDEX IF NOT EXISTS idx_demo_magic_links_user
 -- RLS : service_role uniquement (admin UI via BFF)
 ALTER TABLE demo_magic_links ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS demo_magic_links_no_public ON demo_magic_links;
 CREATE POLICY demo_magic_links_no_public
   ON demo_magic_links
   AS RESTRICTIVE
@@ -85,12 +86,14 @@ CREATE INDEX IF NOT EXISTS idx_demo_onboarding_logs_user
 -- RLS : utilisateur voit uniquement ses propres logs (write + admin service_role)
 ALTER TABLE demo_onboarding_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS demo_onboarding_logs_own_write ON demo_onboarding_logs;
 CREATE POLICY demo_onboarding_logs_own_write
   ON demo_onboarding_logs
   FOR INSERT
   TO authenticated
   WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS demo_onboarding_logs_own_read ON demo_onboarding_logs;
 CREATE POLICY demo_onboarding_logs_own_read
   ON demo_onboarding_logs
   FOR SELECT

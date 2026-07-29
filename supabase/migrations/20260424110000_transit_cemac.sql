@@ -51,12 +51,17 @@ begin
 end;
 $$;
 
+drop trigger if exists transits_cemac_updated_at on public.transits_cemac;
 create trigger transits_cemac_updated_at
   before update on public.transits_cemac
   for each row execute procedure public.set_updated_at();
 
 -- ── RLS ──────────────────────────────────────────────────────────────────────
 alter table public.transits_cemac enable row level security;
+
+drop policy if exists "fleet_members_read_transits" on public.transits_cemac;
+drop policy if exists "fleet_members_create_transits" on public.transits_cemac;
+drop policy if exists "fleet_members_update_transits" on public.transits_cemac;
 
 -- Les membres de la flotte peuvent lire les transits de leur flotte
 create policy "fleet_members_read_transits"

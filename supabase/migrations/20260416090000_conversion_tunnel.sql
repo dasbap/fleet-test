@@ -32,6 +32,10 @@ create index if not exists idx_activation_steps   on activation_progress(complet
 
 alter table activation_progress enable row level security;
 
+drop policy if exists "Lecture propre ligne" on activation_progress;
+drop policy if exists "Mise à jour propre ligne" on activation_progress;
+drop policy if exists "Insertion propre ligne" on activation_progress;
+
 create policy "Lecture propre ligne"
   on activation_progress for select
   using (auth.uid() = user_id);
@@ -58,6 +62,9 @@ create index if not exists idx_conv_user on conversion_events(user_id, created_a
 create index if not exists idx_conv_type on conversion_events(event_type);
 
 alter table conversion_events enable row level security;
+drop policy if exists "Insert propre" on conversion_events;
+drop policy if exists "Select propre" on conversion_events;
+
 create policy "Insert propre" on conversion_events for insert with check (auth.uid() = user_id);
 create policy "Select propre" on conversion_events for select using (auth.uid() = user_id);
 
@@ -65,6 +72,7 @@ create or replace function touch_updated_at()
 returns trigger language plpgsql as $$
 begin new.updated_at = now(); return new; end; $$;
 
+drop trigger if exists trg_activation_updated_at on activation_progress;
 create trigger trg_activation_updated_at
   before update on activation_progress
   for each row execute function touch_updated_at();
@@ -150,4 +158,3 @@ from activation_progress ap
 left join profils p on p.user_id = ap.user_id;
 
 grant select on v_activation_status to authenticated;
-

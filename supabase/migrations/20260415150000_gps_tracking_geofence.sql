@@ -213,6 +213,16 @@ ALTER TABLE public.geofence_vehicle_states ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.geofence_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gps_ingest_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS gps_devices_select_policy ON public.gps_devices;
+DROP POLICY IF EXISTS gps_devices_write_policy ON public.gps_devices;
+DROP POLICY IF EXISTS vehicle_positions_select_policy ON public.vehicle_positions;
+DROP POLICY IF EXISTS vehicle_positions_latest_select_policy ON public.vehicle_positions_latest;
+DROP POLICY IF EXISTS geofences_select_policy ON public.geofences;
+DROP POLICY IF EXISTS geofences_write_policy ON public.geofences;
+DROP POLICY IF EXISTS geofence_states_select_policy ON public.geofence_vehicle_states;
+DROP POLICY IF EXISTS geofence_events_select_policy ON public.geofence_events;
+DROP POLICY IF EXISTS gps_ingest_logs_select_policy ON public.gps_ingest_logs;
+
 CREATE POLICY gps_devices_select_policy
 ON public.gps_devices
 FOR SELECT

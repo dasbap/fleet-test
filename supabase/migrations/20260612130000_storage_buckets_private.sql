@@ -178,6 +178,7 @@ UPDATE storage.buckets SET public = false WHERE id = 'tutorials';
 
 DROP POLICY IF EXISTS "Lecture publique tutoriels" ON storage.objects;
 DROP POLICY IF EXISTS "tutorials_select_authenticated" ON storage.objects;
+DROP POLICY IF EXISTS "tutorials_insert_service" ON storage.objects;
 
 CREATE POLICY "tutorials_select_authenticated"
 ON storage.objects FOR SELECT TO authenticated

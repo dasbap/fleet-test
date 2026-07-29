@@ -77,28 +77,34 @@ ALTER TABLE public.session_events          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.security_notifications  ENABLE ROW LEVEL SECURITY;
 
 -- user_sessions : lecture + modification propres sessions uniquement
+DROP POLICY IF EXISTS "user_sessions_select_own" ON public.user_sessions;
 CREATE POLICY "user_sessions_select_own"
   ON public.user_sessions FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "user_sessions_insert_own" ON public.user_sessions;
 CREATE POLICY "user_sessions_insert_own"
   ON public.user_sessions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "user_sessions_update_own" ON public.user_sessions;
 CREATE POLICY "user_sessions_update_own"
   ON public.user_sessions FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- session_events : lecture uniquement
+DROP POLICY IF EXISTS "session_events_select_own" ON public.session_events;
 CREATE POLICY "session_events_select_own"
   ON public.session_events FOR SELECT
   USING (auth.uid() = user_id);
 
 -- security_notifications : lecture + mise à jour (mark read)
+DROP POLICY IF EXISTS "security_notifications_select_own" ON public.security_notifications;
 CREATE POLICY "security_notifications_select_own"
   ON public.security_notifications FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "security_notifications_update_own" ON public.security_notifications;
 CREATE POLICY "security_notifications_update_own"
   ON public.security_notifications FOR UPDATE
   USING (auth.uid() = user_id);

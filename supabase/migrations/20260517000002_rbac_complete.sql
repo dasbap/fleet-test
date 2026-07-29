@@ -28,6 +28,7 @@ COMMENT ON TABLE public.admin_profiles IS
 ALTER TABLE public.admin_profiles ENABLE ROW LEVEL SECURITY;
 
 -- Les admins ne peuvent pas se voir entre eux via le client (service_role uniquement)
+DROP POLICY IF EXISTS admin_profiles_no_select ON public.admin_profiles;
 CREATE POLICY admin_profiles_no_select ON public.admin_profiles
   FOR SELECT USING (false);
 
