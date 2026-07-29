@@ -47,6 +47,35 @@ function setTomlBooleanValueInSection(content, sectionName, key, value) {
   return setTomlValueInSection(content, sectionName, key, '(true|false)', value ? 'true' : 'false');
 }
 
+function setTomlRootStringValue(content, key, value) {
+  const lines = content.split(/(\r?\n)/);
+
+  for (let index = 0; index < lines.length; index += 2) {
+    if (lines[index].trimStart().startsWith(`${key} =`)) {
+      lines[index] = lines[index].replace(/=.*/, `= "${value}"`);
+      return lines.join('');
+    }
+  }
+
+  throw new Error(`Missing TOML key: ${key}`);
+}
+
+function slugPart(value, fallback) {
+  return String(value || fallback)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 28);
+}
+
+function getLocalSupabaseProjectId() {
+  const runPart = slugPart(process.env.GITHUB_RUN_ID, 'local');
+  const jobPart = slugPart(process.env.GITHUB_JOB, 'job');
+  const runnerPart = slugPart(process.env.RUNNER_NAME, process.pid);
+
+  return ('sfa-' + runPart + '-' + jobPart + '-' + runnerPart).slice(0, 63);
+}
+
 export async function setLocalSupabaseTestPorts({ configFile = 'supabase/config.toml', disableStorage = false } = {}) {
   if (!existsSync(configFile)) {
     throw new Error(`Supabase config not found: ${configFile}`);
@@ -62,6 +91,8 @@ export async function setLocalSupabaseTestPorts({ configFile = 'supabase/config.
   }
 
   let updated = readFileSync(configFile, 'utf8');
+  const projectId = getLocalSupabaseProjectId();
+  updated = setTomlRootStringValue(updated, 'project_id', projectId);
   updated = setTomlIntegerValueInSection(updated, 'api', 'port', ports.api);
   updated = setTomlIntegerValueInSection(updated, 'db', 'port', ports.db);
   updated = setTomlIntegerValueInSection(updated, 'db', 'shadow_port', ports.shadow);
@@ -80,7 +111,7 @@ export async function setLocalSupabaseTestPorts({ configFile = 'supabase/config.
   copyFileSync(configFile, backupPath);
   writeFileSync(configFile, updated, 'utf8');
 
-  return { backupPath, ports };
+  return { backupPath, ports, projectId };
 }
 
 export function restoreLocalSupabaseConfig({ configFile = 'supabase/config.toml', backupPath } = {}) {
