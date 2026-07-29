@@ -34,6 +34,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
@@ -86,6 +88,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Setup Node 20
         uses: actions/setup-node@v5
@@ -126,6 +130,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: false
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -150,6 +156,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: false
       - uses: actions/setup-node@v5
         with:
           node-version: '22'

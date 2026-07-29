@@ -39,6 +39,8 @@ jobs:
       VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Vérifier les secrets Android
         env:

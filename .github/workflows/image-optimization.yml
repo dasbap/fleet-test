@@ -26,6 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          clean: false
           fetch-depth: 0
 
       - id: filter
@@ -57,6 +58,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v5

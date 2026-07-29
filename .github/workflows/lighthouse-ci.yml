@@ -41,6 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          clean: false
           fetch-depth: 0
 
       - id: filter
@@ -73,6 +74,8 @@ jobs:
       VITE_SUPABASE_ANON_KEY: placeholder-anon-key-ci-build-only
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
