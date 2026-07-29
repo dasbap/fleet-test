@@ -23,7 +23,7 @@ jobs:
     outputs:
       relevant: ${{ steps.filter.outputs.relevant }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           clean: false
           fetch-depth: 0
@@ -58,7 +58,7 @@ jobs:
       VITE_SUPABASE_ANON_KEY: placeholder-anon-key-ci-build-only
       SHARP_IGNORE_GLOBAL_LIBVIPS: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           clean: false
 
