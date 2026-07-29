@@ -506,7 +506,8 @@ CREATE POLICY rbac_abonnements_read ON public.abonnements
 -- VUE ADMIN : matrice d'accès par utilisateur
 -- ═══════════════════════════════════════════════════════════════════════════════
 
-CREATE OR REPLACE VIEW public.v_rbac_user_roles AS
+DROP VIEW IF EXISTS public.v_rbac_user_roles;
+CREATE VIEW public.v_rbac_user_roles AS
 SELECT
   u.id          AS user_id,
   u.email,
