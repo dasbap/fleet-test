@@ -55,6 +55,7 @@ jobs:
       # Valeurs factices : le client Supabase n’est pas exécuté pendant le build statique.
       VITE_SUPABASE_URL: https://placeholder-build.supabase.co
       VITE_SUPABASE_ANON_KEY: placeholder-anon-key-ci-build-only
+      SHARP_IGNORE_GLOBAL_LIBVIPS: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -62,12 +63,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "22"
-
-      - name: Install libvips (requis par @capacitor/assets/sharp en fallback compilation)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libvips-dev
 
       - name: Install dependencies
         timeout-minutes: 8
