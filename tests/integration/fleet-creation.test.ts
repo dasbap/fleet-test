@@ -55,6 +55,11 @@ describeIntegration("Création de flotte - Tests d'intégration", () => {
       // Supprimer l'organisation
       await supabaseAdmin.from("organisations").delete().eq("id", testOrgId);
     }
+
+    if (testUserId) {
+      await supabaseAdmin.from("profils").delete().eq("user_id", testUserId);
+      await supabaseAdmin.auth.admin.deleteUser(testUserId);
+    }
   });
 
   it("devrait créer une organisation", async () => {
