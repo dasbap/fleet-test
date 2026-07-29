@@ -536,19 +536,19 @@ CREATE POLICY invitations_lecture_publique ON flotte_invitations
 FOR SELECT TO anon, authenticated USING (true);
 
 CREATE POLICY invitations_ecriture_manager_org ON flotte_invitations
-FOR INSERT WITH CHECK (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+FOR INSERT WITH CHECK (public.has_role(fleet_id, 'manager'::public.role_type) OR public.has_role(fleet_id, 'organizer'::public.role_type));
 
 CREATE POLICY invitations_modification_manager_org ON flotte_invitations
-FOR UPDATE USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+FOR UPDATE USING (public.has_role(fleet_id, 'manager'::public.role_type) OR public.has_role(fleet_id, 'organizer'::public.role_type));
 
 CREATE POLICY vehicules_lecture_manager_org ON vehicules
-FOR SELECT USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+FOR SELECT USING (public.has_role(fleet_id, 'manager'::public.role_type) OR public.has_role(fleet_id, 'organizer'::public.role_type));
 
 CREATE POLICY vehicules_ecriture_manager_org ON vehicules
-FOR INSERT WITH CHECK (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+FOR INSERT WITH CHECK (public.has_role(fleet_id, 'manager'::public.role_type) OR public.has_role(fleet_id, 'organizer'::public.role_type));
 
 CREATE POLICY vehicules_modification_manager_org ON vehicules
-FOR UPDATE USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+FOR UPDATE USING (public.has_role(fleet_id, 'manager'::public.role_type) OR public.has_role(fleet_id, 'organizer'::public.role_type));
 
 CREATE POLICY vehicules_lecture_conducteur_affecte ON vehicules
 FOR SELECT USING (
@@ -561,10 +561,10 @@ FOR SELECT USING (
 );
 
 CREATE POLICY affectations_creation_manager_org ON affectations_vehicules
-FOR INSERT WITH CHECK (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+FOR INSERT WITH CHECK (public.has_role(fleet_id, 'manager'::public.role_type) OR public.has_role(fleet_id, 'organizer'::public.role_type));
 
 CREATE POLICY affectations_lecture_manager_org ON affectations_vehicules
-FOR SELECT USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+FOR SELECT USING (public.has_role(fleet_id, 'manager'::public.role_type) OR public.has_role(fleet_id, 'organizer'::public.role_type));
 
 CREATE POLICY affectations_lecture_conducteur_soi ON affectations_vehicules
 FOR SELECT USING (driver_user_id = auth.uid());
@@ -593,7 +593,7 @@ FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM affectations_vehicules a
     WHERE a.id = creneaux_conducteurs.assignment_id
-      AND (has_role(a.fleet_id,'manager') OR has_role(a.fleet_id,'organizer'))
+      AND (public.has_role(a.fleet_id, 'manager'::public.role_type) OR public.has_role(a.fleet_id, 'organizer'::public.role_type))
   )
 );
 
@@ -615,7 +615,7 @@ FOR UPDATE USING (
     FROM creneaux_conducteurs c
     JOIN affectations_vehicules a ON a.id = c.assignment_id
     WHERE c.id = clotures_creneaux.shift_id
-      AND (has_role(a.fleet_id,'manager') OR has_role(a.fleet_id,'organizer'))
+      AND (public.has_role(a.fleet_id, 'manager'::public.role_type) OR public.has_role(a.fleet_id, 'organizer'::public.role_type))
   )
 );
 
@@ -624,7 +624,7 @@ FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM vehicules v
     WHERE v.id = incidents.vehicle_id
-      AND (has_role(v.fleet_id,'manager') OR has_role(v.fleet_id,'organizer') OR has_role(v.fleet_id,'mechanic'))
+      AND (public.has_role(v.fleet_id, 'manager'::public.role_type) OR public.has_role(v.fleet_id, 'organizer'::public.role_type) OR public.has_role(v.fleet_id, 'mechanic'::public.role_type))
   )
 );
 
@@ -635,7 +635,7 @@ CREATE POLICY incidents_lecture_conducteur ON incidents
 FOR SELECT USING (driver_user_id = auth.uid());
 
 CREATE POLICY travaux_lecture_mgr_org_mec ON travaux_maintenance
-FOR SELECT USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer') OR has_role(fleet_id,'mechanic'));
+FOR SELECT USING (public.has_role(fleet_id, 'manager'::public.role_type) OR public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'mechanic'::public.role_type));
 
 CREATE POLICY preuves_insertion_mec ON preuves_maintenance
 FOR INSERT WITH CHECK (true);
@@ -644,7 +644,7 @@ CREATE POLICY adhesions_lecture_soi ON flotte_adhesions
 FOR SELECT USING (user_id = auth.uid());
 
 CREATE POLICY adhesions_lecture_manager_org ON flotte_adhesions
-FOR SELECT USING (has_role(fleet_id,'manager') OR has_role(fleet_id,'organizer'));
+FOR SELECT USING (public.has_role(fleet_id, 'manager'::public.role_type) OR public.has_role(fleet_id, 'organizer'::public.role_type));
 
 -- === ÉTAPE FINALE : NETTOYAGE DES ANCIENNES TABLES ANGLAISES ===
 -- Supprimer définitivement les anciennes tables anglaises qui pourraient encore exister
