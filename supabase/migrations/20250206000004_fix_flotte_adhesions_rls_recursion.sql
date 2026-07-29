@@ -7,6 +7,7 @@
 
 DROP POLICY IF EXISTS memberships_read_self ON flotte_adhesions;
 DROP POLICY IF EXISTS memberships_read_manager_org ON flotte_adhesions;
+DROP POLICY IF EXISTS memberships_select_self_or_manager_org ON flotte_adhesions;
 
 -- Une seule politique SELECT : voir ses propres lignes OU être manager/organizer de la flotte
 -- has_role() est SECURITY DEFINER et lit flotte_adhesions sans déclencher les politiques.
