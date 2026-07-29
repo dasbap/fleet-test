@@ -531,7 +531,8 @@ GRANT EXECUTE ON FUNCTION public.demo_check_allowed(text) TO authenticated;
 -- VUE ADMIN monitoring démo
 -- ═══════════════════════════════════════════════════════════════════════════════
 
-CREATE OR REPLACE VIEW public.v_demo_accounts_status AS
+DROP VIEW IF EXISTS public.v_demo_accounts_status;
+CREATE VIEW public.v_demo_accounts_status AS
 SELECT
   u.email,
   dp.demo_role,
