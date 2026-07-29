@@ -236,6 +236,27 @@ END $$;
 -- PHASE 3 : AJOUT DES FOREIGN KEYS MANQUANTES
 -- =====================================================
 
+-- Réparer les organisations parentes manquantes avant d'ajouter les FK.
+-- Certaines bases historiques peuvent contenir des flottes/paiements orphelins.
+DO $$
+BEGIN
+  INSERT INTO organisations (id, name, country_code)
+  SELECT DISTINCT f.org_id, 'Organisation restaurée', 'CM'
+  FROM flottes f
+  WHERE f.org_id IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM organisations o WHERE o.id = f.org_id
+    );
+
+  INSERT INTO organisations (id, name, country_code)
+  SELECT DISTINCT p.org_id, 'Organisation restaurée', 'CM'
+  FROM paiements p
+  WHERE p.org_id IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM organisations o WHERE o.id = p.org_id
+    );
+END $$;
+
 -- FK flottes.org_id → organisations.id
 DO $$
 BEGIN
