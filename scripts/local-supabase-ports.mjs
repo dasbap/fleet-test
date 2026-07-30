@@ -73,7 +73,9 @@ function getLocalSupabaseProjectId() {
   const jobPart = slugPart(process.env.GITHUB_JOB, 'job');
   const runnerPart = slugPart(process.env.RUNNER_NAME, process.pid);
 
-  return ('sfa-' + runPart + '-' + jobPart + '-' + runnerPart).slice(0, 63);
+  return ('sfa-' + runPart + '-' + jobPart + '-' + runnerPart)
+    .slice(0, 63)
+    .replace(/-+$/g, '');
 }
 
 export async function setLocalSupabaseTestPorts({ configFile = 'supabase/config.toml', disableStorage = false } = {}) {

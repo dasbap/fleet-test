@@ -9,7 +9,6 @@ export DATABASE_URL="${DATABASE_URL:-postgresql://u:p@127.0.0.1:5432/postgres}"
 export DIRECT_URL="${DIRECT_URL:-postgresql://u:p@127.0.0.1:5432/postgres}"
 
 echo "==> npm install (lockfile + workspaces ; sans postinstall Playwright)"
-npm config set fetch-timeout 800000
 npm config set fetch-retries 5
 npm install --no-audit --no-fund --ignore-scripts
 echo "==> prisma generate"

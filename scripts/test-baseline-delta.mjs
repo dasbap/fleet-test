@@ -121,6 +121,7 @@ const searchFleetMigrationSql = readFileSync(searchFleetMigrationFile, 'utf8');
 const tempRoot = 'supabase/migrations_tmp_baseline_test';
 const legacyRoot = 'supabase/migrations_legacy_saved';
 const migrationsRoot = 'supabase/migrations';
+const supabaseTempRoot = 'supabase/.temp';
 let migrationSwapped = false;
 let supabaseConfigBackupPath = null;
 
@@ -147,6 +148,7 @@ try {
 
   console.log('0) Cleaning existing Supabase stack...');
   supabase(['stop', '--no-backup'], { ignoreFailure: true });
+  withFsRetry(() => rmSync(supabaseTempRoot, { recursive: true, force: true }), `Remove ${supabaseTempRoot}`);
 
   console.log('1) Preparing temporary baseline + delta migration chain...');
   withFsRetry(() => renameSync(migrationsRoot, legacyRoot), `Rename ${migrationsRoot} to ${legacyRoot}`);
