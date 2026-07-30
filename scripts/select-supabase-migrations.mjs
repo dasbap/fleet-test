@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const MIGRATION_PATH_PATTERN = /supabase\/migration(?:s)?\/[^\s]+\.sql/g;
+const RUNTIME_MIGRATION_PREFIX = "202607";
 const rootDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   ".."
@@ -47,7 +48,9 @@ export function selectMigrationFiles(selection) {
     const files = [...deltaList.matchAll(MIGRATION_PATH_PATTERN)].map(
       ([file]) => normalizeMigrationPath(file)
     );
-    const uniqueFiles = [...new Set(files)];
+    const uniqueFiles = [...new Set(files)].filter((file) =>
+      path.basename(file).startsWith(RUNTIME_MIGRATION_PREFIX)
+    );
     assertMigrationFilesExist(uniqueFiles);
     return uniqueFiles;
   }

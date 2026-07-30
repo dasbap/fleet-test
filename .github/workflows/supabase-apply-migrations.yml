@@ -2,7 +2,8 @@ name: Supabase Apply Migrations
 
 on:
   push:
-    branches: [main, master, PRINCIPALE, admin-panel]
+    branches:
+      - main
     paths:
       - "supabase/migrations/**"
       - "supabase/baseline/**"
@@ -10,10 +11,11 @@ on:
       - "scripts/apply-sql-file.mjs"
       - "scripts/select-supabase-migrations.mjs"
       - ".github/workflows/supabase-apply-migrations.yml"
+
   workflow_dispatch:
     inputs:
       mode:
-        description: "dry-run liste les migrations, apply les execute sur la BDD cible"
+        description: "dry-run = afficher les migrations, apply = appliquer en production"
         required: true
         default: dry-run
         type: choice
@@ -43,7 +45,7 @@ defaults:
 jobs:
   apply-migrations:
     name: Apply migrations to Supabase
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     environment: production
 
     steps:
@@ -57,16 +59,9 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: 2.102.0
-
-      - name: Install SQL runner dependencies
+      - name: Install dependencies
         timeout-minutes: 8
-        run: |
-          mkdir -p .ci-sql-runner
-          npm --prefix .ci-sql-runner install --ignore-scripts --no-package-lock --no-audit --no-fund pg@8.18.0
+        run: node scripts/ci-install.mjs
 
       - name: Select migration files
         env:
@@ -77,13 +72,13 @@ jobs:
         run: cat migration-files.txt
 
       - name: Dry run summary
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'dry-run' }}
+        if: ${{ inputs.mode == 'dry-run' }}
         run: |
           echo "Dry run uniquement: aucune requete SQL n'a ete executee."
           echo "Relancer cette action avec mode=apply pour appliquer cette liste."
 
-      - name: Apply selected migrations
-        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+      - name: Apply selected migrations to Supabase
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'apply') }}
         shell: bash
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -91,17 +86,10 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          SQL_RUNNER_PG_MODULE: .ci-sql-runner/node_modules/pg/lib/index.js
+          PGSSLMODE: no-verify
           SKIP_DIRECT_DATA_MUTATIONS: "1"
         run: |
           set -euo pipefail
-          db_url="$(node scripts/resolve-supabase-db-url.mjs)"
-          echo "::add-mask::$db_url"
-          export DATABASE_URL="$db_url"
-          export DIRECT_URL=""
-          export SUPABASE_DB_URL=""
-          export PGSSLMODE="no-verify"
-
           mapfile -t migration_files < migration-files.txt
           if [ "${#migration_files[@]}" -eq 0 ]; then
             echo "::error::Aucune migration selectionnee."
@@ -110,21 +98,13 @@ jobs:
           node scripts/apply-sql-file.mjs "${migration_files[@]}"
 
       - name: Verify critical migration objects
-        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
-        shell: bash
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'apply') }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          SQL_RUNNER_PG_MODULE: .ci-sql-runner/node_modules/pg/lib/index.js
-        run: |
-          set -euo pipefail
-          db_url="$(node scripts/resolve-supabase-db-url.mjs)"
-          echo "::add-mask::$db_url"
-          export DATABASE_URL="$db_url"
-          export DIRECT_URL=""
-          export SUPABASE_DB_URL=""
-          export PGSSLMODE="no-verify"
-          node scripts/apply-sql-file.mjs supabase/tests/04_post_migration_objects.sql
+          PGSSLMODE: no-verify
+          SKIP_DIRECT_DATA_MUTATIONS: "1"
+        run: node scripts/apply-sql-file.mjs supabase/tests/04_post_migration_objects.sql

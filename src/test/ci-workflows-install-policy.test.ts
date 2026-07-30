@@ -8,6 +8,41 @@ const workflowFiles = readdirSync(workflowDir)
   .filter((file) => file.endsWith(".yml") || file.endsWith(".yaml"))
   .map((file) => path.join(workflowDir, file).replaceAll("\\", "/"));
 
+function getJobBlocks(workflow: string): string[] {
+  const lines = workflow.split(/\r?\n/);
+  const blocks: string[] = [];
+  let current: string[] = [];
+
+  for (const line of lines) {
+    if (/^ {2}[A-Za-z0-9_-]+:\s*$/.test(line)) {
+      if (current.length > 0) {
+        blocks.push(current.join("\n"));
+      }
+
+      current = [line];
+      continue;
+    }
+
+    if (current.length > 0) {
+      current.push(line);
+    }
+  }
+
+  if (current.length > 0) {
+    blocks.push(current.join("\n"));
+  }
+
+  return blocks;
+}
+
+function runsOnSelfHosted(job: string): boolean {
+  return (
+    job.includes("runs-on: [self-hosted, Windows, X64]") ||
+    job.includes("runs-on: [self-hosted, Linux, X64]") ||
+    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*(?:Windows|Linux)\s*\r?\n\s*-\s*X64/.test(job)
+  );
+}
+
 describe("GitHub workflow dependency install policy", () => {
   it("does not run npm ci directly on self-hosted runners", () => {
     const offenders = workflowFiles.filter((file) => {
@@ -33,9 +68,15 @@ describe("GitHub workflow dependency install policy", () => {
   });
 
   it("does not use setup-node npm cache on self-hosted runners", () => {
-    const offenders = workflowFiles.filter((file) => {
+    const offenders = workflowFiles.flatMap((file) => {
       const workflow = readFileSync(file, "utf8");
-      return /^\s+cache:\s+['"]?npm['"]?\s*$/m.test(workflow);
+      return getJobBlocks(workflow)
+        .filter(
+          (job) =>
+            runsOnSelfHosted(job) &&
+            /^\s+cache:\s+['"]?npm['"]?\s*$/m.test(job)
+        )
+        .map((job) => `${file}:${job.split("\n")[0].trim()}`);
     });
 
     expect(offenders).toEqual([]);

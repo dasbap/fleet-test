@@ -8,8 +8,11 @@
 -- ============================================================================
 
 -- ── 0. Extension pg_trgm (requise pour similarity()) ──────────────────────
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-SET search_path = public, extensions;
+CREATE SCHEMA IF NOT EXISTS extensions;
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm
+WITH SCHEMA extensions;
+
 
 -- ── 1. Guard : s'assurer que les tables dépendantes existent ──────────────
 -- Ces CREATE TABLE IF NOT EXISTS sont des no-ops si les tables existent déjà.
@@ -339,8 +342,10 @@ COMMENT ON FUNCTION public.search_fleet IS
 -- Recherche unifiée multi-entités pour la flotte
 -- Remplacement progressif de la recherche existante avec compatibilité RPC.
 
-create extension if not exists pg_trgm;
-set search_path = public, extensions;
+CREATE SCHEMA IF NOT EXISTS extensions;
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm
+WITH SCHEMA extensions;
 
 -- Index trigram: véhicules
 -- Garde : ignoré si la table n'existe pas encore (ex. rejoue depuis un baseline squashé).

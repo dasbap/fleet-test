@@ -62,9 +62,10 @@ jobs:
           clean: false
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v2
         with:
-          version: 2.102.0
+          version: 2.109.1
+          github-token: ${{ github.token }}
 
       - name: Setup Node
         uses: actions/setup-node@v5

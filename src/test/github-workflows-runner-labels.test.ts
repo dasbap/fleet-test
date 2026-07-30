@@ -31,6 +31,21 @@ function getJobBlocks(workflow: string): string[] {
   return blocks;
 }
 
+function runsOnSelfHostedLinux(job: string): boolean {
+  return (
+    job.includes('runs-on: [self-hosted, Linux, X64]') ||
+    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*Linux\s*\r?\n\s*-\s*X64/.test(job)
+  );
+}
+
+function runsOnSelfHosted(job: string): boolean {
+  return (
+    job.includes('runs-on: [self-hosted, Windows, X64]') ||
+    job.includes('runs-on: [self-hosted, Linux, X64]') ||
+    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*(?:Windows|Linux)\s*\r?\n\s*-\s*X64/.test(job)
+  );
+}
+
 describe('GitHub Supabase workflow runner routing', () => {
   const workflowFiles = () => readdirSync(workflowDir).filter((file) => file.endsWith('.yml') || file.endsWith('.yaml'));
 
@@ -44,9 +59,7 @@ describe('GitHub Supabase workflow runner routing', () => {
           return false;
         }
 
-        const usesLocalRunner =
-          job.includes('runs-on: [self-hosted, Windows, X64]') ||
-          job.includes('runs-on: [self-hosted, Linux, X64]');
+        const usesLocalRunner = runsOnSelfHosted(job);
         const installsDependencies =
           job.includes('node scripts/ci-install.mjs') ||
           /\bnpm ci\b/.test(job) ||
@@ -82,7 +95,7 @@ describe('GitHub Supabase workflow runner routing', () => {
       for (const jobName of jobNames) {
         const job = getJobBlocks(workflow).find((block) => block.startsWith(`  ${jobName}`));
 
-        expect(job, `${fileName}:${jobName}`).toContain('runs-on: [self-hosted, Linux, X64]');
+        expect(runsOnSelfHostedLinux(job ?? ''), `${fileName}:${jobName}`).toBe(true);
       }
     }
   });

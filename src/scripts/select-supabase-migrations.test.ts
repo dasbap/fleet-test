@@ -18,6 +18,7 @@ describe("selectMigrationFiles", () => {
     expect(files).toContain(
       "supabase/migrations/20260722165000_stop_global_demo_fleet_assignment.sql",
     );
+    expect(files.every((file) => file.includes("/202607"))).toBe(true);
     expect(new Set(files).size).toBe(files.length);
     expect(files.every((file) => file.startsWith("supabase/migrations/"))).toBe(
       true,

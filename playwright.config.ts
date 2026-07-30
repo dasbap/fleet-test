@@ -16,8 +16,9 @@ export default defineConfig({
   testDir: "./tests/e2e",
   testIgnore: generalTestIgnore,
   timeout: 30_000,
-  // Stabilise l'exécution : séquentiel en local, parallèle maîtrisé en CI.
-  workers: isCI ? 2 : 1,
+  // Les specs E2E manipulent les mêmes mocks et routes applicatives; garder
+  // l'ordre séquentiel en CI évite les timeouts de montage SPA inter-specs.
+  workers: 1,
   expect: {
     timeout: 5_000,
   },
