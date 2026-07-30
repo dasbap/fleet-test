@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-ios-${{ github.ref }}
+  group: heavy-ci
   cancel-in-progress: true
 
 jobs:

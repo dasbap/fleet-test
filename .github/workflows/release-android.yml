@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-android-${{ github.ref }}
+  group: heavy-ci
   cancel-in-progress: true
 
 defaults:
