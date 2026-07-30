@@ -10,7 +10,7 @@ on:
 
 concurrency:
   group: heavy-ci
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 defaults:
   run:
