@@ -73,7 +73,7 @@ jobs:
         run: node scripts/ci-install.mjs
 
       - name: Install Playwright (Chromium, Firefox, WebKit)
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: npx playwright install chromium firefox webkit
 
       - name: Run HelpCenter i18n E2E
         env:

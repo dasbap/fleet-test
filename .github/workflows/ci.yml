@@ -329,7 +329,7 @@ jobs:
           chmod 600 "$test_file"
 
       - name: Install Playwright browsers
-        run: timeout 300s npx playwright install --with-deps chromium firefox webkit
+        run: timeout 300s npx playwright install chromium firefox webkit
 
       - name: Run lint layer
         id: layer_lint
