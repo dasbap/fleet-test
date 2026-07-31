@@ -48,7 +48,7 @@ jobs:
     name: Playwright HelpCenter (fr/en/ln)
     needs: changes
     if: needs.changes.outputs.relevant == 'true'
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       # Valeurs factices : le client Supabase s'initialise sans planter (URL valide requise),
