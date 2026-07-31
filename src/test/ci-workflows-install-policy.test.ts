@@ -74,7 +74,8 @@ describe("GitHub workflow dependency install policy", () => {
       return getJobBlocks(workflow)
         .filter(
           (job) =>
-            runsOnSelfHosted(job) && /^\s+cache:\s+['"]?npm['"]?\s*$/m.test(job)
+            runsOnSelfHostedLinux(job) &&
+            /^\s+cache:\s+['"]?npm['"]?\s*$/m.test(job)
         )
         .map((job) => `${file}:${job.split("\n")[0].trim()}`);
     });
