@@ -35,7 +35,7 @@ defaults:
 jobs:
   supabase-integration:
     name: Supabase local integration tests
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     timeout-minutes: 25
 
     steps:
