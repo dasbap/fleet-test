@@ -189,7 +189,7 @@ jobs:
 
   quality-metrics:
     name: Test layers metrics
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     needs:
       - build
