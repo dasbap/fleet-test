@@ -16,7 +16,7 @@ defaults:
 jobs:
   changes:
     name: Detect HelpCenter changes
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     outputs:
       relevant: ${{ steps.filter.outputs.relevant }}
     steps:

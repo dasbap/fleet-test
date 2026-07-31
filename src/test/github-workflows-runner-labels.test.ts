@@ -1,9 +1,10 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { readdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
 
-const workflowPath = (fileName: string) => resolve(process.cwd(), '.github', 'workflows', fileName);
-const workflowDir = resolve(process.cwd(), '.github', 'workflows');
+const workflowPath = (fileName: string) =>
+  resolve(process.cwd(), ".github", "workflows", fileName);
+const workflowDir = resolve(process.cwd(), ".github", "workflows");
 
 function getJobBlocks(workflow: string): string[] {
   const lines = workflow.split(/\r?\n/);
@@ -13,7 +14,7 @@ function getJobBlocks(workflow: string): string[] {
   for (const line of lines) {
     if (/^ {2}[A-Za-z0-9_-]+:\s*$/.test(line)) {
       if (current.length > 0) {
-        blocks.push(current.join('\n'));
+        blocks.push(current.join("\n"));
       }
       current = [line];
       continue;
@@ -25,7 +26,7 @@ function getJobBlocks(workflow: string): string[] {
   }
 
   if (current.length > 0) {
-    blocks.push(current.join('\n'));
+    blocks.push(current.join("\n"));
   }
 
   return blocks;
@@ -33,35 +34,42 @@ function getJobBlocks(workflow: string): string[] {
 
 function runsOnSelfHostedLinux(job: string): boolean {
   return (
-    job.includes('runs-on: [self-hosted, Linux, X64]') ||
-    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*Linux\s*\r?\n\s*-\s*X64/.test(job)
+    job.includes("runs-on: ubuntu-latest") ||
+    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*Linux\s*\r?\n\s*-\s*X64/.test(
+      job
+    )
   );
 }
 
 function runsOnSelfHosted(job: string): boolean {
   return (
-    job.includes('runs-on: [self-hosted, Windows, X64]') ||
-    job.includes('runs-on: [self-hosted, Linux, X64]') ||
-    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*(?:Windows|Linux)\s*\r?\n\s*-\s*X64/.test(job)
+    job.includes("runs-on: [self-hosted, Windows, X64]") ||
+    job.includes("runs-on: ubuntu-latest") ||
+    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*(?:Windows|Linux)\s*\r?\n\s*-\s*X64/.test(
+      job
+    )
   );
 }
 
-describe('GitHub Supabase workflow runner routing', () => {
-  const workflowFiles = () => readdirSync(workflowDir).filter((file) => file.endsWith('.yml') || file.endsWith('.yaml'));
+describe("GitHub Supabase workflow runner routing", () => {
+  const workflowFiles = () =>
+    readdirSync(workflowDir).filter(
+      (file) => file.endsWith(".yml") || file.endsWith(".yaml")
+    );
 
-  it('keeps dependency-install jobs away from local runners', () => {
+  it("keeps dependency-install jobs away from local runners", () => {
     const offenders: string[] = [];
 
     for (const fileName of workflowFiles()) {
-      const workflow = readFileSync(workflowPath(fileName), 'utf8');
+      const workflow = readFileSync(workflowPath(fileName), "utf8");
       const localInstallJobs = getJobBlocks(workflow).filter((job) => {
-        if (fileName === 'supabase-apply-migrations.yml') {
+        if (fileName === "supabase-apply-migrations.yml") {
           return false;
         }
 
         const usesLocalRunner = runsOnSelfHosted(job);
         const installsDependencies =
-          job.includes('node scripts/ci-install.mjs') ||
+          job.includes("node scripts/ci-install.mjs") ||
           /\bnpm ci\b/.test(job) ||
           /\bnpm install\b/.test(job) ||
           /\byarn install\b/.test(job) ||
@@ -70,32 +78,40 @@ describe('GitHub Supabase workflow runner routing', () => {
         return usesLocalRunner && installsDependencies;
       });
 
-      offenders.push(...localInstallJobs.map((job) => `${fileName}:${job.split('\n')[0].trim()}`));
+      offenders.push(
+        ...localInstallJobs.map(
+          (job) => `${fileName}:${job.split("\n")[0].trim()}`
+        )
+      );
     }
 
     expect(offenders).toEqual([]);
   });
 
-  it('routes no-install CI jobs to the local Linux runner', () => {
+  it("routes no-install CI jobs to the local Linux runner", () => {
     const localJobExpectations = new Map([
-      ['build-capacitor.yml', ['changes:']],
-      ['ci.yml', ['db-migrations:']],
-      ['e2e-helpcenter.yml', ['changes:']],
-      ['image-optimization.yml', ['changes:']],
-      ['lighthouse-ci.yml', ['changes:']],
-      ['lighthouse.yml', ['changes:']],
-      ['supabase-baseline-delta.yml', ['validate-delta-file-list:']],
-      ['supabase-migrations-replay.yml', ['verify-migration-filenames:']],
-      ['verify-migration.yml', ['verify-migration:']],
+      ["build-capacitor.yml", ["changes:"]],
+      ["ci.yml", ["db-migrations:"]],
+      ["e2e-helpcenter.yml", ["changes:"]],
+      ["image-optimization.yml", ["changes:"]],
+      ["lighthouse-ci.yml", ["changes:"]],
+      ["lighthouse.yml", ["changes:"]],
+      ["supabase-baseline-delta.yml", ["validate-delta-file-list:"]],
+      ["supabase-migrations-replay.yml", ["verify-migration-filenames:"]],
+      ["verify-migration.yml", ["verify-migration:"]],
     ]);
 
     for (const [fileName, jobNames] of localJobExpectations) {
-      const workflow = readFileSync(workflowPath(fileName), 'utf8');
+      const workflow = readFileSync(workflowPath(fileName), "utf8");
 
       for (const jobName of jobNames) {
-        const job = getJobBlocks(workflow).find((block) => block.startsWith(`  ${jobName}`));
+        const job = getJobBlocks(workflow).find((block) =>
+          block.startsWith(`  ${jobName}`)
+        );
 
-        expect(runsOnSelfHostedLinux(job ?? ''), `${fileName}:${jobName}`).toBe(true);
+        expect(runsOnSelfHostedLinux(job ?? ""), `${fileName}:${jobName}`).toBe(
+          true
+        );
       }
     }
   });

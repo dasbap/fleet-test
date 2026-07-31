@@ -70,7 +70,7 @@ jobs:
 
   validate-delta-file-list:
     name: Validate delta files exist
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
