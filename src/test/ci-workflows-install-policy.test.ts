@@ -35,11 +35,10 @@ function getJobBlocks(workflow: string): string[] {
   return blocks;
 }
 
-function runsOnSelfHosted(job: string): boolean {
+function runsOnSelfHostedLinux(job: string): boolean {
   return (
-    job.includes("runs-on: [self-hosted, Windows, X64]") ||
-    job.includes("runs-on: ubuntu-latest") ||
-    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*(?:Windows|Linux)\s*\r?\n\s*-\s*X64/.test(
+    job.includes("runs-on: [self-hosted, Linux, X64]") ||
+    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*Linux\s*\r?\n\s*-\s*X64/.test(
       job
     )
   );
