@@ -28,6 +28,7 @@ COMMENT ON TABLE public.admin_profiles IS
 ALTER TABLE public.admin_profiles ENABLE ROW LEVEL SECURITY;
 
 -- Les admins ne peuvent pas se voir entre eux via le client (service_role uniquement)
+DROP POLICY IF EXISTS admin_profiles_no_select ON public.admin_profiles;
 CREATE POLICY admin_profiles_no_select ON public.admin_profiles
   FOR SELECT USING (false);
 
@@ -505,7 +506,8 @@ CREATE POLICY rbac_abonnements_read ON public.abonnements
 -- VUE ADMIN : matrice d'accès par utilisateur
 -- ═══════════════════════════════════════════════════════════════════════════════
 
-CREATE OR REPLACE VIEW public.v_rbac_user_roles AS
+DROP VIEW IF EXISTS public.v_rbac_user_roles;
+CREATE VIEW public.v_rbac_user_roles AS
 SELECT
   u.id          AS user_id,
   u.email,

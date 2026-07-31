@@ -242,7 +242,7 @@ BEGIN
 
     CREATE POLICY abonnements_select_manager_org ON abonnements
       FOR SELECT TO authenticated
-      USING (has_role(fleet_id, 'manager') OR has_role(fleet_id, 'organizer'));
+      USING (has_role(fleet_id, 'manager'::public.role_type) OR has_role(fleet_id, 'organizer'::public.role_type));
   END IF;
 END $$;
 
@@ -264,7 +264,7 @@ BEGIN
           SELECT 1
           FROM abonnements a
           WHERE a.id = droits_vehicules.subscription_id
-            AND (has_role(a.fleet_id, 'manager') OR has_role(a.fleet_id, 'organizer'))
+            AND (has_role(a.fleet_id, 'manager'::public.role_type) OR has_role(a.fleet_id, 'organizer'::public.role_type))
         )
       );
   END IF;
@@ -289,11 +289,11 @@ BEGIN
           SELECT 1
           FROM vehicules v
           WHERE v.id = jetons_qr.vehicle_id
-            AND (has_role(v.fleet_id, 'manager') OR has_role(v.fleet_id, 'organizer'))
+            AND (has_role(v.fleet_id, 'manager'::public.role_type) OR has_role(v.fleet_id, 'organizer'::public.role_type))
         )
         OR
         -- QR de lot lié directement à une flotte
-        (jetons_qr.fleet_id IS NOT NULL AND (has_role(jetons_qr.fleet_id, 'manager') OR has_role(jetons_qr.fleet_id, 'organizer')))
+        (jetons_qr.fleet_id IS NOT NULL AND (has_role(jetons_qr.fleet_id, 'manager'::public.role_type) OR has_role(jetons_qr.fleet_id, 'organizer'::public.role_type)))
       );
   END IF;
 END $$;
@@ -317,7 +317,7 @@ BEGIN
           FROM jetons_qr jq
           JOIN vehicules v ON v.id = jq.vehicle_id
           WHERE jq.id = journal_scans_qr.qr_token_id
-            AND (has_role(v.fleet_id, 'manager') OR has_role(v.fleet_id, 'organizer'))
+            AND (has_role(v.fleet_id, 'manager'::public.role_type) OR has_role(v.fleet_id, 'organizer'::public.role_type))
         )
       );
   END IF;
@@ -342,9 +342,9 @@ BEGIN
           FROM vehicules v
           WHERE v.id = blocages_discipline.vehicle_id
             AND (
-              has_role(v.fleet_id, 'manager')
-              OR has_role(v.fleet_id, 'organizer')
-              OR has_role(v.fleet_id, 'mechanic')
+              has_role(v.fleet_id, 'manager'::public.role_type)
+              OR has_role(v.fleet_id, 'organizer'::public.role_type)
+              OR has_role(v.fleet_id, 'mechanic'::public.role_type)
             )
         )
       );

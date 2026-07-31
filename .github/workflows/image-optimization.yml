@@ -20,13 +20,14 @@ defaults:
 jobs:
   changes:
     name: Detect image changes
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     outputs:
       relevant: ${{ steps.filter.outputs.relevant }}
 
     steps:
       - uses: actions/checkout@v5
         with:
+          clean: false
           fetch-depth: 0
 
       - id: filter
@@ -65,7 +66,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "22"
-          cache: npm
 
       - name: Install dependencies
         timeout-minutes: 8

@@ -39,9 +39,7 @@ jobs:
     name: Verify Supabase migration status
 
     runs-on:
-      - self-hosted
-      - Linux
-      - X64
+      - ubuntu-latest
 
     timeout-minutes: 15
 

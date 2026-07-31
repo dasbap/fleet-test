@@ -114,6 +114,7 @@ CREATE INDEX IF NOT EXISTS idx_demo_expiration_log_user
 -- RLS : service_role uniquement
 ALTER TABLE demo_expiration_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS demo_expiration_log_no_select ON public.demo_expiration_log;
 CREATE POLICY demo_expiration_log_no_select
   ON demo_expiration_log
   AS RESTRICTIVE

@@ -1,106 +1,60 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  bootstrapIntegrationAuth,
-  canRunIntegrationAuthBootstrap,
-  getMissingAuthEnv,
-} from "./_auth";
+  canRunSupabaseIntegrationTests,
+  createSupabaseIntegrationClients,
+  getMissingSupabaseIntegrationEnv,
+  type IntegrationClients,
+} from "./helpers/supabaseTestClient";
+import {
+  cleanupFleetContext,
+  createFleetContextForUser,
+  type TestFleetContext,
+} from "./helpers/testUsers";
 
-const canRunIntegrationSuite = canRunIntegrationAuthBootstrap();
+const canRunIntegrationSuite = canRunSupabaseIntegrationTests();
 const describeIntegration = canRunIntegrationSuite ? describe : describe.skip;
 
-describeIntegration("Triggers - limite véhicules plan Free", () => {
-  let testOrgId: string | undefined;
-  let testFleetId: string | undefined;
-  const createdVehicleIds: string[] = [];
-  let supabaseAdmin: Awaited<
-    ReturnType<typeof bootstrapIntegrationAuth>
-  >["admin"];
-
-  const unique = Date.now();
-  const testOrgName = `Test Vehicle Limit Org ${unique}`;
-  const testFleetName = `Test Vehicle Limit Fleet ${unique}`;
+describeIntegration("Triggers - limite vehicules plan Free", () => {
+  let clients: IntegrationClients;
+  let context: TestFleetContext;
 
   beforeAll(async () => {
-    const context = await bootstrapIntegrationAuth();
-    supabaseAdmin = context.admin;
+    clients = await createSupabaseIntegrationClients();
+    context = await createFleetContextForUser(clients.admin, clients.userId, {
+      user: clients.user,
+      role: "organizer",
+    });
   });
 
   afterAll(async () => {
-    if (createdVehicleIds.length > 0) {
-      await supabaseAdmin
-        .from("vehicules")
-        .delete()
-        .in("id", createdVehicleIds);
-    }
-
-    if (testFleetId) {
-      await supabaseAdmin
-        .from("flotte_adhesions")
-        .delete()
-        .eq("fleet_id", testFleetId);
-      await supabaseAdmin.from("flottes").delete().eq("id", testFleetId);
-    }
-
-    if (testOrgId) {
-      await supabaseAdmin.from("organisations").delete().eq("id", testOrgId);
+    if (clients) {
+      await cleanupFleetContext(clients.admin, context ?? { userId: clients.userId });
     }
   });
 
-  it("bloque le 4e véhicule si la flotte est sur plan free limité à 3", async () => {
-    const { data: org, error: orgError } = await supabaseAdmin
-      .from("organisations")
-      .insert({
-        name: testOrgName,
-        country_code: "CM",
-      })
-      .select("id")
-      .single();
-
-    expect(orgError).toBeNull();
-    expect(org?.id).toBeDefined();
-    testOrgId = org!.id;
-
-    const { data: fleetId, error: fleetCreateError } = await supabaseAdmin.rpc(
-      "create_esamba_fleet",
-      {
-        p_org_id: testOrgId,
-        p_name: testFleetName,
-        p_collection_policy: "mix",
-      }
-    );
-
-    expect(fleetCreateError).toBeNull();
-    expect(typeof fleetId).toBe("string");
-    testFleetId = fleetId as string;
-
+  it("bloque le 4e vehicule si la flotte est sur plan free limite a 3", async () => {
+    const runToken = context.runId.slice(-8).toUpperCase();
     for (const index of [1, 2, 3]) {
-      const { data: createdVehicle, error } = await supabaseAdmin
-        .from("vehicules")
-        .insert({
-          fleet_id: testFleetId,
-          registration: `TEST-YAO-00${index}-${unique}`,
-          brand: "Renault",
-          model: "Master",
-          year: 2022,
-          current_km: 50000 + index,
-          status: "ok",
-        })
-        .select("id")
-        .single();
+      const { data, error } = await clients.user.rpc("creer_vehicule_esamba", {
+        p_fleet_id: context.fleetId,
+        p_registration: `IT-LIM-${runToken}-${index}`,
+        p_brand: "Renault",
+        p_model: "Master",
+        p_year: 2022,
+        p_current_km: 50000 + index,
+      });
 
       expect(error).toBeNull();
-      expect(createdVehicle?.id).toBeDefined();
-      createdVehicleIds.push(createdVehicle!.id);
+      expect(data).toBeDefined();
     }
 
-    const { error } = await supabaseAdmin.from("vehicules").insert({
-      fleet_id: testFleetId,
-      registration: `TEST-YAO-004-${unique}`,
-      brand: "Renault",
-      model: "Master",
-      year: 2022,
-      current_km: 50004,
-      status: "ok",
+    const { error } = await clients.user.rpc("creer_vehicule_esamba", {
+      p_fleet_id: context.fleetId,
+      p_registration: `IT-LIM-${runToken}-4`,
+      p_brand: "Renault",
+      p_model: "Master",
+      p_year: 2022,
+      p_current_km: 50004,
     });
 
     expect(error).not.toBeNull();
@@ -110,8 +64,6 @@ describeIntegration("Triggers - limite véhicules plan Free", () => {
 
 if (!canRunIntegrationSuite) {
   console.warn(
-    `[tests/integration] Suite ignoree: variables manquantes (${getMissingAuthEnv().join(
-      ", "
-    )})`
+    `[tests/integration] Suite ignoree: variables manquantes (${getMissingSupabaseIntegrationEnv().join(", ")})`,
   );
 }

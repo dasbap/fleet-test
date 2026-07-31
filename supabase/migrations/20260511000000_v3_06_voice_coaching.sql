@@ -44,7 +44,7 @@ CREATE POLICY coaching_driver_select ON public.coaching_sessions
 DROP POLICY IF EXISTS coaching_fleet_select ON public.coaching_sessions;
 CREATE POLICY coaching_fleet_select ON public.coaching_sessions
   FOR SELECT USING (
-    public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager')
+    public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type)
   );
 
 -- Service role peut tout insérer (Edge Function)

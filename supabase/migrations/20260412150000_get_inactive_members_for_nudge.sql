@@ -1,6 +1,8 @@
 -- RPC : cibles pour relance rétention « activation » (fenêtre Jmin–Jmax, ex. J2–J6).
 -- Réservé au service role (Edge Function) : pas d’exposition au client JWT.
 
+DROP FUNCTION IF EXISTS public.get_inactive_members_for_nudge(integer, integer);
+
 CREATE OR REPLACE FUNCTION public.get_inactive_members_for_nudge(
   min_days integer,
   max_days integer

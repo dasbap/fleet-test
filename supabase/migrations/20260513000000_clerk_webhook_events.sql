@@ -3,7 +3,7 @@
 -- et à l'audit des synchronisations Clerk → Supabase.
 
 CREATE TABLE IF NOT EXISTS public.clerk_webhook_events (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   svix_id      TEXT NOT NULL UNIQUE,           -- header svix-id (dédup)
   event_type   TEXT NOT NULL,                  -- user.created, user.updated, …
   payload      JSONB,                          -- données brutes de l'événement

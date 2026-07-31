@@ -80,6 +80,7 @@ CREATE INDEX IF NOT EXISTS idx_prospect_user
 ALTER TABLE public.prospect_registrations ENABLE ROW LEVEL SECURITY;
 
 -- Service_role uniquement (admins commerciaux) — pas d'accès client direct
+DROP POLICY IF EXISTS prospect_no_select ON public.prospect_registrations;
 CREATE POLICY prospect_no_select ON public.prospect_registrations
   FOR SELECT USING (false);
 

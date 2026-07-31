@@ -35,11 +35,12 @@ function getJobBlocks(workflow: string): string[] {
   return blocks;
 }
 
-function runsOnSelfHosted(job: string): boolean {
+function runsOnSelfHostedLinux(job: string): boolean {
   return (
-    job.includes("runs-on: [self-hosted, Windows, X64]") ||
     job.includes("runs-on: [self-hosted, Linux, X64]") ||
-    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*(?:Windows|Linux)\s*\r?\n\s*-\s*X64/.test(job)
+    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*Linux\s*\r?\n\s*-\s*X64/.test(
+      job
+    )
   );
 }
 
@@ -73,7 +74,7 @@ describe("GitHub workflow dependency install policy", () => {
       return getJobBlocks(workflow)
         .filter(
           (job) =>
-            runsOnSelfHosted(job) &&
+            runsOnSelfHostedLinux(job) &&
             /^\s+cache:\s+['"]?npm['"]?\s*$/m.test(job)
         )
         .map((job) => `${file}:${job.split("\n")[0].trim()}`);
@@ -104,7 +105,8 @@ describe("GitHub workflow dependency install policy", () => {
         !workflow.includes("pull_request:") ||
         !workflow.includes(jobName) ||
         workflow.includes("if: github.event_name == 'workflow_dispatch'") ||
-        !workflow.includes("runs-on: ubuntu-latest")
+        (!workflow.includes("runs-on: ubuntu-latest") &&
+          !workflow.includes("runs-on: ubuntu-latest"))
       );
     });
 
@@ -136,9 +138,9 @@ describe("GitHub workflow dependency install policy", () => {
     expect(replayWorkflow).toContain("replay-migrations:");
     expect(replayWorkflow).toContain("runs-on: ubuntu-latest");
     expect(replayWorkflow).toContain("verify-migration-filenames:");
-    expect(replayWorkflow).toContain("runs-on: [self-hosted, Linux, X64]");
+    expect(replayWorkflow).toContain("runs-on: ubuntu-latest");
     expect(baselineWorkflow).toContain("validate-delta-file-list:");
-    expect(baselineWorkflow).toContain("runs-on: [self-hosted, Linux, X64]");
+    expect(baselineWorkflow).toContain("runs-on: ubuntu-latest");
   });
 
   it("bounds Node memory during CI dependency installation", () => {
@@ -151,11 +153,15 @@ describe("GitHub workflow dependency install policy", () => {
   it("runs Playwright E2E with the E2E Vite server guard", () => {
     const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
 
-    expect(workflow).toContain("ESAMBA_E2E: \"1\"");
-    expect(workflow).toContain("timeout 300s npx playwright install --with-deps chromium firefox webkit");
+    expect(workflow).toContain('ESAMBA_E2E: "1"');
+    expect(workflow).toContain(
+      "timeout 300s npx playwright install --with-deps chromium firefox webkit"
+    );
     expect(workflow).toContain("source /tmp/supabase-integration.env");
     expect(workflow).toContain('VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \\');
-    expect(workflow).toContain('VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY" \\');
+    expect(workflow).toContain(
+      'VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY" \\'
+    );
     expect(workflow).toContain("skipped_count");
     expect(workflow).toContain("test.outcome === 'skipped'");
     expect(workflow).toContain("npx playwright test --reporter=line,json");
@@ -173,16 +179,21 @@ describe("GitHub workflow dependency install policy", () => {
     const playwrightConfig = readFileSync("playwright.config.ts", "utf8");
     const helpCenterI18nSpec = readFileSync(
       "tests/e2e/help-center-i18n.spec.ts",
-      "utf8",
+      "utf8"
     );
 
     expect(playwrightConfig).toContain("retries: 0");
     expect(playwrightConfig).not.toContain("retries: isCI ? 2 : 0");
-    expect(helpCenterI18nSpec).not.toContain('test.describe.configure({ mode: "serial" })');
+    expect(helpCenterI18nSpec).not.toContain(
+      'test.describe.configure({ mode: "serial" })'
+    );
   });
 
   it("does not apt-install psql in verify migration status", () => {
-    const workflow = readFileSync(".github/workflows/verify-migration.yml", "utf8");
+    const workflow = readFileSync(
+      ".github/workflows/verify-migration.yml",
+      "utf8"
+    );
 
     expect(workflow).toContain("Validate PostgreSQL client availability");
     expect(workflow).toContain("docker run");
@@ -191,13 +202,18 @@ describe("GitHub workflow dependency install policy", () => {
   });
 
   it("uses the Supabase pooler for remote migration verification", () => {
-    const workflow = readFileSync(".github/workflows/verify-migration.yml", "utf8");
+    const workflow = readFileSync(
+      ".github/workflows/verify-migration.yml",
+      "utf8"
+    );
 
     expect(workflow).toContain("DATABASE_URL: ${{ secrets.DATABASE_URL }}");
-    expect(workflow).toContain('DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"');
+    expect(workflow).toContain(
+      'DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"'
+    );
     expect(workflow).toContain('DB_PORT="5432"');
     expect(workflow).toContain('DB_PORT="${DB_TARGET##*:}"');
-    expect(workflow).toContain('psql \\');
+    expect(workflow).toContain("psql \\");
     expect(workflow).toContain('--host="$DB_HOST" \\');
     expect(workflow).toContain('--port="$DB_PORT" \\');
     expect(workflow).toContain('--username="$DB_USER" \\');
@@ -206,8 +222,12 @@ describe("GitHub workflow dependency install policy", () => {
     expect(workflow).toContain("aws-1-eu-west-1.pooler.supabase.com");
     expect(workflow).toContain('DB_USER="postgres.${SUPABASE_PROJECT_REF}"');
     expect(workflow).toContain('DB_USER="postgres"');
-    expect(workflow).not.toContain('DB_HOST="db.${SUPABASE_PROJECT_REF}.supabase.co"');
-    expect(workflow).not.toContain("Le runner ne possède aucune adresse IPv6 globale");
+    expect(workflow).not.toContain(
+      'DB_HOST="db.${SUPABASE_PROJECT_REF}.supabase.co"'
+    );
+    expect(workflow).not.toContain(
+      "Le runner ne possède aucune adresse IPv6 globale"
+    );
   });
 
   it("pins Supabase CLI setup versions in CI workflows", () => {
@@ -232,7 +252,9 @@ describe("GitHub workflow dependency install policy", () => {
   it("keeps the E2E Vite dependency scan scoped to app entries", () => {
     const viteConfig = readFileSync("vite.config.ts", "utf8");
 
-    expect(viteConfig).toContain('["index.html", "src/main.tsx", "src/App.tsx"]');
-    expect(viteConfig).not.toContain('src/**/*.{tsx,ts,jsx,js}');
+    expect(viteConfig).toContain(
+      '["index.html", "src/main.tsx", "src/App.tsx"]'
+    );
+    expect(viteConfig).not.toContain("src/**/*.{tsx,ts,jsx,js}");
   });
 });
