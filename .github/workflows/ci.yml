@@ -954,3 +954,72 @@ jobs:
               process.exit(1);
             }
           "
+      - name: Explain skipped E2E tests
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+
+          const file = 'test-results/e2e/results.json'
+
+          if (!fs.existsSync(file)) {
+            console.log(`Rapport absent: ${file}`)
+            process.exit(0)
+          }
+
+          const report = JSON.parse(
+            fs.readFileSync(file, 'utf8')
+          )
+
+          const skipped = []
+
+          function inspect(suite, parents = []) {
+            const path = [...parents, suite.title].filter(Boolean)
+
+            for (const spec of suite.specs ?? []) {
+              for (const test of spec.tests ?? []) {
+                const isSkipped =
+                  test.outcome === 'skipped' ||
+                  test.status === 'skipped' ||
+                  test.results?.some(
+                    result => result.status === 'skipped'
+                  )
+
+                if (!isSkipped) continue
+
+                skipped.push({
+                  title: [...path, spec.title].join(' > '),
+                  file: spec.file,
+                  line: spec.line,
+                  column: spec.column,
+                  annotations: test.annotations ?? []
+                })
+              }
+            }
+
+            for (const child of suite.suites ?? []) {
+              inspect(child, path)
+            }
+          }
+
+          for (const suite of report.suites ?? []) {
+            inspect(suite)
+          }
+
+          console.log(`Tests ignorés: ${skipped.length}`)
+
+          for (const test of skipped) {
+            const reason = test.annotations
+              .map(annotation =>
+                [annotation.type, annotation.description]
+                  .filter(Boolean)
+                  .join(': ')
+              )
+              .join(' | ')
+
+            console.log(
+              `::warning file=${test.file},line=${test.line},col=${test.column}::` +
+              `${test.title} — ${reason || 'motif absent'}`
+            )
+          }
+          NODE
