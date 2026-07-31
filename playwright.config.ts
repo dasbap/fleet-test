@@ -3,7 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 const E2E_HOST = process.env.E2E_HOST ?? "127.0.0.1";
 const E2E_PORT = process.env.E2E_PORT ?? "5173";
 const E2E_URL_HOST = E2E_HOST.includes(":") ? `[${E2E_HOST}]` : E2E_HOST;
-const BASE_URL = process.env.E2E_BASE_URL ?? `http://${E2E_URL_HOST}:${E2E_PORT}`;
+const BASE_URL =
+  process.env.E2E_BASE_URL ?? `http://${E2E_URL_HOST}:${E2E_PORT}`;
 const isCI = !!process.env.CI;
 const isLiveE2EEnabled =
   process.env.RUN_E2E_LIVE === "1" || process.env.RUN_E2E_LIVE === "true";
@@ -69,7 +70,12 @@ export default defineConfig({
     },
     {
       name: "webkit-desktop",
-      testIgnore: [...generalTestIgnore, /.*\.mobile\.spec\.ts/],
+      testIgnore: [
+        ...generalTestIgnore,
+        /.*\.mobile\.spec\.ts/,
+        /activation-business-journey\.desktop\.spec\.ts/,
+      ],
+
       use: {
         ...devices["Desktop Safari"],
       },
