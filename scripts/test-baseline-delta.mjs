@@ -34,10 +34,11 @@ function run(
   { input, ignoreFailure = false, capture = false } = {}
 ) {
   const result = spawnSync(command, args, {
-    input,
-    encoding: "utf8",
-    shell: process.platform === "win32" && command.endsWith(".cmd"),
-    stdio: ["pipe", "pipe", "pipe"],
+  input,
+  encoding: "utf8",
+  shell: process.platform === "win32" && command.endsWith(".cmd"),
+  stdio: ["pipe", "pipe", "pipe"],
+  maxBuffer: 50 * 1024 * 1024,
   });
 
   if (!capture) {

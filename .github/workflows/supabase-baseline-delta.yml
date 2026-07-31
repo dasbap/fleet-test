@@ -54,7 +54,7 @@ jobs:
 
       - name: Run Baseline + Delta Validation
         env:
-          CI_SUPABASE_DEBUG: "true"
+          CI_SUPABASE_DEBUG: "false"
         run: npm run test:baseline-delta:node -- --target local 2>&1 | tee supabase-ci-logs/baseline-delta.log
 
       - name: Run SQL Security Tests
