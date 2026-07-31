@@ -40,9 +40,7 @@ jobs:
     name: Supabase migrations (fresh DB)
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     runs-on:
-      - self-hosted
-      - Linux
-      - X64
+      - ubuntu-latest
     timeout-minutes: 25
 
     steps:
@@ -119,7 +117,7 @@ jobs:
 
   build:
     name: TypeScript build
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
