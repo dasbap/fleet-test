@@ -41,7 +41,7 @@ jobs:
         run: node scripts/ci-install.mjs
 
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps -chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Run diagnostic
         env:
