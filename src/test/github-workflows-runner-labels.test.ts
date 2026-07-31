@@ -33,14 +33,18 @@ function getJobBlocks(workflow: string): string[] {
 }
 
 function runsOnSelfHostedLinux(job: string): boolean {
-  return /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*Linux\s*\r?\n\s*-\s*X64/.test(
-    job
+  return (
+    job.includes("runs-on: [self-hosted, Linux, X64]") ||
+    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*Linux\s*\r?\n\s*-\s*X64/.test(
+      job
+    )
   );
 }
 
 function runsOnSelfHosted(job: string): boolean {
   return (
     job.includes("runs-on: [self-hosted, Windows, X64]") ||
+    job.includes("runs-on: [self-hosted, Linux, X64]") ||
     /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*(?:Windows|Linux)\s*\r?\n\s*-\s*X64/.test(
       job
     )
