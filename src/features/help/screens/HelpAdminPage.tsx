@@ -14,7 +14,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
-// todo
 
 const roleGuides = [
   {

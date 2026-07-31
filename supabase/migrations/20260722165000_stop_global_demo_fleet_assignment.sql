@@ -3,11 +3,6 @@
 
 do $$
 begin
-  if to_regclass('public.demo_profiles') is not null then
-    alter table public.demo_profiles
-      alter column fleet_id drop not null;
-  end if;
-
   if to_regclass('public.prospect_registrations') is not null then
     alter table public.prospect_registrations
       alter column fleet_id drop not null;
