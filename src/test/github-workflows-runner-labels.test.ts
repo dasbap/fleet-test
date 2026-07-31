@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const workflowPath = (fileName: string) =>
   resolve(process.cwd(), ".github", "workflows", fileName);
+
 const workflowDir = resolve(process.cwd(), ".github", "workflows");
 
 function getJobBlocks(workflow: string): string[] {
@@ -16,6 +17,7 @@ function getJobBlocks(workflow: string): string[] {
       if (current.length > 0) {
         blocks.push(current.join("\n"));
       }
+
       current = [line];
       continue;
     }
@@ -32,15 +34,6 @@ function getJobBlocks(workflow: string): string[] {
   return blocks;
 }
 
-function runsOnSelfHostedLinux(job: string): boolean {
-  return (
-    job.includes("runs-on: [self-hosted, Linux, X64]") ||
-    /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*Linux\s*\r?\n\s*-\s*X64/.test(
-      job
-    )
-  );
-}
-
 function runsOnSelfHosted(job: string): boolean {
   return (
     job.includes("runs-on: [self-hosted, Windows, X64]") ||
@@ -48,6 +41,14 @@ function runsOnSelfHosted(job: string): boolean {
     /runs-on:\s*\r?\n\s*-\s*self-hosted\s*\r?\n\s*-\s*(?:Windows|Linux)\s*\r?\n\s*-\s*X64/.test(
       job
     )
+  );
+}
+
+function runsOnUbuntuLatest(job: string): boolean {
+  return (
+    job.includes("runs-on: ubuntu-latest") ||
+    job.includes("runs-on: [ubuntu-latest]") ||
+    /runs-on:\s*\r?\n\s*-\s*ubuntu-latest/.test(job)
   );
 }
 
@@ -62,12 +63,14 @@ describe("GitHub Supabase workflow runner routing", () => {
 
     for (const fileName of workflowFiles()) {
       const workflow = readFileSync(workflowPath(fileName), "utf8");
+
       const localInstallJobs = getJobBlocks(workflow).filter((job) => {
         if (fileName === "supabase-apply-migrations.yml") {
           return false;
         }
 
         const usesLocalRunner = runsOnSelfHosted(job);
+
         const installsDependencies =
           job.includes("node scripts/ci-install.mjs") ||
           /\bnpm ci\b/.test(job) ||
@@ -88,8 +91,8 @@ describe("GitHub Supabase workflow runner routing", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("routes no-install CI jobs to the local Linux runner", () => {
-    const localJobExpectations = new Map([
+  it("routes CI jobs to ubuntu-latest", () => {
+    const ubuntuJobExpectations = new Map<string, string[]>([
       ["build-capacitor.yml", ["changes:"]],
       ["ci.yml", ["db-migrations:"]],
       ["e2e-helpcenter.yml", ["changes:"]],
@@ -101,7 +104,7 @@ describe("GitHub Supabase workflow runner routing", () => {
       ["verify-migration.yml", ["verify-migration:"]],
     ]);
 
-    for (const [fileName, jobNames] of localJobExpectations) {
+    for (const [fileName, jobNames] of ubuntuJobExpectations) {
       const workflow = readFileSync(workflowPath(fileName), "utf8");
 
       for (const jobName of jobNames) {
@@ -109,7 +112,9 @@ describe("GitHub Supabase workflow runner routing", () => {
           block.startsWith(`  ${jobName}`)
         );
 
-        expect(runsOnSelfHostedLinux(job ?? ""), `${fileName}:${jobName}`).toBe(
+        expect(job, `${fileName}:${jobName} introuvable`).toBeDefined();
+
+        expect(runsOnUbuntuLatest(job ?? ""), `${fileName}:${jobName}`).toBe(
           true
         );
       }
