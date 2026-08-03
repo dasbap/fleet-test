@@ -35,7 +35,7 @@ const APP_URL          = Deno.env.get("APP_URL") ?? "https://app.e-samba.com";
 interface CreateBody {
   action:   "create";
   user_id:  string;
-  fleet_id: string;
+  fleet_id?: string | null;
   email:    string;
   label?:   string;
 }
@@ -128,8 +128,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const { user_id, fleet_id, email, label } = body as CreateBody;
 
-    if (!user_id || !fleet_id || !email) {
-      return json({ ok: false, error: "missing_fields: user_id, fleet_id, email requis" }, 400);
+    if (!user_id || !email) {
+      return json({ ok: false, error: "missing_fields: user_id, email requis" }, 400);
     }
 
     // Rate-limit : 10 créations/heure pour ce token admin (hash du token pour la clé)
@@ -148,7 +148,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Créer le magic link en base
     const { data: linkData, error: linkErr } = await admin.rpc("demo_create_magic_link", {
       p_user_id:  user_id,
-      p_fleet_id: fleet_id,
+      p_fleet_id: fleet_id ?? null,
       p_email:    email,
       p_label:    label ?? null,
     });

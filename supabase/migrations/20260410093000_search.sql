@@ -4,16 +4,30 @@
 create extension if not exists pg_trgm;
 
 -- Index trigram sur les champs textuels les plus consultés côté véhicule
-create index if not exists idx_vehicules_search_trgm
-  on public.vehicules
-  using gin (
-    (coalesce(registration, '') || ' ' || coalesce(brand, '') || ' ' || coalesce(model, '')) gin_trgm_ops
-  );
+do $$
+begin
+  if to_regclass('public.idx_vehicules_search_trgm') is null then
+    execute $sql$
+      create index idx_vehicules_search_trgm
+        on public.vehicules
+        using gin (
+          (coalesce(registration, '') || ' ' || coalesce(brand, '') || ' ' || coalesce(model, '')) gin_trgm_ops
+        )
+    $sql$;
+  end if;
+end $$;
 
 -- Index trigram sur nom conducteur (table profils)
-create index if not exists idx_profils_full_name_trgm
-  on public.profils
-  using gin ((coalesce(full_name, '')) gin_trgm_ops);
+do $$
+begin
+  if to_regclass('public.idx_profils_full_name_trgm') is null then
+    execute $sql$
+      create index idx_profils_full_name_trgm
+        on public.profils
+        using gin ((coalesce(full_name, '')) gin_trgm_ops)
+    $sql$;
+  end if;
+end $$;
 
 -- Index de filtre exact sur statut véhicule
 create index if not exists idx_vehicules_fleet_status

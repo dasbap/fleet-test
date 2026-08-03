@@ -8,7 +8,11 @@
 -- ============================================================================
 
 -- ── 0. Extension pg_trgm (requise pour similarity()) ──────────────────────
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE SCHEMA IF NOT EXISTS extensions;
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm
+WITH SCHEMA extensions;
+
 
 -- ── 1. Guard : s'assurer que les tables dépendantes existent ──────────────
 -- Ces CREATE TABLE IF NOT EXISTS sont des no-ops si les tables existent déjà.
@@ -108,20 +112,24 @@ CREATE TABLE IF NOT EXISTS public.alertes_automatiques (
 );
 
 -- ── 2. Index trgm pour performance de la recherche ────────────────────────
-CREATE INDEX IF NOT EXISTS idx_vehicules_registration_trgm
-  ON public.vehicules USING gin (registration gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS idx_vehicules_brand_trgm
-  ON public.vehicules USING gin (coalesce(brand, '') gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS idx_profils_full_name_trgm
-  ON public.profils USING gin (coalesce(full_name, '') gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS idx_alertes_message_trgm
-  ON public.alertes_automatiques USING gin (message gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS idx_travaux_notes_trgm
-  ON public.travaux_maintenance USING gin (coalesce(notes, '') gin_trgm_ops);
+do $$
+begin
+  if to_regclass('public.idx_vehicules_registration_trgm') is null then
+    execute 'create index idx_vehicules_registration_trgm on public.vehicules using gin (registration gin_trgm_ops)';
+  end if;
+  if to_regclass('public.idx_vehicules_brand_trgm') is null then
+    execute 'create index idx_vehicules_brand_trgm on public.vehicules using gin (coalesce(brand, '''') gin_trgm_ops)';
+  end if;
+  if to_regclass('public.idx_profils_full_name_trgm') is null then
+    execute 'create index idx_profils_full_name_trgm on public.profils using gin (coalesce(full_name, '''') gin_trgm_ops)';
+  end if;
+  if to_regclass('public.idx_alertes_message_trgm') is null then
+    execute 'create index idx_alertes_message_trgm on public.alertes_automatiques using gin (message gin_trgm_ops)';
+  end if;
+  if to_regclass('public.idx_travaux_notes_trgm') is null then
+    execute 'create index idx_travaux_notes_trgm on public.travaux_maintenance using gin (coalesce(notes, '''') gin_trgm_ops)';
+  end if;
+end $$;
 
 -- ── 3. Fonction search_fleet ──────────────────────────────────────────────
 -- SECURITY DEFINER : s'exécute avec les droits du owner (postgres)
@@ -147,7 +155,7 @@ RETURNS TABLE (
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
   WITH params AS (
     SELECT
@@ -334,7 +342,10 @@ COMMENT ON FUNCTION public.search_fleet IS
 -- Recherche unifiée multi-entités pour la flotte
 -- Remplacement progressif de la recherche existante avec compatibilité RPC.
 
-create extension if not exists pg_trgm;
+CREATE SCHEMA IF NOT EXISTS extensions;
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm
+WITH SCHEMA extensions;
 
 -- Index trigram: véhicules
 -- Garde : ignoré si la table n'existe pas encore (ex. rejoue depuis un baseline squashé).
@@ -344,11 +355,13 @@ begin
     select 1 from information_schema.tables
     where table_schema = 'public' and table_name = 'vehicules'
   ) then
-    create index if not exists idx_vehicules_registration_trgm
-      on public.vehicules using gin (registration gin_trgm_ops);
+    if to_regclass('public.idx_vehicules_registration_trgm') is null then
+      execute 'create index idx_vehicules_registration_trgm on public.vehicules using gin (registration gin_trgm_ops)';
+    end if;
 
-    create index if not exists idx_vehicules_brand_model_trgm
-      on public.vehicules using gin ((coalesce(brand, '') || ' ' || coalesce(model, '')) gin_trgm_ops);
+    if to_regclass('public.idx_vehicules_brand_model_trgm') is null then
+      execute 'create index idx_vehicules_brand_model_trgm on public.vehicules using gin ((coalesce(brand, '''') || '' '' || coalesce(model, '''')) gin_trgm_ops)';
+    end if;
   end if;
 end;
 $$;
@@ -360,11 +373,13 @@ begin
     select 1 from information_schema.tables
     where table_schema = 'public' and table_name = 'profils'
   ) then
-    create index if not exists idx_profils_full_name_trgm
-      on public.profils using gin (coalesce(full_name, '') gin_trgm_ops);
+    if to_regclass('public.idx_profils_full_name_trgm') is null then
+      execute 'create index idx_profils_full_name_trgm on public.profils using gin (coalesce(full_name, '''') gin_trgm_ops)';
+    end if;
 
-    create index if not exists idx_profils_phone_trgm
-      on public.profils using gin (coalesce(phone, '') gin_trgm_ops);
+    if to_regclass('public.idx_profils_phone_trgm') is null then
+      execute 'create index idx_profils_phone_trgm on public.profils using gin (coalesce(phone, '''') gin_trgm_ops)';
+    end if;
   end if;
 end;
 $$;
@@ -376,8 +391,9 @@ begin
     select 1 from information_schema.tables
     where table_schema = 'public' and table_name = 'alertes_automatiques'
   ) then
-    create index if not exists idx_alertes_automatiques_message_trgm
-      on public.alertes_automatiques using gin (message gin_trgm_ops);
+    if to_regclass('public.idx_alertes_automatiques_message_trgm') is null then
+      execute 'create index idx_alertes_automatiques_message_trgm on public.alertes_automatiques using gin (message gin_trgm_ops)';
+    end if;
   end if;
 end;
 $$;
@@ -389,11 +405,13 @@ begin
     select 1 from information_schema.tables
     where table_schema = 'public' and table_name = 'travaux_maintenance'
   ) then
-    create index if not exists idx_travaux_maintenance_notes_trgm
-      on public.travaux_maintenance using gin (coalesce(notes, '') gin_trgm_ops);
+    if to_regclass('public.idx_travaux_maintenance_notes_trgm') is null then
+      execute 'create index idx_travaux_maintenance_notes_trgm on public.travaux_maintenance using gin (coalesce(notes, '''') gin_trgm_ops)';
+    end if;
 
-    create index if not exists idx_travaux_maintenance_status_priority_trgm
-      on public.travaux_maintenance using gin ((coalesce(status, '') || ' ' || coalesce(priority, '')) gin_trgm_ops);
+    if to_regclass('public.idx_travaux_maintenance_status_priority_trgm') is null then
+      execute 'create index idx_travaux_maintenance_status_priority_trgm on public.travaux_maintenance using gin ((coalesce(status, '''') || '' '' || coalesce(priority, '''')) gin_trgm_ops)';
+    end if;
   end if;
 end;
 $$;
@@ -434,6 +452,7 @@ begin
     language sql
     stable
     security invoker
+    set search_path = public, extensions
     as $fn$
       with params as (
         select

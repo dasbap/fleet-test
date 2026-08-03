@@ -40,17 +40,26 @@ USING (true);
 -- INSERT : manager ou organizer de la flotte
 CREATE POLICY invitations_ecriture_manager_org ON public.flotte_invitations
 FOR INSERT TO authenticated
-WITH CHECK (has_role(fleet_id, 'manager') OR has_role(fleet_id, 'organizer'));
+WITH CHECK (
+  has_role(fleet_id, 'manager'::public.role_type)
+  OR has_role(fleet_id, 'organizer'::public.role_type)
+);
 
 -- UPDATE : manager ou organizer de la flotte
 CREATE POLICY invitations_modification_manager_org ON public.flotte_invitations
 FOR UPDATE TO authenticated
-USING (has_role(fleet_id, 'manager') OR has_role(fleet_id, 'organizer'));
+USING (
+  has_role(fleet_id, 'manager'::public.role_type)
+  OR has_role(fleet_id, 'organizer'::public.role_type)
+);
 
 -- DELETE : manager ou organizer de la flotte (nécessaire pour useDeleteInvitation)
 CREATE POLICY invitations_suppression_manager_org ON public.flotte_invitations
 FOR DELETE TO authenticated
-USING (has_role(fleet_id, 'manager') OR has_role(fleet_id, 'organizer'));
+USING (
+  has_role(fleet_id, 'manager'::public.role_type)
+  OR has_role(fleet_id, 'organizer'::public.role_type)
+);
 
 -- 3. RPC accepter_invitation
 -- =====================================================

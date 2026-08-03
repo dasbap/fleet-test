@@ -16,6 +16,10 @@ vi.mock("@/hooks/useRealtimeNotifications", () => ({
   useRealtimeNotifications: vi.fn(),
 }));
 
+vi.mock("@/hooks/useRoleAccess", () => ({
+  useRoleAccess: () => ({ isAdmin: false }),
+}));
+
 vi.mock("@/lib/platform", () => ({
   isNativePlatform: () => false,
 }));

@@ -7,6 +7,7 @@ import type { ProfileReadyStatus } from '@/services/profile.service';
 
 const profileRepository = new ProfileRepository();
 const profileService = new ProfileService(profileRepository);
+const readyProfileCache = new Set<string>();
 
 export type WaitForProfileStatus = 'idle' | 'pending' | ProfileReadyStatus;
 
@@ -14,8 +15,10 @@ export type WaitForProfileStatus = 'idle' | 'pending' | ProfileReadyStatus;
  * Attend que le profil DB soit prêt après connexion/inscription (poll profil_est_pret).
  */
 export function useWaitForProfileReady(user: AuthUser | null) {
-  const [status, setStatus] = useState<WaitForProfileStatus>('idle');
   const userId = user?.id ?? null;
+  const [status, setStatus] = useState<WaitForProfileStatus>(() =>
+    userId && readyProfileCache.has(userId) ? 'ready' : 'idle',
+  );
 
   useEffect(() => {
     if (!userId) {
@@ -23,7 +26,13 @@ export function useWaitForProfileReady(user: AuthUser | null) {
       return;
     }
 
+    if (readyProfileCache.has(userId)) {
+      setStatus('ready');
+      return;
+    }
+
     if (isMockAuthEnabled()) {
+      readyProfileCache.add(userId);
       setStatus('ready');
       return;
     }
@@ -33,6 +42,9 @@ export function useWaitForProfileReady(user: AuthUser | null) {
 
     profileService.waitUntilProfileReady(userId).then((result) => {
       if (!cancelled) {
+        if (result === 'ready') {
+          readyProfileCache.add(userId);
+        }
         setStatus(result);
       }
     }).catch((error: unknown) => {

@@ -1,6 +1,7 @@
 -- Sans politique permissive INSERT pour manager/organizer/mechanic, seule
 -- superadmin_all_travaux_maintenance (permissive ALL) s'applique : les autres
 -- rôles échouent même si les politiques restrictives passent (PG : AND restrictives + OR permissives).
+DROP POLICY IF EXISTS travaux_insertion_mgr_org_mec ON public.travaux_maintenance;
 CREATE POLICY travaux_insertion_mgr_org_mec ON public.travaux_maintenance
   FOR INSERT
   WITH CHECK (

@@ -44,6 +44,8 @@ COMMENT ON TABLE public.onboarding_sequence_log IS
   'Journal des étapes séquence onboarding envoyées (anti-doublon). Service role uniquement côté accès effectif.';
 
 -- ── RPC : chauffeurs inactifs (aucun créneau), jours 1/3/7/14, hors étapes déjà journalisées
+DROP FUNCTION IF EXISTS public.get_inactive_drivers_with_manager();
+
 CREATE OR REPLACE FUNCTION public.get_inactive_drivers_with_manager()
 RETURNS TABLE (
   user_id uuid,

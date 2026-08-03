@@ -37,6 +37,18 @@ describe("auth visibility refresh policy", () => {
     ).toBe(false);
   });
 
+  it("ne recharge pas les memberships d'un admin deja resolu sans flotte", () => {
+    expect(
+      shouldFetchMembershipsForAuthEvent({
+        event: "SIGNED_IN",
+        nextUserId: "admin-1",
+        currentUserId: "admin-1",
+        membershipCount: 0,
+        membershipsResolved: true,
+      }),
+    ).toBe(false);
+  });
+
   it("recharge les memberships quand l'utilisateur change", () => {
     expect(
       shouldFetchMembershipsForAuthEvent({

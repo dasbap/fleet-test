@@ -68,8 +68,8 @@ export default async function handler(
     label?:    string;
   };
 
-  if (!body?.user_id || !body?.fleet_id || !body?.email) {
-    res.status(400).json({ ok: false, error: "missing_fields: user_id, fleet_id, email requis" });
+  if (!body?.user_id || !body?.email) {
+    res.status(400).json({ ok: false, error: "missing_fields: user_id, email requis" });
     return;
   }
 
@@ -89,7 +89,7 @@ export default async function handler(
       body: JSON.stringify({
         action:   "create",
         user_id:  body.user_id,
-        fleet_id: body.fleet_id,
+        fleet_id: body.fleet_id ?? null,
         email:    body.email,
         label:    body.label,
       }),

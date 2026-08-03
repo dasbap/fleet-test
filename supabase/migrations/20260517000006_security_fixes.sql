@@ -117,7 +117,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
-COMMENT ON FUNCTION prospect_create_account IS
+COMMENT ON FUNCTION prospect_create_account(uuid, text, text, uuid, uuid, integer) IS
   'Crée un compte prospect démo. Valide que fleet_id est bien is_demo=true.';
 
 -- ─── 2. Table demo_rate_limits — comptage rate-limiting Edge Functions ────────
@@ -186,6 +186,7 @@ COMMENT ON FUNCTION demo_check_rate_limit IS
 -- RLS sur demo_rate_limits : lecture interdite au public
 ALTER TABLE demo_rate_limits ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS demo_rate_limits_no_public ON demo_rate_limits;
 CREATE POLICY demo_rate_limits_no_public
   ON demo_rate_limits
   AS RESTRICTIVE

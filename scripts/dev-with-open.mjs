@@ -79,11 +79,22 @@ async function main() {
   const ports = getCandidatePorts();
   const paths = getSmokePaths();
 
+  const bff = spawn(
+    "npx",
+    ["tsx", "watch", "--env-file=.env.local", "--tsconfig", "tsconfig.server.json", "src/server/index.ts"],
+    {
+      cwd: REPO_ROOT,
+      stdio: ["inherit", "inherit", "inherit"],
+      shell: true,
+      env: { ...process.env, BFF_PORT: process.env.BFF_PORT ?? "8787" },
+    },
+  );
+
   const child = spawn("npx", ["vite"], {
     cwd: REPO_ROOT,
     stdio: ["inherit", "pipe", "inherit"],
     shell: true,
-    env: { ...process.env, ESAMBA_MANAGED_OPEN: "1" },
+    env: { ...process.env, ESAMBA_MANAGED_OPEN: "1", VITE_DEV_BFF_PROXY: "true" },
   });
 
   let opened = false;
@@ -91,11 +102,13 @@ async function main() {
 
   child.on("error", (err) => {
     console.error("[dev:local] Impossible de lancer Vite :", err.message);
+    bff.kill();
     process.exit(1);
   });
 
   child.on("exit", (code, signal) => {
     childDead = true;
+    bff.kill();
     if (signal) {
       process.exit(1);
     }

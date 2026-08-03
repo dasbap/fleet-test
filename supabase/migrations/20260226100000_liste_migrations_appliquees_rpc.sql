@@ -3,12 +3,19 @@
 
 create or replace function public.liste_migrations_appliquees()
 returns setof text
-language sql
+language plpgsql
 security definer
 set search_path = public, supabase_migrations
 stable
 as $$
-  select version from supabase_migrations.schema_migrations order by version;
+begin
+  if to_regclass('supabase_migrations.schema_migrations') is null then
+    return;
+  end if;
+
+  return query
+  select version::text from supabase_migrations.schema_migrations order by version;
+end;
 $$;
 
 comment on function public.liste_migrations_appliquees() is

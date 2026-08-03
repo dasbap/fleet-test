@@ -1,34 +1,68 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  canRunIntegrationAuthBootstrap,
-  getMissingAuthEnv,
-  bootstrapIntegrationAuth,
-} from "./_auth";
+  canRunSupabaseIntegrationTests,
+  createSupabaseIntegrationClients,
+  getMissingSupabaseIntegrationEnv,
+  type IntegrationClients,
+} from "./helpers/supabaseTestClient";
+import {
+  cleanupFleetContext,
+  createFleetContextForUser,
+  type TestFleetContext,
+} from "./helpers/testUsers";
 
-const canRunIntegrationSuite = canRunIntegrationAuthBootstrap();
+const canRunIntegrationSuite = canRunSupabaseIntegrationTests();
 const describeIntegration = canRunIntegrationSuite ? describe : describe.skip;
 
 describeIntegration("RLS - acces flotte", () => {
-  it("verifie que la flotte test existe", async () => {
-    const { admin: supabaseAdmin } = await bootstrapIntegrationAuth();
+  let clients: IntegrationClients;
+  let context: TestFleetContext;
 
-    const { data, error } = await supabaseAdmin
+  beforeAll(async () => {
+    clients = await createSupabaseIntegrationClients();
+    context = await createFleetContextForUser(clients.admin, clients.userId, {
+      user: clients.user,
+      role: "organizer",
+    });
+
+    const runToken = context.runId.slice(-8).toUpperCase();
+    for (const index of [1, 2, 3]) {
+      const { error } = await clients.user.rpc("creer_vehicule_esamba", {
+        p_fleet_id: context.fleetId,
+        p_registration: `IT-RLS-${runToken}-${index}`,
+        p_brand: "Toyota",
+        p_model: "Hiace",
+        p_year: 2020 + index,
+        p_current_km: 10000 + index,
+      });
+
+      expect(error).toBeNull();
+    }
+  });
+
+  afterAll(async () => {
+    if (clients) {
+      await cleanupFleetContext(clients.admin, context ?? { userId: clients.userId });
+    }
+  });
+
+  it("verifie que la flotte test existe", async () => {
+    const { data, error } = await clients.admin
       .from("flottes")
       .select("id,name")
-      .eq("name", "TEST Flotte Taxi Yaoundé")
+      .eq("id", context.fleetId)
       .single();
 
     expect(error).toBeNull();
-    expect(data?.name).toBe("TEST Flotte Taxi Yaoundé");
+    expect(data?.id).toBe(context.fleetId);
   });
 
   it("verifie que les vehicules test sont visibles cote service role", async () => {
-    const { admin: supabaseAdmin } = await bootstrapIntegrationAuth();
-
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await clients.admin
       .from("vehicules")
       .select("registration")
-      .like("registration", "TEST-YAO-%");
+      .eq("fleet_id", context.fleetId)
+      .like("registration", "IT-RLS-%");
 
     expect(error).toBeNull();
     expect(data?.length).toBeGreaterThanOrEqual(3);
@@ -36,8 +70,7 @@ describeIntegration("RLS - acces flotte", () => {
 });
 
 if (!canRunIntegrationSuite) {
-  // Commentaire explicite dans la sortie Vitest quand la suite est ignoree.
   console.warn(
-    `[tests/integration] Suite ignoree: variables manquantes (${getMissingAuthEnv().join(", ")})`,
+    `[tests/integration] Suite ignoree: variables manquantes (${getMissingSupabaseIntegrationEnv().join(", ")})`,
   );
 }

@@ -5,7 +5,7 @@ import { PublicPageLayout } from "@/components/landing/PublicPageLayout";
 import { PublicPageHero } from "@/components/landing/PublicPageHero";
 import { FaqSchemaOrg } from "@/components/faq/FaqSchemaOrg";
 import { FaqSearch } from "@/components/faq/FaqSearch";
-import { PUBLIC_FAQ_ENTRIES, toPublicFaqItems } from "@/data/marketing/faq-public";
+import { usePublicFaqEntries } from "@/hooks/useHelpArticles";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { cn } from "@/lib/utils";
@@ -50,17 +50,22 @@ export default function FaqPage() {
   usePageSeo("faq");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [query, setQuery] = useState("");
-  const schemaItems = toPublicFaqItems();
+  const { data: faqEntries = [] } = usePublicFaqEntries();
+  const schemaItems = faqEntries.map((entry) => ({
+    id: entry.id,
+    question: entry.title,
+    answer: entry.content,
+  }));
 
   const filteredFaqs = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return PUBLIC_FAQ_ENTRIES;
-    return PUBLIC_FAQ_ENTRIES.filter(
+    if (!normalized) return faqEntries;
+    return faqEntries.filter(
       (faq) =>
-        faq.q.toLowerCase().includes(normalized) ||
-        faq.a.toLowerCase().includes(normalized),
+        faq.title.toLowerCase().includes(normalized) ||
+        faq.content.toLowerCase().includes(normalized),
     );
-  }, [query]);
+  }, [faqEntries, query]);
 
   return (
     <PublicPageLayout>
@@ -85,12 +90,12 @@ export default function FaqPage() {
           ) : (
             <div className="space-y-3 animate-fade-in-up">
               {filteredFaqs.map((faq) => {
-                const originalIndex = PUBLIC_FAQ_ENTRIES.indexOf(faq);
+                const originalIndex = faqEntries.findIndex((entry) => entry.id === faq.id);
                 return (
                   <FaqAccordionItem
-                    key={faq.q}
-                    q={faq.q}
-                    a={faq.a}
+                    key={faq.id}
+                    q={faq.title}
+                    a={faq.content}
                     open={openIndex === originalIndex}
                     onToggle={() =>
                       setOpenIndex(openIndex === originalIndex ? null : originalIndex)

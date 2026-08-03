@@ -40,15 +40,18 @@ export function shouldFetchMembershipsForAuthEvent({
   nextUserId,
   currentUserId,
   membershipCount,
+  membershipsResolved = false,
 }: {
   event: string;
   nextUserId: string | null;
   currentUserId: string | null;
   membershipCount: number;
+  membershipsResolved?: boolean;
 }): boolean {
   if (event !== "SIGNED_IN") return false;
   if (!nextUserId) return false;
   if (nextUserId !== currentUserId) return true;
+  if (membershipsResolved) return false;
   return membershipCount === 0;
 }
 

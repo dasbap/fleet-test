@@ -18,10 +18,12 @@ defaults:
 jobs:
   verify-migration-filenames:
     name: Verify migration filenames
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          clean: false
 
       - name: Validate migration naming convention
         run: |
@@ -55,15 +57,18 @@ jobs:
     needs: verify-migration-filenames
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          clean: false
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v2
         with:
-          version: 2.102.0
+          version: 2.109.1
+          github-token: ${{ github.token }}
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
 

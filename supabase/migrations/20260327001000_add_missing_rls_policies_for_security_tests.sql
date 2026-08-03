@@ -15,7 +15,7 @@ USING (
     WHERE t.id = listes_verification_maintenance.job_id
       AND (
         public.can_manage_fleet(t.fleet_id)
-        OR public.has_role(t.fleet_id, 'mechanic')
+        OR public.has_role(t.fleet_id, 'mechanic'::public.role_type)
       )
   )
 );
@@ -30,7 +30,7 @@ WITH CHECK (
     SELECT 1
     FROM public.travaux_maintenance t
     WHERE t.id = listes_verification_maintenance.job_id
-      AND public.has_role(t.fleet_id, 'mechanic')
+      AND public.has_role(t.fleet_id, 'mechanic'::public.role_type)
   )
 );
 
@@ -149,7 +149,7 @@ USING (
     WHERE v.id = jetons_qr.vehicle_id
       AND (
         public.can_manage_fleet(v.fleet_id)
-        OR public.has_role(v.fleet_id, 'mechanic')
+        OR public.has_role(v.fleet_id, 'mechanic'::public.role_type)
       )
   )
 );

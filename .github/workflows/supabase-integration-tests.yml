@@ -2,10 +2,27 @@ name: Supabase Integration Tests
 
 on:
   pull_request:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
+
   push:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
+
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,15 +34,18 @@ defaults:
 
 jobs:
   supabase-integration:
+    name: Supabase local integration tests
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          clean: false
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
 
@@ -36,30 +56,155 @@ jobs:
       - name: TypeScript
         run: npx tsc --noEmit
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder_key' }}
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: placeholder_key
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v2
         with:
-          version: 2.102.0
+          version: 2.109.1
+          github-token: ${{ github.token }}
 
-      - name: Prepare dynamic Supabase local ports
+      - name: Prepare dynamic local ports
         run: node scripts/prepare-local-supabase-ports.mjs
 
       - name: Start Supabase local
-        run: supabase start --ignore-health-check
+        run: supabase start -x vector,logflare
 
-      - name: Apply migrations
-        run: supabase db push --local
+      - name: Replay migrations
+        run: supabase db reset --no-seed
+
+      - name: Export isolated local credentials
+        run: |
+          set -euo pipefail
+
+          status_file="$(mktemp)"
+          supabase status -o env > "$status_file"
+
+          unset API_URL
+          unset ANON_KEY
+          unset SERVICE_ROLE_KEY
+
+          set -a
+          source "$status_file"
+          set +a
+
+          rm -f "$status_file"
+
+          test -n "${API_URL:-}" || {
+            echo "::error::API_URL absente de supabase status"
+            exit 1
+          }
+
+          test -n "${ANON_KEY:-}" || {
+            echo "::error::ANON_KEY absente de supabase status"
+            exit 1
+          }
+
+          test -n "${SERVICE_ROLE_KEY:-}" || {
+            echo "::error::SERVICE_ROLE_KEY absente de supabase status"
+            exit 1
+          }
+
+          case "$API_URL" in
+            http://127.0.0.1:*|http://localhost:*)
+              ;;
+            *)
+              echo "::error::URL Supabase non locale: $API_URL"
+              exit 1
+              ;;
+          esac
+
+          API_URL="$API_URL" \
+          ANON_KEY="$ANON_KEY" \
+          SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+          node <<'NODE'
+          function decode(part) {
+            return JSON.parse(
+              Buffer.from(part, "base64url").toString("utf8"),
+            )
+          }
+
+          function validate(name, token, expectedRole) {
+            const parts = token.split(".")
+
+            if (parts.length !== 3) {
+              throw new Error(`${name} n'est pas un JWT valide`)
+            }
+
+            const header = decode(parts[0])
+            const payload = decode(parts[1])
+
+            if (header.alg !== "HS256") {
+              throw new Error(
+                `${name} utilise ${header.alg}; HS256 attendu`,
+              )
+            }
+
+            if (payload.role !== expectedRole) {
+              throw new Error(
+                `${name} contient le rôle ${payload.role}; ${expectedRole} attendu`,
+              )
+            }
+          }
+
+          validate(
+            "ANON_KEY",
+            process.env.ANON_KEY,
+            "anon",
+          )
+
+          validate(
+            "SERVICE_ROLE_KEY",
+            process.env.SERVICE_ROLE_KEY,
+            "service_role",
+          )
+          NODE
+
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+
+          {
+            echo "SUPABASE_LOCAL_URL=$API_URL"
+            echo "SUPABASE_LOCAL_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_LOCAL_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+
+            echo "VITE_SUPABASE_URL=$API_URL"
+            echo "VITE_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
 
       - name: Run integration tests
-        run: npx vitest run -c vitest.integration.config.ts
+        run: |
+          set -euo pipefail
 
-      - name: Supabase status (always)
-        if: always()
-        run: supabase status
+          unset SUPABASE_URL
+          unset SUPABASE_ANON_KEY
 
-      - name: Stop Supabase local (always)
+          npx vitest run \
+            --config vitest.integration.config.ts \
+            --pool=forks \
+            --maxWorkers=1 \
+            tests/integration/rls.fleet-access.test.ts \
+            tests/integration/triggers.vehicle-limit.test.ts \
+            tests/integration/fuel.fraud-scoring.test.ts \
+            --reporter=default \
+            --reporter=json \
+            --outputFile=test-results/supabase-integration.json
+
+      - name: Upload integration test report
         if: always()
-        run: supabase stop
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-integration-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Supabase status
+        if: always()
+        run: supabase status || true
+
+      - name: Stop Supabase local
+        if: always()
+        run: supabase stop --no-backup || true

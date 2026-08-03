@@ -30,8 +30,7 @@ BEGIN
         );
         $cron$;
 
-    COMMENT ON SCHEMA cron IS
-      'process-notification-queue : consomme notification_queue (emails billing relances grace/suspended) - Resend - toutes les 15 min.';
+    RAISE NOTICE 'pg_cron job process-notification-queue planifie toutes les 15 min.';
   ELSE
     RAISE NOTICE 'pg_cron non disponible - planification process-notification-queue ignoree.';
   END IF;

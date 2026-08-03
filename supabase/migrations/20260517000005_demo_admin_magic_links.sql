@@ -58,6 +58,7 @@ CREATE INDEX IF NOT EXISTS idx_demo_magic_links_user
 -- RLS : service_role uniquement (admin UI via BFF)
 ALTER TABLE demo_magic_links ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS demo_magic_links_no_public ON demo_magic_links;
 CREATE POLICY demo_magic_links_no_public
   ON demo_magic_links
   AS RESTRICTIVE
@@ -85,12 +86,14 @@ CREATE INDEX IF NOT EXISTS idx_demo_onboarding_logs_user
 -- RLS : utilisateur voit uniquement ses propres logs (write + admin service_role)
 ALTER TABLE demo_onboarding_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS demo_onboarding_logs_own_write ON demo_onboarding_logs;
 CREATE POLICY demo_onboarding_logs_own_write
   ON demo_onboarding_logs
   FOR INSERT
   TO authenticated
   WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS demo_onboarding_logs_own_read ON demo_onboarding_logs;
 CREATE POLICY demo_onboarding_logs_own_read
   ON demo_onboarding_logs
   FOR SELECT
@@ -156,7 +159,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION demo_validate_magic_link IS
+COMMENT ON FUNCTION demo_validate_magic_link(uuid) IS
   'Valide un magic link token, incrémente used_count. SECURITY DEFINER.';
 
 -- ─── 5. demo_create_magic_link() ─────────────────────────────────────────────
@@ -200,7 +203,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION demo_create_magic_link IS
+COMMENT ON FUNCTION demo_create_magic_link(uuid, uuid, text, text, timestamptz, uuid) IS
   'Crée un nouveau magic link, désactive les anciens. SECURITY DEFINER.';
 
 -- ─── 6. admin_list_demo_sessions() ───────────────────────────────────────────
@@ -262,7 +265,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION admin_list_demo_sessions IS
+COMMENT ON FUNCTION admin_list_demo_sessions(boolean) IS
   'Vue enrichie des sessions démo pour l''admin UI. Admin plateforme uniquement.';
 
 -- Grant explicite pour RPC côté client
@@ -314,7 +317,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION admin_reset_demo_fleet IS
+COMMENT ON FUNCTION admin_reset_demo_fleet(uuid) IS
   'Réinitialise les données d''une flotte démo (véhicules + logs onboarding).';
 
 GRANT EXECUTE ON FUNCTION admin_reset_demo_fleet(uuid) TO authenticated;

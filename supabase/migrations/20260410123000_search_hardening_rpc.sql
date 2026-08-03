@@ -38,7 +38,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+SET search_path = public, extensions
 as $$
 declare
   v_query text := left(trim(coalesce(p_query, '')), 80);
