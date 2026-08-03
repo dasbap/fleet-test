@@ -2,10 +2,24 @@ name: Verify Migration Status
 
 on:
   push:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
+
   pull_request:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
-  workflow_dispatch: # Permet d'exécuter manuellement depuis GitHub
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
+
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -22,103 +36,307 @@ defaults:
 
 jobs:
   verify-migration:
-    name: Verify Migration to French
-    runs-on: [self-hosted, Linux, X64]
-    
-    env:
-      SUPABASE_CLI_VERSION: 2.102.0  # Version de Supabase CLI à installer
-    
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    name: Verify Supabase migration status
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+    runs-on:
+      - ubuntu-latest
+
+    timeout-minutes: 15
+
+    env:
+      SUPABASE_CLI_VERSION: "2.102.0"
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_POOLER_HOST: ${{ secrets.SUPABASE_POOLER_HOST }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PGSSLMODE: require
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
           version: ${{ env.SUPABASE_CLI_VERSION }}
 
-      - name: Verify Supabase CLI Installation
+      - name: Verify Supabase CLI installation
         run: |
+          set -euo pipefail
           supabase --version
 
-      - name: Link Supabase Project
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      - name: Validate PostgreSQL client availability
         run: |
-          echo "Linking to Supabase project: $SUPABASE_PROJECT_REF"
-          supabase link --project-ref $SUPABASE_PROJECT_REF --password ${{ secrets.SUPABASE_DB_PASSWORD }}
-        continue-on-error: true
+          set -euo pipefail
 
-      - name: Execute Migration Verification Script
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-        run: |
-          echo "Executing migration verification script..."
-          supabase db query < supabase/scripts/verify/verify-migration-status.sql > migration-report.txt 2>&1 || true
-          
-          # Afficher le rapport
-          echo "=== MIGRATION VERIFICATION REPORT ==="
-          cat migration-report.txt
-          
-          # Vérifier s'il y a des erreurs critiques
-          if grep -q "❌ ERREURS" migration-report.txt; then
-            echo "::error::Critical errors detected in migration verification"
+          if command -v psql >/dev/null 2>&1; then
+            psql --version
+            exit 0
+          fi
+
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "::error::psql ou docker est requis sur le runner pour vérifier les migrations"
             exit 1
           fi
-          
-          if grep -q "⚠️ AVERTISSEMENTS" migration-report.txt; then
-            echo "::warning::Warnings detected in migration verification"
+
+          timeout 180 docker pull postgres:16-alpine
+          docker run --rm postgres:16-alpine psql --version
+
+      - name: Validate Supabase configuration
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_PROJECT_REF:-}" ]; then
+            echo "::error::Le secret SUPABASE_PROJECT_REF est absent ou vide"
+            exit 1
           fi
 
-      - name: Upload Migration Report
-        uses: actions/upload-artifact@v4
+          if [ -z "${SUPABASE_DB_PASSWORD:-}" ]; then
+            echo "::error::Le secret SUPABASE_DB_PASSWORD est absent ou vide"
+            exit 1
+          fi
+
+          if ! printf '%s' "$SUPABASE_PROJECT_REF" | grep -Eq '^[a-z0-9]{20}$'; then
+            echo "::error::SUPABASE_PROJECT_REF doit contenir uniquement la référence du projet"
+            exit 1
+          fi
+
+          if [ ! -f "supabase/scripts/verify/verify-migration-status.sql" ]; then
+            echo "::error::Le fichier supabase/scripts/verify/verify-migration-status.sql est introuvable"
+            exit 1
+          fi
+
+          if ! command -v psql >/dev/null 2>&1 && ! command -v docker >/dev/null 2>&1; then
+            echo "::error::Le client PostgreSQL psql est introuvable et docker n'est pas disponible"
+            exit 1
+          fi
+
+      - name: Check database connectivity
+        run: |
+          set -euo pipefail
+
+          DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"
+          DB_HOST="${SUPABASE_POOLER_HOST:-aws-1-eu-west-1.pooler.supabase.com}"
+          DB_PORT="5432"
+
+          if [ -n "$DB_URL" ]; then
+            DB_TARGET="$(
+              printf '%s' "$DB_URL" |
+                sed -E 's#^[^/]+//([^@]+@)?([^/?]+).*#\2#'
+            )"
+            DB_HOST="${DB_TARGET%%:*}"
+
+            if [ "$DB_TARGET" != "$DB_HOST" ]; then
+              DB_PORT="${DB_TARGET##*:}"
+            fi
+          fi
+
+          DB_ADDRESS="$(
+            getent ahosts "$DB_HOST" |
+              awk '{ print $1; exit }'
+          )"
+
+          if [ -z "$DB_ADDRESS" ]; then
+            echo "::error::Aucune adresse trouvée pour ${DB_HOST}"
+            exit 1
+          fi
+
+          echo "Adresse Supabase database : ${DB_ADDRESS}"
+
+          if ! timeout 10 bash -c "exec 3<>/dev/tcp/${DB_HOST}/${DB_PORT}"; then
+            echo "::error::Le runner ne peut pas joindre ${DB_HOST}:${DB_PORT}"
+            exit 1
+          fi
+
+          echo "Connexion TCP vers Supabase disponible."
+
+      - name: Execute migration verification
+        id: migration
+        run: |
+          set -euo pipefail
+
+          DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"
+          DB_HOST="${SUPABASE_POOLER_HOST:-aws-1-eu-west-1.pooler.supabase.com}"
+          DB_PORT="5432"
+          DB_USER="postgres.${SUPABASE_PROJECT_REF}"
+          SQL_FILE="supabase/scripts/verify/verify-migration-status.sql"
+
+          if [ -n "$DB_URL" ]; then
+            DB_TARGET="$(
+              printf '%s' "$DB_URL" |
+                sed -E 's#^[^/]+//([^@]+@)?([^/?]+).*#\2#'
+            )"
+            DB_HOST="${DB_TARGET%%:*}"
+
+            if [ "$DB_TARGET" != "$DB_HOST" ]; then
+              DB_PORT="${DB_TARGET##*:}"
+            fi
+
+            if [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
+              DB_USER="postgres"
+            fi
+          fi
+
+          echo "Executing migration verification script..."
+          echo "Database host: ${DB_HOST}"
+          echo "Database port: ${DB_PORT}"
+          echo "Database user: ${DB_USER}"
+
+          set +e
+
+          if command -v psql >/dev/null 2>&1; then
+            psql \
+              --host="$DB_HOST" \
+              --port="$DB_PORT" \
+              --username="$DB_USER" \
+              --dbname="postgres" \
+              --file="$SQL_FILE" \
+              --set=ON_ERROR_STOP=1 \
+              --no-password \
+              > migration-report.txt 2>&1
+          else
+            docker run \
+              --rm \
+              --network host \
+              -e PGPASSWORD \
+              -e PGSSLMODE \
+              -v "$PWD/$SQL_FILE:/verify-migration-status.sql:ro" \
+              postgres:16-alpine \
+              psql \
+                --host="$DB_HOST" \
+                --port="$DB_PORT" \
+                --username="$DB_USER" \
+                --dbname="postgres" \
+                --file="/verify-migration-status.sql" \
+                --set=ON_ERROR_STOP=1 \
+                --no-password \
+              > migration-report.txt 2>&1
+          fi
+
+          STATUS=$?
+
+          set -e
+
+          echo "=== MIGRATION VERIFICATION REPORT ==="
+
+          if [ -f migration-report.txt ]; then
+            cat migration-report.txt
+          else
+            echo "Aucun rapport n'a été généré."
+          fi
+
+          echo "status=${STATUS}" >> "$GITHUB_OUTPUT"
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::error::La vérification des migrations a échoué avec le code ${STATUS}"
+            exit "$STATUS"
+          fi
+
+          if grep -Eqi \
+            "❌ ERREURS|failed to connect|connection refused|network is unreachable|no route to host|password authentication failed|FATAL:|ERROR:" \
+            migration-report.txt
+          then
+            echo "::error::Des erreurs critiques ont été détectées dans le rapport"
+            exit 1
+          fi
+
+          if grep -q "⚠️ AVERTISSEMENTS" migration-report.txt; then
+            echo "::warning::Des avertissements ont été détectés dans le rapport"
+          fi
+
+      - name: Upload migration report
         if: always()
+        uses: actions/upload-artifact@v6
         with:
-          name: migration-verification-report
+          name: migration-verification-report-${{ github.run_id }}
           path: migration-report.txt
+          if-no-files-found: warn
           retention-days: 30
 
-      - name: Log PR Comment Skip Reason
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+      - name: Log PR comment skip reason
+        if: >
+          always() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name != github.repository
         run: |
-          echo "ℹ️ Commentaire PR ignoré : la PR provient d'un fork, le token GitHub Actions n'a pas les permissions d'écriture nécessaires."
+          echo "Commentaire ignoré : la pull request provient d'un fork."
 
-      - name: Comment PR with Results
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/github-script@v7
+      - name: Comment PR with results
+        if: >
+          always() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          retries: 4
+          retry-exempt-status-codes: 400,401,403,404,422
           script: |
-            const fs = require('fs');
-            let report = '';
-            try {
-              report = fs.readFileSync('migration-report.txt', 'utf8');
-            } catch (e) {
-              report = '(Rapport non disponible - exécution du script de vérification en échec ou fichier absent.)';
+            const fs = require("fs");
+
+            const marker = "<!-- migration-verification-report -->";
+            const reportPath = "migration-report.txt";
+
+            let report = fs.existsSync(reportPath)
+              ? fs.readFileSync(reportPath, "utf8")
+              : "Rapport indisponible.";
+
+            if (report.length > 60000) {
+              report =
+                report.slice(0, 60000) +
+                "\n\n... rapport tronqué. Consultez l’artifact complet.";
             }
-            const comment = `## 🔍 Migration Verification Report
+
+            const body = `${marker}
+            ## Vérification des migrations Supabase
+
+            **Résultat du job :** \`${{ job.status }}\`
 
             <details>
-            <summary>Click to expand report</summary>
+            <summary>Afficher le rapport</summary>
 
-            \`\`\`
+            \`\`\`text
             ${report}
             \`\`\`
 
-            </details>
+            </details>`;
 
-            **Note:** Vérification automatique. Consulter le rapport et agir si besoin.
-            `;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner,
+                repo,
+                issue_number,
+                per_page: 100
+              }
+            );
+
+            const existingComment = comments.find(
+              comment =>
+                comment.user?.type === "Bot" &&
+                typeof comment.body === "string" &&
+                comment.body.includes(marker)
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body
+              });
+            }

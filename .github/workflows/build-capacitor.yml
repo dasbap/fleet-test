@@ -19,12 +19,13 @@ defaults:
 jobs:
   changes:
     name: Detect Capacitor changes
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     outputs:
       relevant: ${{ steps.filter.outputs.relevant }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
+          clean: false
           fetch-depth: 0
 
       - id: filter
@@ -55,19 +56,16 @@ jobs:
       # Valeurs factices : le client Supabase n’est pas exécuté pendant le build statique.
       VITE_SUPABASE_URL: https://placeholder-build.supabase.co
       VITE_SUPABASE_ANON_KEY: placeholder-anon-key-ci-build-only
+      SHARP_IGNORE_GLOBAL_LIBVIPS: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          clean: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
-
-      - name: Install libvips (requis par @capacitor/assets/sharp en fallback compilation)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libvips-dev
 
       - name: Install dependencies
         timeout-minutes: 8

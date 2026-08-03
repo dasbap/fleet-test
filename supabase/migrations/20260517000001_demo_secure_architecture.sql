@@ -472,6 +472,7 @@ CREATE POLICY demo_block_notification_queue ON public.notification_queue
   USING (NOT is_demo_user());
 
 -- ─── demo_profiles — demo users ne peuvent pas se voir ────────────────────
+DROP POLICY IF EXISTS demo_profiles_no_self_read ON public.demo_profiles;
 CREATE POLICY demo_profiles_no_self_read ON public.demo_profiles
   FOR SELECT USING (false);  -- service_role contourne RLS, authenticated ne voit rien
 
@@ -530,7 +531,8 @@ GRANT EXECUTE ON FUNCTION public.demo_check_allowed(text) TO authenticated;
 -- VUE ADMIN monitoring démo
 -- ═══════════════════════════════════════════════════════════════════════════════
 
-CREATE OR REPLACE VIEW public.v_demo_accounts_status AS
+DROP VIEW IF EXISTS public.v_demo_accounts_status;
+CREATE VIEW public.v_demo_accounts_status AS
 SELECT
   u.email,
   dp.demo_role,

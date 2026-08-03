@@ -9,6 +9,7 @@ import { DriverTerrainActivationModal } from "@/components/activation/DriverTerr
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { HelpBubble } from "@/components/shared/HelpCenter";
 import { useAuth } from "@/hooks/useAuth";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { isNativePlatform } from "@/lib/platform";
 import MobileLayout from "@/layouts/MobileLayout";
@@ -26,6 +27,7 @@ const NotificationsPermissionGate = lazy(() =>
  */
 export default function DashboardLayout() {
   const { user, role, userFleetId, activeTenantContext } = useAuth();
+  const { isAdmin } = useRoleAccess();
   /** Rôle dans la flotte active (aligné sur la liste Équipes et useRoleAccess). */
   const userRole = activeTenantContext?.role ?? role ?? "organizer";
   const userMetadata = user?.user_metadata || {};
@@ -64,7 +66,7 @@ export default function DashboardLayout() {
           <DriverTerrainActivationModal />
           <main className="flex-1 p-6 md:p-8 overflow-auto bg-gradient-to-br from-background via-background to-primary/[0.03]">
             <Suspense fallback={null}>
-              <NotificationsPermissionGate />
+              {!isAdmin ? <NotificationsPermissionGate /> : null}
             </Suspense>
             <SectionErrorBoundary sectionLabel="le tableau de bord">
               <Suspense fallback={<RoutePageFallback />}>

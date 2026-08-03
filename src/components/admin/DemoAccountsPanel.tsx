@@ -254,7 +254,7 @@ export function DemoAccountsPanel({ currentAdminId }: DemoAccountsPanelProps) {
             {TYPE_LABELS[type]} — {
               type === "investor" ? "48h" :
               type === "prospect" ? "7j" :
-              "permanent"
+              "30j"
             }
           </span>
         ))}

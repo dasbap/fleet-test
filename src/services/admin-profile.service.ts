@@ -19,4 +19,16 @@ export class AdminProfileService {
       return false;
     }
   }
+
+  async isPlatformSuperAdmin(userId: string): Promise<boolean> {
+    if (!userId) {
+      return false;
+    }
+
+    try {
+      return await this.repository.isPlatformSuperAdmin(userId);
+    } catch {
+      return false;
+    }
+  }
 }

@@ -25,20 +25,13 @@ export interface DemoSession {
   last_activity_at: string | null;
 }
 
-export interface DemoFleet {
-  id: string;
-  name: string;
-}
-
 export interface DemoRpcActionResult {
   ok: boolean;
   expires_at?: string;
+  max_expires_at?: string;
   vehicles_deleted?: number;
 }
 
-/**
- * Accès Supabase pour l'administration des comptes démo (RPC + flottes).
- */
 export class AdminDemoRepository {
   async listSessions(activeOnly = false): Promise<DemoSession[]> {
     const { data, error } = await supabase.rpc("admin_list_demo_sessions", {
@@ -51,21 +44,6 @@ export class AdminDemoRepository {
     }
 
     return (data ?? []) as DemoSession[];
-  }
-
-  async listDemoFleets(): Promise<DemoFleet[]> {
-    const { data, error } = await supabase
-      .from("flottes")
-      .select("id, name")
-      .eq("is_demo", true)
-      .order("name");
-
-    if (error) {
-      console.error("Erreur chargement flottes démo:", error);
-      throw new Error(error.message);
-    }
-
-    return (data ?? []) as DemoFleet[];
   }
 
   async deactivateAccount(
@@ -100,6 +78,44 @@ export class AdminDemoRepository {
 
     if (error) {
       console.error("Erreur reactivate_demo_account:", error);
+      throw new Error(error.message);
+    }
+
+    return (data ?? { ok: false }) as DemoRpcActionResult;
+  }
+
+  async updateAccountExpiration(
+    userId: string,
+    adminId: string,
+    expiresAt: string | null,
+  ): Promise<DemoRpcActionResult> {
+    const { data, error } = await supabase.rpc("update_demo_account_expiration", {
+      p_user_id: userId,
+      p_updated_by: adminId,
+      p_expires_at: expiresAt,
+    });
+
+    if (error) {
+      console.error("Erreur update_demo_account_expiration:", error);
+      throw new Error(error.message);
+    }
+
+    return (data ?? { ok: false }) as DemoRpcActionResult;
+  }
+
+  async deleteAccount(
+    userId: string,
+    adminId: string,
+    reason: string,
+  ): Promise<DemoRpcActionResult> {
+    const { data, error } = await supabase.rpc("delete_demo_account", {
+      p_user_id: userId,
+      p_deleted_by: adminId,
+      p_reason: reason,
+    });
+
+    if (error) {
+      console.error("Erreur delete_demo_account:", error);
       throw new Error(error.message);
     }
 

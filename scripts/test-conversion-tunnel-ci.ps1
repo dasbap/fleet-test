@@ -29,9 +29,33 @@ if (-not $supabaseCmd) {
 }
 
 if ($Target -eq "local") {
-    $containerName = "supabase_db_smart-fleet-africa"
+    $configContent = Get-Content -Path "supabase/config.toml" -Raw
+    $projectIdMatch = [regex]::Match(
+        $configContent,
+        '(?m)^\s*project_id\s*=\s*"([^"]+)"'
+    )
+
+    if (-not $projectIdMatch.Success) {
+        throw "Missing project_id in supabase/config.toml"
+    }
+
+    $projectId = $projectIdMatch.Groups[1].Value
+    $containerName = "supabase_db_$projectId"
+
+    $containerStatus = docker inspect -f "{{.State.Status}}" $containerName 2>$null
+
+    if ($LASTEXITCODE -ne 0 -or $containerStatus.Trim() -ne "running") {
+        throw "Container $containerName is not running."
+    }
+
     $sqlRaw = Get-Content -Path $SqlFile -Raw
-    $output = $sqlRaw | docker exec -i $containerName psql -U postgres -d postgres -v ON_ERROR_STOP=1 2>&1 | Out-String
+    $output = $sqlRaw |
+        docker exec -i $containerName psql `
+            -U postgres `
+            -d postgres `
+            -v ON_ERROR_STOP=1 2>&1 |
+        Out-String
+
     $exitCode = $LASTEXITCODE
 }
 else {

@@ -1,11 +1,12 @@
 /**
- * CreateDemoForm — formulaire de création d'un accès démo E-Samba.
+ * CreateDemoForm - formulaire de creation d'un acces demo E-Samba.
  *
- * Champs : email, company_name, account_type, fleet_id, trial_days, label, send_email.
- * Appelle useAdminDemoAccounts.createAccess() et expose le magic_url résultant.
+ * Un compte demo n'est pas rattache a une flotte globale a la creation.
+ * La flotte demo doit ensuite venir d'un organisateur demo.
  */
 
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,57 +27,52 @@ import {
 } from "@/components/ui/dialog";
 import { Copy, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { CreateDemoPayload, DemoFleet } from "@/hooks/useAdminDemoAccounts";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { MAX_DEMO_TRIAL_DAYS } from "@/services/admin-demo.service";
+import type { CreateDemoPayload } from "@/hooks/useAdminDemoAccounts";
 
 interface CreateDemoFormProps {
-  demoFleets: DemoFleet[];
   onSubmit: (payload: CreateDemoPayload) => Promise<{ ok: boolean; magic_url?: string; error?: string }>;
   onSuccess?: () => void;
+  canCreatePermanentAccess?: boolean;
 }
-
-// ─── Durées par défaut par type ───────────────────────────────────────────────
 
 const DEFAULT_TRIAL_DAYS: Record<string, number> = {
   investor: 2,
   prospect: 7,
   internal: 30,
-  dev:      30,
+  dev: 30,
 };
 
 const ACCOUNT_TYPE_LABELS = {
   investor: "Investisseur (48h)",
   prospect: "Prospect (7j)",
   internal: "Interne (30j)",
-  dev:      "Dev (30j)",
+  dev: "Dev (30j)",
 };
 
-const AUTO_FLEET_VALUE = "auto";
-
-// ─── Composant ────────────────────────────────────────────────────────────────
-
-export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFormProps) {
+export function CreateDemoForm({
+  onSubmit,
+  onSuccess,
+  canCreatePermanentAccess = false,
+}: CreateDemoFormProps) {
   const { toast } = useToast();
 
-  const [email,        setEmail]        = useState("");
-  const [companyName,  setCompanyName]  = useState("");
-  const [accountType,  setAccountType]  = useState<string>("prospect");
-  const [fleetId,      setFleetId]      = useState<string>(AUTO_FLEET_VALUE);
-  const [trialDays,    setTrialDays]    = useState(7);
-  const [label,        setLabel]        = useState("");
-  const [sendEmail,    setSendEmail]    = useState(false);
-
+  const [email, setEmail] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [accountType, setAccountType] = useState<string>("prospect");
+  const [trialDays, setTrialDays] = useState(7);
+  const [label, setLabel] = useState("");
+  const [sendEmail, setSendEmail] = useState(false);
+  const [permanentAccess, setPermanentAccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [magicUrl,     setMagicUrl]     = useState<string | null>(null);
+  const [magicUrl, setMagicUrl] = useState<string | null>(null);
 
-  // Met à jour trialDays quand le type change
   function handleTypeChange(type: string) {
     setAccountType(type);
     setTrialDays(DEFAULT_TRIAL_DAYS[type] ?? 7);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
     if (!email.trim()) {
@@ -87,32 +83,31 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
     setIsSubmitting(true);
 
     const result = await onSubmit({
-      email:        email.trim(),
+      email: email.trim(),
       company_name: companyName.trim() || undefined,
       account_type: accountType as CreateDemoPayload["account_type"],
-      fleet_id:     fleetId === AUTO_FLEET_VALUE ? undefined : fleetId,
-      trial_days:   trialDays,
-      label:        label.trim() || undefined,
-      send_email:   sendEmail,
+      trial_days: trialDays,
+      label: label.trim() || undefined,
+      send_email: sendEmail,
+      permanent_access: canCreatePermanentAccess && permanentAccess,
     });
 
     setIsSubmitting(false);
 
     if (!result.ok) {
       toast({
-        title:       "Erreur création",
+        title: "Erreur creation",
         description: result.error ?? "Erreur inconnue",
-        variant:     "destructive",
+        variant: "destructive",
       });
       return;
     }
 
-    toast({ title: "Accès démo créé" });
+    toast({ title: "Acces demo cree" });
 
     if (result.magic_url) {
       setMagicUrl(result.magic_url);
     } else {
-      // Reset et callback si pas de lien à afficher
       resetForm();
       onSuccess?.();
     }
@@ -122,29 +117,27 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
     setEmail("");
     setCompanyName("");
     setAccountType("prospect");
-    setFleetId(AUTO_FLEET_VALUE);
     setTrialDays(7);
     setLabel("");
     setSendEmail(false);
+    setPermanentAccess(false);
     setMagicUrl(null);
   }
 
   function copyLink() {
     if (!magicUrl) return;
     void navigator.clipboard.writeText(magicUrl);
-    toast({ title: "Lien copié" });
+    toast({ title: "Lien copie" });
   }
-
-  // ── Dialog magic link ──────────────────────────────────────────────────────
 
   if (magicUrl) {
     return (
       <Dialog open onOpenChange={() => { resetForm(); onSuccess?.(); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Accès démo créé ✓</DialogTitle>
+            <DialogTitle>Acces demo cree</DialogTitle>
             <DialogDescription>
-              Transmets ce lien au prospect. Il expire selon la durée configurée
+              Transmets ce lien au prospect. Il expire selon la duree configuree
               et authentifie automatiquement l'utilisateur.
             </DialogDescription>
           </DialogHeader>
@@ -173,7 +166,7 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
               className="w-full"
               onClick={() => { resetForm(); onSuccess?.(); }}
             >
-              Créer un autre accès
+              Creer un autre acces
             </Button>
           </div>
         </DialogContent>
@@ -181,12 +174,8 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
     );
   }
 
-  // ── Formulaire ────────────────────────────────────────────────────────────
-
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
-
-      {/* Email */}
       <div className="space-y-1.5">
         <Label htmlFor="demo-email">Email *</Label>
         <Input
@@ -200,7 +189,6 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
         />
       </div>
 
-      {/* Entreprise */}
       <div className="space-y-1.5">
         <Label htmlFor="demo-company">Entreprise</Label>
         <Input
@@ -211,7 +199,6 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
         />
       </div>
 
-      {/* Type de compte */}
       <div className="space-y-1.5">
         <Label>Type de compte</Label>
         <Select value={accountType} onValueChange={handleTypeChange}>
@@ -226,38 +213,32 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
         </Select>
       </div>
 
-      {/* Durée */}
       <div className="space-y-1.5">
-        <Label htmlFor="demo-days">Durée d'essai (jours)</Label>
+        <Label htmlFor="demo-days">Duree d'essai (jours)</Label>
         <Input
           id="demo-days"
           type="number"
           min={1}
-          max={90}
+          max={MAX_DEMO_TRIAL_DAYS}
           value={trialDays}
+          disabled={canCreatePermanentAccess && permanentAccess}
           onChange={(e) => setTrialDays(Number(e.target.value))}
         />
       </div>
 
-      {/* Flotte démo */}
-      {demoFleets.length > 0 && (
-        <div className="space-y-1.5">
-          <Label>Flotte démo assignée</Label>
-          <Select value={fleetId} onValueChange={setFleetId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Auto (aucune flotte spécifique)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={AUTO_FLEET_VALUE}>Auto</SelectItem>
-              {demoFleets.map((f) => (
-                <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {canCreatePermanentAccess && (
+        <div className="flex items-center gap-3">
+          <Switch
+            id="demo-permanent-access"
+            checked={permanentAccess}
+            onCheckedChange={setPermanentAccess}
+          />
+          <Label htmlFor="demo-permanent-access" className="cursor-pointer">
+            Acces permanent
+          </Label>
         </div>
       )}
 
-      {/* Label commercial */}
       <div className="space-y-1.5">
         <Label htmlFor="demo-label">Label (interne)</Label>
         <Input
@@ -268,7 +249,6 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
         />
       </div>
 
-      {/* Envoyer email */}
       <div className="flex items-center gap-3">
         <Switch
           id="demo-send-email"
@@ -282,9 +262,9 @@ export function CreateDemoForm({ demoFleets, onSubmit, onSuccess }: CreateDemoFo
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? (
-          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Création en cours…</>
+          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creation en cours...</>
         ) : (
-          "Créer l'accès démo"
+          "Creer l'acces demo"
         )}
       </Button>
     </form>

@@ -101,6 +101,7 @@ const PLAN_DISPLAY_NAMES: Record<string, string> = {
   starter: "Starter",
   pro: "Pro",
   enterprise: "Enterprise",
+  organizer: "Organizer",
 };
 
 function planNameFromCode(planCode: string): string {

@@ -4,6 +4,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { PushNotificationBridge } from "./PushNotificationBridge";
 
+const roleAccessMock = vi.hoisted(() => ({
+  isAdmin: false,
+}));
 const registerTokenMock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -30,6 +33,10 @@ vi.mock("@/hooks/useNotifications", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useRoleAccess", () => ({
+  useRoleAccess: () => roleAccessMock,
+}));
+
 vi.mock("@/lib/platform", () => ({
   isNativePlatform: () => true,
   getCapacitorPlatform: () => "android",
@@ -40,6 +47,7 @@ describe("PushNotificationBridge", () => {
 
   beforeEach(() => {
     registerTokenMock.mockClear();
+    roleAccessMock.isAdmin = false;
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
@@ -63,6 +71,20 @@ describe("PushNotificationBridge", () => {
       deviceInfo: expect.objectContaining({
         userAgent: expect.any(String),
       }),
+    });
+  });
+
+  it("ne demande pas les notifications et n'enregistre pas de token pour un admin plateforme", async () => {
+    roleAccessMock.isAdmin = true;
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PushNotificationBridge />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(registerTokenMock).not.toHaveBeenCalled();
     });
   });
 });

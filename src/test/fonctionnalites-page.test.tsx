@@ -29,7 +29,9 @@ describe("FonctionnalitesPage", () => {
     expect(screen.getByText("Garder le cap")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Suivre la flotte/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Garder le controle/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
+    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+    expect(screen.queryByText("Fonctionnalites")).not.toBeInTheDocument();
+    expect(screen.queryByText("Capacite metier")).not.toBeInTheDocument();
   });
 
   it("reste volontairement vague sur le fonctionnement interne", () => {

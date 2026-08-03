@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-ios-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -20,9 +20,11 @@ jobs:
       VITE_SUPABASE_URL: https://placeholder-build.supabase.co
       VITE_SUPABASE_ANON_KEY: placeholder-anon-key-ci-build-only
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          clean: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
 

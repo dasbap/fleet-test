@@ -8,18 +8,20 @@ export interface CreateProspectPayload {
   fleet_id?: string;
   trial_days: number;
   send_email: boolean;
+  permanent_access?: boolean;
 }
 
 export interface CreateProspectResult {
   ok: boolean;
   user_id?: string;
   fleet_id?: string;
+  permanent_access?: boolean;
   error?: string;
 }
 
 export interface GenerateMagicLinkPayload {
   user_id: string;
-  fleet_id?: string;
+  fleet_id?: string | null;
   email: string;
   label?: string;
 }

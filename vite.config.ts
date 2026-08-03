@@ -484,7 +484,7 @@ export default defineConfig(({ mode }) => {
   },
   optimizeDeps: {
     entries: isE2eDevServer
-      ? ["index.html", "src/**/*.{tsx,ts,jsx,js}"]
+      ? ["index.html", "src/main.tsx", "src/App.tsx"]
       : undefined,
     include: [
       "react",

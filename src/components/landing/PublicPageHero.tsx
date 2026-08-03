@@ -8,19 +8,13 @@ interface PublicPageHeroProps {
 
 /** En-tête standard des pages marketing publiques. */
 export function PublicPageHero({
-  eyebrow,
   title,
   description,
 }: PublicPageHeroProps) {
   return (
-    <section className="bg-gradient-to-br from-background via-background to-primary/[0.06] border-b border-border pt-20 pb-6">
+    <section className="bg-gradient-to-br from-background via-background to-primary/[0.06] border-b border-border pt-24 pb-6 md:pt-28">
       <div className="container mx-auto px-4 max-w-3xl text-center">
-        {eyebrow ? (
-          <span className="text-primary font-medium text-xs uppercase tracking-wider">
-            {eyebrow}
-          </span>
-        ) : null}
-        <h1 className="font-heading text-2xl md:text-3xl lg:text-4xl font-bold mt-3 mb-3">
+        <h1 className="font-heading text-2xl md:text-3xl lg:text-4xl font-bold mb-3">
           {title}
         </h1>
         {description ? (

@@ -4,7 +4,7 @@
 
 1. Ouvrez votre **tableau de bord Supabase** : https://app.supabase.com
 2. Sélectionnez votre projet
-3. Allez dans **�diteur SQL** (menu de gauche)
+3. Allez dans **�diteur SQL** (menu de gauche)
 4. Ouvrez le fichier `supabase/rpc-consistency.sql`
 5. **Copiez tout le contenu** et collez-le dans l'éditeur SQL
 6. Cliquez sur **Exécuter** ou appuyez sur `Ctrl+Enter`
@@ -16,6 +16,7 @@
 Vérifie toutes les données orphelines (foreign keys cassées).
 
 **Utilisation** :
+
 ```sql
 SELECT check_orphaned_data();
 ```
@@ -27,6 +28,7 @@ SELECT check_orphaned_data();
 Vérifie les incohérences logiques dans les données.
 
 **Utilisation** :
+
 ```sql
 SELECT check_logical_inconsistencies();
 ```
@@ -38,6 +40,7 @@ SELECT check_logical_inconsistencies();
 Détecte les violations de contraintes uniques (doublons).
 
 **Utilisation** :
+
 ```sql
 SELECT check_constraint_violations();
 ```
@@ -49,6 +52,7 @@ SELECT check_constraint_violations();
 Retourne les statistiques générales de la base de données.
 
 **Utilisation** :
+
 ```sql
 SELECT get_database_stats();
 ```
@@ -60,16 +64,19 @@ SELECT get_database_stats();
 Nettoie les données orphelines.
 
 **Paramètres** :
+
 - `p_dry_run` : `true` pour simulation, `false` pour suppression réelle
 
 **Utilisation** :
 
 Simulation (recommandé en premier) :
+
 ```sql
 SELECT cleanup_orphaned_data(true);
 ```
 
 Nettoyage réel :
+
 ```sql
 SELECT cleanup_orphaned_data(false);
 ```
@@ -134,7 +141,7 @@ ORDER BY executed_at DESC;
 
 ```sql
 -- Compter les opérations par table
-SELECT 
+SELECT
   table_name,
   COUNT(*) as nombre_operations,
   COUNT(*) FILTER (WHERE dry_run = false) as operations_reelles,
@@ -144,7 +151,7 @@ GROUP BY table_name
 ORDER BY nombre_operations DESC;
 
 -- Voir les opérations par utilisateur
-SELECT 
+SELECT
   executed_by,
   COUNT(*) as nombre_operations,
   MIN(executed_at) as premiere_operation,
@@ -155,7 +162,7 @@ GROUP BY executed_by
 ORDER BY derniere_operation DESC;
 
 -- Statistiques par jour
-SELECT 
+SELECT
   DATE(executed_at) as date,
   COUNT(*) as total_operations,
   COUNT(*) FILTER (WHERE dry_run = false) as operations_reelles,
@@ -165,7 +172,7 @@ GROUP BY DATE(executed_at)
 ORDER BY date DESC;
 
 -- Détails des opérations réelles avec informations utilisateur
-SELECT 
+SELECT
   dca.id,
   dca.table_name,
   dca.operation_type,

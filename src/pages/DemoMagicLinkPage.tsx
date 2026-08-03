@@ -29,8 +29,6 @@ interface ValidateResponse {
   error?:     string;
 }
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-
 // ─── Composant ────────────────────────────────────────────────────────────────
 
 export default function DemoMagicLinkPage() {
@@ -56,14 +54,8 @@ export default function DemoMagicLinkPage() {
   }, [token]);
 
   async function validateToken(tok: string) {
-    if (!SUPABASE_URL) {
-      setStatus("error");
-      setMessage("Configuration manquante.");
-      return;
-    }
-
     try {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/demo-magic-link`, {
+      const res = await fetch("/api/demo/magic-link", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ action: "validate", token: tok }),

@@ -17,7 +17,7 @@ import {
   type PlanAccessSummary,
   type PlanAccessResult,
 } from "@/lib/billing/planGuards";
-import type { FleetBillingContext } from "@/types/billing-production";
+import type { FleetBillingContext } from "@/types/fleet-billing";
 
 export interface UsePlanAccessReturn {
   isLoading: boolean;

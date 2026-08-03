@@ -23,8 +23,8 @@ BEGIN
   END IF;
 
   SELECT
-    public.has_role(p_fleet_id, 'manager'),
-    public.has_role(p_fleet_id, 'organizer')
+    public.has_role(p_fleet_id, 'manager'::public.role_type),
+    public.has_role(p_fleet_id, 'organizer'::public.role_type)
   INTO v_is_manager, v_is_organizer;
 
   SELECT EXISTS (

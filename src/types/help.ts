@@ -18,6 +18,7 @@ export type HelpArticleCategory =
   | 'vehicles'
   | 'qr'
   | 'reports'
+  | 'faq'
   | 'general';
 
 /** Article d'aide stocké en base Supabase. */

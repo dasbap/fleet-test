@@ -83,7 +83,10 @@ export default async function handler(
 
   // is_platform_admin() utilise auth.uid() → doit être appelé avec le bon JWT
   // On utilise un client user pour l'appel RPC
-  const { data: isAdminUser } = await userClient.rpc("is_platform_admin");
+  const [{ data: isAdminUser }, { data: isSuperAdminUser }] = await Promise.all([
+    userClient.rpc("is_platform_admin"),
+    userClient.rpc("is_platform_super_admin"),
+  ]);
 
   if (adminErr || !isAdminUser) {
     console.warn(`[bff/create-prospect] Accès refusé pour user ${user.id}`);
@@ -99,10 +102,16 @@ export default async function handler(
     fleet_id?:     string;
     trial_days?:   number;
     send_email?:   boolean;
+    permanent_access?: boolean;
   };
 
   if (!body?.email || !body.email.includes("@")) {
     res.status(400).json({ ok: false, error: "invalid_email" });
+    return;
+  }
+
+  if (body.permanent_access && !isSuperAdminUser) {
+    res.status(403).json({ ok: false, error: "forbidden_super_admin_required" });
     return;
   }
 
@@ -126,9 +135,10 @@ export default async function handler(
         email:        body.email,
         company_name: body.company_name,
         account_type: body.account_type ?? "prospect",
-        fleet_id:     body.fleet_id,
+        fleet_id:     null,
         trial_days:   body.trial_days ?? 7,
         send_email:   body.send_email ?? false,
+        permanent_access: body.permanent_access === true,
         invited_by:   user.id,  // ID de l'admin qui crée le compte
       }),
     });

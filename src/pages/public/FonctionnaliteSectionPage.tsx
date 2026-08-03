@@ -1,5 +1,6 @@
 import { Link, Navigate } from "react-router-dom";
 import { PublicPageLayout } from "@/components/landing/PublicPageLayout";
+import { PublicPageHero } from "@/components/landing/PublicPageHero";
 import {
   getFonctionnaliteSection,
   type FonctionnaliteSectionSlug,
@@ -20,8 +21,14 @@ export function FonctionnaliteSectionPage({ slug }: FonctionnaliteSectionPagePro
   }
 
   return (
-    <PublicPageLayout showFooter={false} showWhatsApp={false}>
-      <header className="border-b border-border bg-background pt-20 pb-6 md:pt-24">
+    <PublicPageLayout showWhatsApp={false}>
+      <PublicPageHero
+        eyebrow="Fonctionnalites"
+        title={section.title}
+        description={section.intro}
+      />
+
+      <section className="py-8 md:py-10">
         <div className="container mx-auto max-w-3xl px-4">
           <Link
             to={ROUTE_PATHS.fonctionnalites}
@@ -29,20 +36,6 @@ export function FonctionnaliteSectionPage({ slug }: FonctionnaliteSectionPagePro
           >
             Retour aux fonctionnalites
           </Link>
-          <p className="mb-2 text-xs font-medium uppercase text-primary">
-            Fonctionnalites
-          </p>
-          <h1 className="font-heading text-3xl font-bold md:text-4xl">
-            {section.title}
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground md:text-base">
-            {section.intro}
-          </p>
-        </div>
-      </header>
-
-      <section className="py-8 md:py-10">
-        <div className="container mx-auto max-w-3xl px-4">
           <div className="rounded-xl border border-border bg-card p-5 md:p-6">
             <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
               {section.promise}

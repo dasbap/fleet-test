@@ -91,6 +91,8 @@ export interface RbacContext {
   platformRole:    PlatformRole | null;
   /** true si l'utilisateur est admin plateforme ET non-démo. */
   isAdmin:         boolean;
+  /** true si l'utilisateur est l'unique super admin plateforme. */
+  isSuperAdmin:    boolean;
   /** true si l'utilisateur est un compte démo. */
   isDemo:          boolean;
   /** Fleet IDs accessibles par l'utilisateur. */

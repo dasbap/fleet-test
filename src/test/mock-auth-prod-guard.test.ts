@@ -21,6 +21,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 const DEMO_FALLBACK_KEY = "esamba-demo-auth-fallback";
 
 const PROD_HOSTNAMES = new Set(["www.e-samba.com", "e-samba.com", "app.e-samba.com"]);
+const LOCAL_TEST_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 
 function isMockAuthEnabled(
   isProd: boolean,
@@ -29,12 +30,12 @@ function isMockAuthEnabled(
   localStorage: Storage,
 ): boolean {
   if (PROD_HOSTNAMES.has(hostname)) return false;
-  if (isProd) return false;
+  if (isProd && !LOCAL_TEST_HOSTNAMES.has(hostname)) return false;
   return viteFlag === "true" || localStorage.getItem(DEMO_FALLBACK_KEY) === "true";
 }
 
 function enableDemoAuthFallback(isProd: boolean, hostname: string, localStorage: Storage): void {
-  if (PROD_HOSTNAMES.has(hostname) || isProd) return; // no-op PROD
+  if (PROD_HOSTNAMES.has(hostname) || (isProd && !LOCAL_TEST_HOSTNAMES.has(hostname))) return; // no-op PROD
   localStorage.setItem(DEMO_FALLBACK_KEY, "true");
 }
 
@@ -90,6 +91,26 @@ describe("isMockAuthEnabled — mode PROD", () => {
 
   it("retourne false si flag 'false' (cas nominal PROD)", () => {
     expect(isMockAuthEnabled(true, "www.e-samba.com", "false", storage)).toBe(false);
+  });
+});
+
+describe("isMockAuthEnabled — build PROD servi en local E2E", () => {
+  let storage: Storage;
+
+  beforeEach(() => { storage = makeStorage(); });
+
+  it("autorise le flag localStorage sur localhost pour les previews Playwright", () => {
+    storage.setItem(DEMO_FALLBACK_KEY, "true");
+    expect(isMockAuthEnabled(true, "127.0.0.1", "false", storage)).toBe(true);
+  });
+
+  it("autorise VITE_USE_MOCK_AUTH sur localhost pour les previews Playwright", () => {
+    expect(isMockAuthEnabled(true, "localhost", "true", storage)).toBe(true);
+  });
+
+  it("n'autorise pas le build PROD sur un hostname non local", () => {
+    storage.setItem(DEMO_FALLBACK_KEY, "true");
+    expect(isMockAuthEnabled(true, "preview.e-samba.test", "true", storage)).toBe(false);
   });
 });
 
@@ -156,6 +177,11 @@ describe("enableDemoAuthFallback — mode PROD", () => {
     enableDemoAuthFallback(true, "www.e-samba.com", storage);
     // Toujours bloqué par isProd=true dans isMockAuthEnabled
     expect(isMockAuthEnabled(true, "www.e-samba.com", "false", storage)).toBe(false);
+  });
+
+  it("écrit sur localhost pour les previews E2E uniquement", () => {
+    enableDemoAuthFallback(true, "127.0.0.1", storage);
+    expect(storage.getItem(DEMO_FALLBACK_KEY)).toBe("true");
   });
 });
 

@@ -29,6 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_otp_rate_limits_phone_action
 -- RLS : service_role uniquement — jamais exposé au client
 ALTER TABLE public.otp_rate_limits ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS otp_rate_limits_service_only ON public.otp_rate_limits;
 CREATE POLICY otp_rate_limits_service_only ON public.otp_rate_limits
   FOR ALL
   USING (false); -- Bloque tout accès authenticated; service_role contourne automatiquement
