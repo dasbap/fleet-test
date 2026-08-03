@@ -18,15 +18,16 @@ import { CreateDemoForm } from "@/components/admin/CreateDemoForm";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 export default function DemoAdminPage() {
-  const { isAdmin, isLoading: isRoleAccessLoading } = useRoleAccess();
+  const { isAdmin, isSuperAdmin, isLoading: isRoleAccessLoading } = useRoleAccess();
   const {
     sessions,
-    demoFleets,
     isLoading,
     reload,
     createAccess,
     suspendAccount,
     reactivateAccount,
+    updateAccountExpiration,
+    deleteAccount,
     resetFleet,
     generateMagicLink,
   } = useAdminDemoAccounts();
@@ -73,6 +74,8 @@ export default function DemoAdminPage() {
             onReload={reload}
             onSuspend={suspendAccount}
             onReactivate={reactivateAccount}
+            onUpdateExpiration={updateAccountExpiration}
+            onDelete={deleteAccount}
             onResetFleet={resetFleet}
             onGenerateMagicLink={generateMagicLink}
           />
@@ -86,9 +89,9 @@ export default function DemoAdminPage() {
                 Cree un compte prospect et genere un magic link a partager.
               </p>
               <CreateDemoForm
-                demoFleets={demoFleets}
                 onSubmit={createAccess}
                 onSuccess={() => void reload()}
+                canCreatePermanentAccess={isSuperAdmin}
               />
             </div>
           </div>

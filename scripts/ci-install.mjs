@@ -14,8 +14,12 @@ const run = (command, args) => {
   });
 };
 
-run("npm", ["config", "set", "fetch-timeout", "600000"]);
 run("npm", ["config", "set", "fetch-retries", "5"]);
 run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"]);
-run("npx", ["prisma", "generate", "--schema", "packages/db/prisma/schema.prisma"]);
+run("npx", [
+  "prisma",
+  "generate",
+  "--schema",
+  "packages/db/prisma/schema.prisma",
+]);
 run("npx", ["patch-package"]);

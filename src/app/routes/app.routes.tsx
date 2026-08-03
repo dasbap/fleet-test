@@ -8,7 +8,7 @@ import { RoleGuard } from "@/navigation/guards/RequireRole";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { LANDING_CTA, PUBLIC_DEMO_HREF } from "@/config/navigation";
 import { LegacyAideVideoRedirect } from "@/app/routes/LegacyAideVideoRedirect";
-import { DEMO_FEATURE_ENABLED } from "@/lib/demo/demoFeatureFlag";
+import { DEMO_FEATURE_ENABLED, DEMO_MAGIC_LINK_ENABLED } from "@/lib/demo/demoFeatureFlag";
 import { useAuth } from "@/hooks/useAuth";
 
 const Index = lazy(() => import("@/pages/Index"));
@@ -82,10 +82,10 @@ const FonctionnaliteSectionPage = lazy(() => import("@/pages/public/Fonctionnali
 const ModulesPage = lazy(() => import("@/pages/public/ModulesPage"));
 const FaqPage = lazy(() => import("@/pages/public/FaqPage"));
 const ContactPage = lazy(() => import("@/pages/public/ContactPage"));
-const DemoMagicLinkPage = DEMO_FEATURE_ENABLED
+const DemoMagicLinkPage = DEMO_MAGIC_LINK_ENABLED
   ? lazy(() => import("@/pages/DemoMagicLinkPage"))
   : null;
-const ProspectOnboarding = DEMO_FEATURE_ENABLED
+const ProspectOnboarding = DEMO_MAGIC_LINK_ENABLED
   ? lazy(() =>
       import("@/features/demo/ProspectOnboarding").then((m) => ({ default: m.ProspectOnboarding }))
     )
@@ -232,7 +232,7 @@ export const appRoutes = (
       <Route path="/upgrade" element={<Upgrade />} />
       <Route path="/post-login" element={<PostLoginGate />} />
       {/* Flux commercial démo — pas de ProtectedRoute (auth via magic link) */}
-      {DEMO_FEATURE_ENABLED && DemoMagicLinkPage && ProspectOnboarding ? (
+      {DEMO_MAGIC_LINK_ENABLED && DemoMagicLinkPage && ProspectOnboarding ? (
         <>
           <Route path="/demo/access"     element={<DemoMagicLinkPage />} />
           <Route path="/demo/onboarding" element={<ProspectOnboarding />} />

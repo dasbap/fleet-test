@@ -1,19 +1,26 @@
--- =====================================================
--- Correction: récursion infinie sur flotte_adhesions
--- La politique memberships_read_manager_org faisait un SELECT sur flotte_adhesions
--- dans son USING, ce qui déclenchait à nouveau les politiques → récursion.
--- On remplace par une politique qui utilise has_role() (SECURITY DEFINER, pas de RLS).
--- =====================================================
+-- Correction : récursion infinie sur flotte_adhesions.
+--
+-- Les anciennes politiques effectuaient directement une lecture sur
+-- flotte_adhesions depuis une politique de cette même table.
+--
+-- has_role() est SECURITY DEFINER et lit flotte_adhesions sans
+-- redéclencher les politiques RLS de l'utilisateur appelant.
 
-DROP POLICY IF EXISTS memberships_read_self ON flotte_adhesions;
-DROP POLICY IF EXISTS memberships_read_manager_org ON flotte_adhesions;
+DROP POLICY IF EXISTS memberships_read_self
+ON public.flotte_adhesions;
 
--- Une seule politique SELECT : voir ses propres lignes OU être manager/organizer de la flotte
--- has_role() est SECURITY DEFINER et lit flotte_adhesions sans déclencher les politiques.
-CREATE POLICY memberships_select_self_or_manager_org ON flotte_adhesions
-  FOR SELECT TO authenticated
-  USING (
-    user_id = auth.uid()
-    OR has_role(fleet_id, 'manager')
-    OR has_role(fleet_id, 'organizer')
-  );
+DROP POLICY IF EXISTS memberships_read_manager_org
+ON public.flotte_adhesions;
+
+DROP POLICY IF EXISTS memberships_select_self_or_manager_org
+ON public.flotte_adhesions;
+
+CREATE POLICY memberships_select_self_or_manager_org
+ON public.flotte_adhesions
+FOR SELECT
+TO authenticated
+USING (
+  user_id = auth.uid()
+  OR public.has_role(fleet_id, 'manager'::role_type)
+  OR public.has_role(fleet_id, 'organizer'::role_type)
+);

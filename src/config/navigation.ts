@@ -4,8 +4,17 @@
  */
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
+const viteEnv =
+  typeof import.meta !== "undefined" && "env" in import.meta
+    ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+    : undefined;
+const processEnv =
+  typeof process !== "undefined"
+    ? (process.env as Record<string, string | undefined>)
+    : undefined;
+
 const WHATSAPP_NUMBER =
-  (import.meta.env.VITE_WHATSAPP_NUMBER as string | undefined) ?? "237641341857";
+  viteEnv?.VITE_WHATSAPP_NUMBER ?? processEnv?.VITE_WHATSAPP_NUMBER ?? "237641341857";
 
 export type PublicNavItemType = "anchor" | "route" | "external";
 
@@ -218,8 +227,8 @@ export const DASHBOARD_NAV = {
     { label: "Administration", href: ROUTE_PATHS.dashboardAdmin },
     { label: "Admin comptes", href: ROUTE_PATHS.dashboardAdminUsers },
     { label: "Comptes demo", href: ROUTE_PATHS.dashboardAdminDemo },
+    { label: "FAQ publique", href: ROUTE_PATHS.dashboardAdminFaq },
     { label: "Aide admin", href: ROUTE_PATHS.dashboardHelpAdmin },
-    { label: "Analytics aide", href: ROUTE_PATHS.dashboardHelpAnalytics },
   ],
   organizerExtras: {
     retention: { label: "Rétention", href: ROUTE_PATHS.dashboardRetentionAnalytics },
@@ -257,6 +266,7 @@ export const DASHBOARD_SIDEBAR_FOOTER = [
 export function isDashboardNavActive(pathname: string, href: string): boolean {
   if (pathname === href) return true;
   if (href === ROUTE_PATHS.dashboard) return false;
+  if (href === ROUTE_PATHS.dashboardAdmin) return false;
   return pathname.startsWith(`${href}/`);
 }
 

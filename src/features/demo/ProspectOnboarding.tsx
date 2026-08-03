@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button }   from "@/components/ui/button";
 import { Badge }    from "@/components/ui/badge";
@@ -43,6 +43,11 @@ interface DemoProfileInfo {
 }
 
 type OnboardingStep = 1 | 2 | 3;
+type DemoAuthState = "checking" | "authenticated" | "unauthenticated" | "error";
+type HashSession = {
+  access_token: string;
+  refresh_token: string;
+};
 
 // ─── Fonctionnalités mises en avant par rôle ──────────────────────────────────
 
@@ -76,7 +81,7 @@ const DEFAULT_FEATURES = ROLE_FEATURES.manager;
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatExpiry(expiresAt: string | null): string {
-  if (!expiresAt) return "accès illimité";
+  if (!expiresAt) return "acces permanent";
   const d = new Date(expiresAt);
   const diffH = (d.getTime() - Date.now()) / 3_600_000;
   if (diffH < 24) return `${Math.ceil(diffH)}h d'accès restantes`;
@@ -93,14 +98,67 @@ const ROLE_LABEL: Record<string, string> = {
 
 // ─── Hook : profil démo courant ───────────────────────────────────────────────
 
+function readHashSession(): HashSession | null {
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  if (!hash) return null;
+
+  const params = new URLSearchParams(hash);
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token");
+  if (!accessToken || !refreshToken) return null;
+
+  return {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  };
+}
+
 function useDemoProfile() {
   const [profile,   setProfile]   = useState<DemoProfileInfo | null>(null);
   const [isLoading, setLoading]   = useState(true);
+  const [authState, setAuthState] = useState<DemoAuthState>("checking");
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     async function fetch() {
+      const code = searchParams.get("code");
+      const error = searchParams.get("error");
+
+      if (error) {
+        setAuthState("error");
+        setLoading(false);
+        return;
+      }
+
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          setAuthState("error");
+          setLoading(false);
+          return;
+        }
+        window.history.replaceState({}, document.title, "/demo/onboarding");
+      }
+
+      const hashSession = readHashSession();
+      if (hashSession) {
+        const { error: sessionError } = await supabase.auth.setSession(hashSession);
+        if (sessionError) {
+          setAuthState("error");
+          setLoading(false);
+          return;
+        }
+        window.history.replaceState({}, document.title, "/demo/onboarding");
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
+      if (!user) {
+        setAuthState("unauthenticated");
+        setLoading(false);
+        return;
+      }
 
       const { data } = await supabase
         .from("demo_profiles")
@@ -123,19 +181,20 @@ function useDemoProfile() {
         });
       }
 
+      setAuthState("authenticated");
       setLoading(false);
     }
     void fetch();
-  }, []);
+  }, [searchParams]);
 
-  return { profile, isLoading };
+  return { profile, isLoading, authState };
 }
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export function ProspectOnboarding() {
   const navigate = useNavigate();
-  const { profile, isLoading } = useDemoProfile();
+  const { profile, isLoading, authState } = useDemoProfile();
   const [step, setStep] = useState<OnboardingStep>(1);
   const logged = useRef<Set<number>>(new Set());
 
@@ -167,6 +226,30 @@ export function ProspectOnboarding() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (authState !== "authenticated" || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm space-y-4 text-center">
+          <img
+            src="/logo.svg"
+            alt="E-Samba"
+            className="mx-auto h-8 w-auto"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+          <div className="rounded-lg border bg-card p-4 text-left">
+            <p className="font-semibold text-sm">Connexion demo incomplete</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Ouvre a nouveau le lien demo. Si le probleme persiste, genere un nouveau lien depuis le panel admin.
+            </p>
+          </div>
+          <Button className="w-full" onClick={() => navigate("/auth", { replace: true })}>
+            Retour a la connexion
+          </Button>
+        </div>
       </div>
     );
   }

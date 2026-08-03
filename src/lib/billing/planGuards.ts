@@ -8,11 +8,11 @@
  * Règle absolue : jamais d'activation d'abonnement depuis le frontend.
  */
 
-import type { FleetBillingContext } from "@/types/billing-production";
+import type { FleetBillingContext } from "@/types/fleet-billing";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
-export type PlanCode = "free" | "starter" | "pro" | "enterprise";
+export type PlanCode = "free" | "starter" | "pro" | "enterprise" | "organizer";
 
 export interface PlanAccessResult {
   allowed: boolean;
@@ -25,14 +25,18 @@ export interface PlanAccessResult {
 // ─── Helpers internes ──────────────────────────────────────────────────────
 
 function isPlanAtLeast(ctx: FleetBillingContext, min: PlanCode): boolean {
-  const order: PlanCode[] = ["free", "starter", "pro", "enterprise"];
+  const order: PlanCode[] = ["free", "starter", "pro", "enterprise", "organizer"];
   const currentIdx = order.indexOf(ctx.planCode as PlanCode);
   const minIdx = order.indexOf(min);
   return currentIdx >= minIdx;
 }
 
 function isSubscriptionActive(ctx: FleetBillingContext): boolean {
-  return ["trial", "active", "grace_period", "enterprise"].includes(ctx.billingStatus);
+  return ["trial", "active", "grace", "grace_period", "enterprise"].includes(ctx.billingStatus);
+}
+
+function isOrganizerTier(ctx: FleetBillingContext): boolean {
+  return ctx.planCode === "organizer" || ctx.planCode === "enterprise";
 }
 
 // ─── Guards publics ────────────────────────────────────────────────────────
@@ -56,7 +60,7 @@ export function canCreateVehicle(ctx: FleetBillingContext): PlanAccessResult {
     return {
       allowed: false,
       upgradeMessage: `Limite de ${ctx.maxVehicles} véhicule${ctx.maxVehicles > 1 ? "s" : ""} atteinte. Passez à un plan supérieur pour en ajouter davantage.`,
-      requiredPlan: isPlanAtLeast(ctx, "pro") ? "enterprise" : "pro",
+      requiredPlan: isPlanAtLeast(ctx, "pro") ? "organizer" : "pro",
     };
   }
 
@@ -169,16 +173,16 @@ export function canAccessMultiFleet(ctx: FleetBillingContext): PlanAccessResult 
     return {
       allowed: false,
       upgradeMessage: "Abonnement Enterprise requis pour la gestion multi-flottes.",
-      requiredPlan: "enterprise",
+      requiredPlan: "organizer",
     };
   }
 
-  const allowed = ctx.planCode === "enterprise";
+  const allowed = isOrganizerTier(ctx);
   if (!allowed) {
     return {
       allowed: false,
       upgradeMessage: "La gestion multi-flottes et le dashboard global sont réservés au plan Organizer (Enterprise). Contactez-nous pour un devis.",
-      requiredPlan: "enterprise",
+      requiredPlan: "organizer",
     };
   }
 

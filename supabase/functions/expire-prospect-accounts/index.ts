@@ -133,6 +133,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     // ── 4. Reset hebdomadaire des flottes démo (dimanche uniquement) ──────
     if (isWeekly) {
+      console.log("[expire-prospect-accounts] Weekly global demo fleet reset disabled");
+      /*
       const { data: demoFleets } = await admin
         .from("flottes")
         .select("id, name")
@@ -158,6 +160,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           }
         }
       }
+      */
     }
 
     // ── 5. Audit log résumé ───────────────────────────────────────────────

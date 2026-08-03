@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface AdminProfileRow {
   user_id: string;
   is_active: boolean;
+  is_super_admin: boolean;
 }
 
 /**
@@ -23,6 +24,18 @@ export class AdminProfileRepository {
       throw new Error(error.message);
     }
 
-    return data === true ? { user_id: userId, is_active: true } : null;
+    return data === true ? { user_id: userId, is_active: true, is_super_admin: false } : null;
+  }
+
+  async isPlatformSuperAdmin(userId: string): Promise<boolean> {
+    if (!userId) return false;
+
+    const { data, error } = await supabase.rpc("is_platform_super_admin");
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data === true;
   }
 }

@@ -64,6 +64,54 @@ export function useHelpCategoryArticles(
   });
 }
 
+export function usePublicFaqEntries(locale: HelpLocale = 'fr') {
+  return useQuery({
+    queryKey: ['public-faq', locale],
+    queryFn: () => helpService.getPublicFaq(locale),
+    staleTime: 30 * 60 * 1000,
+    placeholderData: () => helpService.getFallbackFaq(locale),
+  });
+}
+
+export function useAdminFaqEntries(locale: HelpLocale = 'fr') {
+  return useQuery({
+    queryKey: ['admin-faq', locale],
+    queryFn: () => helpService.getFaqForAdmin(locale),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSaveFaqArticle(locale: HelpLocale = 'fr') {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: {
+      id?: string;
+      slug: string;
+      title: string;
+      content: string;
+      sort_order: number;
+      is_published: boolean;
+    }) => helpService.saveFaqArticle({ ...payload, locale }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-faq', locale] });
+      queryClient.invalidateQueries({ queryKey: ['public-faq', locale] });
+      queryClient.invalidateQueries({ queryKey: ['help-category', 'faq', locale] });
+      toast({
+        title: 'FAQ sauvegardee',
+        description: 'La question est maintenant enregistree en base.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erreur FAQ',
+        description: error instanceof Error ? error.message : 'Impossible de sauvegarder la FAQ.',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 export function useHelpAnalytics(days = 30) {
   return useQuery({
     queryKey: ['help-analytics', days],

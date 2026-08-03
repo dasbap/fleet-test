@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useRegisterNotificationToken } from "@/hooks/useNotifications";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { getCapacitorPlatform, isNativePlatform } from "@/lib/platform";
 import type { NotificationPlatform } from "@/repositories/notification.repository";
 
@@ -22,13 +23,15 @@ function resolveNotificationPlatform(): NotificationPlatform {
  */
 export function PushNotificationBridge() {
   const { user } = useAuth();
+  const { isAdmin, isLoading } = useRoleAccess();
   const userId = user?.id;
-  const { deviceToken } = usePushNotifications({ enabled: !!userId });
+  const pushEnabled = !!userId && !isLoading && !isAdmin;
+  const { deviceToken } = usePushNotifications({ enabled: pushEnabled });
   const { mutateAsync: registerToken } = useRegisterNotificationToken();
   const lastRegisteredRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!userId) {
+    if (!pushEnabled || !userId) {
       lastRegisteredRef.current = null;
       return;
     }
@@ -54,7 +57,7 @@ export function PushNotificationBridge() {
       .catch(() => {
         // Le hook affiche déjà un toast d’erreur.
       });
-  }, [userId, deviceToken, registerToken]);
+  }, [pushEnabled, userId, deviceToken, registerToken]);
 
   return null;
 }

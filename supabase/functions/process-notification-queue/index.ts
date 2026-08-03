@@ -13,6 +13,7 @@
  *   - SUPABASE_SERVICE_ROLE_KEY
  *
  * Templates gérés :
+ *   prospect_welcome  → accueil prospect/demo avec acces temporaire
  *   billing_grace     → période de grâce, renouveler avant expiration
  *   billing_suspended → accès suspendu, réactiver l'abonnement
  *
@@ -88,6 +89,15 @@ async function sendEmail(payload: ResendPayload): Promise<{ ok: boolean; error?:
 
 // ─── Templates ─────────────────────────────────────────────────────────────
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function buildEmail(row: QueueRow): ResendPayload | null {
   const m          = row.metadata;
   const planName   = (m.plan_name  as string | null) ?? "votre plan";
@@ -95,6 +105,53 @@ function buildEmail(row: QueueRow): ResendPayload | null {
   const graceDate  = graceUntil
     ? new Date(graceUntil).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
     : null;
+
+  if (row.template_id === "prospect_welcome") {
+    const companyName = escapeHtml((m.company_name as string | null) ?? "votre entreprise");
+    const trialDays = escapeHtml(String((m.trial_days as number | string | null) ?? 7));
+    const trialEnd = (m.trial_end as string | null);
+    const trialEndDate = trialEnd
+      ? new Date(trialEnd).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+      : null;
+    const loginUrl = escapeHtml((m.login_url as string | null) ?? "https://www.e-samba.com/auth");
+    const tempPassword = escapeHtml((m.temp_password as string | null) ?? "");
+
+    return {
+      from:    `E-Samba <${FROM_EMAIL}>`,
+      to:      [row.to_email],
+      subject: "Votre acces demo E-Samba est pret",
+      html: `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:Arial,sans-serif;color:#1a1a1a;background:#f5f5f5;margin:0;padding:20px">
+<div style="max-width:580px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+  <div style="background:#16a34a;padding:24px 32px">
+    <img src="https://www.e-samba.com/logo.png" alt="E-Samba" style="height:36px" onerror="this.style.display='none'">
+    <h1 style="color:#fff;margin:12px 0 0;font-size:20px">Votre demo E-Samba est ouverte</h1>
+  </div>
+  <div style="padding:32px">
+    <p style="margin:0 0 16px">Bonjour,</p>
+    <p style="margin:0 0 16px">
+      Un acces demo a ete cree pour <strong>${companyName}</strong>. Il est valable ${trialDays} jour(s)${trialEndDate ? `, jusqu'au <strong>${trialEndDate}</strong>` : ""}.
+    </p>
+    <p style="margin:0 0 16px">Connectez-vous avec cette adresse email :</p>
+    <p style="margin:0 0 8px"><strong>${row.to_email}</strong></p>
+    ${tempPassword ? `<p style="margin:0 0 24px">Mot de passe temporaire : <strong>${tempPassword}</strong></p>` : ""}
+    <a href="${loginUrl}" style="display:inline-block;background:#16a34a;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold">
+      Ouvrir E-Samba
+    </a>
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0">
+    <p style="font-size:13px;color:#6b7280;margin:0">
+      Besoin d'aide ? Contactez-nous a <a href="mailto:support@e-samba.com" style="color:#16a34a">support@e-samba.com</a><br>
+      E-Samba - Gestion de flotte pour l'Afrique
+    </p>
+  </div>
+</div>
+</body>
+</html>`,
+    };
+  }
 
   if (row.template_id === "billing_grace") {
     return {

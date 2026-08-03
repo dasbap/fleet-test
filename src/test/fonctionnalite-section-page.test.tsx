@@ -20,7 +20,8 @@ describe("FonctionnaliteSectionPage", () => {
       "href",
       "/fonctionnalites",
     );
-    expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
+    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+    expect(screen.queryByText("Fonctionnalites")).not.toBeInTheDocument();
   });
 
   it("reste vague sur les details internes", () => {

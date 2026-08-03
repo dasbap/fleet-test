@@ -26,16 +26,14 @@ import { AdminDemoService } from "@/services/admin-demo.service";
 import type {
   CreateDemoPayload,
   DemoAccountType,
-  DemoFleet,
   DemoRole,
   DemoSession,
 } from "@/services/admin-demo.service";
 
-export type { DemoAccountType, DemoRole, DemoSession, DemoFleet, CreateDemoPayload };
+export type { DemoAccountType, DemoRole, DemoSession, CreateDemoPayload };
 
 export interface UseAdminDemoAccountsReturn {
   sessions: DemoSession[];
-  demoFleets: DemoFleet[];
   isLoading: boolean;
   reload: () => Promise<void>;
   createAccess: (
@@ -43,11 +41,13 @@ export interface UseAdminDemoAccountsReturn {
   ) => Promise<{ ok: boolean; magic_url?: string; error?: string }>;
   suspendAccount: (userId: string) => Promise<boolean>;
   reactivateAccount: (userId: string, extendHours?: number) => Promise<boolean>;
+  updateAccountExpiration: (userId: string, expiresAt: string | null) => Promise<boolean>;
+  deleteAccount: (userId: string) => Promise<boolean>;
   resetFleet: (fleetId: string) => Promise<boolean>;
   generateMagicLink: (
     userId: string,
     email: string,
-    fleetId: string,
+    fleetId?: string | null,
     label?: string,
   ) => Promise<string | null>;
 }
@@ -58,7 +58,6 @@ const adminDemoService = new AdminDemoService(adminDemoRepository, adminDemoBffR
 
 export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
   const [sessions, setSessions] = useState<DemoSession[]>([]);
-  const [demoFleets, setDemoFleets] = useState<DemoFleet[]>([]);
   const [isLoading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, session } = useAuth();
@@ -68,7 +67,6 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
     try {
       const data = await adminDemoService.loadDashboardData();
       setSessions(data.sessions);
-      setDemoFleets(data.demoFleets);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erreur inconnue";
       toast({ title: "Erreur chargement sessions", description: message, variant: "destructive" });
@@ -144,6 +142,58 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
     [load, toast, user?.id],
   );
 
+  const updateAccountExpiration = useCallback(
+    async (userId: string, expiresAt: string | null): Promise<boolean> => {
+      const adminId = user?.id ?? "";
+      if (!adminId) {
+        toast({ title: "Session expirÃ©e", variant: "destructive" });
+        return false;
+      }
+
+      try {
+        const result = await adminDemoService.updateAccountExpiration(userId, adminId, expiresAt);
+        if (!result.ok) {
+          toast({ title: "Erreur modification expiration", variant: "destructive" });
+          return false;
+        }
+        toast({ title: "Expiration mise a jour" });
+        await load();
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Erreur inconnue";
+        toast({ title: "Erreur modification expiration", description: message, variant: "destructive" });
+        return false;
+      }
+    },
+    [load, toast, user?.id],
+  );
+
+  const deleteAccount = useCallback(
+    async (userId: string): Promise<boolean> => {
+      const adminId = user?.id ?? "";
+      if (!adminId) {
+        toast({ title: "Session expirÃ©e", variant: "destructive" });
+        return false;
+      }
+
+      try {
+        const result = await adminDemoService.deleteAccount(userId, adminId);
+        if (!result.ok) {
+          toast({ title: "Erreur suppression demo", variant: "destructive" });
+          return false;
+        }
+        toast({ title: "Compte demo supprime" });
+        await load();
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Erreur inconnue";
+        toast({ title: "Erreur suppression demo", description: message, variant: "destructive" });
+        return false;
+      }
+    },
+    [load, toast, user?.id],
+  );
+
   const resetFleet = useCallback(
     async (fleetId: string): Promise<boolean> => {
       try {
@@ -171,7 +221,7 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
     async (
       userId: string,
       email: string,
-      fleetId: string,
+      fleetId?: string | null,
       label?: string,
     ): Promise<string | null> => {
       const magicUrl = await adminDemoService.generateMagicLink(
@@ -191,12 +241,13 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
 
   return {
     sessions,
-    demoFleets,
     isLoading,
     reload: load,
     createAccess,
     suspendAccount,
     reactivateAccount,
+    updateAccountExpiration,
+    deleteAccount,
     resetFleet,
     generateMagicLink,
   };

@@ -15,6 +15,7 @@ import {
 import { registerTerrainShiftCloseRoutes } from "@/server/http/routes/terrainShiftClose";
 import { registerBillingNotchPayRoutes } from "@/server/http/routes/billingNotchPay";
 import { registerHealthRoutes } from "@/server/http/routes/health";
+import { registerAdminDemoRoutes } from "@/server/http/routes/adminDemo";
 import {
   registerLegacyWebhooksPaymentRoutes,
   registerWebhooksPaymentRoutes,
@@ -65,6 +66,7 @@ export function createServerApp() {
   registerBillingMobileMoneyRoutes(app);
   registerBillingNotchPayRoutes(app);
   registerWebhooksPaymentRoutes(app);
+  registerAdminDemoRoutes(app);
 
   registerLegacyBillingSnapshotRoute(app);
   registerLegacyMobileMoneyRoute(app);
@@ -76,7 +78,14 @@ export function createServerApp() {
 export function startBffServer() {
   const app = createServerApp();
   const port = Number(process.env.BFF_PORT || process.env.PORT || 8787);
-  serve({ fetch: app.fetch, port }, (info) => {
+  const server = serve({ fetch: app.fetch, port }, (info) => {
     console.info(`[BFF] écoute sur http://127.0.0.1:${info.port}`);
+  });
+  server.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code === "EADDRINUSE") {
+      console.warn(`[BFF] port ${port} deja utilise, serveur existant conserve.`);
+      return;
+    }
+    throw error;
   });
 }

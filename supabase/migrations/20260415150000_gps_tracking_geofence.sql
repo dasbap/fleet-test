@@ -213,6 +213,16 @@ ALTER TABLE public.geofence_vehicle_states ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.geofence_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gps_ingest_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS gps_devices_select_policy ON public.gps_devices;
+DROP POLICY IF EXISTS gps_devices_write_policy ON public.gps_devices;
+DROP POLICY IF EXISTS vehicle_positions_select_policy ON public.vehicle_positions;
+DROP POLICY IF EXISTS vehicle_positions_latest_select_policy ON public.vehicle_positions_latest;
+DROP POLICY IF EXISTS geofences_select_policy ON public.geofences;
+DROP POLICY IF EXISTS geofences_write_policy ON public.geofences;
+DROP POLICY IF EXISTS geofence_states_select_policy ON public.geofence_vehicle_states;
+DROP POLICY IF EXISTS geofence_events_select_policy ON public.geofence_events;
+DROP POLICY IF EXISTS gps_ingest_logs_select_policy ON public.gps_ingest_logs;
+
 CREATE POLICY gps_devices_select_policy
 ON public.gps_devices
 FOR SELECT
@@ -229,8 +239,8 @@ USING (
 CREATE POLICY gps_devices_write_policy
 ON public.gps_devices
 FOR ALL
-USING (public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager'))
-WITH CHECK (public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager'));
+USING (public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type))
+WITH CHECK (public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type));
 
 CREATE POLICY vehicle_positions_select_policy
 ON public.vehicle_positions
@@ -274,8 +284,8 @@ USING (
 CREATE POLICY geofences_write_policy
 ON public.geofences
 FOR ALL
-USING (public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager'))
-WITH CHECK (public.has_role(fleet_id, 'organizer') OR public.has_role(fleet_id, 'manager'));
+USING (public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type))
+WITH CHECK (public.has_role(fleet_id, 'organizer'::public.role_type) OR public.has_role(fleet_id, 'manager'::public.role_type));
 
 CREATE POLICY geofence_states_select_policy
 ON public.geofence_vehicle_states

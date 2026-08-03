@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type {
   HelpArticleRecord,
+  HelpArticleInsert,
   HelpArticleViewInsert,
   HelpSearchEventInsert,
   HelpLocale,
@@ -48,6 +49,69 @@ function mapRow(row: HelpArticleRow): HelpArticleRecord {
 }
 
 export class HelpRepository {
+  async findPublicFaq(locale: HelpLocale = 'fr'): Promise<HelpArticleRecord[]> {
+    return this.findByCategory('faq', locale);
+  }
+
+  async findFaqForAdmin(locale: HelpLocale = 'fr'): Promise<HelpArticleRecord[]> {
+    const { data, error } = await supabase
+      .from('help_articles')
+      .select('*')
+      .eq('category', 'faq')
+      .eq('locale', locale)
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      console.error('Erreur chargement FAQ admin:', error);
+      throw new Error('Impossible de charger la FAQ.');
+    }
+
+    return (data ?? []).map((row) => mapRow(row as HelpArticleRow));
+  }
+
+  async upsertArticle(
+    payload: HelpArticleInsert & { id?: string },
+  ): Promise<HelpArticleRecord> {
+    const row = {
+      id: payload.id,
+      slug: payload.slug,
+      title: payload.title,
+      category: payload.category,
+      role: payload.role ?? [],
+      locale: payload.locale ?? 'fr',
+      keywords: payload.keywords ?? [],
+      content: payload.content,
+      route_context: payload.route_context ?? [],
+      plan_min: payload.plan_min ?? null,
+      module_keys: payload.module_keys ?? [],
+      error_codes: payload.error_codes ?? [],
+      sort_order: payload.sort_order ?? 0,
+      is_published: payload.is_published ?? true,
+    };
+
+    const query = payload.id
+      ? supabase
+          .from('help_articles')
+          .update(row)
+          .eq('id', payload.id)
+          .select('*')
+          .single()
+      : supabase
+          .from('help_articles')
+          .insert(row)
+          .select('*')
+          .single();
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Erreur sauvegarde article aide:', error);
+      throw new Error('Impossible de sauvegarder l\'article.');
+    }
+
+    return mapRow(data as HelpArticleRow);
+  }
+
   async findPublished(locale: HelpLocale = 'fr'): Promise<HelpArticleRecord[]> {
     const { data, error } = await supabase
       .from('help_articles')

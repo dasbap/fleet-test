@@ -15,8 +15,8 @@ describe("supabaseTestClient env", () => {
     vi.stubEnv("SUPABASE_TEST_PASSWORD", "");
 
     expect(getMissingSupabaseIntegrationEnv()).toEqual([
-      "VITE_SUPABASE_URL",
-      "VITE_SUPABASE_ANON_KEY",
+      "SUPABASE_URL ou VITE_SUPABASE_URL",
+      "SUPABASE_ANON_KEY ou VITE_SUPABASE_ANON_KEY",
       "SUPABASE_SERVICE_ROLE_KEY",
     ]);
   });

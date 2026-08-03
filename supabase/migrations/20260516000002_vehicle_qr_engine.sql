@@ -292,8 +292,8 @@ DROP POLICY IF EXISTS jetons_qr_insert_manager ON public.jetons_qr;
 CREATE POLICY jetons_qr_insert_manager ON public.jetons_qr
   FOR INSERT WITH CHECK (
     (auth.jwt() ->> 'role') = 'service_role'
-    OR has_role(fleet_id, 'manager')
-    OR has_role(fleet_id, 'organizer')
+    OR has_role(fleet_id, 'manager'::public.role_type)
+    OR has_role(fleet_id, 'organizer'::public.role_type)
   );
 
 -- ─── 7. RLS journal_scans_qr : lecture manager ──────────────
@@ -306,10 +306,10 @@ CREATE POLICY journal_scans_qr_select_manager ON public.journal_scans_qr
       SELECT 1 FROM jetons_qr jq
       WHERE jq.id = journal_scans_qr.qr_token_id
         AND (
-          has_role(jq.fleet_id, 'manager') OR has_role(jq.fleet_id, 'organizer')
+          has_role(jq.fleet_id, 'manager'::public.role_type) OR has_role(jq.fleet_id, 'organizer'::public.role_type)
           OR (jq.vehicle_id IS NOT NULL AND EXISTS (
             SELECT 1 FROM vehicules v WHERE v.id = jq.vehicle_id
-              AND (has_role(v.fleet_id, 'manager') OR has_role(v.fleet_id, 'organizer'))
+              AND (has_role(v.fleet_id, 'manager'::public.role_type) OR has_role(v.fleet_id, 'organizer'::public.role_type))
           ))
         )
     )

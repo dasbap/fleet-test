@@ -5,6 +5,9 @@
 -- Supprimer les anciennes fonctions sans search_path fixé (noms anglais ou doublons)
 DROP FUNCTION IF EXISTS public.search_users(text, int);
 DROP FUNCTION IF EXISTS close_shift(uuid, int, int, text, text, text);
+DROP FUNCTION IF EXISTS public.affecter_vehicule(uuid, uuid, uuid, timestamptz);
+DROP FUNCTION IF EXISTS public.fermer_creneau(uuid, int, int, text, text, text);
+DROP FUNCTION IF EXISTS public.rechercher_utilisateurs(text, int);
 
 -- affecter_vehicule : ajouter SET search_path = public
 CREATE OR REPLACE FUNCTION public.affecter_vehicule(

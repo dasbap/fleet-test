@@ -54,6 +54,9 @@ export interface UseRoleAccessReturn {
   /** True si l'utilisateur est admin plateforme ET non-démo. */
   isAdmin: boolean;
 
+  /** True si l'utilisateur est l'unique super admin plateforme. */
+  isSuperAdmin: boolean;
+
   /**
    * Vérifie si l'utilisateur a accès à une flotte spécifique.
    * Pour l'admin, retourne toujours true.
@@ -78,6 +81,7 @@ export interface UseRoleAccessReturn {
  * Invalidé sur logout (userId null).
  */
 const adminCache = new Map<string, boolean>();
+const superAdminCache = new Map<string, boolean>();
 
 const adminProfileRepository = new AdminProfileRepository();
 const adminProfileService = new AdminProfileService(adminProfileRepository);
@@ -89,9 +93,13 @@ export function useRoleAccess(): UseRoleAccessReturn {
   /** Rôle dans la flotte active (pas le max multi-flotte). */
   const fleetRole = activeTenantContext?.role ?? globalFleetRole;
   const { isDemo } = useDemoSession();
+  const cachedAdmin = user?.id ? adminCache.get(user.id) : undefined;
+  const cachedSuperAdmin = user?.id ? superAdminCache.get(user.id) : undefined;
+  const hasCachedAdminStatus = cachedAdmin !== undefined && cachedSuperAdmin !== undefined;
 
-  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
-  const [isLoading, setIsLoading]             = useState(true);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(() => Boolean(cachedAdmin && !isDemo));
+  const [isPlatformSuperAdmin, setIsPlatformSuperAdmin] = useState(() => Boolean(cachedSuperAdmin && !isDemo));
+  const [isLoading, setIsLoading]             = useState(() => Boolean(user?.id && !hasCachedAdminStatus));
 
   // Évite les setState après démontage
   const mountedRef = useRef(true);
@@ -106,15 +114,18 @@ export function useRoleAccess(): UseRoleAccessReturn {
     if (!user?.id) {
       // Déconnecté : réinitialiser
       setIsPlatformAdmin(false);
+      setIsPlatformSuperAdmin(false);
       setIsLoading(false);
       return;
     }
 
     // Cache hit
-    if (adminCache.has(user.id)) {
+    if (adminCache.has(user.id) && superAdminCache.has(user.id)) {
       const cached = adminCache.get(user.id)!;
+      const cachedSuperAdmin = superAdminCache.get(user.id)!;
       // Un compte démo ne peut jamais être admin, même si la DB le dit
       setIsPlatformAdmin(cached && !isDemo);
+      setIsPlatformSuperAdmin(cachedSuperAdmin && !isDemo);
       setIsLoading(false);
       return;
     }
@@ -122,20 +133,26 @@ export function useRoleAccess(): UseRoleAccessReturn {
     // Requête DB
     setIsLoading(true);
 
-    void adminProfileService
-      .isPlatformAdmin(user.id)
-      .then((isAdmin) => {
+    void Promise.all([
+      adminProfileService.isPlatformAdmin(user.id),
+      adminProfileService.isPlatformSuperAdmin(user.id),
+    ])
+      .then(([isAdmin, isSuperAdmin]) => {
         if (!mountedRef.current) return;
 
         adminCache.set(user.id, isAdmin);
+        superAdminCache.set(user.id, isSuperAdmin);
         setIsPlatformAdmin(isAdmin && !isDemo);
+        setIsPlatformSuperAdmin(isSuperAdmin && !isDemo);
         setIsLoading(false);
       })
       .catch((error) => {
         if (!mountedRef.current) return;
         console.warn("[useRoleAccess] admin_profiles inaccessible:", error);
         adminCache.set(user.id, false);
+        superAdminCache.set(user.id, false);
         setIsPlatformAdmin(false);
+        setIsPlatformSuperAdmin(false);
         setIsLoading(false);
       });
   }, [user?.id, isDemo]);
@@ -165,6 +182,7 @@ export function useRoleAccess(): UseRoleAccessReturn {
     fleetRole:       fleetRole ?? null,
     platformRole,
     isAdmin:         isPlatformAdmin,
+    isSuperAdmin:    isPlatformSuperAdmin,
     isDemo,
     accessibleFleets,
   };
@@ -227,6 +245,7 @@ export function useRoleAccess(): UseRoleAccessReturn {
     canAny,
     isAtLeast,
     isAdmin: isPlatformAdmin,
+    isSuperAdmin: isPlatformSuperAdmin,
     hasFleetAccess,
     checkPermission,
     isLoading,

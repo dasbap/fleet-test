@@ -72,6 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_access_codes_expires ON public.access_codes (expi
 ALTER TABLE public.access_codes ENABLE ROW LEVEL SECURITY;
 
 -- Lecture : seul le service_role et les admins internes
+DROP POLICY IF EXISTS access_codes_admin_only ON public.access_codes;
 CREATE POLICY access_codes_admin_only ON public.access_codes
   FOR ALL
   USING (public.is_internal_user());
@@ -92,6 +93,7 @@ CREATE TABLE IF NOT EXISTS public.access_code_uses (
 
 ALTER TABLE public.access_code_uses ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS access_code_uses_admin_only ON public.access_code_uses;
 CREATE POLICY access_code_uses_admin_only ON public.access_code_uses
   FOR ALL USING (public.is_internal_user());
 

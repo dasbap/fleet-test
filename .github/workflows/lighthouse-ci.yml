@@ -35,12 +35,13 @@ defaults:
 jobs:
   changes:
     name: Detect Lighthouse changes
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     outputs:
       relevant: ${{ steps.filter.outputs.relevant }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
+          clean: false
           fetch-depth: 0
 
       - id: filter
@@ -72,10 +73,12 @@ jobs:
       VITE_SUPABASE_URL: https://placeholder-build.supabase.co
       VITE_SUPABASE_ANON_KEY: placeholder-anon-key-ci-build-only
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          clean: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
 

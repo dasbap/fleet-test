@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createServerApp } from "@/server/http/app";
 import { toSupabaseInfrastructureError } from "@/lib/supabase-runtime-errors";
+import { resolveAppUrlFromOrigin } from "@/server/http/routes/adminDemo";
 
 describe("BFF routes (Hono)", () => {
   const originalEnv = { ...process.env };
@@ -67,6 +68,76 @@ describe("BFF routes (Hono)", () => {
       }),
     });
     expect(res.status).toBe(401);
+  });
+
+  it("POST /api/admin/create-prospect exige Bearer", async () => {
+    const app = createServerApp();
+    const res = await app.request("/api/admin/create-prospect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "prospect@example.com", trial_days: 7 }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /api/admin/create-prospect reste disponible si la config Supabase manque", async () => {
+    delete process.env.SUPABASE_URL;
+    delete process.env.VITE_SUPABASE_URL;
+    delete process.env.SUPABASE_ANON_KEY;
+    delete process.env.VITE_SUPABASE_ANON_KEY;
+
+    const app = createServerApp();
+    const res = await app.request("/api/admin/create-prospect", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer test-token",
+      },
+      body: JSON.stringify({ email: "prospect@example.com", trial_days: 7 }),
+    });
+
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({
+      ok: false,
+      error: "server_configuration_error",
+    });
+  });
+
+  it("POST /api/admin/generate-magic-link exige Bearer", async () => {
+    const app = createServerApp();
+    const res = await app.request("/api/admin/generate-magic-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: "00000000-0000-4000-8000-000000000001",
+        fleet_id: "00000000-0000-4000-8000-000000000002",
+        email: "prospect@example.com",
+      }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /api/demo/magic-link refuse un token invalide avant tout appel Supabase", async () => {
+    const app = createServerApp();
+    const res = await app.request("/api/demo/magic-link", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:8080",
+      },
+      body: JSON.stringify({ action: "validate", token: "pas-un-uuid" }),
+    });
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({
+      ok: false,
+      error: "token_not_found",
+    });
+  });
+
+  it("genere les liens admin demo sur l'origine locale quand le panel tourne en local", () => {
+    expect(resolveAppUrlFromOrigin("http://localhost:8080")).toBe("http://localhost:8080");
+    expect(resolveAppUrlFromOrigin("http://127.0.0.1:8085/")).toBe("http://127.0.0.1:8085");
   });
 
   it("POST /webhooks/payment refuse sans secret", async () => {

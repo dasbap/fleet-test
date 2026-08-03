@@ -52,10 +52,10 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.has_role(p_fleet_id, 'organizer')
-    OR public.has_role(p_fleet_id, 'manager')
-    OR public.has_role(p_fleet_id, 'mechanic')
-    OR public.has_role(p_fleet_id, 'driver')
+    public.has_role(p_fleet_id, 'organizer'::public.role_type)
+    OR public.has_role(p_fleet_id, 'manager'::public.role_type)
+    OR public.has_role(p_fleet_id, 'mechanic'::public.role_type)
+    OR public.has_role(p_fleet_id, 'driver'::public.role_type)
   ) THEN
     RAISE EXCEPTION 'Accès refusé pour cette flotte';
   END IF;
