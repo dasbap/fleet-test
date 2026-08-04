@@ -9,6 +9,8 @@
  * Variables : LOCAL_DEV_PORTS, LOCAL_OPEN_WAIT_MS (défaut 120000), SMOKE_STRICT=1
  */
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import {
   REPO_ROOT,
   getCandidatePorts,
@@ -78,10 +80,12 @@ async function waitForAdvertisedPortReady(child, paths, deadlineMs, shouldAbort)
 async function main() {
   const ports = getCandidatePorts();
   const paths = getSmokePaths();
+  const hasLocalEnvFile = existsSync(join(REPO_ROOT, ".env.local"));
+  const bffWatchArgs = hasLocalEnvFile ? ["watch", "--env-file=.env.local"] : ["watch"];
 
   const bff = spawn(
     "npx",
-    ["tsx", "watch", "--env-file=.env.local", "--tsconfig", "tsconfig.server.json", "src/server/index.ts"],
+    ["tsx", ...bffWatchArgs, "--tsconfig", "tsconfig.server.json", "src/server/index.ts"],
     {
       cwd: REPO_ROOT,
       stdio: ["inherit", "inherit", "inherit"],

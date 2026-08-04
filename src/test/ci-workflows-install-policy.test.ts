@@ -257,4 +257,12 @@ describe("GitHub workflow dependency install policy", () => {
     );
     expect(viteConfig).not.toContain("src/**/*.{tsx,ts,jsx,js}");
   });
+
+  it("does not require .env.local when Playwright starts the dev server in CI", () => {
+    const devWithOpen = readFileSync("scripts/dev-with-open.mjs", "utf8");
+
+    expect(devWithOpen).toContain("existsSync");
+    expect(devWithOpen).toContain("hasLocalEnvFile");
+    expect(devWithOpen).toContain('hasLocalEnvFile ? ["watch", "--env-file=.env.local"] : ["watch"]');
+  });
 });
