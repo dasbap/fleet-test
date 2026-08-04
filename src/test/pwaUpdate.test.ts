@@ -3,13 +3,40 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("PWA service worker update", () => {
-  it("does not force an automatic full page reload when a new service worker is available", () => {
+  it("activates a newly deployed service worker without waiting for a hard refresh", () => {
     const pwaSource = readFileSync("src/pwa.ts", "utf8");
     const viteConfig = readFileSync("vite.config.ts", "utf8");
 
-    expect(pwaSource).not.toContain("updateSW(true)");
+    expect(pwaSource).toContain("updateSW(true)");
     expect(viteConfig).toContain('registerType: "prompt"');
-    expect(viteConfig).toContain("skipWaiting: false");
-    expect(viteConfig).toContain("clientsClaim: false");
+    expect(viteConfig).toContain("skipWaiting: true");
+    expect(viteConfig).toContain("clientsClaim: true");
+  });
+
+  it("prevents Vercel from caching the SPA shell and service worker metadata", () => {
+    const vercelConfig = JSON.parse(readFileSync("vercel.json", "utf8")) as {
+      headers?: Array<{ source: string; headers?: Array<{ key: string; value: string }> }>;
+    };
+
+    const noStoreSources = new Set(
+      (vercelConfig.headers ?? [])
+        .filter((entry) =>
+          entry.headers?.some(
+            (header) =>
+              header.key === "Cache-Control" &&
+              header.value.includes("no-store"),
+          ),
+        )
+        .map((entry) => entry.source),
+    );
+
+    expect(Array.from(noStoreSources)).toEqual(
+      expect.arrayContaining([
+        "/index.html",
+        "/sw.js",
+        "/workbox-*.js",
+        "/manifest.webmanifest",
+      ]),
+    );
   });
 });

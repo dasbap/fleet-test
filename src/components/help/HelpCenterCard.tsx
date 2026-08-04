@@ -10,7 +10,6 @@
 import { Link } from "react-router-dom";
 import {
   HelpCircle,
-  MessageCircle,
   Mail,
   Zap,
   BookOpen,
@@ -22,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ACCOUNT_EXTERNAL_LINKS } from "@/features/account/config/accountLinks";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
-import { buildWhatsAppUrl, SOCIAL, SUPPORT } from "@/config/navigation";
+import { SUPPORT } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -65,8 +64,6 @@ export function HelpCenterCard({
 }: HelpCenterCardProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const whatsappHref = buildWhatsAppUrl(SOCIAL.whatsappSupportMessage);
-
   if (variant === "compact") {
     return (
       <div
@@ -90,25 +87,12 @@ export function HelpCenterCard({
               Ouvrir le centre d&apos;aide
             </Link>
           </Button>
-          <div className="flex gap-2">
-            <Button asChild variant="outline" size="sm" className="flex-1">
-              <a
-                href={whatsappHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Support WhatsApp"
-              >
-                <MessageCircle className="h-4 w-4 mr-1 text-green-500" aria-hidden />
-                WhatsApp
-              </a>
-            </Button>
-            <Button asChild variant="outline" size="sm" className="flex-1">
-              <a href={SUPPORT.mailtoHref} aria-label="Support Email">
-                <Mail className="h-4 w-4 mr-1 text-blue-500" aria-hidden />
-                Email
-              </a>
-            </Button>
-          </div>
+          <Button asChild variant="outline" size="sm" className="w-full">
+            <a href={SUPPORT.mailtoHref} aria-label="Support Email">
+              <Mail className="h-4 w-4 mr-1 text-blue-500" aria-hidden />
+              Email
+            </a>
+          </Button>
         </div>
       </div>
     );
@@ -170,16 +154,6 @@ export function HelpCenterCard({
 
       {/* Canaux support */}
       <div className="p-3 flex gap-2">
-        <a
-          href={whatsappHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs font-medium py-2 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-          aria-label="Contacter le support via WhatsApp"
-        >
-          <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-          WhatsApp
-        </a>
         <a
           href={SUPPORT.mailtoHref}
           className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border text-muted-foreground text-xs font-medium py-2 hover:bg-muted/50 transition-colors"

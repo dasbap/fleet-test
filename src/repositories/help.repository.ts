@@ -72,6 +72,25 @@ export class HelpRepository {
   async upsertArticle(
     payload: HelpArticleInsert & { id?: string },
   ): Promise<HelpArticleRecord> {
+    if (payload.category === 'faq') {
+      const { data, error } = await supabase.rpc('admin_upsert_faq_article', {
+        p_id: payload.id ?? null,
+        p_slug: payload.slug,
+        p_title: payload.title,
+        p_content: payload.content,
+        p_locale: payload.locale ?? 'fr',
+        p_sort_order: payload.sort_order ?? 0,
+        p_is_published: payload.is_published ?? true,
+      });
+
+      if (error) {
+        console.error('Erreur sauvegarde article aide:', error);
+        throw new Error('Impossible de sauvegarder l\'article.');
+      }
+
+      return mapRow(data as HelpArticleRow);
+    }
+
     const row = {
       id: payload.id,
       slug: payload.slug,
@@ -91,16 +110,16 @@ export class HelpRepository {
 
     const query = payload.id
       ? supabase
-          .from('help_articles')
-          .update(row)
-          .eq('id', payload.id)
-          .select('*')
-          .single()
+        .from('help_articles')
+        .update(row)
+        .eq('id', payload.id)
+        .select('*')
+        .single()
       : supabase
-          .from('help_articles')
-          .insert(row)
-          .select('*')
-          .single();
+        .from('help_articles')
+        .insert(row)
+        .select('*')
+        .single();
 
     const { data, error } = await query;
 
@@ -110,6 +129,19 @@ export class HelpRepository {
     }
 
     return mapRow(data as HelpArticleRow);
+  }
+
+  async deleteFaqArticle(articleId: string): Promise<void> {
+    const { error } = await supabase
+      .from('help_articles')
+      .delete()
+      .eq('id', articleId)
+      .eq('category', 'faq');
+
+    if (error) {
+      console.error('Erreur suppression FAQ:', error);
+      throw new Error('Impossible de supprimer la FAQ.');
+    }
   }
 
   async findPublished(locale: HelpLocale = 'fr'): Promise<HelpArticleRecord[]> {

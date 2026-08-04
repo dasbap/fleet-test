@@ -26,6 +26,10 @@ vi.mock("@/components/admin/CreateDemoForm", () => ({
   ),
 }));
 
+vi.mock("@/components/admin/DemoRequestsPanel", () => ({
+  DemoRequestsPanel: () => <div data-testid="demo-requests-panel" />,
+}));
+
 describe("DemoAdminPage", () => {
   beforeEach(() => {
     mockUseRoleAccess.mockReset();
@@ -78,7 +82,8 @@ describe("DemoAdminPage", () => {
     );
 
     expect(screen.getByRole("heading", { name: /acces demo e-samba/i })).toBeInTheDocument();
-    expect(screen.getByTestId("demo-sessions-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("demo-requests-panel")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /sessions/i })).toBeInTheDocument();
   });
 
   it("passe le droit acces permanent depuis le role super admin", () => {

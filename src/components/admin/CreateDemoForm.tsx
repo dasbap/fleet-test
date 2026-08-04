@@ -31,7 +31,7 @@ import { MAX_DEMO_TRIAL_DAYS } from "@/services/admin-demo.service";
 import type { CreateDemoPayload } from "@/hooks/useAdminDemoAccounts";
 
 interface CreateDemoFormProps {
-  onSubmit: (payload: CreateDemoPayload) => Promise<{ ok: boolean; magic_url?: string; error?: string }>;
+  onSubmit: (payload: CreateDemoPayload) => Promise<{ ok: boolean; user_id?: string; magic_url?: string; error?: string }>;
   onSuccess?: () => void;
   canCreatePermanentAccess?: boolean;
 }

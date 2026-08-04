@@ -32,6 +32,27 @@ export interface GenerateMagicLinkResult {
   error?: string;
 }
 
+async function readBffJson<T extends { ok: boolean; error?: string }>(
+  res: Response,
+  unavailableError: string,
+): Promise<T & { rateLimited?: boolean }> {
+  if (res.status === 429) {
+    return { ok: false, rateLimited: true } as T & { rateLimited?: boolean };
+  }
+
+  const text = await res.text();
+  const data = text.length > 0 ? (JSON.parse(text) as Partial<T>) : null;
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: data?.error ?? unavailableError,
+    } as T & { rateLimited?: boolean };
+  }
+
+  return (data ?? { ok: false, error: unavailableError }) as T & { rateLimited?: boolean };
+}
+
 /**
  * Appels BFF Vercel pour les actions admin démo sensibles (secret côté serveur).
  */
@@ -49,11 +70,7 @@ export class AdminDemoBffRepository {
       body: JSON.stringify(payload),
     });
 
-    if (res.status === 429) {
-      return { ok: false, rateLimited: true };
-    }
-
-    return (await res.json()) as CreateProspectResult;
+    return readBffJson<CreateProspectResult>(res, "bff_route_unavailable");
   }
 
   async generateMagicLink(
@@ -69,10 +86,6 @@ export class AdminDemoBffRepository {
       body: JSON.stringify(payload),
     });
 
-    if (res.status === 429) {
-      return { ok: false, rateLimited: true };
-    }
-
-    return (await res.json()) as GenerateMagicLinkResult;
+    return readBffJson<GenerateMagicLinkResult>(res, "bff_route_unavailable");
   }
 }

@@ -1,4 +1,4 @@
-import { Bell, User, Settings } from "lucide-react";
+import { Bell, Home, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -30,6 +30,7 @@ interface DashboardHeaderProps {
   userRole: AppRole;
   displayName?: string;
   initials?: string;
+  isPlatformAdmin?: boolean;
 }
 
 const roleLabels = {
@@ -39,10 +40,17 @@ const roleLabels = {
   mechanic: "Mécanicien",
 };
 
-const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderProps) => {
+const DashboardHeader = ({
+  userRole,
+  displayName,
+  initials,
+  isPlatformAdmin = false,
+}: DashboardHeaderProps) => {
   const { userFleetId, tenantOptions, setActiveFleetId } = useAuth();
   const { data: alertes } = useAlerts(userFleetId ?? undefined);
   const alertesCount = alertes?.length ?? 0;
+  const displayRoleLabel = isPlatformAdmin ? "Admin plateforme" : roleLabels[userRole];
+  const showFleetControls = !isPlatformAdmin;
 
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
@@ -50,7 +58,12 @@ const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderPro
         {/* Left */}
         <div className="flex items-center gap-4">
           <SidebarTrigger className="-ml-1" />
-          {tenantOptions.length > 1 ? (
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/" aria-label="Retour accueil">
+              <Home className="w-5 h-5" />
+            </Link>
+          </Button>
+          {showFleetControls && tenantOptions.length > 1 ? (
             <Select value={userFleetId ?? undefined} onValueChange={setActiveFleetId}>
               <SelectTrigger className="w-[220px] h-9">
                 <SelectValue placeholder="Sélectionner une flotte" />
@@ -64,14 +77,21 @@ const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderPro
               </SelectContent>
             </Select>
           ) : null}
-          <UniversalSearch fleetId={userFleetId} className="max-w-md" />
+          {showFleetControls ? (
+            <UniversalSearch fleetId={userFleetId} className="max-w-md" />
+          ) : null}
         </div>
 
         {/* Right */}
         <div className="flex items-center gap-3">
-          <AdaptiveNetworkQualityBadge />
-          <OfflineSyncIndicator />
+          {showFleetControls ? (
+            <>
+              <AdaptiveNetworkQualityBadge />
+              <OfflineSyncIndicator />
+            </>
+          ) : null}
           {/* Notifications */}
+          {showFleetControls ? (
           <Button variant="ghost" size="icon" className="relative" asChild>
             <Link to="/dashboard/alerts" aria-label={`${alertesCount} alerte${alertesCount !== 1 ? "s" : ""} non résolue${alertesCount !== 1 ? "s" : ""}`}>
               <Bell className="w-5 h-5" />
@@ -82,6 +102,7 @@ const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderPro
               )}
             </Link>
           </Button>
+          ) : null}
 
           {/* User Menu */}
           <DropdownMenu>
@@ -97,7 +118,7 @@ const DashboardHeader = ({ userRole, displayName, initials }: DashboardHeaderPro
                     {displayName || "Utilisateur"}
                   </span>
                   <Badge variant="secondary" className="text-xs">
-                    {roleLabels[userRole]}
+                    {displayRoleLabel}
                   </Badge>
                 </div>
               </Button>

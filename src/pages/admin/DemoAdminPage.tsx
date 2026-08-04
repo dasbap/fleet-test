@@ -9,12 +9,13 @@
 
 import { Link, Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus } from "lucide-react";
+import { Inbox, Users, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useAdminDemoAccounts } from "@/hooks/useAdminDemoAccounts";
 import { DemoSessionsPanel } from "@/components/admin/DemoSessionsPanel";
 import { CreateDemoForm } from "@/components/admin/CreateDemoForm";
+import { DemoRequestsPanel } from "@/components/admin/DemoRequestsPanel";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 export default function DemoAdminPage() {
@@ -29,6 +30,7 @@ export default function DemoAdminPage() {
     updateAccountExpiration,
     deleteAccount,
     resetFleet,
+    setFleetPlan,
     generateMagicLink,
   } = useAdminDemoAccounts();
 
@@ -55,8 +57,12 @@ export default function DemoAdminPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="sessions">
+      <Tabs defaultValue="requests">
         <TabsList>
+          <TabsTrigger value="requests" className="gap-1.5">
+            <Inbox className="h-4 w-4" />
+            Demandes
+          </TabsTrigger>
           <TabsTrigger value="sessions" className="gap-1.5">
             <Users className="h-4 w-4" />
             Sessions
@@ -66,6 +72,10 @@ export default function DemoAdminPage() {
             Creer un acces
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="requests" className="mt-6">
+          <DemoRequestsPanel onCreateAccess={createAccess} onReloadSessions={reload} />
+        </TabsContent>
 
         <TabsContent value="sessions" className="mt-6">
           <DemoSessionsPanel
@@ -77,6 +87,7 @@ export default function DemoAdminPage() {
             onUpdateExpiration={updateAccountExpiration}
             onDelete={deleteAccount}
             onResetFleet={resetFleet}
+            onSetFleetPlan={setFleetPlan}
             onGenerateMagicLink={generateMagicLink}
           />
         </TabsContent>

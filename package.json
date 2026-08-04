@@ -22,7 +22,8 @@
   },
   "scripts": {
     "postinstall": "npx prisma generate --schema packages/db/prisma/schema.prisma && node scripts/install-playwright.mjs && patch-package",
-    "dev": "vite",
+    "dev": "node scripts/dev-with-open.mjs",
+    "dev:vite": "vite",
     "marketing:dev": "npm --prefix apps/marketing run dev",
     "marketing:build": "npm --prefix apps/marketing run build",
     "check:storage-migrations": "node scripts/check-storage-migrations.mjs",

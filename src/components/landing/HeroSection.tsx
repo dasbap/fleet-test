@@ -11,6 +11,7 @@ import heroBg1280Webp from "@/assets/hero-bg-1280.webp";
 import heroBg1920Webp from "@/assets/hero-bg-1920.webp";
 
 const HeroSection = () => {
+  const priorityAttrs = { fetchpriority: "high" };
   const highlights = [
     "Gestion multi-flottes",
     "Suivi temps reel",
@@ -37,7 +38,7 @@ const HeroSection = () => {
             width={1920}
             height={1080}
             className="h-full w-full object-cover opacity-30"
-            fetchPriority="high"
+            {...priorityAttrs}
             loading="eager"
             decoding="async"
             sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 1280px"

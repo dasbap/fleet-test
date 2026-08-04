@@ -130,14 +130,14 @@ const Navbar = () => {
             <div className="hidden items-center gap-2 md:flex lg:gap-4">
               {user ? (
                 <Button variant="ghost" asChild>
-                  <Link to={appEntry}>Mon espace</Link>
+                  <Link to={appEntry}>Dashboard</Link>
                 </Button>
               ) : connexionNav ? (
                 <Button variant="ghost" asChild className="hidden lg:inline-flex">
                   <Link to={connexionNav.href}>{connexionNav.label}</Link>
                 </Button>
               ) : null}
-              {demoNav ? (
+              {!user && demoNav ? (
                 <Button variant="outline" asChild className="hidden lg:inline-flex">
                   <Link to={demoNav.href}>{demoNav.label}</Link>
                 </Button>
@@ -186,7 +186,7 @@ const Navbar = () => {
               {user ? (
                 <Button variant="ghost" asChild className="justify-start min-h-[44px]">
                   <Link to={appEntry} onClick={closeMenu}>
-                    Mon espace
+                    Dashboard
                   </Link>
                 </Button>
               ) : (

@@ -16,6 +16,7 @@ export interface CreateDemoPayload {
 
 export interface CreateDemoAccessResult {
   ok: boolean;
+  user_id?: string;
   magic_url?: string;
   error?: string;
 }
@@ -26,6 +27,13 @@ export interface AdminDemoDashboardData {
 
 export const MAX_DEMO_TRIAL_DAYS = 31;
 export const MAX_DEMO_EXTENSION_HOURS = MAX_DEMO_TRIAL_DAYS * 24;
+
+function formatCreateAccessError(error: string | undefined): string {
+  if (error === "bff_route_unavailable") {
+    return "Route admin indisponible en local. Lance npm run dev:local ou active le proxy BFF.";
+  }
+  return error ?? "creation_echouee";
+}
 
 /**
  * Logique métier administration des comptes démo.
@@ -76,7 +84,7 @@ export class AdminDemoService {
       }
 
       if (!prospectData.ok || !prospectData.user_id) {
-        return { ok: false, error: prospectData.error ?? "creation_echouee" };
+        return { ok: false, error: formatCreateAccessError(prospectData.error) };
       }
 
       const linkData = await this.bffRepository.generateMagicLink(accessToken, {
@@ -90,7 +98,7 @@ export class AdminDemoService {
         return { ok: false, error: "Limite de génération de liens atteinte." };
       }
 
-      return { ok: true, magic_url: linkData.magic_url };
+      return { ok: true, user_id: prospectData.user_id, magic_url: linkData.magic_url };
     } catch (err) {
       return { ok: false, error: String(err) };
     }
@@ -165,6 +173,22 @@ export class AdminDemoService {
     return {
       ok: result.ok,
       vehiclesDeleted: result.vehicles_deleted ?? 0,
+    };
+  }
+
+  async setFleetPlan(
+    fleetId: string,
+    adminId: string,
+    planCode: string,
+  ): Promise<{ ok: boolean; plan_code?: string }> {
+    if (!fleetId || !adminId || !planCode) {
+      throw new Error("Identifiants flotte, admin et plan requis");
+    }
+
+    const result = await this.repository.setFleetPlan(fleetId, adminId, planCode);
+    return {
+      ok: result.ok,
+      plan_code: result.plan_code,
     };
   }
 

@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { buildWhatsAppUrl, SOCIAL, SUPPORT } from "@/config/navigation";
+import { SUPPORT } from "@/config/navigation";
 import type { HelpArticle, HelpCategory } from "@/hooks/useHelp";
 import { useHelpContext as useHelp } from "@/context/useHelpContext";
 
@@ -440,18 +440,6 @@ function HelpPanelInternal() {
 
         <div className="px-5 py-4 border-t border-border flex-shrink-0 space-y-2">
           <Button
-            variant="outline"
-            size="sm"
-            className="w-full gap-2 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-            onClick={() => {
-              window.open(buildWhatsAppUrl(SOCIAL.whatsappSupportMessage), "_blank");
-            }}
-          >
-            <IconWhatsApp className="w-4 h-4" />
-            {t("contact_whatsapp")}
-          </Button>
-
-          <Button
             variant="ghost"
             size="sm"
             className="w-full text-muted-foreground hover:text-foreground text-xs"
@@ -640,4 +628,3 @@ export function HelpSearch({ className, autoFocus }: HelpSearchProps) {
     </div>
   );
 }
-

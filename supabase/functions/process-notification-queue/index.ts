@@ -153,6 +153,66 @@ function buildEmail(row: QueueRow): ResendPayload | null {
     };
   }
 
+  if (row.template_id === "demo_request_accepted") {
+    const userName = escapeHtml((m.user_name as string | null) ?? "votre utilisateur");
+    const companyName = escapeHtml((m.company_name as string | null) ?? "votre entreprise");
+    const invitationUrl = escapeHtml((m.invitation_url as string | null) ?? "https://www.e-samba.com/auth");
+
+    return {
+      from:    `E-Samba <${FROM_EMAIL}>`,
+      to:      [row.to_email],
+      subject: "Votre compte E-Samba est actif",
+      html: `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:Arial,sans-serif;color:#1a1a1a;background:#f5f5f5;margin:0;padding:20px">
+<div style="max-width:580px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+  <div style="background:#16a34a;padding:24px 32px">
+    <h1 style="color:#fff;margin:0;font-size:20px">Votre acces E-Samba est actif</h1>
+  </div>
+  <div style="padding:32px">
+    <p style="margin:0 0 16px">Bonjour,</p>
+    <p style="margin:0 0 16px">Votre demande pour <strong>${companyName}</strong> a ete acceptee.</p>
+    <p style="margin:0 0 8px">Votre utilisateur : <strong>${userName}</strong></p>
+    <p style="margin:0 0 24px">Utilisez le lien ci-dessous pour creer ou modifier le mot de passe associe a ce compte.</p>
+    <a href="${invitationUrl}" style="display:inline-block;background:#16a34a;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold">Creer mon mot de passe</a>
+  </div>
+</div>
+</body>
+</html>`,
+    };
+  }
+
+  if (row.template_id === "demo_request_refused") {
+    const companyName = escapeHtml((m.company_name as string | null) ?? "votre entreprise");
+    const reason = escapeHtml((m.reason as string | null) ?? "Votre demande ne peut pas etre activee pour le moment.");
+
+    return {
+      from:    `E-Samba <${FROM_EMAIL}>`,
+      to:      [row.to_email],
+      subject: "Votre demande E-Samba",
+      html: `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:Arial,sans-serif;color:#1a1a1a;background:#f5f5f5;margin:0;padding:20px">
+<div style="max-width:580px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+  <div style="background:#334155;padding:24px 32px">
+    <h1 style="color:#fff;margin:0;font-size:20px">Demande E-Samba traitee</h1>
+  </div>
+  <div style="padding:32px">
+    <p style="margin:0 0 16px">Bonjour,</p>
+    <p style="margin:0 0 16px">Votre demande pour <strong>${companyName}</strong> n'a pas ete acceptee.</p>
+    <p style="margin:0 0 24px">${reason}</p>
+    <p style="font-size:13px;color:#6b7280;margin:0">Vous pouvez recontacter l'equipe E-Samba depuis le formulaire du site.</p>
+  </div>
+</div>
+</body>
+</html>`,
+    };
+  }
+
   if (row.template_id === "billing_grace") {
     return {
       from:    `E-Samba Billing <${FROM_EMAIL}>`,

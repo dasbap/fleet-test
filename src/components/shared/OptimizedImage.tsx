@@ -35,6 +35,7 @@ export function OptimizedImage({
   const containerStyle = aspectRatio
     ? { aspectRatio }
     : { aspectRatio: `${width}/${height}` };
+  const priorityAttrs = { fetchpriority: priority ? "high" : "low" };
 
   return (
     <div className="relative w-full overflow-hidden bg-surface-raised" style={containerStyle}>
@@ -47,7 +48,7 @@ export function OptimizedImage({
           width={width}
           height={height}
           loading={priority ? "eager" : "lazy"}
-          fetchPriority={priority ? "high" : "low"}
+          {...priorityAttrs}
           decoding="async"
           className={`h-full w-full ${objectFitClass} ${className}`.trim()}
         />

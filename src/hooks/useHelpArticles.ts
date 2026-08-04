@@ -112,6 +112,30 @@ export function useSaveFaqArticle(locale: HelpLocale = 'fr') {
   });
 }
 
+export function useDeleteFaqArticle(locale: HelpLocale = 'fr') {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { articleId: string }) => helpService.deleteFaqArticle(payload.articleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-faq', locale] });
+      queryClient.invalidateQueries({ queryKey: ['public-faq', locale] });
+      queryClient.invalidateQueries({ queryKey: ['help-category', 'faq', locale] });
+      toast({
+        title: 'FAQ supprimee',
+        description: 'La question publique a ete supprimee.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Suppression FAQ impossible',
+        description: error instanceof Error ? error.message : 'Impossible de supprimer la FAQ.',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 export function useHelpAnalytics(days = 30) {
   return useQuery({
     queryKey: ['help-analytics', days],

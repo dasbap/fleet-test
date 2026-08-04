@@ -176,6 +176,13 @@ export class HelpService {
     });
   }
 
+  async deleteFaqArticle(articleId: string): Promise<void> {
+    if (!articleId) {
+      throw new Error('FAQ introuvable.');
+    }
+    await this.repository.deleteFaqArticle(articleId);
+  }
+
   /** Filtre articles selon rôle, plan et modules activés. */
   filterForUser(articles: HelpArticleRecord[], ctx: HelpUserContext): HelpArticleRecord[] {
     const userPlanRank = PLAN_RANK[ctx.planCode] ?? 0;

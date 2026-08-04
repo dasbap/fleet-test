@@ -66,7 +66,11 @@ describe("AdminDemoService", () => {
       email: "demo@example.com",
       label: undefined,
     });
-    expect(result).toEqual({ ok: true, magic_url: "https://example.com/magic" });
+    expect(result).toEqual({
+      ok: true,
+      user_id: "user-1",
+      magic_url: "https://example.com/magic",
+    });
   });
 
   it("transmet le type de compte et la duree sans flotte demo globale", async () => {
@@ -138,6 +142,26 @@ describe("AdminDemoService", () => {
     expect(createProspect).not.toHaveBeenCalled();
   });
 
+  it("explique quand le BFF admin local n'est pas lance", async () => {
+    const createProspect = vi.fn().mockResolvedValue({
+      ok: false,
+      error: "bff_route_unavailable",
+    });
+    const service = createService({}, { createProspect });
+
+    const result = await service.createAccess("token", {
+      email: "prospect@example.com",
+      account_type: "prospect",
+      trial_days: 7,
+      send_email: false,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Route admin indisponible en local. Lance npm run dev:local ou active le proxy BFF.",
+    });
+  });
+
   it("refuse de reactiver une demo avec plus de 31 jours d'extension demandee", async () => {
     const reactivateAccount = vi.fn();
     const service = createService({ reactivateAccount }, {});
@@ -178,6 +202,16 @@ describe("AdminDemoService", () => {
 
     expect(deleteAccount).toHaveBeenCalledWith("user-1", "admin-1", "suppression manuelle depuis admin UI");
     expect(result).toEqual({ ok: true });
+  });
+
+  it("change le plan d'une flotte via le repository", async () => {
+    const setFleetPlan = vi.fn().mockResolvedValue({ ok: true, plan_code: "enterprise" });
+    const service = createService({ setFleetPlan }, {});
+
+    const result = await service.setFleetPlan("fleet-1", "admin-1", "enterprise");
+
+    expect(setFleetPlan).toHaveBeenCalledWith("fleet-1", "admin-1", "enterprise");
+    expect(result).toEqual({ ok: true, plan_code: "enterprise" });
   });
 
   it("suspendAccount exige les identifiants", async () => {

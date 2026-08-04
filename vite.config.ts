@@ -288,8 +288,8 @@ export default defineConfig(({ mode }) => {
       },
       workbox: {
         cleanupOutdatedCaches: true,
-        skipWaiting: false,
-        clientsClaim: false,
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: [
           "**/*.{js,css,html,ico,svg,woff2,webp}",
           "icons/*.webp",

@@ -55,6 +55,7 @@ interface DemoSessionsPanelProps {
   onUpdateExpiration: (userId: string, expiresAt: string | null) => Promise<boolean>;
   onDelete: (userId: string) => Promise<boolean>;
   onResetFleet: (fleetId: string) => Promise<boolean>;
+  onSetFleetPlan: (fleetId: string, planCode: string) => Promise<boolean>;
   onGenerateMagicLink: (userId: string, email: string, fleetId?: string | null) => Promise<string | null>;
 }
 
@@ -77,6 +78,14 @@ const ROLE_LABELS: Record<string, string> = {
   manager: "Manager",
   mechanic: "Mecanicien",
   organizer: "Organisateur",
+};
+
+const PLAN_LABELS: Record<string, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+  enterprise: "Enterprise",
+  organizer: "Organizer",
 };
 
 function formatRelative(iso: string | null): string {
@@ -127,6 +136,7 @@ export function DemoSessionsPanel({
   onUpdateExpiration,
   onDelete,
   onResetFleet: _onResetFleet,
+  onSetFleetPlan,
   onGenerateMagicLink,
 }: DemoSessionsPanelProps) {
   const { toast } = useToast();
@@ -134,6 +144,7 @@ export function DemoSessionsPanel({
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
   const [expirationDraft, setExpirationDraft] = useState("");
+  const [planDraftByFleet, setPlanDraftByFleet] = useState<Record<string, string>>({});
 
   const filtered = sessions.filter((s) => {
     if (filter === "active" && !s.is_active) return false;
@@ -170,6 +181,12 @@ export function DemoSessionsPanel({
       return;
     }
     await withBusy(userId, () => onUpdateExpiration(userId, expiresAt));
+  }
+
+  async function handleSetPlan(session: DemoSession) {
+    if (!session.fleet_id) return;
+    const planCode = planDraftByFleet[session.fleet_id] ?? "pro";
+    await withBusy(session.user_id, () => onSetFleetPlan(session.fleet_id!, planCode));
   }
 
   function copyExistingLink(session: DemoSession) {
@@ -241,6 +258,7 @@ export function DemoSessionsPanel({
               <TableHead>Type</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Organisation</TableHead>
+              <TableHead>Plan</TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />Expiration
@@ -259,7 +277,7 @@ export function DemoSessionsPanel({
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
                   {search ? "Aucun resultat" : "Aucune session demo"}
                 </TableCell>
               </TableRow>
@@ -295,6 +313,41 @@ export function DemoSessionsPanel({
 
                   <TableCell className="text-sm">
                     {session.fleet_name ?? <span className="text-muted-foreground">Aucune flotte creee</span>}
+                  </TableCell>
+
+                  <TableCell>
+                    {session.fleet_id ? (
+                      <div className="flex min-w-[180px] items-center gap-2">
+                        <select
+                          aria-label={`Plan de ${session.email}`}
+                          className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+                          value={planDraftByFleet[session.fleet_id] ?? "pro"}
+                          onChange={(event) =>
+                            setPlanDraftByFleet((current) => ({
+                              ...current,
+                              [session.fleet_id!]: event.target.value,
+                            }))
+                          }
+                          disabled={busy}
+                        >
+                          {Object.entries(PLAN_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => void handleSetPlan(session)}
+                        >
+                          Appliquer
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">Apres creation flotte</span>
+                    )}
                   </TableCell>
 
                   <TableCell>

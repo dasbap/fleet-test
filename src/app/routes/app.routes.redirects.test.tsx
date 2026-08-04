@@ -255,6 +255,17 @@ describe("app.routes redirections critiques", () => {
     expect(await screen.findByTestId("faq-page")).toBeInTheDocument();
   });
 
+  it("rend /faq sous AuthProviderLayout pour voir la session connectee", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "user-1", email: "demo@esamba.test" },
+      isLoading: false,
+    });
+
+    renderRoutes("/faq");
+    expect(await screen.findByTestId("faq-page")).toBeInTheDocument();
+    expect(screen.getByTestId("auth-provider-layout")).toBeInTheDocument();
+  });
+
   it("redirige /help/guides vers /help/quickstart", async () => {
     renderRoutes("/help/guides");
     expect(await screen.findByTestId("help-quickstart-page")).toBeInTheDocument();

@@ -6,6 +6,8 @@ describe("process-notification-queue templates", () => {
     const worker = readFileSync("supabase/functions/process-notification-queue/index.ts", "utf8");
 
     expect(worker).toContain('row.template_id === "prospect_welcome"');
+    expect(worker).toContain('row.template_id === "demo_request_accepted"');
+    expect(worker).toContain('row.template_id === "demo_request_refused"');
     expect(worker).toContain("escapeHtml");
   });
 });

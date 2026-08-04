@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Bell, Info, FileWarning } from "lucide-react";
+import { AlertTriangle, Bell, Info, FileWarning, Check, Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import { useAuth } from "@/hooks/useAuth";
-import { useAlertsList, type Alert } from "@/hooks/useAlerts";
+import { useAlertsList, useResolveAlert, type Alert } from "@/hooks/useAlerts";
 import { useExpiringDocuments } from "@/hooks/useExpiringDocuments";
+import { useSubmitFaqQuestion } from "@/hooks/useFaqQuestions";
 import { cn } from "@/lib/utils";
 import {
   mobileFormLabelOverline,
@@ -43,6 +46,7 @@ const TYPE_LABELS: Record<Alert["type"], string> = {
   document_expired: "Document expiré",
   failure_risk: "Risque de panne",
   geofence_exit: "Sortie zone",
+  faq_answer: "Reponse FAQ",
 };
 
 function sortAlerts(alerts: Alert[], sortBy: SortOption): Alert[] {
@@ -68,12 +72,16 @@ function sortAlerts(alerts: Alert[], sortBy: SortOption): Alert[] {
 
 /** Liste d’alertes opérationnelles (web + mobile) avec filtres et tri. */
 export default function MobileAlertsPage() {
-  const { userFleetId, isLoading: authLoading } = useAuth();
+  const { user, userFleetId, isLoading: authLoading } = useAuth();
   const [severity, setSeverity] = useState<SeverityFilter>("all");
-  const [status, setStatus] = useState<StatusFilter>("all");
+  const [status, setStatus] = useState<StatusFilter>("open");
   const [type, setType] = useState<TypeFilter>("all");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("priority");
+  const [replyAlertId, setReplyAlertId] = useState<string | null>(null);
+  const [replyByAlertId, setReplyByAlertId] = useState<Record<string, string>>({});
+  const submitFaqQuestion = useSubmitFaqQuestion();
+  const resolveAlert = useResolveAlert();
 
   const { data, isLoading } = useAlertsList({
     severity: severity === "all" ? undefined : severity,
@@ -88,6 +96,25 @@ export default function MobileAlertsPage() {
     () => sortAlerts(data || [], sortBy),
     [data, sortBy],
   );
+
+  async function submitFaqFollowUp(alert: Alert) {
+    const question = (replyByAlertId[alert.id] ?? "").trim();
+    if (!question || !alert.faqQuestionId) return;
+    await submitFaqQuestion.mutateAsync({
+      question,
+      parentQuestionId: alert.faqQuestionId,
+    });
+    setReplyByAlertId((current) => ({ ...current, [alert.id]: "" }));
+    setReplyAlertId(null);
+  }
+
+  async function markAlertRead(alert: Alert) {
+    if (!user?.id) return;
+    await resolveAlert.mutateAsync({
+      alertId: alert.id,
+      resolvedBy: user.id,
+    });
+  }
 
   if (authLoading) {
     return <PageLoader />;
@@ -220,6 +247,7 @@ export default function MobileAlertsPage() {
                   <SelectItem value="document_expired">{TYPE_LABELS.document_expired}</SelectItem>
                   <SelectItem value="failure_risk">{TYPE_LABELS.failure_risk}</SelectItem>
                   <SelectItem value="geofence_exit">{TYPE_LABELS.geofence_exit}</SelectItem>
+                  <SelectItem value="faq_answer">{TYPE_LABELS.faq_answer}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -278,6 +306,71 @@ export default function MobileAlertsPage() {
                   <p className="mt-auto text-xs text-muted-foreground">
                     Créée le {new Date(alert.createdAt).toLocaleString()}
                   </p>
+                  {alert.type === "faq_answer" && alert.faqQuestionId && alert.status !== "resolved" ? (
+                    <div className="space-y-2 pt-2">
+                      {replyAlertId === alert.id ? (
+                        <div className="space-y-2">
+                          <label
+                            htmlFor={`faq-follow-up-${alert.id}`}
+                            className="text-xs font-medium text-muted-foreground"
+                          >
+                            Nouvelle question
+                          </label>
+                          <Textarea
+                            id={`faq-follow-up-${alert.id}`}
+                            rows={3}
+                            value={replyByAlertId[alert.id] ?? ""}
+                            onChange={(event) =>
+                              setReplyByAlertId((current) => ({
+                                ...current,
+                                [alert.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="Expliquez ce qui reste flou..."
+                          />
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <Button
+                              type="button"
+                              onClick={() => void submitFaqFollowUp(alert)}
+                              disabled={
+                                submitFaqQuestion.isPending ||
+                                (replyByAlertId[alert.id] ?? "").trim().length < 8
+                              }
+                            >
+                              <Send className="mr-2 h-4 w-4" aria-hidden />
+                              Envoyer la relance
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => setReplyAlertId(null)}
+                            >
+                              Annuler
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setReplyAlertId(alert.id)}
+                          >
+                            Reposer une question
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => void markAlertRead(alert)}
+                            disabled={resolveAlert.isPending}
+                          >
+                            <Check className="mr-2 h-4 w-4" aria-hidden />
+                            Marquer comme lu
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             </li>
