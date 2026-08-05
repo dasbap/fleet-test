@@ -252,7 +252,7 @@ describe("app.routes redirections critiques", () => {
     ).toBeInTheDocument();
   });
 
-  it("protege /confidentialite par le garde admin", async () => {
+  it("rend /confidentialite comme route publique", async () => {
     renderRoutes("/confidentialite");
     expect(
       await screen.findByTestId("confidentialite-page")
