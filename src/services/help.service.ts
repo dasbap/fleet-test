@@ -1,11 +1,11 @@
-import { HelpRepository } from '@/repositories/help.repository';
+import { HelpRepository } from "@/repositories/help.repository";
 import {
   HELP_ARTICLES_SEED_FR,
   HELP_ARTICLES_SEED_EN,
   HELP_ARTICLES_SEED_LN,
-} from '@/data/help/articles.seed';
-import { PUBLIC_FAQ_ENTRIES } from '@/data/marketing/faq-public';
-import { HELP_ROUTE_DEFAULTS } from '@/types/help';
+} from "@/data/help/articles.seed";
+import { PUBLIC_FAQ_ENTRIES } from "@/data/marketing/faq-public";
+import { HELP_ROUTE_DEFAULTS } from "@/types/help";
 import type {
   HelpArticleRecord,
   HelpArticleInsert,
@@ -13,8 +13,8 @@ import type {
   HelpLocale,
   HelpUserContext,
   HelpViewSource,
-} from '@/types/help';
-import type { AppRole } from '@/types/auth';
+} from "@/types/help";
+import type { AppRole } from "@/types/auth";
 
 const PLAN_RANK: Record<string, number> = {
   free: 0,
@@ -28,9 +28,9 @@ const PLAN_RANK: Record<string, number> = {
 export function normalizeSearchText(text: string): string {
   return text
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ');
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ");
 }
 
 /** Distance Levenshtein simplifiée pour fuzzy match court. */
@@ -46,7 +46,11 @@ function levenshtein(a: string, b: string): number {
       matrix[i][j] =
         b.charAt(i - 1) === a.charAt(j - 1)
           ? matrix[i - 1][j - 1]
-          : Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
+          : Math.min(
+              matrix[i - 1][j - 1] + 1,
+              matrix[i][j - 1] + 1,
+              matrix[i - 1][j] + 1
+            );
     }
   }
   return matrix[b.length][a.length];
@@ -61,13 +65,13 @@ export class HelpService {
   constructor(private repository: HelpRepository) {}
 
   /** Articles statiques de repli si Supabase indisponible. */
-  getFallbackArticles(locale: HelpLocale = 'fr'): HelpArticleRecord[] {
+  getFallbackArticles(locale: HelpLocale = "fr"): HelpArticleRecord[] {
     const seeds =
-      locale === 'en'
+      locale === "en"
         ? HELP_ARTICLES_SEED_EN
-        : locale === 'ln'
-          ? HELP_ARTICLES_SEED_LN
-          : HELP_ARTICLES_SEED_FR;
+        : locale === "ln"
+        ? HELP_ARTICLES_SEED_LN
+        : HELP_ARTICLES_SEED_FR;
 
     return seeds.map((s, i) => ({
       id: `fallback-${s.slug}-${locale}`,
@@ -89,7 +93,7 @@ export class HelpService {
     }));
   }
 
-  async getArticles(locale: HelpLocale = 'fr'): Promise<HelpArticleRecord[]> {
+  async getArticles(locale: HelpLocale = "fr"): Promise<HelpArticleRecord[]> {
     try {
       const articles = await this.repository.findPublished(locale);
       return articles.length > 0 ? articles : this.getFallbackArticles(locale);
@@ -100,41 +104,49 @@ export class HelpService {
 
   async getArticleBySlug(
     slug: string,
-    locale: HelpLocale = 'fr',
+    locale: HelpLocale = "fr"
   ): Promise<HelpArticleRecord | null> {
     try {
       const article = await this.repository.findBySlug(slug, locale);
       if (article) return article;
-      return this.getFallbackArticles(locale).find((a) => a.slug === slug) ?? null;
+      return (
+        this.getFallbackArticles(locale).find((a) => a.slug === slug) ?? null
+      );
     } catch {
-      return this.getFallbackArticles(locale).find((a) => a.slug === slug) ?? null;
+      return (
+        this.getFallbackArticles(locale).find((a) => a.slug === slug) ?? null
+      );
     }
   }
 
   async getArticlesByCategory(
     category: HelpArticleCategory,
-    locale: HelpLocale = 'fr',
+    locale: HelpLocale = "fr"
   ): Promise<HelpArticleRecord[]> {
     try {
       const articles = await this.repository.findByCategory(category, locale);
       if (articles.length > 0) return articles;
-      return this.getFallbackArticles(locale).filter((a) => a.category === category);
+      return this.getFallbackArticles(locale).filter(
+        (a) => a.category === category
+      );
     } catch {
-      return this.getFallbackArticles(locale).filter((a) => a.category === category);
+      return this.getFallbackArticles(locale).filter(
+        (a) => a.category === category
+      );
     }
   }
 
-  getFallbackFaq(locale: HelpLocale = 'fr'): HelpArticleRecord[] {
+  getFallbackFaq(locale: HelpLocale = "fr"): HelpArticleRecord[] {
     return PUBLIC_FAQ_ENTRIES.map((entry, index) => ({
       id: `fallback-public-faq-${index + 1}`,
       slug: `public-faq-${index + 1}`,
       title: entry.q,
-      category: 'faq',
+      category: "faq",
       role: [],
       locale,
       keywords: [],
       content: entry.a,
-      route_context: ['/faq'],
+      route_context: ["/faq"],
       plan_min: null,
       module_keys: [],
       error_codes: [],
@@ -145,7 +157,7 @@ export class HelpService {
     }));
   }
 
-  async getPublicFaq(locale: HelpLocale = 'fr'): Promise<HelpArticleRecord[]> {
+  async getPublicFaq(locale: HelpLocale = "fr"): Promise<HelpArticleRecord[]> {
     try {
       const articles = await this.repository.findPublicFaq(locale);
       return articles.length > 0 ? articles : this.getFallbackFaq(locale);
@@ -154,37 +166,42 @@ export class HelpService {
     }
   }
 
-  async getFaqForAdmin(locale: HelpLocale = 'fr'): Promise<HelpArticleRecord[]> {
+  async getFaqForAdmin(
+    locale: HelpLocale = "fr"
+  ): Promise<HelpArticleRecord[]> {
     return this.repository.findFaqForAdmin(locale);
   }
 
   async saveFaqArticle(
     payload: Pick<
       HelpArticleInsert,
-      'slug' | 'title' | 'content' | 'sort_order' | 'is_published'
+      "slug" | "title" | "content" | "sort_order" | "is_published"
     > & {
       id?: string;
       locale?: HelpLocale;
-    },
+    }
   ): Promise<HelpArticleRecord> {
     return this.repository.upsertArticle({
       ...payload,
-      category: 'faq',
-      locale: payload.locale ?? 'fr',
-      route_context: ['/faq'],
+      category: "faq",
+      locale: payload.locale ?? "fr",
+      route_context: ["/faq"],
       keywords: payload.title.split(/\s+/).filter((word) => word.length > 2),
     });
   }
 
   async deleteFaqArticle(articleId: string): Promise<void> {
     if (!articleId) {
-      throw new Error('FAQ introuvable.');
+      throw new Error("FAQ introuvable.");
     }
     await this.repository.deleteFaqArticle(articleId);
   }
 
   /** Filtre articles selon rôle, plan et modules activés. */
-  filterForUser(articles: HelpArticleRecord[], ctx: HelpUserContext): HelpArticleRecord[] {
+  filterForUser(
+    articles: HelpArticleRecord[],
+    ctx: HelpUserContext
+  ): HelpArticleRecord[] {
     const userPlanRank = PLAN_RANK[ctx.planCode] ?? 0;
 
     return articles.filter((article) => {
@@ -201,7 +218,7 @@ export class HelpService {
 
       if (article.module_keys.length > 0) {
         const allEnabled = article.module_keys.every(
-          (key) => ctx.billingFlags[key] === true,
+          (key) => ctx.billingFlags[key] === true
         );
         if (!allEnabled) return false;
       }
@@ -213,11 +230,11 @@ export class HelpService {
   getContextualArticles(
     articles: HelpArticleRecord[],
     pathname: string,
-    ctx: HelpUserContext,
+    ctx: HelpUserContext
   ): HelpArticleRecord[] {
     const filtered = this.filterForUser(articles, ctx);
     const routeMatches = filtered.filter((a) =>
-      a.route_context.some((r) => pathname.startsWith(r)),
+      a.route_context.some((r) => pathname.startsWith(r))
     );
     if (routeMatches.length > 0) return routeMatches.slice(0, 6);
     return filtered.slice(0, 6);
@@ -233,7 +250,7 @@ export class HelpService {
   searchArticles(
     articles: HelpArticleRecord[],
     query: string,
-    ctx?: HelpUserContext,
+    ctx?: HelpUserContext
   ): HelpSearchResult[] {
     const q = normalizeSearchText(query).split(/\s+/).filter(Boolean);
     if (q.length === 0) return [];
@@ -243,7 +260,7 @@ export class HelpService {
 
     for (const article of pool) {
       const haystack = normalizeSearchText(
-        [article.title, article.content, ...article.keywords].join(' '),
+        [article.title, article.content, ...article.keywords].join(" ")
       );
       let score = 0;
 
@@ -255,7 +272,10 @@ export class HelpService {
         // Fuzzy : tolérance sur mots courts
         const tokens = haystack.split(/\s+/).filter((t) => t.length >= 3);
         for (const token of tokens) {
-          if (token.includes(word) || levenshtein(token.slice(0, word.length + 2), word) <= 1) {
+          if (
+            token.includes(word) ||
+            levenshtein(token.slice(0, word.length + 2), word) <= 1
+          ) {
             score += 0.5;
             break;
           }
@@ -272,7 +292,7 @@ export class HelpService {
 
   async getArticleForError(
     errorCode: string,
-    locale: HelpLocale = 'fr',
+    locale: HelpLocale = "fr"
   ): Promise<HelpArticleRecord | null> {
     try {
       const article = await this.repository.findByErrorCode(errorCode, locale);
@@ -282,7 +302,7 @@ export class HelpService {
     }
     return (
       this.getFallbackArticles(locale).find((a) =>
-        a.error_codes.includes(errorCode),
+        a.error_codes.includes(errorCode)
       ) ?? null
     );
   }
@@ -290,16 +310,16 @@ export class HelpService {
   async trackView(
     articleId: string,
     source: HelpViewSource,
-    fleetId?: string | null,
+    fleetId?: string | null
   ): Promise<void> {
-    if (articleId.startsWith('fallback-')) return;
+    if (articleId.startsWith("fallback-")) return;
     await this.repository.recordView(articleId, { source, fleet_id: fleetId });
   }
 
   async trackSearch(
     query: string,
     resultsCount: number,
-    fleetId?: string | null,
+    fleetId?: string | null
   ): Promise<void> {
     await this.repository.recordSearchEvent({
       query,
@@ -316,10 +336,10 @@ export class HelpService {
   /** Mappe rôle guide FR vers AppRole. */
   static guideRoleToAppRole(guideRole: string): AppRole | null {
     const map: Record<string, AppRole> = {
-      chauffeur: 'driver',
-      gestionnaire: 'manager',
-      mécanicien: 'mechanic',
-      organisateur: 'organizer',
+      chauffeur: "driver",
+      gestionnaire: "manager",
+      mécanicien: "mechanic",
+      organisateur: "organizer",
     };
     return map[guideRole] ?? null;
   }

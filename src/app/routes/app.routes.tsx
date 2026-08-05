@@ -9,20 +9,31 @@ import { RoleGuard } from "@/navigation/guards/RequireRole";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { LANDING_CTA, PUBLIC_DEMO_HREF } from "@/config/navigation";
 import { LegacyAideVideoRedirect } from "@/app/routes/LegacyAideVideoRedirect";
-import { DEMO_FEATURE_ENABLED, DEMO_MAGIC_LINK_ENABLED } from "@/lib/demo/demoFeatureFlag";
+import {
+  DEMO_FEATURE_ENABLED,
+  DEMO_MAGIC_LINK_ENABLED,
+} from "@/lib/demo/demoFeatureFlag";
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const HelpPublicLayout = lazy(() =>
   import("@/features/help/components/HelpPublicLayout").then((m) => ({
     default: m.HelpPublicLayout,
-  })),
+  }))
 );
 const HelpHomePage = lazy(() => import("@/features/help/screens/HelpHomePage"));
-const HelpQuickStartPage = lazy(() => import("@/features/help/screens/HelpQuickStartPage"));
-const HelpCategoryPage = lazy(() => import("@/features/help/screens/HelpCategoryPage"));
-const HelpArticlePage = lazy(() => import("@/features/help/screens/HelpArticlePage"));
-const HelpSearchPage = lazy(() => import("@/features/help/screens/HelpSearchPage"));
+const HelpQuickStartPage = lazy(
+  () => import("@/features/help/screens/HelpQuickStartPage")
+);
+const HelpCategoryPage = lazy(
+  () => import("@/features/help/screens/HelpCategoryPage")
+);
+const HelpArticlePage = lazy(
+  () => import("@/features/help/screens/HelpArticlePage")
+);
+const HelpSearchPage = lazy(
+  () => import("@/features/help/screens/HelpSearchPage")
+);
 const OnboardingRoute = lazy(() =>
   import("@/components/auth/OnboardingRoute").then((module) => ({
     default: module.OnboardingRoute,
@@ -36,10 +47,14 @@ const TenantBootstrapRoute = lazy(() =>
 const PostLoginGate = lazy(() => import("@/pages/PostLoginGate"));
 const Upgrade = lazy(() => import("@/pages/Upgrade"));
 const ProtectedRoute = lazy(() =>
-  import("@/components/layout/ProtectedRoute").then((m) => ({ default: m.ProtectedRoute })),
+  import("@/components/layout/ProtectedRoute").then((m) => ({
+    default: m.ProtectedRoute,
+  }))
 );
 const TerrainLayout = lazy(() => import("@/layouts/TerrainLayout"));
-const TerrainPage = lazy(() => import("@/features/terrain/screens/TerrainPage"));
+const TerrainPage = lazy(
+  () => import("@/features/terrain/screens/TerrainPage")
+);
 const Scan = lazy(() => import("@/pages/Scan"));
 const FuelMonitoringPage = lazy(
   () => import("@/features/fuel/screens/FuelMonitoringPage")
@@ -59,26 +74,34 @@ const TransitCemacPage = lazy(
 const TransitDetailPage = lazy(
   () => import("@/features/transit/screens/TransitDetailPage")
 );
-const SecuritePage = lazy(() => import('@/pages/Securite'));
-const CookiesPage = lazy(() => import('@/pages/Cookies'));
-const ConfidentialitePage = lazy(() => import('@/pages/Confidentialite'));
-const ConditionsPage = lazy(() => import('@/pages/Conditions'));
-const AproposPage = lazy(() => import('@/pages/Apropos'));
-const BlogPage = lazy(() => import('@/pages/Blog'));
-const ResourcesIndexPage = lazy(() => import('@/pages/resources/ResourcesIndexPage'));
-const SeoIaHubPage = lazy(() => import('@/pages/resources/SeoIaHubPage'));
-const SeoIaArticlePage = lazy(() => import('@/pages/resources/SeoIaArticlePage'));
-const UseCaseHubPage = lazy(() => import('@/pages/UseCaseHub'));
-const UseCaseDetailPage = lazy(() => import('@/pages/UseCaseDetail'));
-const CarrieresPage = lazy(() => import('@/pages/Carrieres'));
-const PartenairesPage = lazy(() => import('@/pages/Partenaires'));
-const StatusPage = lazy(() => import('@/pages/Status'));
+const SecuritePage = lazy(() => import("@/pages/Securite"));
+const CookiesPage = lazy(() => import("@/pages/Cookies"));
+const ConfidentialitePage = lazy(() => import("@/pages/Confidentialite"));
+const ConditionsPage = lazy(() => import("@/pages/Conditions"));
+const AproposPage = lazy(() => import("@/pages/Apropos"));
+const BlogPage = lazy(() => import("@/pages/Blog"));
+const ResourcesIndexPage = lazy(
+  () => import("@/pages/resources/ResourcesIndexPage")
+);
+const SeoIaHubPage = lazy(() => import("@/pages/resources/SeoIaHubPage"));
+const SeoIaArticlePage = lazy(
+  () => import("@/pages/resources/SeoIaArticlePage")
+);
+const UseCaseHubPage = lazy(() => import("@/pages/UseCaseHub"));
+const UseCaseDetailPage = lazy(() => import("@/pages/UseCaseDetail"));
+const CarrieresPage = lazy(() => import("@/pages/Carrieres"));
+const PartenairesPage = lazy(() => import("@/pages/Partenaires"));
+const StatusPage = lazy(() => import("@/pages/Status"));
 const PredictiveMaintenancePage = lazy(
   () => import("@/features/maintenance/screens/PredictiveMaintenancePage")
 );
 const PricingPage = lazy(() => import("@/pages/Pricing"));
-const FonctionnalitesPage = lazy(() => import("@/pages/public/FonctionnalitesPage"));
-const FonctionnaliteSectionPage = lazy(() => import("@/pages/public/FonctionnaliteSectionPage"));
+const FonctionnalitesPage = lazy(
+  () => import("@/pages/public/FonctionnalitesPage")
+);
+const FonctionnaliteSectionPage = lazy(
+  () => import("@/pages/public/FonctionnaliteSectionPage")
+);
 const ModulesPage = lazy(() => import("@/pages/public/ModulesPage"));
 const FaqPage = lazy(() => import("@/pages/public/FaqPage"));
 const ContactPage = lazy(() => import("@/pages/public/ContactPage"));
@@ -87,14 +110,16 @@ const DemoMagicLinkPage = DEMO_MAGIC_LINK_ENABLED
   : null;
 const ProspectOnboarding = DEMO_MAGIC_LINK_ENABLED
   ? lazy(() =>
-      import("@/features/demo/ProspectOnboarding").then((m) => ({ default: m.ProspectOnboarding }))
+      import("@/features/demo/ProspectOnboarding").then((m) => ({
+        default: m.ProspectOnboarding,
+      }))
     )
   : null;
-const UpdatePasswordPage = lazy(() =>
-  import("@/features/auth/screens/UpdatePasswordPage")
+const UpdatePasswordPage = lazy(
+  () => import("@/features/auth/screens/UpdatePasswordPage")
 );
-const AuthCallbackPage = lazy(() =>
-  import("@/features/auth/screens/AuthCallbackPage")
+const AuthCallbackPage = lazy(
+  () => import("@/features/auth/screens/AuthCallbackPage")
 );
 
 /**
@@ -106,8 +131,14 @@ export const appRoutes = (
     <Route element={<HelpPublicLayout />}>
       <Route path="/help" element={<HelpHomePage />} />
       <Route path="/help/quickstart" element={<HelpQuickStartPage />} />
-      <Route path="/help/faq" element={<Navigate to={ROUTE_PATHS.faq} replace />} />
-      <Route path="/help/guides" element={<Navigate to={ROUTE_PATHS.helpQuickstart} replace />} />
+      <Route
+        path="/help/faq"
+        element={<Navigate to={ROUTE_PATHS.faq} replace />}
+      />
+      <Route
+        path="/help/guides"
+        element={<Navigate to={ROUTE_PATHS.helpQuickstart} replace />}
+      />
       <Route path="/help/search" element={<HelpSearchPage />} />
       <Route path="/help/:category/:slug" element={<HelpArticlePage />} />
       <Route path="/help/:category" element={<HelpCategoryPage />} />
@@ -116,7 +147,10 @@ export const appRoutes = (
     <Route path="/aide/*" element={<Navigate to="/help" replace />} />
     <Route path="/fuel" element={<FuelMonitoringPage />} />
     <Route path="/inspections/nouveau" element={<DvirChecklistPage />} />
-    <Route path="/inspections/:dvirId/modifier" element={<DvirChecklistPage />} />
+    <Route
+      path="/inspections/:dvirId/modifier"
+      element={<DvirChecklistPage />}
+    />
     <Route path="/inspections" element={<DvirInspectionsPage />} />
     <Route path="/inspections/*" element={<DvirDetailPage />} />
     <Route path="/transit" element={<TransitCemacPage />} />
@@ -140,14 +174,26 @@ export const appRoutes = (
       element={<FonctionnaliteSectionPage slug="piloter-flotte" />}
     />
     <Route path="/modules" element={<ModulesPage />} />
-    <Route path="/guides" element={<Navigate to={ROUTE_PATHS.help} replace />} />
-    <Route path="/features" element={<Navigate to={ROUTE_PATHS.fonctionnalites} replace />} />
+    <Route
+      path="/guides"
+      element={<Navigate to={ROUTE_PATHS.help} replace />}
+    />
+    <Route
+      path="/features"
+      element={<Navigate to={ROUTE_PATHS.fonctionnalites} replace />}
+    />
     <Route path="/contact" element={<ContactPage />} />
     <Route path="/demo" element={<Navigate to={PUBLIC_DEMO_HREF} replace />} />
     <Route path="/pricing" element={<PricingPage />} />
-    <Route path="/tarifs" element={<Navigate to={ROUTE_PATHS.pricing} replace />} />
+    <Route
+      path="/tarifs"
+      element={<Navigate to={ROUTE_PATHS.pricing} replace />}
+    />
     <Route path="/cookies" element={<CookiesPage />} />
-    <Route path="/privacy" element={<Navigate to="/confidentialite" replace />} />
+    <Route
+      path="/privacy"
+      element={<Navigate to="/confidentialite" replace />}
+    />
     <Route path="/conditions" element={<ConditionsPage />} />
     <Route path="/terms" element={<Navigate to="/conditions" replace />} />
     <Route path="/apropos" element={<AproposPage />} />
@@ -159,7 +205,10 @@ export const appRoutes = (
     <Route path="/use-case/:slug" element={<UseCaseDetailPage />} />
     <Route path="/carrieres" element={<CarrieresPage />} />
     <Route path="/partenaires" element={<PartenairesPage />} />
-    <Route path="/documentation" element={<Navigate to={ROUTE_PATHS.help} replace />} />
+    <Route
+      path="/documentation"
+      element={<Navigate to={ROUTE_PATHS.help} replace />}
+    />
     <Route path="/api" element={<Navigate to={ROUTE_PATHS.help} replace />} />
     <Route
       path="/vehicles/new"
@@ -170,7 +219,10 @@ export const appRoutes = (
       element={<Navigate to={ROUTE_PATHS.dashboardInvitations} replace />}
     />
     <Route path="/status" element={<StatusPage />} />
-    <Route path="/settings" element={<Navigate to={ROUTE_PATHS.dashboardSettings} replace />} />
+    <Route
+      path="/settings"
+      element={<Navigate to={ROUTE_PATHS.dashboardSettings} replace />}
+    />
     <Route
       path="/signup"
       element={<Navigate to={LANDING_CTA.signupHref} replace />}
@@ -183,7 +235,10 @@ export const appRoutes = (
       path="/inscription"
       element={<Navigate to={LANDING_CTA.signupHref} replace />}
     />
-    <Route path="/connexion" element={<Navigate to={ROUTE_PATHS.auth} replace />} />
+    <Route
+      path="/connexion"
+      element={<Navigate to={ROUTE_PATHS.auth} replace />}
+    />
     <Route element={<AuthProviderLayout />}>
       <Route path="/" element={<Index />} />
       <Route path="/faq" element={<FaqPage />} />
@@ -216,20 +271,23 @@ export const appRoutes = (
       />
       <Route path="/upgrade" element={<Upgrade />} />
       <Route path="/post-login" element={<PostLoginGate />} />
-      <Route
-        path="/confidentialite"
-        element={<ConfidentialitePage />}
-      />
+      <Route path="/confidentialite" element={<ConfidentialitePage />} />
       {/* Flux commercial démo — pas de ProtectedRoute (auth via magic link) */}
       {DEMO_MAGIC_LINK_ENABLED && DemoMagicLinkPage && ProspectOnboarding ? (
         <>
-          <Route path="/demo/access"     element={<DemoMagicLinkPage />} />
+          <Route path="/demo/access" element={<DemoMagicLinkPage />} />
           <Route path="/demo/onboarding" element={<ProspectOnboarding />} />
         </>
       ) : (
         <>
-          <Route path="/demo/access"     element={<Navigate to={PUBLIC_DEMO_HREF} replace />} />
-          <Route path="/demo/onboarding" element={<Navigate to={PUBLIC_DEMO_HREF} replace />} />
+          <Route
+            path="/demo/access"
+            element={<Navigate to={PUBLIC_DEMO_HREF} replace />}
+          />
+          <Route
+            path="/demo/onboarding"
+            element={<Navigate to={PUBLIC_DEMO_HREF} replace />}
+          />
         </>
       )}
       {/* Flux reset password — session temporaire PASSWORD_RECOVERY, sans RequireGuest */}

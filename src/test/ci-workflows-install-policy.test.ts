@@ -263,6 +263,8 @@ describe("GitHub workflow dependency install policy", () => {
 
     expect(devWithOpen).toContain("existsSync");
     expect(devWithOpen).toContain("hasLocalEnvFile");
-    expect(devWithOpen).toContain('hasLocalEnvFile ? ["watch", "--env-file=.env.local"] : ["watch"]');
+    expect(devWithOpen).toContain(
+      'hasLocalEnvFile ? ["watch", "--env-file=.env.local"] : ["watch"]'
+    );
   });
 });

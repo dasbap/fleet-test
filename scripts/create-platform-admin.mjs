@@ -31,7 +31,8 @@ loadEnvFileFromExecArgv();
 
 const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const isSuperAdmin = process.env.SUPER_ADMIN === "true" || process.argv.includes("--super-admin");
+const isSuperAdmin =
+  process.env.SUPER_ADMIN === "true" || process.argv.includes("--super-admin");
 const email = (
   (isSuperAdmin ? process.env.SUPER_ADMIN_EMAIL : process.env.ADMIN_EMAIL) ||
   process.env.ADMIN_EMAIL ||
@@ -41,13 +42,17 @@ const email = (
   .trim()
   .toLowerCase();
 const password = (
-  (isSuperAdmin ? process.env.SUPER_ADMIN_PASSWORD : process.env.ADMIN_PASSWORD) ||
+  (isSuperAdmin
+    ? process.env.SUPER_ADMIN_PASSWORD
+    : process.env.ADMIN_PASSWORD) ||
   process.env.ADMIN_PASSWORD ||
   process.argv[3] ||
   ""
 ).trim();
 const fullName = (
-  (isSuperAdmin ? process.env.SUPER_ADMIN_FULL_NAME : process.env.ADMIN_FULL_NAME) ||
+  (isSuperAdmin
+    ? process.env.SUPER_ADMIN_FULL_NAME
+    : process.env.ADMIN_FULL_NAME) ||
   process.env.ADMIN_FULL_NAME ||
   process.argv[4] ||
   "Administrateur E-Samba"
@@ -55,10 +60,10 @@ const fullName = (
 
 if (!url || !key || !email) {
   console.error(
-    "Usage: ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=... node --env-file=.env.local scripts/create-platform-admin.mjs",
+    "Usage: ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=... node --env-file=.env.local scripts/create-platform-admin.mjs"
   );
   console.error(
-    "Variables requises: VITE_SUPABASE_URL/SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_EMAIL ou SUPER_ADMIN_EMAIL",
+    "Variables requises: VITE_SUPABASE_URL/SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_EMAIL ou SUPER_ADMIN_EMAIL"
   );
   process.exit(1);
 }
@@ -66,7 +71,8 @@ if (!url || !key || !email) {
 const admin = createClient(url, key, { auth: { persistSession: false } });
 
 function resolveDatabaseUrl() {
-  const direct = process.env.DATABASE_URL?.trim() || process.env.DIRECT_URL?.trim();
+  const direct =
+    process.env.DATABASE_URL?.trim() || process.env.DIRECT_URL?.trim();
   if (direct) return direct;
 
   const dbUrl = process.env.SUPABASE_DB_URL?.trim();
@@ -77,7 +83,9 @@ function resolveDatabaseUrl() {
   if (dbPassword && supabaseUrl) {
     const ref = supabaseUrl.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1];
     if (ref) {
-      return `postgresql://postgres:${encodeURIComponent(dbPassword)}@db.${ref}.supabase.co:5432/postgres`;
+      return `postgresql://postgres:${encodeURIComponent(
+        dbPassword
+      )}@db.${ref}.supabase.co:5432/postgres`;
     }
   }
 
@@ -92,7 +100,7 @@ async function findUserByEmailInPostgres(targetEmail) {
     buildPgClientConfig({
       databaseUrl: connectionString,
       env: { ...process.env, SUPABASE_DB_SSL_NO_VERIFY: "1" },
-    }),
+    })
   );
 
   try {
@@ -104,7 +112,7 @@ async function findUserByEmailInPostgres(targetEmail) {
         where lower(email) = lower($1)
         limit 1
       `,
-      [targetEmail],
+      [targetEmail]
     );
     const user = result.rows[0];
     if (!user) return null;
@@ -122,9 +130,14 @@ async function findUserByEmail(targetEmail) {
   try {
     let page = 1;
     for (;;) {
-      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+      const { data, error } = await admin.auth.admin.listUsers({
+        page,
+        perPage: 200,
+      });
       if (error) throw error;
-      const found = data.users.find((user) => user.email?.toLowerCase() === targetEmail);
+      const found = data.users.find(
+        (user) => user.email?.toLowerCase() === targetEmail
+      );
       if (found) return found;
       if (data.users.length < 200) return null;
       page += 1;
@@ -139,7 +152,9 @@ let user = await findUserByEmail(email);
 
 if (!user) {
   if (!password) {
-    console.error("ADMIN_PASSWORD/SUPER_ADMIN_PASSWORD requis pour creer un nouvel utilisateur admin.");
+    console.error(
+      "ADMIN_PASSWORD/SUPER_ADMIN_PASSWORD requis pour creer un nouvel utilisateur admin."
+    );
     process.exit(1);
   }
 
@@ -164,7 +179,10 @@ if (!user) {
     attributes.password = password;
   }
 
-  const { data, error } = await admin.auth.admin.updateUserById(user.id, attributes);
+  const { data, error } = await admin.auth.admin.updateUserById(
+    user.id,
+    attributes
+  );
   if (error || !data.user) throw error ?? new Error("auth_update_failed");
   user = data.user;
 }
@@ -174,7 +192,7 @@ const { error: profileError } = await admin.from("profils").upsert(
     user_id: user.id,
     full_name: fullName,
   },
-  { onConflict: "user_id" },
+  { onConflict: "user_id" }
 );
 if (profileError) throw profileError;
 
@@ -185,8 +203,14 @@ const { error: adminProfileError } = await admin.from("admin_profiles").upsert(
     internal_role: isSuperAdmin ? "super_admin" : "admin",
     notes: "Bootstrap platform admin",
   },
-  { onConflict: "user_id" },
+  { onConflict: "user_id" }
 );
 if (adminProfileError) throw adminProfileError;
 
-console.log(JSON.stringify({ ok: true, user_id: user.id, email, super_admin: isSuperAdmin }, null, 2));
+console.log(
+  JSON.stringify(
+    { ok: true, user_id: user.id, email, super_admin: isSuperAdmin },
+    null,
+    2
+  )
+);

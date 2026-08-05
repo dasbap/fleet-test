@@ -41,7 +41,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number, onTimeout: () => Error)
   });
 }
 
-/** Supprime une ancienne valeur non UUID (ex. slug fleet-esamba-sn) restée dans le stockage. */
 function clearInvalidActiveFleetStorage(): void {
   try {
     const v = localStorage.getItem(ACTIVE_FLEET_STORAGE_KEY);

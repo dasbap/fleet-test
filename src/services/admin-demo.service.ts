@@ -1,8 +1,15 @@
 import { AdminDemoRepository } from "@/repositories/admin-demo.repository";
-import type { DemoAccountType, DemoSession } from "@/repositories/admin-demo.repository";
+import type {
+  DemoAccountType,
+  DemoSession,
+} from "@/repositories/admin-demo.repository";
 import { AdminDemoBffRepository } from "@/repositories/admin-demo-bff.repository";
 
-export type { DemoAccountType, DemoRole, DemoSession } from "@/repositories/admin-demo.repository";
+export type {
+  DemoAccountType,
+  DemoRole,
+  DemoSession,
+} from "@/repositories/admin-demo.repository";
 
 export interface CreateDemoPayload {
   email: string;
@@ -35,13 +42,16 @@ function formatCreateAccessError(error: string | undefined): string {
   return error ?? "creation_echouee";
 }
 
+export const MAX_DEMO_TRIAL_DAYS = 31;
+export const MAX_DEMO_EXTENSION_HOURS = MAX_DEMO_TRIAL_DAYS * 24;
+
 /**
  * Logique métier administration des comptes démo.
  */
 export class AdminDemoService {
   constructor(
     private repository: AdminDemoRepository,
-    private bffRepository: AdminDemoBffRepository,
+    private bffRepository: AdminDemoBffRepository
   ) {}
 
   async loadDashboardData(): Promise<AdminDemoDashboardData> {
@@ -51,7 +61,7 @@ export class AdminDemoService {
 
   async createAccess(
     accessToken: string | null | undefined,
-    payload: CreateDemoPayload,
+    payload: CreateDemoPayload
   ): Promise<CreateDemoAccessResult> {
     if (!accessToken) {
       return { ok: false, error: "session_expirée" };
@@ -67,24 +77,31 @@ export class AdminDemoService {
     }
 
     try {
-      const prospectData = await this.bffRepository.createProspect(accessToken, {
-        email,
-        account_type: payload.account_type,
-        company_name: payload.company_name,
-        trial_days: payload.trial_days,
-        send_email: payload.send_email,
-        permanent_access: payload.permanent_access,
-      });
+      const prospectData = await this.bffRepository.createProspect(
+        accessToken,
+        {
+          email,
+          account_type: payload.account_type,
+          company_name: payload.company_name,
+          trial_days: payload.trial_days,
+          send_email: payload.send_email,
+          permanent_access: payload.permanent_access,
+        }
+      );
 
       if (prospectData.rateLimited) {
         return {
           ok: false,
-          error: "Limite de créations atteinte (10/heure). Réessaie dans une heure.",
+          error:
+            "Limite de créations atteinte (10/heure). Réessaie dans une heure.",
         };
       }
 
       if (!prospectData.ok || !prospectData.user_id) {
-        return { ok: false, error: formatCreateAccessError(prospectData.error) };
+        return {
+          ok: false,
+          error: formatCreateAccessError(prospectData.error),
+        };
       }
 
       const linkData = await this.bffRepository.generateMagicLink(accessToken, {
@@ -98,7 +115,11 @@ export class AdminDemoService {
         return { ok: false, error: "Limite de génération de liens atteinte." };
       }
 
-      return { ok: true, user_id: prospectData.user_id, magic_url: linkData.magic_url };
+      return {
+        ok: true,
+        user_id: prospectData.user_id,
+        magic_url: linkData.magic_url,
+      };
     } catch (err) {
       return { ok: false, error: String(err) };
     }
@@ -112,28 +133,38 @@ export class AdminDemoService {
     const result = await this.repository.deactivateAccount(
       userId,
       adminId,
-      "suspension manuelle depuis admin UI",
+      "suspension manuelle depuis admin UI"
     );
     return result.ok;
   }
 
-  async reactivateAccount(userId: string, adminId: string, extendHours?: number): Promise<boolean> {
+  async reactivateAccount(
+    userId: string,
+    adminId: string,
+    extendHours?: number
+  ): Promise<boolean> {
     if (!userId || !adminId) {
       throw new Error("Identifiants utilisateur requis");
     }
 
     if (extendHours !== undefined && extendHours > MAX_DEMO_EXTENSION_HOURS) {
-      throw new Error("Une demo ne peut pas depasser un mois depuis sa creation");
+      throw new Error(
+        "Une demo ne peut pas depasser un mois depuis sa creation"
+      );
     }
 
-    const result = await this.repository.reactivateAccount(userId, adminId, extendHours ?? null);
+    const result = await this.repository.reactivateAccount(
+      userId,
+      adminId,
+      extendHours ?? null
+    );
     return result.ok;
   }
 
   async updateAccountExpiration(
     userId: string,
     adminId: string,
-    expiresAt: string | null,
+    expiresAt: string | null
   ): Promise<{ ok: boolean; expires_at?: string; max_expires_at?: string }> {
     if (!userId || !adminId) {
       throw new Error("Identifiants utilisateur requis");
@@ -143,7 +174,11 @@ export class AdminDemoService {
       throw new Error("Date d'expiration invalide");
     }
 
-    const result = await this.repository.updateAccountExpiration(userId, adminId, expiresAt);
+    const result = await this.repository.updateAccountExpiration(
+      userId,
+      adminId,
+      expiresAt
+    );
     return {
       ok: result.ok,
       expires_at: result.expires_at,
@@ -151,7 +186,10 @@ export class AdminDemoService {
     };
   }
 
-  async deleteAccount(userId: string, adminId: string): Promise<{ ok: boolean }> {
+  async deleteAccount(
+    userId: string,
+    adminId: string
+  ): Promise<{ ok: boolean }> {
     if (!userId || !adminId) {
       throw new Error("Identifiants utilisateur requis");
     }
@@ -159,12 +197,14 @@ export class AdminDemoService {
     const result = await this.repository.deleteAccount(
       userId,
       adminId,
-      "suppression manuelle depuis admin UI",
+      "suppression manuelle depuis admin UI"
     );
     return { ok: result.ok };
   }
 
-  async resetFleet(fleetId: string): Promise<{ ok: boolean; vehiclesDeleted: number }> {
+  async resetFleet(
+    fleetId: string
+  ): Promise<{ ok: boolean; vehiclesDeleted: number }> {
     if (!fleetId) {
       throw new Error("L'identifiant de flotte est requis");
     }
@@ -179,13 +219,17 @@ export class AdminDemoService {
   async setFleetPlan(
     fleetId: string,
     adminId: string,
-    planCode: string,
+    planCode: string
   ): Promise<{ ok: boolean; plan_code?: string }> {
     if (!fleetId || !adminId || !planCode) {
       throw new Error("Identifiants flotte, admin et plan requis");
     }
 
-    const result = await this.repository.setFleetPlan(fleetId, adminId, planCode);
+    const result = await this.repository.setFleetPlan(
+      fleetId,
+      adminId,
+      planCode
+    );
     return {
       ok: result.ok,
       plan_code: result.plan_code,
@@ -197,7 +241,7 @@ export class AdminDemoService {
     userId: string,
     email: string,
     fleetId?: string | null,
-    label?: string,
+    label?: string
   ): Promise<string | null> {
     if (!accessToken || !userId || !email) {
       return null;

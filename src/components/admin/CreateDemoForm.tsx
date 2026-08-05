@@ -31,7 +31,14 @@ import { MAX_DEMO_TRIAL_DAYS } from "@/services/admin-demo.service";
 import type { CreateDemoPayload } from "@/hooks/useAdminDemoAccounts";
 
 interface CreateDemoFormProps {
-  onSubmit: (payload: CreateDemoPayload) => Promise<{ ok: boolean; user_id?: string; magic_url?: string; error?: string }>;
+  onSubmit: (
+    payload: CreateDemoPayload
+  ) => Promise<{
+    ok: boolean;
+    user_id?: string;
+    magic_url?: string;
+    error?: string;
+  }>;
   onSuccess?: () => void;
   canCreatePermanentAccess?: boolean;
 }
@@ -132,7 +139,13 @@ export function CreateDemoForm({
 
   if (magicUrl) {
     return (
-      <Dialog open onOpenChange={() => { resetForm(); onSuccess?.(); }}>
+      <Dialog
+        open
+        onOpenChange={() => {
+          resetForm();
+          onSuccess?.();
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Acces demo cree</DialogTitle>
@@ -164,7 +177,10 @@ export function CreateDemoForm({
             <Button
               variant="ghost"
               className="w-full"
-              onClick={() => { resetForm(); onSuccess?.(); }}
+              onClick={() => {
+                resetForm();
+                onSuccess?.();
+              }}
             >
               Creer un autre acces
             </Button>
@@ -207,7 +223,9 @@ export function CreateDemoForm({
           </SelectTrigger>
           <SelectContent>
             {Object.entries(ACCOUNT_TYPE_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -262,7 +280,10 @@ export function CreateDemoForm({
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? (
-          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creation en cours...</>
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Creation en cours...
+          </>
         ) : (
           "Creer l'acces demo"
         )}

@@ -5,11 +5,11 @@ import type { AdminDemoBffRepository } from "@/repositories/admin-demo-bff.repos
 
 function createService(
   repository: Partial<AdminDemoRepository>,
-  bffRepository: Partial<AdminDemoBffRepository>,
+  bffRepository: Partial<AdminDemoBffRepository>
 ) {
   return new AdminDemoService(
     repository as AdminDemoRepository,
-    bffRepository as AdminDemoBffRepository,
+    bffRepository as AdminDemoBffRepository
   );
 }
 
@@ -122,9 +122,12 @@ describe("AdminDemoService", () => {
       permanent_access: true,
     });
 
-    expect(createProspect).toHaveBeenCalledWith("token", expect.objectContaining({
-      permanent_access: true,
-    }));
+    expect(createProspect).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        permanent_access: true,
+      })
+    );
   });
 
   it("refuse une duree de creation demo superieure a 31 jours", async () => {
@@ -158,7 +161,8 @@ describe("AdminDemoService", () => {
 
     expect(result).toEqual({
       ok: false,
-      error: "Route admin indisponible en local. Lance npm run dev:local ou active le proxy BFF.",
+      error:
+        "Route admin indisponible en local. Lance npm run dev:local ou active le proxy BFF.",
     });
   });
 
@@ -166,8 +170,10 @@ describe("AdminDemoService", () => {
     const reactivateAccount = vi.fn();
     const service = createService({ reactivateAccount }, {});
 
-    await expect(service.reactivateAccount("user-1", "admin-1", 745)).rejects.toThrow(
-      "Une demo ne peut pas depasser un mois depuis sa creation",
+    await expect(
+      service.reactivateAccount("user-1", "admin-1", 745)
+    ).rejects.toThrow(
+      "Une demo ne peut pas depasser un mois depuis sa creation"
     );
 
     expect(reactivateAccount).not.toHaveBeenCalled();
@@ -183,15 +189,18 @@ describe("AdminDemoService", () => {
     const result = await service.updateAccountExpiration(
       "user-1",
       "admin-1",
-      "2026-08-01T12:00:00.000Z",
+      "2026-08-01T12:00:00.000Z"
     );
 
     expect(updateAccountExpiration).toHaveBeenCalledWith(
       "user-1",
       "admin-1",
-      "2026-08-01T12:00:00.000Z",
+      "2026-08-01T12:00:00.000Z"
     );
-    expect(result).toEqual({ ok: true, expires_at: "2026-08-01T12:00:00.000Z" });
+    expect(result).toEqual({
+      ok: true,
+      expires_at: "2026-08-01T12:00:00.000Z",
+    });
   });
 
   it("supprime une demo via le repository", async () => {
@@ -200,17 +209,31 @@ describe("AdminDemoService", () => {
 
     const result = await service.deleteAccount("user-1", "admin-1");
 
-    expect(deleteAccount).toHaveBeenCalledWith("user-1", "admin-1", "suppression manuelle depuis admin UI");
+    expect(deleteAccount).toHaveBeenCalledWith(
+      "user-1",
+      "admin-1",
+      "suppression manuelle depuis admin UI"
+    );
     expect(result).toEqual({ ok: true });
   });
 
   it("change le plan d'une flotte via le repository", async () => {
-    const setFleetPlan = vi.fn().mockResolvedValue({ ok: true, plan_code: "enterprise" });
+    const setFleetPlan = vi
+      .fn()
+      .mockResolvedValue({ ok: true, plan_code: "enterprise" });
     const service = createService({ setFleetPlan }, {});
 
-    const result = await service.setFleetPlan("fleet-1", "admin-1", "enterprise");
+    const result = await service.setFleetPlan(
+      "fleet-1",
+      "admin-1",
+      "enterprise"
+    );
 
-    expect(setFleetPlan).toHaveBeenCalledWith("fleet-1", "admin-1", "enterprise");
+    expect(setFleetPlan).toHaveBeenCalledWith(
+      "fleet-1",
+      "admin-1",
+      "enterprise"
+    );
     expect(result).toEqual({ ok: true, plan_code: "enterprise" });
   });
 
@@ -218,7 +241,7 @@ describe("AdminDemoService", () => {
     const service = createService({}, {});
 
     await expect(service.suspendAccount("", "admin")).rejects.toThrow(
-      "Identifiants utilisateur requis",
+      "Identifiants utilisateur requis"
     );
   });
 });

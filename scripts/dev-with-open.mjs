@@ -94,6 +94,17 @@ async function main() {
     },
   );
 
+  const bff = spawn(
+    "npx",
+    ["tsx", "watch", "--env-file=.env.local", "--tsconfig", "tsconfig.server.json", "src/server/index.ts"],
+    {
+      cwd: REPO_ROOT,
+      stdio: ["inherit", "inherit", "inherit"],
+      shell: true,
+      env: { ...process.env, BFF_PORT: process.env.BFF_PORT ?? "8787" },
+    },
+  );
+
   const child = spawn("npx", ["vite"], {
     cwd: REPO_ROOT,
     stdio: ["inherit", "pipe", "inherit"],

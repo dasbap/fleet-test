@@ -1,21 +1,31 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { FilePenLine, MessageSquareReply, Plus, Save, Send, Trash2 } from "lucide-react";
+import {
+  FilePenLine,
+  MessageSquareReply,
+  Plus,
+  Save,
+  Send,
+  Trash2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useAdminFaqQuestions, useAnswerFaqQuestion, useDeleteFaqQuestion } from "@/hooks/useFaqQuestions";
-import { useAdminFaqEntries, useDeleteFaqArticle, useSaveFaqArticle } from "@/hooks/useHelpArticles";
+import {
+  useAdminFaqQuestions,
+  useAnswerFaqQuestion,
+  useDeleteFaqQuestion,
+} from "@/hooks/useFaqQuestions";
+import {
+  useAdminFaqEntries,
+  useDeleteFaqArticle,
+  useSaveFaqArticle,
+} from "@/hooks/useHelpArticles";
 import type { FaqQuestion } from "@/types/faq-question";
 import type { HelpArticleRecord } from "@/types/help";
 
@@ -97,14 +107,20 @@ function AdminFaqQuestionsPanel() {
                       {question.user_name ?? "Utilisateur"}
                     </p>
                     {question.user_email ? (
-                      <p className="text-xs text-muted-foreground">{question.user_email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {question.user_email}
+                      </p>
                     ) : null}
                   </div>
                   <Badge variant="outline">{question.status}</Badge>
                 </div>
-                <p className="mt-3 whitespace-pre-wrap text-sm">{question.question}</p>
+                <p className="mt-3 whitespace-pre-wrap text-sm">
+                  {question.question}
+                </p>
                 <div className="mt-4 grid gap-2">
-                  <Label htmlFor={`faq-answer-${question.id}`}>Reponse admin</Label>
+                  <Label htmlFor={`faq-answer-${question.id}`}>
+                    Reponse admin
+                  </Label>
                   <Textarea
                     id={`faq-answer-${question.id}`}
                     rows={4}
@@ -121,11 +137,15 @@ function AdminFaqQuestionsPanel() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button
                     type="button"
-                    disabled={answerQuestion.isPending || answer.trim().length < 8}
+                    disabled={
+                      answerQuestion.isPending || answer.trim().length < 8
+                    }
                     onClick={() => void submitAnswer(question)}
                   >
                     <Send className="mr-2 h-4 w-4" aria-hidden />
-                    {answerQuestion.isPending ? "Envoi..." : "Envoyer la reponse"}
+                    {answerQuestion.isPending
+                      ? "Envoi..."
+                      : "Envoyer la reponse"}
                   </Button>
                   <Button
                     type="button"
@@ -134,7 +154,9 @@ function AdminFaqQuestionsPanel() {
                     onClick={() => void removeQuestion(question)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" aria-hidden />
-                    {deleteQuestion.isPending ? "Suppression..." : "Supprimer la question"}
+                    {deleteQuestion.isPending
+                      ? "Suppression..."
+                      : "Supprimer la question"}
                   </Button>
                 </div>
               </article>
@@ -157,7 +179,7 @@ export default function AdminFaqPage() {
 
   const orderedArticles = useMemo(
     () => [...articles].sort((a, b) => a.sort_order - b.sort_order),
-    [articles],
+    [articles]
   );
 
   function selectArticle(article: HelpArticleRecord) {
@@ -214,9 +236,7 @@ export default function AdminFaqPage() {
           <Badge variant="outline" className="w-fit">
             FAQ admin
           </Badge>
-          <h1 className="font-heading text-2xl font-semibold">
-            Gestion FAQ
-          </h1>
+          <h1 className="font-heading text-2xl font-semibold">Gestion FAQ</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
             Repondez aux questions posees par les utilisateurs et maintenez les
             questions affichees sur le site public.
@@ -230,7 +250,9 @@ export default function AdminFaqPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="user-questions">Questions utilisateurs</TabsTrigger>
+          <TabsTrigger value="user-questions">
+            Questions utilisateurs
+          </TabsTrigger>
           <TabsTrigger value="public-faq">FAQ publique</TabsTrigger>
         </TabsList>
 
@@ -265,7 +287,8 @@ export default function AdminFaqPage() {
                     >
                       <span className="block font-medium">{article.title}</span>
                       <span className="mt-1 block text-xs text-muted-foreground">
-                        Ordre {article.sort_order} - {article.is_published ? "publiee" : "masquee"}
+                        Ordre {article.sort_order} -{" "}
+                        {article.is_published ? "publiee" : "masquee"}
                       </span>
                     </button>
                   ))
@@ -276,7 +299,9 @@ export default function AdminFaqPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
-                  {selectedArticle ? "Edition de la question" : "Nouvelle question"}
+                  {selectedArticle
+                    ? "Edition de la question"
+                    : "Nouvelle question"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -286,7 +311,9 @@ export default function AdminFaqPage() {
                     <Input
                       id="faq-title"
                       value={draft.title}
-                      onChange={(event) => updateDraft("title", event.target.value)}
+                      onChange={(event) =>
+                        updateDraft("title", event.target.value)
+                      }
                       required
                     />
                   </div>
@@ -295,7 +322,9 @@ export default function AdminFaqPage() {
                     <Textarea
                       id="faq-content"
                       value={draft.content}
-                      onChange={(event) => updateDraft("content", event.target.value)}
+                      onChange={(event) =>
+                        updateDraft("content", event.target.value)
+                      }
                       rows={7}
                       required
                     />
@@ -306,7 +335,9 @@ export default function AdminFaqPage() {
                       <Input
                         id="faq-slug"
                         value={draft.slug}
-                        onChange={(event) => updateDraft("slug", slugify(event.target.value))}
+                        onChange={(event) =>
+                          updateDraft("slug", slugify(event.target.value))
+                        }
                         required
                       />
                     </div>
@@ -329,7 +360,9 @@ export default function AdminFaqPage() {
                     <Switch
                       id="faq-published"
                       checked={draft.is_published}
-                      onCheckedChange={(checked) => updateDraft("is_published", checked)}
+                      onCheckedChange={(checked) =>
+                        updateDraft("is_published", checked)
+                      }
                     />
                   </div>
                   <div
@@ -338,7 +371,11 @@ export default function AdminFaqPage() {
                   >
                     <Button
                       type="submit"
-                      disabled={saveFaq.isPending || !draft.title.trim() || !draft.content.trim()}
+                      disabled={
+                        saveFaq.isPending ||
+                        !draft.title.trim() ||
+                        !draft.content.trim()
+                      }
                     >
                       <Save className="mr-2 h-4 w-4" aria-hidden />
                       {saveFaq.isPending ? "Sauvegarde..." : "Sauvegarder"}
