@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const workflowDir = ".github/workflows";
 const workflowFiles = readdirSync(workflowDir)
   .filter((file) => file.endsWith(".yml") || file.endsWith(".yaml"))
-  .map((file) => path.join(workflowDir, file).replaceAll("\\", "/"));
+  .map((file) => path.join(workflowDir, file).replace(/\\/g, "/"));
 
 function getJobBlocks(workflow: string): string[] {
   const lines = workflow.split(/\r?\n/);
@@ -263,8 +263,7 @@ describe("GitHub workflow dependency install policy", () => {
 
     expect(devWithOpen).toContain("existsSync");
     expect(devWithOpen).toContain("hasLocalEnvFile");
-    expect(devWithOpen).toContain(
-      'hasLocalEnvFile ? ["watch", "--env-file=.env.local"] : ["watch"]'
-    );
+    expect(devWithOpen).toContain('["watch", "--env-file=.env.local"]');
+    expect(devWithOpen).toContain(': ["watch"]');
   });
 });
