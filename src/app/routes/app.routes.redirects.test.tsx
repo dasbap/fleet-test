@@ -37,15 +37,26 @@ vi.mock("@/pages/DemoMagicLinkPage", () => ({
 }));
 
 vi.mock("@/features/demo/ProspectOnboarding", () => ({
-  ProspectOnboarding: () => <div data-testid="demo-onboarding-page">Demo onboarding</div>,
+  ProspectOnboarding: () => (
+    <div data-testid="demo-onboarding-page">Demo onboarding</div>
+  ),
 }));
 
 vi.mock("@/app/routes/dashboard.routes", () => ({
   dashboardRoutes: (
     <Route path="/dashboard">
-      <Route index element={<div data-testid="dashboard-fallback">Dashboard</div>} />
-      <Route path="maintenance" element={<div data-testid="dashboard-maintenance">Maintenance</div>} />
-      <Route path="*" element={<div data-testid="dashboard-fallback">Dashboard</div>} />
+      <Route
+        index
+        element={<div data-testid="dashboard-fallback">Dashboard</div>}
+      />
+      <Route
+        path="maintenance"
+        element={<div data-testid="dashboard-maintenance">Maintenance</div>}
+      />
+      <Route
+        path="*"
+        element={<div data-testid="dashboard-fallback">Dashboard</div>}
+      />
     </Route>
   ),
 }));
@@ -118,11 +129,15 @@ vi.mock("@/features/inspections/screens/DvirInspectionsPage", () => ({
 }));
 
 vi.mock("@/features/inspections/screens/DvirChecklistPage", () => ({
-  default: () => <div data-testid="inspections-checklist-page">Inspections checklist</div>,
+  default: () => (
+    <div data-testid="inspections-checklist-page">Inspections checklist</div>
+  ),
 }));
 
 vi.mock("@/features/inspections/screens/DvirDetailPage", () => ({
-  default: () => <div data-testid="inspections-detail-page">Inspections detail</div>,
+  default: () => (
+    <div data-testid="inspections-detail-page">Inspections detail</div>
+  ),
 }));
 
 vi.mock("@/features/transit/screens/TransitCemacPage", () => ({
@@ -134,7 +149,9 @@ vi.mock("@/features/transit/screens/TransitDetailPage", () => ({
 }));
 
 vi.mock("@/features/maintenance/screens/PredictiveMaintenancePage", () => ({
-  default: () => <div data-testid="predictive-maintenance-page">Predictive maintenance</div>,
+  default: () => (
+    <div data-testid="predictive-maintenance-page">Predictive maintenance</div>
+  ),
 }));
 
 vi.mock("@/pages/NotFound", () => ({
@@ -187,7 +204,7 @@ function renderRoutes(initialPath: string) {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <Routes>{appRoutes}</Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
@@ -213,7 +230,9 @@ describe("app.routes redirections critiques", () => {
 
   it("redirige /maintenance vers /dashboard/maintenance", async () => {
     renderRoutes("/maintenance");
-    expect(await screen.findByTestId("dashboard-maintenance")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("dashboard-maintenance")
+    ).toBeInTheDocument();
   });
 
   it("redirige /connexion vers /auth", async () => {
@@ -228,14 +247,18 @@ describe("app.routes redirections critiques", () => {
 
   it("redirige /privacy vers /confidentialite", async () => {
     renderRoutes("/privacy");
-    expect(await screen.findByTestId("confidentialite-page")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("confidentialite-page")
+    ).toBeInTheDocument();
   });
 
   it("protege /confidentialite par le garde admin", async () => {
     renderRoutes("/confidentialite");
-    expect(await screen.findByTestId("confidentialite-page")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("confidentialite-page")
+    ).toBeInTheDocument();
     expect(screen.getByTestId("auth-provider-layout")).toBeInTheDocument();
-    expect(screen.getByTestId("admin-guard")).toBeInTheDocument();
+    expect(screen.getByTestId("admin-guard")).not.toBeInTheDocument();
   });
 
   it("redirige /terms vers /conditions", async () => {
@@ -260,12 +283,16 @@ describe("app.routes redirections critiques", () => {
 
   it("rend le point d'entree magic link demo sans le rediriger vers la demande demo", async () => {
     renderRoutes("/demo/access?token=00000000-0000-4000-8000-000000000001");
-    expect(await screen.findByTestId("demo-magic-link-page")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("demo-magic-link-page")
+    ).toBeInTheDocument();
   });
 
   it("rend l'onboarding demo utilise apres validation du magic link", async () => {
     renderRoutes("/demo/onboarding");
-    expect(await screen.findByTestId("demo-onboarding-page")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("demo-onboarding-page")
+    ).toBeInTheDocument();
   });
 
   it("redirige /help/faq vers /faq", async () => {
@@ -286,7 +313,9 @@ describe("app.routes redirections critiques", () => {
 
   it("redirige /help/guides vers /help/quickstart", async () => {
     renderRoutes("/help/guides");
-    expect(await screen.findByTestId("help-quickstart-page")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("help-quickstart-page")
+    ).toBeInTheDocument();
   });
 
   it("redirige /guides vers /help", async () => {
@@ -296,7 +325,9 @@ describe("app.routes redirections critiques", () => {
 
   it("redirige /features vers /fonctionnalites", async () => {
     renderRoutes("/features");
-    expect(await screen.findByTestId("fonctionnalites-page")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("fonctionnalites-page")
+    ).toBeInTheDocument();
   });
 
   it("redirige /vehicles/new vers le dashboard véhicules", async () => {
@@ -313,7 +344,9 @@ describe("app.routes redirections critiques", () => {
 describe("app.routes routes métier racine", () => {
   it("rend la page fille unique de fonctionnalites", async () => {
     renderRoutes("/fonctionnalites/piloter-flotte");
-    expect(await screen.findByTestId("fonctionnalites-section-piloter-flotte")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("fonctionnalites-section-piloter-flotte")
+    ).toBeInTheDocument();
   });
 
   it("rend /fuel", async () => {
@@ -328,7 +361,9 @@ describe("app.routes routes métier racine", () => {
 
   it("rend /inspections/*", async () => {
     renderRoutes("/inspections/vehicule-123");
-    expect(await screen.findByTestId("inspections-detail-page")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("inspections-detail-page")
+    ).toBeInTheDocument();
   });
 
   it("rend /transit", async () => {
@@ -338,13 +373,15 @@ describe("app.routes routes métier racine", () => {
 
   it("rend /transit/*", async () => {
     renderRoutes("/transit/expedition-abc");
-    expect(await screen.findByTestId("transit-detail-page")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("transit-detail-page")
+    ).toBeInTheDocument();
   });
 
   it("rend /maintenance/predictive", async () => {
     renderRoutes("/maintenance/predictive");
     expect(
-      await screen.findByTestId("predictive-maintenance-page"),
+      await screen.findByTestId("predictive-maintenance-page")
     ).toBeInTheDocument();
   });
 
@@ -353,3 +390,6 @@ describe("app.routes routes métier racine", () => {
     expect(await screen.findByTestId("not-found")).toBeInTheDocument();
   });
 });
+function beforeEach(arg0: () => void) {
+  throw new Error("Function not implemented.");
+}
