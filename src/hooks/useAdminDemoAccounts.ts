@@ -220,9 +220,8 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
 
   const setFleetPlan = useCallback(
     async (fleetId: string, planCode: string): Promise<boolean> => {
-      const adminId = user?.id ?? "";
       if (!adminId) {
-        toast({ title: "Session expirÃƒÂ©e", variant: "destructive" });
+        toast({ title: "Session expirée", variant: "destructive" });
         return false;
       }
 
