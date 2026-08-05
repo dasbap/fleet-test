@@ -36,7 +36,7 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: `npm run dev -- --host ${E2E_HOST} --port ${E2E_PORT} --strictPort`,
+    command: `npm run dev:vite -- --host ${E2E_HOST} --port ${E2E_PORT} --strictPort`,
     env: {
       ESAMBA_E2E: "1",
       VITE_USE_MOCK_AUTH: "true",
