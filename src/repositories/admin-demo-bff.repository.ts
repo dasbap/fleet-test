@@ -41,8 +41,14 @@ async function readBffJson<T extends { ok: boolean; error?: string }>(
   }
 
   const text = await res.text();
-  const data = text.length > 0 ? (JSON.parse(text) as Partial<T>) : null;
-
+  let data: Partial<T> | null = null;
+  if (text.length > 0) {
+    try {
+      data = JSON.parse(text) as Partial<T>;
+    } catch {
+      data = null;
+    }
+  }
   if (!res.ok) {
     return {
       ok: false,
