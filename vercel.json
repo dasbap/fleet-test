@@ -133,7 +133,7 @@
       ]
     },
     {
-      "source": "/workbox-:hash.js",
+      "source": "/workbox-*.js",
       "headers": [
         {
           "key": "Cache-Control",
