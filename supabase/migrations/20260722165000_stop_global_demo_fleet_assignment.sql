@@ -8,6 +8,11 @@ begin
       alter column fleet_id drop not null;
   end if;
 
+  if to_regclass('public.demo_magic_links') is not null then
+    alter table public.demo_magic_links
+      alter column fleet_id drop not null;
+  end if;
+
   if to_regclass('public.prospect_registrations') is not null then
     alter table public.prospect_registrations
       alter column fleet_id drop not null;
@@ -15,43 +20,15 @@ begin
 end;
 $$;
 
-with legacy_global_demo_fleets as (
-  select id
-    from public.flottes
-   where name in (
-     'Flotte DEMO Starter',
-     'Flotte DEMO Pro',
-     'Flotte DEMO Entreprise',
-     'Flotte DEMO Organisateur'
-   )
-)
-update public.demo_profiles dp
-   set fleet_id = null
- where dp.fleet_id in (select id from legacy_global_demo_fleets);
-
-with legacy_global_demo_fleets as (
-  select id
-    from public.flottes
-   where name in (
-     'Flotte DEMO Starter',
-     'Flotte DEMO Pro',
-     'Flotte DEMO Entreprise',
-     'Flotte DEMO Organisateur'
-   )
-)
-update public.demo_magic_links dml
-   set fleet_id = null
- where dml.fleet_id in (select id from legacy_global_demo_fleets);
-
 do $$
 begin
-  if to_regclass('public.prospect_registrations') is not null then
-    update public.prospect_registrations pr
+  if to_regclass('public.demo_profiles') is not null then
+    update public.demo_profiles dp
        set fleet_id = null
-     where pr.fleet_id in (
-       select id
-         from public.flottes
-        where name in (
+     where dp.fleet_id in (
+       select f.id
+         from public.flottes f
+        where f.name in (
           'Flotte DEMO Starter',
           'Flotte DEMO Pro',
           'Flotte DEMO Entreprise',
@@ -62,44 +39,92 @@ begin
 end;
 $$;
 
-with legacy_global_demo_fleets as (
-  select id
-    from public.flottes
-   where name in (
-     'Flotte DEMO Starter',
-     'Flotte DEMO Pro',
-     'Flotte DEMO Entreprise',
-     'Flotte DEMO Organisateur'
-   )
-)
-delete from public.flotte_adhesions fa
- where fa.fleet_id in (select id from legacy_global_demo_fleets)
-   and exists (
-     select 1
-       from public.demo_profiles dp
-      where dp.user_id = fa.user_id
-   );
+do $$
+begin
+  if to_regclass('public.demo_magic_links') is not null then
+    update public.demo_magic_links dml
+       set fleet_id = null
+     where dml.fleet_id in (
+       select f.id
+         from public.flottes f
+        where f.name in (
+          'Flotte DEMO Starter',
+          'Flotte DEMO Pro',
+          'Flotte DEMO Entreprise',
+          'Flotte DEMO Organisateur'
+        )
+     );
+  end if;
+end;
+$$;
 
-with legacy_global_demo_fleets as (
-  select id
-    from public.flottes
-   where name in (
-     'Flotte DEMO Starter',
-     'Flotte DEMO Pro',
-     'Flotte DEMO Entreprise',
-     'Flotte DEMO Organisateur'
-   )
-)
-delete from public.flottes f
- where f.id in (select id from legacy_global_demo_fleets);
+do $$
+begin
+  if to_regclass('public.prospect_registrations') is not null then
+    update public.prospect_registrations pr
+       set fleet_id = null
+     where pr.fleet_id in (
+       select f.id
+         from public.flottes f
+        where f.name in (
+          'Flotte DEMO Starter',
+          'Flotte DEMO Pro',
+          'Flotte DEMO Entreprise',
+          'Flotte DEMO Organisateur'
+        )
+     );
+  end if;
+end;
+$$;
 
-delete from public.organisations o
- where o.name in ('Organisation DEMO E-Samba', 'E-Samba Demo')
-   and not exists (
-     select 1
-       from public.flottes f
-      where f.org_id = o.id
-   );
+do $$
+begin
+  if to_regclass('public.flotte_adhesions') is not null
+     and to_regclass('public.demo_profiles') is not null then
+    delete from public.flotte_adhesions fa
+     where fa.fleet_id in (
+       select f.id
+         from public.flottes f
+        where f.name in (
+          'Flotte DEMO Starter',
+          'Flotte DEMO Pro',
+          'Flotte DEMO Entreprise',
+          'Flotte DEMO Organisateur'
+        )
+     )
+       and exists (
+         select 1
+           from public.demo_profiles dp
+          where dp.user_id = fa.user_id
+       );
+  end if;
+end;
+$$;
+
+-- Do not physically delete the legacy demo fleets.
+-- They may still be referenced by audit_logs and other historical records.
+
+do $$
+begin
+  if exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'flottes'
+       and column_name = 'archived_at'
+  ) then
+    update public.flottes
+       set archived_at = now()
+     where name in (
+       'Flotte DEMO Starter',
+       'Flotte DEMO Pro',
+       'Flotte DEMO Entreprise',
+       'Flotte DEMO Organisateur'
+     )
+       and archived_at is null;
+  end if;
+end;
+$$;
 
 create or replace function public.prospect_create_account(
   p_user_id uuid,
@@ -124,11 +149,17 @@ begin
   v_account_type := coalesce(nullif(p_account_type, ''), 'prospect');
 
   if v_account_type not in ('prospect', 'investor', 'internal', 'dev') then
-    return jsonb_build_object('ok', false, 'error', 'invalid_account_type');
+    return jsonb_build_object(
+      'ok', false,
+      'error', 'invalid_account_type'
+    );
   end if;
 
   if p_trial_days < 1 or p_trial_days > 90 then
-    return jsonb_build_object('ok', false, 'error', 'trial_days_must_be_1_to_90');
+    return jsonb_build_object(
+      'ok', false,
+      'error', 'trial_days_must_be_1_to_90'
+    );
   end if;
 
   if p_fleet_id is not null then
@@ -140,7 +171,7 @@ begin
 
   v_trial_end := case
     when p_permanent_access then null
-    else now() + (p_trial_days || ' days')::interval
+    else now() + make_interval(days => p_trial_days)
   end;
 
   insert into public.demo_profiles (
@@ -176,7 +207,10 @@ begin
         is_active = true,
         expires_at = excluded.expires_at,
         account_type = excluded.account_type,
-        created_by = coalesce(public.demo_profiles.created_by, excluded.created_by),
+        created_by = coalesce(
+          public.demo_profiles.created_by,
+          excluded.created_by
+        ),
         deactivated_at = null,
         deactivated_by = null,
         notified_at = null;
@@ -203,7 +237,9 @@ begin
     returning id into v_reg_id;
   end if;
 
-  if to_regprocedure('public.demo_log_action(uuid,uuid,text,jsonb)') is not null then
+  if to_regprocedure(
+    'public.demo_log_action(uuid,uuid,text,jsonb)'
+  ) is not null then
     perform public.demo_log_action(
       p_user_id,
       null,
@@ -232,6 +268,15 @@ begin
 end;
 $$;
 
-grant execute on function public.prospect_create_account(uuid, text, text, uuid, uuid, int, text, boolean) to service_role;
+grant execute on function public.prospect_create_account(
+  uuid,
+  text,
+  text,
+  uuid,
+  uuid,
+  int,
+  text,
+  boolean
+) to service_role;
 
 notify pgrst, 'reload schema';
