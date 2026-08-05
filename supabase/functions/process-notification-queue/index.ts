@@ -169,11 +169,14 @@ function buildEmail(row: QueueRow): ResendPayload | null {
 <body style="font-family:Arial,sans-serif;color:#1a1a1a;background:#f5f5f5;margin:0;padding:20px">
 <div style="max-width:580px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
   <div style="background:#16a34a;padding:24px 32px">
-    <h1 style="color:#fff;margin:0;font-size:20px">Votre acces E-Samba est actif</h1>
+    <h1 style="color:#fff;margin:0;font-size:20px">Votre accès E-Samba est actif</h1>
   </div>
   <div style="padding:32px">
     <p style="margin:0 0 16px">Bonjour,</p>
-    <p style="margin:0 0 16px">Votre demande pour <strong>${companyName}</strong> a ete acceptee.</p>
+    <p style="margin:0 0 16px">Votre demande pour <strong>${companyName}</strong> a été acceptée.</p>
+    <p style="margin:0 0 8px">Votre utilisateur : <strong>${userName}</strong></p>
+    <p style="margin:0 0 24px">Utilisez le lien ci-dessous pour créer ou modifier le mot de passe associé à ce compte.</p>
+    <a href="${invitationUrl}" style="display:inline-block;background:#16a34a;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold">Créer mon mot de passe</a
     <p style="margin:0 0 8px">Votre utilisateur : <strong>${userName}</strong></p>
     <p style="margin:0 0 24px">Utilisez le lien ci-dessous pour creer ou modifier le mot de passe associe a ce compte.</p>
     <a href="${invitationUrl}" style="display:inline-block;background:#16a34a;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold">Creer mon mot de passe</a>
