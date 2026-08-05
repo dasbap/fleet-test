@@ -69,12 +69,6 @@ vi.mock("@/navigation/guards/RequireRole", () => ({
   RoleGuard: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
-vi.mock("@/components/auth/RoleGuard", () => ({
-  AdminGuard: ({ children }: { children: ReactNode }) => (
-    <div data-testid="admin-guard">{children}</div>
-  ),
-}));
-
 vi.mock("@/layouts/TerrainLayout", () => ({
   default: () => <Outlet />,
 }));
