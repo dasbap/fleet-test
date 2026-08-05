@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { signOut } from "@/lib/auth-actions";
 import type { AppRole } from "@/hooks/useAuth";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,6 +46,7 @@ const DashboardHeader = ({
   initials,
   isPlatformAdmin = false,
 }: DashboardHeaderProps) => {
+  const navigate = useNavigate();
   const { userFleetId, tenantOptions, setActiveFleetId } = useAuth();
   const { data: alertes } = useAlerts(userFleetId ?? undefined);
   const alertesCount = alertes?.length ?? 0;
@@ -143,7 +144,7 @@ const DashboardHeader = ({
                 className="text-destructive"
                 onClick={async () => {
                   await signOut();
-                  window.location.href = "/";
+                  navigate("/", { replace: true });
                 }}
               >
                 Déconnexion

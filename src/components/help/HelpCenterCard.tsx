@@ -7,7 +7,7 @@
  *   variant="compact"  → petite carte avec lien et canaux support
  *   variant="full"     → carte complète avec sections et recherche rapide
  */
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   HelpCircle,
   Mail,
@@ -62,6 +62,7 @@ export function HelpCenterCard({
   variant = "compact",
   className,
 }: HelpCenterCardProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
 
   if (variant === "compact") {
@@ -127,7 +128,7 @@ export function HelpCenterCard({
             aria-label="Recherche aide"
             onKeyDown={(e) => {
               if (e.key === "Enter" && searchQuery.trim()) {
-                window.location.href = `${ROUTE_PATHS.helpSearch}?q=${encodeURIComponent(searchQuery.trim())}`;
+                navigate(`${ROUTE_PATHS.helpSearch}?q=${encodeURIComponent(searchQuery.trim())}`);
               }
             }}
           />

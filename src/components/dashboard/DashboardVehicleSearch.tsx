@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVehicleSearch } from "@/hooks/useVehicleSearch";
@@ -29,6 +30,7 @@ const ALERT_OPTIONS = [
 ] as const;
 
 export function DashboardVehicleSearch({ fleetId }: DashboardVehicleSearchProps) {
+  const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(-1);
@@ -83,7 +85,7 @@ export function DashboardVehicleSearch({ fleetId }: DashboardVehicleSearchProps)
     }
 
     if (event.key === "Enter" && selectedVehicleId) {
-      window.location.href = `/dashboard/vehicles/${selectedVehicleId}`;
+      navigate(`/dashboard/vehicles/${selectedVehicleId}`);
       return;
     }
 

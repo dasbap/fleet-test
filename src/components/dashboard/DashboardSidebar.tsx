@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import {
   Sidebar,
@@ -120,6 +120,7 @@ function buildOrganizerMenu(userRole: AppRole, planOptions: {
 
 const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { userFleetId } = useAuth();
   const { isAdmin } = useRoleAccess();
   const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
@@ -233,7 +234,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
                 try {
                   const { error } = await signOut();
                   if (error) throw error;
-                  window.location.href = "/";
+                  navigate("/", { replace: true });
                 } catch {
                   toast({
                     title: "Erreur de déconnexion",

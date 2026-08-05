@@ -58,6 +58,12 @@ vi.mock("@/navigation/guards/RequireRole", () => ({
   RoleGuard: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
+vi.mock("@/components/auth/RoleGuard", () => ({
+  AdminGuard: ({ children }: { children: ReactNode }) => (
+    <div data-testid="admin-guard">{children}</div>
+  ),
+}));
+
 vi.mock("@/layouts/TerrainLayout", () => ({
   default: () => <Outlet />,
 }));
@@ -71,7 +77,12 @@ vi.mock("@/pages/Scan", () => ({
 }));
 
 vi.mock("@/pages/Index", () => ({
-  default: () => <div data-testid="index-page">Index</div>,
+  default: () =>
+    mockUseAuth().user ? (
+      <div data-testid="dashboard-fallback">Dashboard</div>
+    ) : (
+      <div data-testid="index-page">Index</div>
+    ),
 }));
 
 vi.mock("@/pages/Aide", () => ({
@@ -218,6 +229,13 @@ describe("app.routes redirections critiques", () => {
   it("redirige /privacy vers /confidentialite", async () => {
     renderRoutes("/privacy");
     expect(await screen.findByTestId("confidentialite-page")).toBeInTheDocument();
+  });
+
+  it("protege /confidentialite par le garde admin", async () => {
+    renderRoutes("/confidentialite");
+    expect(await screen.findByTestId("confidentialite-page")).toBeInTheDocument();
+    expect(screen.getByTestId("auth-provider-layout")).toBeInTheDocument();
+    expect(screen.getByTestId("admin-guard")).toBeInTheDocument();
   });
 
   it("redirige /terms vers /conditions", async () => {

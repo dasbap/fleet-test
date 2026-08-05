@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -21,39 +22,32 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Ticket, Copy, Check, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Check, Copy, Loader2, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useCreateInvitation } from "@/hooks/useInvitations";
-import { generateInvitationCode } from "@/lib/invitation-code";
+import { useCreateFleetMemberAccount, useFleetMembers } from "@/hooks/useFleetMembers";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
+import type { RoleType } from "@/repositories/fleet-member.repository";
 
-const invitationFormSchema = z.object({
-  code: z.string().min(3, "Le code doit contenir au moins 3 caractères").max(50, "Le code est trop long"),
-  hasExpiration: z.boolean().default(false),
-  expirationDays: z.coerce.number().min(1).max(365).optional(),
-  hasLimit: z.boolean().default(false),
-  maxUses: z.coerce.number().min(1).max(1000).optional(),
-}).refine((data) => {
-  if (data.hasExpiration && !data.expirationDays) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Veuillez spécifier le nombre de jours",
-  path: ["expirationDays"],
-}).refine((data) => {
-  if (data.hasLimit && !data.maxUses) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Veuillez spécifier le nombre maximum d'utilisations",
-  path: ["maxUses"],
+const memberAccountFormSchema = z.object({
+  email: z.string().trim().email("Email invalide"),
+  fullName: z
+    .string()
+    .trim()
+    .min(2, "Le nom complet est requis")
+    .max(120, "Le nom est trop long"),
+  phone: z.string().trim().optional(),
+  role: z.enum(["driver", "mechanic", "manager", "organizer"]).default("driver"),
 });
 
-type InvitationFormValues = z.infer<typeof invitationFormSchema>;
+type MemberAccountFormValues = z.infer<typeof memberAccountFormSchema>;
 
 interface CreateInvitationDialogProps {
   open: boolean;
@@ -62,12 +56,18 @@ interface CreateInvitationDialogProps {
   onSuccess?: () => void;
 }
 
-const defaultFormValues = (): InvitationFormValues => ({
-  code: generateInvitationCode(),
-  hasExpiration: false,
-  expirationDays: 30,
-  hasLimit: false,
-  maxUses: 1,
+const roleLabels: Record<RoleType, string> = {
+  organizer: "Organisateur",
+  manager: "Gestionnaire",
+  driver: "Chauffeur",
+  mechanic: "Mécanicien",
+};
+
+const defaultFormValues = (): MemberAccountFormValues => ({
+  email: "",
+  fullName: "",
+  phone: "",
+  role: "driver",
 });
 
 export function CreateInvitationDialog({
@@ -76,157 +76,163 @@ export function CreateInvitationDialog({
   fleetId,
   onSuccess,
 }: CreateInvitationDialogProps) {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { user, role } = useAuth();
-  const createInvitation = useCreateInvitation();
-  const [createdInvitation, setCreatedInvitation] = useState<{
-    code: string;
-    expiresAt: string | null;
-    maxUses: number | null;
+  const createMemberAccount = useCreateFleetMemberAccount();
+  const { data: fleetMembers = [] } = useFleetMembers(fleetId || undefined);
+  const hasActiveOrganizer = fleetMembers.some(
+    (member) => member.role === "organizer" && member.is_active,
+  );
+  const [createdAccount, setCreatedAccount] = useState<{
+    email: string;
+    fullName: string;
+    role: RoleType;
+    tempPassword?: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (open && !fleetId) {
-      console.warn("CreateInvitationDialog: fleetId is missing");
       toast({
         title: "Erreur",
-        description: "Aucune flotte trouvée. Veuillez vous assurer d'être membre d'une flotte.",
+        description: "Aucune flotte trouvée. Créez une flotte avant d'ajouter un compte membre.",
         variant: "destructive",
       });
       onOpenChange(false);
     }
   }, [fleetId, open, toast, onOpenChange]);
 
-  const form = useForm<InvitationFormValues>({
-    resolver: zodResolver(invitationFormSchema),
+  const form = useForm<MemberAccountFormValues>({
+    resolver: zodResolver(memberAccountFormSchema),
     defaultValues: defaultFormValues(),
   });
-
-  const generateNewCode = () => {
-    form.setValue("code", generateInvitationCode());
-  };
 
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       toast({
-        title: "Code copié",
-        description: "Le code d'invitation a été copié dans le presse-papiers.",
+        title: "Mot de passe copié",
+        description: "Le mot de passe temporaire a été copié.",
       });
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast({
         title: "Erreur",
-        description: "Impossible de copier le code.",
+        description: "Impossible de copier le mot de passe.",
         variant: "destructive",
       });
     }
   };
 
-  const onSubmit = async (values: InvitationFormValues) => {
+  const onSubmit = async (values: MemberAccountFormValues) => {
     if (!user) {
       toast({
         title: "Erreur",
-        description: "Vous devez être connecté pour créer une invitation.",
+        description: "Vous devez être connecté pour créer un compte membre.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (values.role === "organizer" && hasActiveOrganizer) {
+      toast({
+        title: "Organisateur déjà défini",
+        description: "Cette flotte possède déjà un organisateur actif.",
         variant: "destructive",
       });
       return;
     }
 
-    const expiresAt =
-      values.hasExpiration && values.expirationDays
-        ? new Date(Date.now() + values.expirationDays * 24 * 60 * 60 * 1000).toISOString()
-        : null;
-
-    const maxUses = values.hasLimit && values.maxUses ? values.maxUses : null;
-
     try {
-      const data = await createInvitation.mutateAsync({
-        fleet_id: fleetId,
-        code: values.code,
-        expires_at: expiresAt,
-        max_uses: maxUses,
+      const data = await createMemberAccount.mutateAsync({
+        fleetId,
+        data: {
+          email: values.email,
+          fullName: values.fullName,
+          role: values.role,
+          phone: values.phone || undefined,
+        },
       });
 
-      setCreatedInvitation({
-        code: data.code,
-        expiresAt: data.expires_at,
-        maxUses: data.max_uses,
+      setCreatedAccount({
+        email: values.email.trim().toLowerCase(),
+        fullName: values.fullName.trim(),
+        role: values.role,
+        tempPassword: data.temp_password,
       });
-
       onSuccess?.();
     } catch {
-      // Erreur utilisateur gérée par useCreateInvitation (toast)
+      // Erreur utilisateur gérée par useCreateFleetMemberAccount (toast).
     }
   };
 
-  const isSubmitting = createInvitation.isPending;
+  const isSubmitting = createMemberAccount.isPending;
 
   const handleClose = () => {
     if (!isSubmitting) {
       form.reset(defaultFormValues());
-      setCreatedInvitation(null);
+      setCreatedAccount(null);
       setCopied(false);
       onOpenChange(false);
     }
   };
 
-  if (createdInvitation) {
+  if (createdAccount) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Ticket className="h-5 w-5 text-success" />
-              Invitation créée avec succès
+              <UserPlus className="h-5 w-5 text-success" />
+              Compte membre créé
             </DialogTitle>
             <DialogDescription>
-              Partagez ce code avec les personnes que vous souhaitez inviter.
+              Le compte est rattaché à cette flotte. Remettez ces accès au membre.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <FormLabel>Code d'invitation</FormLabel>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={createdInvitation.code}
-                  readOnly
-                  className="font-mono text-lg font-bold"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => copyToClipboard(createdInvitation.code)}
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4 text-success" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
+            <div className="rounded-md border p-4 text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Nom</span>
+                <span className="font-medium text-right">{createdAccount.fullName}</span>
+              </div>
+              <div className="mt-2 flex justify-between gap-3">
+                <span className="text-muted-foreground">Email</span>
+                <span className="font-medium text-right">{createdAccount.email}</span>
+              </div>
+              <div className="mt-2 flex justify-between gap-3">
+                <span className="text-muted-foreground">Rôle</span>
+                <span className="font-medium">{roleLabels[createdAccount.role]}</span>
               </div>
             </div>
 
-            <div className="space-y-2 text-sm">
-              {createdInvitation.expiresAt && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Expire le :</span>
-                  <span className="font-medium">
-                    {new Date(createdInvitation.expiresAt).toLocaleDateString("fr-FR")}
-                  </span>
+            {createdAccount.tempPassword && (
+              <div className="space-y-2">
+                <FormLabel>Mot de passe temporaire</FormLabel>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={createdAccount.tempPassword}
+                    readOnly
+                    className="font-mono text-base font-semibold"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(createdAccount.tempPassword ?? "")}
+                    aria-label="Copier le mot de passe temporaire"
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4 text-success" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
-              )}
-              {createdInvitation.maxUses && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Utilisations max :</span>
-                  <span className="font-medium">{createdInvitation.maxUses}</span>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -234,13 +240,12 @@ export function CreateInvitationDialog({
               type="button"
               variant="outline"
               onClick={() => {
-                setCreatedInvitation(null);
-                form.reset({
-                  ...defaultFormValues(),
-                });
+                setCreatedAccount(null);
+                setCopied(false);
+                form.reset(defaultFormValues());
               }}
             >
-              Créer une autre invitation
+              Créer un autre compte
             </Button>
             <Button type="button" onClick={handleClose}>
               Fermer
@@ -257,18 +262,18 @@ export function CreateInvitationDialog({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Ticket className="h-5 w-5" />
+              <UserPlus className="h-5 w-5" />
               Créer une flotte d'abord
             </DialogTitle>
             <DialogDescription>
-              Vous devez créer une flotte avant de pouvoir créer des invitations.
+              Vous devez créer une flotte avant de créer des comptes membres.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <p className="text-muted-foreground">
               {role === "organizer" || role === null
-                ? "En tant qu'organisateur, créez votre première flotte pour commencer à inviter des membres."
-                : "Vous devez être membre d'une flotte avec le rôle manager ou organizer pour créer des invitations."}
+                ? "En tant qu'organisateur, créez votre première flotte pour ajouter des membres."
+                : "Vous devez être membre d'une flotte avec un rôle autorisé pour créer des comptes."}
             </p>
           </div>
           <DialogFooter>
@@ -280,7 +285,7 @@ export function CreateInvitationDialog({
                 type="button"
                 onClick={() => {
                   handleClose();
-                  window.location.href = ROUTE_PATHS.dashboardCreateFleet;
+                  navigate(ROUTE_PATHS.dashboardCreateFleet);
                 }}
               >
                 Créer une flotte
@@ -297,11 +302,11 @@ export function CreateInvitationDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Ticket className="h-5 w-5" />
-            Créer une invitation
+            <UserPlus className="h-5 w-5" />
+            Créer un compte membre
           </DialogTitle>
           <DialogDescription>
-            Créez un code d'invitation pour permettre à des chauffeurs de rejoindre votre flotte.
+            Le compte sera créé directement sous cette flotte.
           </DialogDescription>
         </DialogHeader>
 
@@ -309,34 +314,13 @@ export function CreateInvitationDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="code"
+              name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Code d'invitation</FormLabel>
-                  <div className="flex items-center gap-2">
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="INV-ABC123"
-                        className="font-mono"
-                        onChange={(e) => {
-                          field.onChange(e.target.value.toUpperCase());
-                        }}
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={generateNewCode}
-                      title="Générer un nouveau code"
-                    >
-                      <Ticket className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <FormDescription>
-                    Le code sera automatiquement converti en majuscules.
-                  </FormDescription>
+                  <FormLabel>Nom complet</FormLabel>
+                  <FormControl>
+                    <Input {...field} autoComplete="name" placeholder="Awa Njoh" />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -344,95 +328,63 @@ export function CreateInvitationDialog({
 
             <FormField
               control={form.control}
-              name="hasExpiration"
+              name="email"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Input {...field} type="email" autoComplete="email" placeholder="awa@example.com" />
                   </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Définir une expiration</FormLabel>
-                    <FormDescription>
-                      L'invitation expirera après un certain nombre de jours.
-                    </FormDescription>
-                  </div>
+                  <FormMessage />
                 </FormItem>
               )}
             />
-
-            {form.watch("hasExpiration") && (
-              <FormField
-                control={form.control}
-                name="expirationDays"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre de jours</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        min={1}
-                        max={365}
-                        placeholder="30"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      L'invitation expirera dans {field.value || 30} jour(s).
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
             <FormField
               control={form.control}
-              name="hasLimit"
+              name="phone"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormItem>
+                  <FormLabel>Téléphone</FormLabel>
                   <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Input {...field} autoComplete="tel" placeholder="+237699000000" />
                   </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Limiter le nombre d'utilisations</FormLabel>
-                    <FormDescription>
-                      L'invitation ne pourra être utilisée qu'un nombre limité de fois.
-                    </FormDescription>
-                  </div>
+                  <FormDescription>Optionnel.</FormDescription>
+                  <FormMessage />
                 </FormItem>
               )}
             />
 
-            {form.watch("hasLimit") && (
-              <FormField
-                control={form.control}
-                name="maxUses"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre maximum d'utilisations</FormLabel>
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Rôle</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        min={1}
-                        max={1000}
-                        placeholder="1"
-                      />
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                     </FormControl>
+                    <SelectContent>
+                      <SelectItem value="driver">Chauffeur</SelectItem>
+                      <SelectItem value="mechanic">Mécanicien</SelectItem>
+                      <SelectItem value="manager">Gestionnaire</SelectItem>
+                      {!hasActiveOrganizer && (
+                        <SelectItem value="organizer">Organisateur</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {hasActiveOrganizer && (
                     <FormDescription>
-                      L'invitation pourra être utilisée {field.value || 1} fois maximum.
+                      Un organisateur actif existe déjà pour cette flotte.
                     </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter>
               <Button
@@ -450,7 +402,7 @@ export function CreateInvitationDialog({
                     Création...
                   </>
                 ) : (
-                  "Créer l'invitation"
+                  "Créer le compte"
                 )}
               </Button>
             </DialogFooter>

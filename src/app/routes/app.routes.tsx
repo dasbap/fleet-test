@@ -4,6 +4,7 @@ import { RootLayout } from "@/app/RootLayout";
 import AuthProviderLayout from "@/components/auth/AuthProviderLayout";
 import { dashboardRoutes } from "@/app/routes/dashboard.routes";
 import { authPublicRoutes } from "@/features/auth/routes";
+import { AdminGuard } from "@/components/auth/RoleGuard";
 import { RoleGuard } from "@/navigation/guards/RequireRole";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { LANDING_CTA, PUBLIC_DEMO_HREF } from "@/config/navigation";
@@ -146,7 +147,6 @@ export const appRoutes = (
     <Route path="/pricing" element={<PricingPage />} />
     <Route path="/tarifs" element={<Navigate to={ROUTE_PATHS.pricing} replace />} />
     <Route path="/cookies" element={<CookiesPage />} />
-    <Route path="/confidentialite" element={<ConfidentialitePage />} />
     <Route path="/privacy" element={<Navigate to="/confidentialite" replace />} />
     <Route path="/conditions" element={<ConditionsPage />} />
     <Route path="/terms" element={<Navigate to="/conditions" replace />} />
@@ -216,6 +216,14 @@ export const appRoutes = (
       />
       <Route path="/upgrade" element={<Upgrade />} />
       <Route path="/post-login" element={<PostLoginGate />} />
+      <Route
+        path="/confidentialite"
+        element={
+          <AdminGuard redirectIfDenied showLoadingState>
+            <ConfidentialitePage />
+          </AdminGuard>
+        }
+      />
       {/* Flux commercial démo — pas de ProtectedRoute (auth via magic link) */}
       {DEMO_MAGIC_LINK_ENABLED && DemoMagicLinkPage && ProspectOnboarding ? (
         <>

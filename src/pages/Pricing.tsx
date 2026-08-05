@@ -64,17 +64,15 @@ const PLANS: PlanConfig[] = [
       "QR Premium (lot)",
     ],
     ctaLabel: "Payer avec Notch Pay",
-    badge: "Populaire",
-    highlight: true,
   },
   {
     code: "pro",
     name: "Pro",
     tagline: "Flottes opérationnelles & terrain",
     pricePerVehicle: PRICE_PRO_PER_VEHICLE,
-    maxVehicles: 75,
+    maxVehicles: 100,
     features: [
-      "Jusqu'à 75 véhicules",
+      "Jusqu'à 100 véhicules",
       "Tout le plan Starter",
       "IA Pulse+ inclus",
       "QR codes d'activation Premium",
@@ -86,6 +84,8 @@ const PLANS: PlanConfig[] = [
       "API (future)",
     ],
     ctaLabel: "Payer avec Notch Pay",
+    badge: "Populaire",
+    highlight: true,
   },
   {
     code: "enterprise",

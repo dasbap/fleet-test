@@ -28,8 +28,10 @@ interface ImportMetaEnv {
   readonly VITE_DEMO_FLEET_ID?: string;
   /** Données démo pour le module Opérations (snapshots). Valeur attendue : "true". */
   readonly VITE_OPERATIONS_MOCK?: string;
-  /** Token public Mapbox pour la carte de suivi live. */
-  readonly VITE_MAPBOX_TOKEN?: string;
+  /** Fichier Protomaps PMTiles auto-heberge pour la carte de suivi live. */
+  readonly VITE_PROTOMAPS_PM_TILES_URL?: string;
+  /** URL raster XYZ de repli pour la carte de suivi live. */
+  readonly VITE_MAP_TILE_URL?: string;
   /** Quota offline tutoriels en MB (ex: 250). */
   readonly VITE_TUTORIAL_OFFLINE_QUOTA_MB?: string;
   /** Nombre de tutoriels accessibles sur le plan Free (défaut : 3). */

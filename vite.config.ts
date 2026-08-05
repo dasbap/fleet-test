@@ -93,7 +93,7 @@ export default defineConfig(({ mode }) => {
     sourcemap: isProd ? "hidden" : true,
     modulePreload: {
       resolveDependencies(_filename, deps) {
-        const heavy = /vendor-charts|chunk-dashboard|chunk-map|vendor-analytics|jspdf|xlsx/i;
+        const heavy = /vendor-charts|chunk-map|vendor-analytics|jspdf|xlsx/i;
         return deps.filter((d) => !heavy.test(d));
       },
     },
@@ -112,21 +112,6 @@ export default defineConfig(({ mode }) => {
       output: {
         manualChunks(id) {
           const n = id.replace(/\\/g, "/");
-          if (n.includes("/src/")) {
-            const isDashboardSrc =
-              /\/src\/pages\/(Drivers|Maintenance|Incidents|Reports|Settings|Finances|Collections|Invitations|Teams|History|ShiftClosure|CreateFleet|DashboardNotFound)/.test(
-                n,
-              ) ||
-              n.includes("/src/features/home/screens/MobileHomePage") ||
-              n.includes("/src/features/fleet/screens/") ||
-              n.includes("/src/features/alerts/screens/") ||
-              n.includes("/src/features/operations/screens/") ||
-              n.includes("/src/features/account/screens/MobileAccountPage") ||
-              n.includes("/src/features/billing/screens/") ||
-              n.includes("/src/features/drivers/screens/") ||
-              n.includes("/src/components/dashboard/");
-            if (isDashboardSrc) return "chunk-dashboard";
-          }
           if (!id.includes("node_modules")) return;
           // react-router dans son propre chunk — ses appels module-level à createContext
           // doivent s'exécuter APRÈS que React soit pleinement initialisé (chunks séparés = ordre garanti)
