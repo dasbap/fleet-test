@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
@@ -390,6 +390,3 @@ describe("app.routes routes métier racine", () => {
     expect(await screen.findByTestId("not-found")).toBeInTheDocument();
   });
 });
-function beforeEach(arg0: () => void) {
-  throw new Error("Function not implemented.");
-}
