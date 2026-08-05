@@ -42,9 +42,6 @@ function formatCreateAccessError(error: string | undefined): string {
   return error ?? "creation_echouee";
 }
 
-export const MAX_DEMO_TRIAL_DAYS = 31;
-export const MAX_DEMO_EXTENSION_HOURS = MAX_DEMO_TRIAL_DAYS * 24;
-
 /**
  * Logique métier administration des comptes démo.
  */

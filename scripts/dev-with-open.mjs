@@ -23,7 +23,9 @@ const timeoutMs = parseInt(process.env.LOCAL_OPEN_WAIT_MS ?? "120000", 10);
 
 /** Extrait le port depuis la ligne « Local: http://localhost:PORT/ » de Vite. */
 function extractPortFromViteLog(buffer) {
-  const m = buffer.match(/Local:\s+https?:\/\/(?:127\.0\.0\.1|localhost):(\d+)/i);
+  const m = buffer.match(
+    /Local:\s+https?:\/\/(?:127\.0\.0\.1|localhost):(\d+)/i
+  );
   return m ? parseInt(m[1], 10) : null;
 }
 
@@ -31,7 +33,12 @@ function extractPortFromViteLog(buffer) {
  * Attend que Vite annonce un port dans stdout et que les chemins smoke répondent sur ce port.
  * @param {import("node:child_process").ChildProcess} child
  */
-async function waitForAdvertisedPortReady(child, paths, deadlineMs, shouldAbort) {
+async function waitForAdvertisedPortReady(
+  child,
+  paths,
+  deadlineMs,
+  shouldAbort
+) {
   let buf = "";
   let lastAnnounced = null;
 
@@ -81,35 +88,36 @@ async function main() {
   const ports = getCandidatePorts();
   const paths = getSmokePaths();
   const hasLocalEnvFile = existsSync(join(REPO_ROOT, ".env.local"));
-  const bffWatchArgs = hasLocalEnvFile ? ["watch", "--env-file=.env.local"] : ["watch"];
+  const bffWatchArgs = hasLocalEnvFile
+    ? ["watch", "--env-file=.env.local"]
+    : ["watch"];
 
   const bff = spawn(
     "npx",
-    ["tsx", ...bffWatchArgs, "--tsconfig", "tsconfig.server.json", "src/server/index.ts"],
+    [
+      "tsx",
+      ...bffWatchArgs,
+      "--tsconfig",
+      "tsconfig.server.json",
+      "src/server/index.ts",
+    ],
     {
       cwd: REPO_ROOT,
       stdio: ["inherit", "inherit", "inherit"],
       shell: true,
       env: { ...process.env, BFF_PORT: process.env.BFF_PORT ?? "8787" },
-    },
-  );
-
-  const bff = spawn(
-    "npx",
-    ["tsx", "watch", "--env-file=.env.local", "--tsconfig", "tsconfig.server.json", "src/server/index.ts"],
-    {
-      cwd: REPO_ROOT,
-      stdio: ["inherit", "inherit", "inherit"],
-      shell: true,
-      env: { ...process.env, BFF_PORT: process.env.BFF_PORT ?? "8787" },
-    },
+    }
   );
 
   const child = spawn("npx", ["vite"], {
     cwd: REPO_ROOT,
     stdio: ["inherit", "pipe", "inherit"],
     shell: true,
-    env: { ...process.env, ESAMBA_MANAGED_OPEN: "1", VITE_DEV_BFF_PROXY: "true" },
+    env: {
+      ...process.env,
+      ESAMBA_MANAGED_OPEN: "1",
+      VITE_DEV_BFF_PROXY: "true",
+    },
   });
 
   let opened = false;
@@ -133,13 +141,18 @@ async function main() {
         code ?? 0,
         ").\n"
       );
-      process.exit(code === 0 ? 1 : (code ?? 1));
+      process.exit(code === 0 ? 1 : code ?? 1);
     }
     process.exit(code ?? 0);
   });
 
   const halfTimeout = Math.min(timeoutMs, Math.floor(timeoutMs / 2) + 15_000);
-  let port = await waitForAdvertisedPortReady(child, paths, halfTimeout, () => childDead);
+  let port = await waitForAdvertisedPortReady(
+    child,
+    paths,
+    halfTimeout,
+    () => childDead
+  );
 
   if (port === null && !childDead) {
     port = await waitForViteHttp({
