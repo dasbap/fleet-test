@@ -6,12 +6,6 @@ create policy help_articles_admin_select on public.help_articles
   using (
     public.is_platform_admin()
     or public.is_help_center_admin()
-    or exists (
-      select 1
-      from public.flotte_adhesions fa
-      where fa.user_id = auth.uid()
-        and fa.role = 'organizer'
-    )
   );
 
 grant select on public.help_articles to authenticated;
