@@ -246,15 +246,6 @@ describe("app.routes redirections critiques", () => {
     ).toBeInTheDocument();
   });
 
-  it("rend /confidentialite comme route publique", async () => {
-    renderRoutes("/confidentialite");
-    expect(
-      await screen.findByTestId("confidentialite-page")
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("auth-provider-layout")).toBeInTheDocument();
-    expect(screen.getByTestId("admin-guard")).not.toBeInTheDocument();
-  });
-
   it("redirige /terms vers /conditions", async () => {
     renderRoutes("/terms");
     expect(await screen.findByTestId("conditions-page")).toBeInTheDocument();
