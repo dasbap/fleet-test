@@ -43,7 +43,8 @@ export default defineConfig({
     },
     url: BASE_URL,
     reuseExistingServer: !isCI,
-    timeout: 120_000,
+    // En CI, l'installation/initialisation peut retarder le boot Vite.
+    timeout: isCI ? 240_000 : 120_000,
   },
   // Chromium (desktop + mobile), Firefox et WebKit (desktop) — aligné sur `playwright:install:browsers`.
   projects: [
