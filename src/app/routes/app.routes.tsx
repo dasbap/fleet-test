@@ -218,11 +218,7 @@ export const appRoutes = (
       <Route path="/post-login" element={<PostLoginGate />} />
       <Route
         path="/confidentialite"
-        element={
-          <AdminGuard redirectIfDenied showLoadingState>
-            <ConfidentialitePage />
-          </AdminGuard>
-        }
+        element={<ConfidentialitePage />}
       />
       {/* Flux commercial démo — pas de ProtectedRoute (auth via magic link) */}
       {DEMO_MAGIC_LINK_ENABLED && DemoMagicLinkPage && ProspectOnboarding ? (
