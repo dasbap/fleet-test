@@ -485,8 +485,110 @@ async function handleValidateMagicLink(c: Context) {
   }
 }
 
+async function handleClearPasswordMarker(c: Context) {
+  try {
+    const token = getBearerToken(c.req.header("Authorization"));
+
+    if (!token) {
+      return c.json(
+        {
+          ok: false,
+          error: "missing_auth_token",
+        },
+        401
+      );
+    }
+
+    if (!hasSupabaseAuthConfig()) {
+      return jsonServerConfigurationError(c);
+    }
+
+    const userClient = createSupabaseUserClient(token);
+
+    const {
+      data: { user },
+      error: authError,
+    } = await userClient.auth.getUser(token);
+
+    if (authError || !user) {
+      return c.json(
+        {
+          ok: false,
+          error: "invalid_token",
+        },
+        401
+      );
+    }
+
+    const admin = createSupabaseServiceClient();
+
+    if (!admin) {
+      return jsonServerConfigurationError(c);
+    }
+
+    const { data: currentUserData, error: currentUserError } =
+      await admin.auth.admin.getUserById(user.id);
+
+    if (currentUserError || !currentUserData.user) {
+      return c.json(
+        {
+          ok: false,
+          error: "user_not_found",
+        },
+        404
+      );
+    }
+
+    const { data: updatedUserData, error: updateError } =
+      await admin.auth.admin.updateUserById(user.id, {
+        app_metadata: {
+          ...currentUserData.user.app_metadata,
+          must_set_password: false,
+        },
+      });
+
+    if (updateError || !updatedUserData.user) {
+      return c.json(
+        {
+          ok: false,
+          error: "password_marker_update_failed",
+          details: updateError?.message,
+        },
+        500
+      );
+    }
+
+    const { data: verifiedUserData, error: verificationError } =
+      await admin.auth.admin.getUserById(user.id);
+
+    if (
+      verificationError ||
+      !verifiedUserData.user ||
+      verifiedUserData.user.app_metadata?.must_set_password !== false
+    ) {
+      return c.json(
+        {
+          ok: false,
+          error: "password_marker_not_cleared",
+        },
+        500
+      );
+    }
+
+    return c.json({
+      ok: true,
+      must_set_password: false,
+    });
+  } catch (error) {
+    return jsonInternalServerError(c, error);
+  }
+}
 export function registerAdminDemoRoutes(app: Hono) {
   app.post("/api/admin/create-prospect", handleCreateProspect);
+
   app.post("/api/admin/generate-magic-link", handleGenerateMagicLink);
+
   app.post("/api/demo/magic-link", handleValidateMagicLink);
+
+  app.post("/api/auth/clear-password-marker", handleClearPasswordMarker);
 }

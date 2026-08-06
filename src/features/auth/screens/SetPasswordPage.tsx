@@ -10,6 +10,42 @@ import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const MIN_PASSWORD_LENGTH = 8;
 
+type SupabasePasswordError = Error & {
+  code?: string;
+  status?: number;
+  weakPassword?: {
+    reasons?: string[];
+    message?: string;
+  };
+};
+
+function getPasswordErrorMessage(error: SupabasePasswordError): string {
+  switch (error.code) {
+    case "same_password":
+      return "Le nouveau mot de passe doit être différent du mot de passe temporaire.";
+
+    case "weak_password": {
+      const reasons = error.weakPassword?.reasons;
+
+      if (reasons?.length) {
+        return `Le mot de passe est trop faible : ${reasons.join(", ")}.`;
+      }
+
+      return "Le mot de passe est trop faible. Ajoutez des majuscules, minuscules, chiffres et caractères spéciaux.";
+    }
+
+    case "reauthentication_needed":
+      return "Votre session doit être renouvelée. Déconnectez-vous, reconnectez-vous avec le mot de passe temporaire, puis réessayez.";
+
+    case "session_not_found":
+    case "refresh_token_not_found":
+      return "Votre session a expiré. Reconnectez-vous avec le mot de passe temporaire.";
+
+    default:
+      return error.message || "Impossible de modifier le mot de passe.";
+  }
+}
+
 export default function SetPasswordPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -56,12 +92,14 @@ export default function SetPasswordPage() {
     const result = (await response.json().catch(() => ({}))) as {
       ok?: boolean;
       error?: string;
+      details?: string;
     };
 
     if (!response.ok || result.ok !== true) {
       throw new Error(
-        result.error ??
-          "Votre mot de passe a été enregistré, mais l'accès n'a pas pu être finalisé. Réessayez."
+        result.details ??
+          result.error ??
+          "Votre mot de passe a été enregistré, mais l'accès n'a pas pu être finalisé."
       );
     }
   };
@@ -85,11 +123,31 @@ export default function SetPasswordPage() {
     setIsSubmitting(true);
 
     try {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      if (!sessionData.session) {
+        throw new Error(
+          "Votre session a expiré. Reconnectez-vous avec le mot de passe temporaire."
+        );
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({
         password,
       });
 
       if (updateError) {
+        console.error("[set-password] Supabase error:", {
+          name: updateError.name,
+          message: updateError.message,
+          code: updateError.code,
+          status: updateError.status,
+        });
+
         throw updateError;
       }
 
@@ -101,13 +159,13 @@ export default function SetPasswordPage() {
         throw refreshError;
       }
 
-      navigate(ROUTE_PATHS.dashboard, { replace: true });
+      navigate(ROUTE_PATHS.dashboard, {
+        replace: true,
+      });
     } catch (submissionError) {
-      setError(
-        submissionError instanceof Error
-          ? submissionError.message
-          : "Une erreur est survenue pendant l'enregistrement."
-      );
+      const authError = submissionError as SupabasePasswordError;
+
+      setError(getPasswordErrorMessage(authError));
     } finally {
       setIsSubmitting(false);
     }
@@ -123,7 +181,7 @@ export default function SetPasswordPage() {
           <h1 className="text-2xl font-semibold">Créez votre mot de passe</h1>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            Vous devez définir un mot de passe avant d’accéder à votre espace.
+            Choisissez un mot de passe différent du mot de passe temporaire.
           </p>
         </div>
 
