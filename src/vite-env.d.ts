@@ -44,6 +44,8 @@ interface ImportMetaEnv {
   readonly VITE_TERRAIN_EXPO_FLEET_IDS?: string;
   /** "true" when native push can safely call Firebase-backed registration. */
   readonly VITE_NATIVE_PUSH_CONFIGURED?: string;
+  /** URL de l’APK Android pour le téléchargement direct (optionnel). */
+  readonly VITE_ANDROID_APK_URL?: string;
 }
 
 interface ImportMeta {
