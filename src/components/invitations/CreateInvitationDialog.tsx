@@ -3,23 +3,25 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,9 +32,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Check, Copy, Loader2, UserPlus } from "lucide-react";
+
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useCreateFleetMemberAccount, useFleetMembers } from "@/hooks/useFleetMembers";
+import {
+  useCreateFleetMemberAccount,
+  useFleetMembers,
+} from "@/hooks/useFleetMembers";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import type { RoleType } from "@/repositories/fleet-member.repository";
 
@@ -44,7 +50,9 @@ const memberAccountFormSchema = z.object({
     .min(2, "Le nom complet est requis")
     .max(120, "Le nom est trop long"),
   phone: z.string().trim().optional(),
-  role: z.enum(["driver", "mechanic", "manager", "organizer"]).default("driver"),
+  role: z
+    .enum(["driver", "mechanic", "manager", "organizer"])
+    .default("driver"),
 });
 
 type MemberAccountFormValues = z.infer<typeof memberAccountFormSchema>;
@@ -79,44 +87,55 @@ export function CreateInvitationDialog({
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, role } = useAuth();
+
   const createMemberAccount = useCreateFleetMemberAccount();
+
   const { data: fleetMembers = [] } = useFleetMembers(fleetId || undefined);
+
   const hasActiveOrganizer = fleetMembers.some(
-    (member) => member.role === "organizer" && member.is_active,
+    (member) => member.role === "organizer" && member.is_active
   );
+
   const [createdAccount, setCreatedAccount] = useState<{
     email: string;
     fullName: string;
     role: RoleType;
     tempPassword?: string;
   } | null>(null);
-  const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (open && !fleetId) {
-      toast({
-        title: "Erreur",
-        description: "Aucune flotte trouvée. Créez une flotte avant d'ajouter un compte membre.",
-        variant: "destructive",
-      });
-      onOpenChange(false);
-    }
-  }, [fleetId, open, toast, onOpenChange]);
+  const [copied, setCopied] = useState(false);
 
   const form = useForm<MemberAccountFormValues>({
     resolver: zodResolver(memberAccountFormSchema),
     defaultValues: defaultFormValues(),
   });
 
+  useEffect(() => {
+    if (open && !fleetId) {
+      toast({
+        title: "Erreur",
+        description:
+          "Aucune flotte trouvée. Créez une flotte avant d'ajouter un compte membre.",
+        variant: "destructive",
+      });
+
+      onOpenChange(false);
+    }
+  }, [fleetId, open, toast, onOpenChange]);
+
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
+
       toast({
         title: "Mot de passe copié",
         description: "Le mot de passe temporaire a été copié.",
       });
-      setTimeout(() => setCopied(false), 2000);
+
+      window.setTimeout(() => {
+        setCopied(false);
+      }, 2000);
     } catch {
       toast({
         title: "Erreur",
@@ -133,14 +152,17 @@ export function CreateInvitationDialog({
         description: "Vous devez être connecté pour créer un compte membre.",
         variant: "destructive",
       });
+
       return;
     }
+
     if (values.role === "organizer" && hasActiveOrganizer) {
       toast({
         title: "Organisateur déjà défini",
         description: "Cette flotte possède déjà un organisateur actif.",
         variant: "destructive",
       });
+
       return;
     }
 
@@ -161,21 +183,24 @@ export function CreateInvitationDialog({
         role: values.role,
         tempPassword: data.temp_password,
       });
+
       onSuccess?.();
     } catch {
-      // Erreur utilisateur gérée par useCreateFleetMemberAccount (toast).
+      return;
     }
   };
 
   const isSubmitting = createMemberAccount.isPending;
 
   const handleClose = () => {
-    if (!isSubmitting) {
-      form.reset(defaultFormValues());
-      setCreatedAccount(null);
-      setCopied(false);
-      onOpenChange(false);
+    if (isSubmitting) {
+      return;
     }
+
+    form.reset(defaultFormValues());
+    setCreatedAccount(null);
+    setCopied(false);
+    onOpenChange(false);
   };
 
   if (createdAccount) {
@@ -187,8 +212,10 @@ export function CreateInvitationDialog({
               <UserPlus className="h-5 w-5 text-success" />
               Compte membre créé
             </DialogTitle>
+
             <DialogDescription>
-              Le compte est rattaché à cette flotte. Remettez ces accès au membre.
+              Le compte est rattaché à cette flotte. Remettez ces accès au
+              membre.
             </DialogDescription>
           </DialogHeader>
 
@@ -196,32 +223,50 @@ export function CreateInvitationDialog({
             <div className="rounded-md border p-4 text-sm">
               <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Nom</span>
-                <span className="font-medium text-right">{createdAccount.fullName}</span>
+
+                <span className="text-right font-medium">
+                  {createdAccount.fullName}
+                </span>
               </div>
+
               <div className="mt-2 flex justify-between gap-3">
                 <span className="text-muted-foreground">Email</span>
-                <span className="font-medium text-right">{createdAccount.email}</span>
+
+                <span className="text-right font-medium">
+                  {createdAccount.email}
+                </span>
               </div>
+
               <div className="mt-2 flex justify-between gap-3">
                 <span className="text-muted-foreground">Rôle</span>
-                <span className="font-medium">{roleLabels[createdAccount.role]}</span>
+
+                <span className="font-medium">
+                  {roleLabels[createdAccount.role]}
+                </span>
               </div>
             </div>
 
-            {createdAccount.tempPassword && (
+            {createdAccount.tempPassword ? (
               <div className="space-y-2">
-                <FormLabel>Mot de passe temporaire</FormLabel>
+                <Label htmlFor="temporary-password">
+                  Mot de passe temporaire
+                </Label>
+
                 <div className="flex items-center gap-2">
                   <Input
+                    id="temporary-password"
                     value={createdAccount.tempPassword}
                     readOnly
                     className="font-mono text-base font-semibold"
                   />
+
                   <Button
                     type="button"
                     variant="outline"
                     size="icon"
-                    onClick={() => copyToClipboard(createdAccount.tempPassword ?? "")}
+                    onClick={() =>
+                      copyToClipboard(createdAccount.tempPassword ?? "")
+                    }
                     aria-label="Copier le mot de passe temporaire"
                   >
                     {copied ? (
@@ -232,7 +277,7 @@ export function CreateInvitationDialog({
                   </Button>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
           <DialogFooter>
@@ -247,6 +292,7 @@ export function CreateInvitationDialog({
             >
               Créer un autre compte
             </Button>
+
             <Button type="button" onClick={handleClose}>
               Fermer
             </Button>
@@ -265,10 +311,12 @@ export function CreateInvitationDialog({
               <UserPlus className="h-5 w-5" />
               Créer une flotte d'abord
             </DialogTitle>
+
             <DialogDescription>
               Vous devez créer une flotte avant de créer des comptes membres.
             </DialogDescription>
           </DialogHeader>
+
           <div className="py-4">
             <p className="text-muted-foreground">
               {role === "organizer" || role === null
@@ -276,21 +324,24 @@ export function CreateInvitationDialog({
                 : "Vous devez être membre d'une flotte avec un rôle autorisé pour créer des comptes."}
             </p>
           </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>
               Annuler
             </Button>
-            {(role === "organizer" || role === null) && (
+
+            {role === "organizer" || role === null ? (
               <Button
                 type="button"
                 onClick={() => {
                   handleClose();
+
                   navigate(ROUTE_PATHS.dashboardCreateFleet);
                 }}
               >
                 Créer une flotte
               </Button>
-            )}
+            ) : null}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -305,6 +356,7 @@ export function CreateInvitationDialog({
             <UserPlus className="h-5 w-5" />
             Créer un compte membre
           </DialogTitle>
+
           <DialogDescription>
             Le compte sera créé directement sous cette flotte.
           </DialogDescription>
@@ -318,9 +370,15 @@ export function CreateInvitationDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nom complet</FormLabel>
+
                   <FormControl>
-                    <Input {...field} autoComplete="name" placeholder="Awa Njoh" />
+                    <Input
+                      {...field}
+                      autoComplete="name"
+                      placeholder="Awa Njoh"
+                    />
                   </FormControl>
+
                   <FormMessage />
                 </FormItem>
               )}
@@ -332,9 +390,16 @@ export function CreateInvitationDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Email</FormLabel>
+
                   <FormControl>
-                    <Input {...field} type="email" autoComplete="email" placeholder="awa@example.com" />
+                    <Input
+                      {...field}
+                      type="email"
+                      autoComplete="email"
+                      placeholder="awa@example.com"
+                    />
                   </FormControl>
+
                   <FormMessage />
                 </FormItem>
               )}
@@ -346,10 +411,17 @@ export function CreateInvitationDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Téléphone</FormLabel>
+
                   <FormControl>
-                    <Input {...field} autoComplete="tel" placeholder="+237699000000" />
+                    <Input
+                      {...field}
+                      autoComplete="tel"
+                      placeholder="+237699000000"
+                    />
                   </FormControl>
+
                   <FormDescription>Optionnel.</FormDescription>
+
                   <FormMessage />
                 </FormItem>
               )}
@@ -361,26 +433,33 @@ export function CreateInvitationDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Rôle</FormLabel>
+
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
+
                     <SelectContent>
                       <SelectItem value="driver">Chauffeur</SelectItem>
+
                       <SelectItem value="mechanic">Mécanicien</SelectItem>
+
                       <SelectItem value="manager">Gestionnaire</SelectItem>
-                      {!hasActiveOrganizer && (
+
+                      {!hasActiveOrganizer ? (
                         <SelectItem value="organizer">Organisateur</SelectItem>
-                      )}
+                      ) : null}
                     </SelectContent>
                   </Select>
-                  {hasActiveOrganizer && (
+
+                  {hasActiveOrganizer ? (
                     <FormDescription>
                       Un organisateur actif existe déjà pour cette flotte.
                     </FormDescription>
-                  )}
+                  ) : null}
+
                   <FormMessage />
                 </FormItem>
               )}
@@ -395,6 +474,7 @@ export function CreateInvitationDialog({
               >
                 Annuler
               </Button>
+
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
