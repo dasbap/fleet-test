@@ -38,9 +38,11 @@ function generateTempPassword(): string {
 }
 
 function hasSupabaseAuthConfig(): boolean {
-  const url = process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim();
+  const url =
+    process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim();
   const anonKey =
-    process.env.SUPABASE_ANON_KEY?.trim() || process.env.VITE_SUPABASE_ANON_KEY?.trim();
+    process.env.SUPABASE_ANON_KEY?.trim() ||
+    process.env.VITE_SUPABASE_ANON_KEY?.trim();
   return Boolean(url && anonKey);
 }
 
@@ -48,9 +50,14 @@ function jsonServerConfigurationError(c: Context) {
   return c.json({ ok: false, error: "server_configuration_error" }, 503);
 }
 
-export function resolveAppUrlFromOrigin(origin: string | undefined | null): string {
+export function resolveAppUrlFromOrigin(
+  origin: string | undefined | null
+): string {
   const trimmed = origin?.trim().replace(/\/$/, "") ?? "";
-  if (trimmed.startsWith("http://localhost:") || trimmed.startsWith("http://127.0.0.1:")) {
+  if (
+    trimmed.startsWith("http://localhost:") ||
+    trimmed.startsWith("http://127.0.0.1:")
+  ) {
     return trimmed;
   }
   return getAppUrl();
@@ -67,7 +74,9 @@ async function readJson(c: Context): Promise<unknown | Response> {
 async function requireLocalPlatformAdmin(c: Context) {
   const token = getBearerToken(c.req.header("Authorization"));
   if (!token) {
-    return { response: c.json({ ok: false, error: "missing_auth_token" }, 401) };
+    return {
+      response: c.json({ ok: false, error: "missing_auth_token" }, 401),
+    };
   }
 
   if (!hasSupabaseAuthConfig()) {
@@ -75,7 +84,10 @@ async function requireLocalPlatformAdmin(c: Context) {
   }
 
   const client = createSupabaseUserClient(token);
-  const { data: { user }, error: authError } = await client.auth.getUser(token);
+  const {
+    data: { user },
+    error: authError,
+  } = await client.auth.getUser(token);
   if (authError || !user) {
     return { response: c.json({ ok: false, error: "invalid_token" }, 401) };
   }
@@ -85,7 +97,12 @@ async function requireLocalPlatformAdmin(c: Context) {
     client.rpc("is_platform_super_admin"),
   ]);
   if (!isAdmin) {
-    return { response: c.json({ ok: false, error: "forbidden_not_platform_admin" }, 403) };
+    return {
+      response: c.json(
+        { ok: false, error: "forbidden_not_platform_admin" },
+        403
+      ),
+    };
   }
 
   return { token, user, isSuperAdmin: Boolean(isSuperAdmin) };
@@ -94,7 +111,7 @@ async function requireLocalPlatformAdmin(c: Context) {
 async function forwardJson(
   c: Context,
   endpoint: "create-prospect-account" | "demo-magic-link",
-  body: Record<string, unknown>,
+  body: Record<string, unknown>
 ) {
   const adminSecret = getAdminSecret();
   if (!adminSecret) {
@@ -117,49 +134,90 @@ async function forwardJson(
 async function createProspectLocally(
   c: Context,
   body: z.infer<typeof createProspectSchema>,
-  invitedBy: string,
+  invitedBy: string
 ) {
   const admin = createSupabaseServiceClient();
+
   if (!admin) {
     return jsonServerConfigurationError(c);
   }
 
+  const email = body.email.trim().toLowerCase();
   const tempPassword = generateTempPassword();
-  const { data: authData, error: authError } = await admin.auth.admin.createUser({
-    email: body.email,
-    password: tempPassword,
-    email_confirm: true,
-    user_metadata: {
-      account_type: body.account_type ?? "prospect",
-      company_name: body.company_name ?? null,
-      trial_days: body.trial_days ?? 7,
-      permanent_access: body.permanent_access === true,
-      created_by_demo: true,
-    },
-  });
+
+  const { data: authData, error: authError } =
+    await admin.auth.admin.createUser({
+      email,
+      password: tempPassword,
+      email_confirm: true,
+      app_metadata: {
+        must_set_password: true,
+      },
+      user_metadata: {
+        account_type: body.account_type ?? "prospect",
+        company_name: body.company_name ?? null,
+        trial_days: body.trial_days ?? 7,
+        permanent_access: body.permanent_access === true,
+        created_by_demo: true,
+      },
+    });
 
   if (authError || !authData.user) {
-    return c.json({ ok: false, error: authError?.message ?? "auth_create_failed" }, 500);
+    return c.json(
+      {
+        ok: false,
+        error: authError?.message ?? "auth_create_failed",
+      },
+      500
+    );
   }
 
   const userId = authData.user.id;
+
+  const { data: markerData, error: markerError } =
+    await admin.auth.admin.updateUserById(userId, {
+      app_metadata: {
+        ...authData.user.app_metadata,
+        must_set_password: true,
+      },
+    });
+
+  if (markerError || markerData.user.app_metadata?.must_set_password !== true) {
+    await admin.auth.admin.deleteUser(userId);
+
+    return c.json(
+      {
+        ok: false,
+        error: markerError?.message ?? "must_set_password_not_persisted",
+      },
+      500
+    );
+  }
+
   const { data: registrationData, error: registrationError } = await admin.rpc(
     "prospect_create_account",
     {
       p_user_id: userId,
-      p_email: body.email,
+      p_email: email,
       p_company_name: body.company_name ?? null,
       p_invited_by: invitedBy,
-      p_fleet_id: null,
+      p_fleet_id: body.fleet_id ?? null,
       p_trial_days: body.trial_days ?? 7,
       p_account_type: body.account_type ?? "prospect",
       p_permanent_access: body.permanent_access === true,
-    },
+    }
   );
 
   if (registrationError) {
     await admin.auth.admin.deleteUser(userId);
-    return c.json({ ok: false, error: registrationError.message }, 500);
+
+    return c.json(
+      {
+        ok: false,
+        error: registrationError.message,
+      },
+      500
+    );
   }
 
   const registration = registrationData as {
@@ -171,47 +229,87 @@ async function createProspectLocally(
 
   if (!registration?.ok) {
     await admin.auth.admin.deleteUser(userId);
-    return c.json({ ok: false, error: registration?.error ?? "registration_failed" }, 500);
+
+    return c.json(
+      {
+        ok: false,
+        error: registration?.error ?? "registration_failed",
+      },
+      500
+    );
   }
 
-  if (body.send_email) {
-    const appUrl = resolveAppUrlFromOrigin(c.req.header("Origin"));
-    await admin.from("notification_queue").insert({
-      to_email: body.email,
-      template_id: "prospect_welcome",
-      metadata: {
-        company_name: body.company_name ?? body.email,
-        trial_days: body.trial_days ?? 7,
-        trial_end: registration.trial_end,
-        permanent_access: body.permanent_access === true,
-        login_url: appUrl,
-        temp_password: tempPassword,
+  const { data: verifiedUser, error: verificationError } =
+    await admin.auth.admin.getUserById(userId);
+
+  if (
+    verificationError ||
+    verifiedUser.user.app_metadata?.must_set_password !== true
+  ) {
+    await admin.auth.admin.deleteUser(userId);
+
+    return c.json(
+      {
+        ok: false,
+        error: "must_set_password_verification_failed",
       },
-      status: "pending",
-      created_at: new Date().toISOString(),
-    });
+      500
+    );
   }
 
   const appUrl = resolveAppUrlFromOrigin(c.req.header("Origin"));
+
+  if (body.send_email) {
+    const { error: notificationError } = await admin
+      .from("notification_queue")
+      .insert({
+        to_email: email,
+        template_id: "prospect_welcome",
+        metadata: {
+          company_name: body.company_name ?? email,
+          trial_days: body.trial_days ?? 7,
+          trial_end: registration.trial_end,
+          permanent_access: body.permanent_access === true,
+          login_url: appUrl,
+          temp_password: tempPassword,
+        },
+        status: "pending",
+        created_at: new Date().toISOString(),
+      });
+
+    if (notificationError) {
+      console.error(
+        "[admin-demo] notification queue failed:",
+        notificationError.message
+      );
+    }
+  }
+
   return c.json(
     {
       ok: true,
       user_id: userId,
-      email: body.email,
-      fleet_id: registration.fleet_id,
+      email,
+      fleet_id: registration.fleet_id ?? null,
       trial_end: registration.trial_end,
       permanent_access: body.permanent_access === true,
-      login_url: `${appUrl}/auth?email=${encodeURIComponent(body.email)}&prospect=1`,
-      ...(body.send_email ? {} : { temp_password: tempPassword }),
+      login_url:
+        `${appUrl}/auth?email=${encodeURIComponent(email)}` + "&prospect=1",
+      must_set_password: true,
+      function_version: "admin-demo-local-v2",
+      ...(body.send_email
+        ? {}
+        : {
+            temp_password: tempPassword,
+          }),
     },
-    201,
+    201
   );
 }
-
 async function createMagicLinkLocally(
   c: Context,
   body: z.infer<typeof generateMagicLinkSchema>,
-  createdBy: string,
+  createdBy: string
 ) {
   const admin = createSupabaseServiceClient();
   if (!admin) {
@@ -227,13 +325,23 @@ async function createMagicLinkLocally(
     p_created_by: createdBy,
   });
 
-  const result = data as { ok?: boolean; token?: string; error?: string } | null;
+  const result = data as {
+    ok?: boolean;
+    token?: string;
+    error?: string;
+  } | null;
   if (error || !result?.ok || !result.token) {
-    return c.json({ ok: false, error: error?.message ?? result?.error ?? "create_failed" }, 500);
+    return c.json(
+      { ok: false, error: error?.message ?? result?.error ?? "create_failed" },
+      500
+    );
   }
 
   const appUrl = resolveAppUrlFromOrigin(c.req.header("Origin"));
-  return c.json({ ok: true, magic_url: `${appUrl}/demo/access?token=${result.token}` });
+  return c.json({
+    ok: true,
+    magic_url: `${appUrl}/demo/access?token=${result.token}`,
+  });
 }
 
 async function handleCreateProspect(c: Context) {
@@ -245,10 +353,20 @@ async function handleCreateProspect(c: Context) {
     if (rawBody instanceof Response) return rawBody;
     const parsed = createProspectSchema.safeParse(rawBody);
     if (!parsed.success) {
-      return c.json({ ok: false, error: "invalid_payload", details: parsed.error.flatten() }, 400);
+      return c.json(
+        {
+          ok: false,
+          error: "invalid_payload",
+          details: parsed.error.flatten(),
+        },
+        400
+      );
     }
     if (parsed.data.permanent_access && !auth.isSuperAdmin) {
-      return c.json({ ok: false, error: "forbidden_super_admin_required" }, 403);
+      return c.json(
+        { ok: false, error: "forbidden_super_admin_required" },
+        403
+      );
     }
 
     const forwardBody = {
@@ -281,7 +399,14 @@ async function handleGenerateMagicLink(c: Context) {
     if (rawBody instanceof Response) return rawBody;
     const parsed = generateMagicLinkSchema.safeParse(rawBody);
     if (!parsed.success) {
-      return c.json({ ok: false, error: "invalid_payload", details: parsed.error.flatten() }, 400);
+      return c.json(
+        {
+          ok: false,
+          error: "invalid_payload",
+          details: parsed.error.flatten(),
+        },
+        400
+      );
     }
 
     const forwardBody = {
@@ -332,15 +457,19 @@ async function handleValidateMagicLink(c: Context) {
     } | null;
 
     if (!result?.ok || !result.email) {
-      return c.json({ ok: false, error: result?.error ?? "token_not_found" }, 404);
+      return c.json(
+        { ok: false, error: result?.error ?? "token_not_found" },
+        404
+      );
     }
 
     const appUrl = resolveAppUrlFromOrigin(c.req.header("Origin"));
-    const { data: otpData, error: otpError } = await admin.auth.admin.generateLink({
-      type: "magiclink",
-      email: result.email,
-      options: { redirectTo: `${appUrl}/demo/onboarding` },
-    });
+    const { data: otpData, error: otpError } =
+      await admin.auth.admin.generateLink({
+        type: "magiclink",
+        email: result.email,
+        options: { redirectTo: `${appUrl}/demo/onboarding` },
+      });
 
     if (otpError || !otpData?.properties?.action_link) {
       return c.json({ ok: false, error: "auth_link_failed" }, 500);
