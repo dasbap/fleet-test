@@ -118,6 +118,9 @@ const ProspectOnboarding = DEMO_MAGIC_LINK_ENABLED
 const UpdatePasswordPage = lazy(
   () => import("@/features/auth/screens/UpdatePasswordPage")
 );
+const SetPasswordPage = lazy(
+  () => import("@/features/auth/screens/SetPasswordPage")
+);
 const AuthCallbackPage = lazy(
   () => import("@/features/auth/screens/AuthCallbackPage")
 );
@@ -292,6 +295,14 @@ export const appRoutes = (
       )}
       {/* Flux reset password — session temporaire PASSWORD_RECOVERY, sans RequireGuest */}
       <Route path="/auth/update-password" element={<UpdatePasswordPage />} />
+      <Route
+        path={ROUTE_PATHS.setPassword}
+        element={
+          <RequireAuth>
+            <SetPasswordPage />
+          </RequireAuth>
+        }
+      />
       {/* Callback Supabase PKCE — magic link, confirmation email */}
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       {dashboardRoutes}

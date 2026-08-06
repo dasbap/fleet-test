@@ -25,7 +25,8 @@ export const ROUTE_PATHS = {
   /** Nouveau rapport DVIR (checklist complète). */
   inspectionsNew: "/inspections/nouveau",
   /** Modification d'un rapport DVIR (édition 24h / auteur). */
-  inspectionsEdit: (dvirId: string) => `/inspections/${dvirId}/modifier` as const,
+  inspectionsEdit: (dvirId: string) =>
+    `/inspections/${dvirId}/modifier` as const,
   /** Détail inspection DVIR via splat route. */
   inspectionsDetail: (path: string) => `/inspections/${path}` as const,
   /** Hub transit CEMAC. */
@@ -38,6 +39,8 @@ export const ROUTE_PATHS = {
   upgrade: "/upgrade",
   /** Connexion mobile-first (session mockée si VITE_USE_MOCK_AUTH). */
   login: "/login",
+  /** Définition obligatoire du mot de passe avant accès au dashboard. */
+  setPassword: "/set-password",
   dashboard: "/dashboard",
   dashboardVehicles: "/dashboard/vehicles",
   dashboardVehicleDetail: (vehicleId: string) =>
@@ -53,7 +56,8 @@ export const ROUTE_PATHS = {
     `/dashboard/alerts/${alertId}` as const,
   dashboardOperations: "/dashboard/operations",
   /** Ancre vers la section validation des clôtures (manager / organisateur). */
-  dashboardOperationsPendingClosures: "/dashboard/operations#clotures-en-attente",
+  dashboardOperationsPendingClosures:
+    "/dashboard/operations#clotures-en-attente",
   dashboardScan: "/dashboard/scan",
   dashboardMissionDetail: (missionId: string) =>
     `/dashboard/operations/mission/${missionId}` as const,
@@ -133,7 +137,8 @@ export const ROUTE_PATHS = {
   helpQuickstart: "/help/quickstart",
   helpSearch: "/help/search",
   helpCategory: (category: string) => `/help/${category}` as const,
-  helpArticle: (category: string, slug: string) => `/help/${category}/${slug}` as const,
+  helpArticle: (category: string, slug: string) =>
+    `/help/${category}/${slug}` as const,
   /** Legacy — redirection vers /help. */
   aide: "/aide",
   /** Hub administration plateforme. */
@@ -150,5 +155,8 @@ export const ROUTE_PATHS = {
 
 /** Hub conducteur et sous-routes (scan QR, etc.). */
 export function isTerrainPath(pathname: string): boolean {
-  return pathname === ROUTE_PATHS.terrain || pathname.startsWith(`${ROUTE_PATHS.terrain}/`);
+  return (
+    pathname === ROUTE_PATHS.terrain ||
+    pathname.startsWith(`${ROUTE_PATHS.terrain}/`)
+  );
 }

@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWaitForProfileReady } from "@/hooks/useWaitForProfileReady";
 import { toast } from "@/hooks/use-toast";
 import { getLoginPathPreservingReturn } from "@/navigation/loginRedirectPath";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 interface RequireAuthProps {
   children: ReactNode;
@@ -51,6 +52,14 @@ export function RequireAuth({ children }: RequireAuthProps) {
 
   if (!user) {
     return <Navigate to={loginWithReturn} replace />;
+  }
+
+  const mustSetPassword =
+    user?.app_metadata?.must_set_password === true ||
+    user?.user_metadata?.must_set_password === true;
+
+  if (mustSetPassword && location.pathname !== ROUTE_PATHS.setPassword) {
+    return <Navigate to={ROUTE_PATHS.setPassword} replace />;
   }
 
   return <>{children}</>;
