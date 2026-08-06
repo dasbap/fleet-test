@@ -583,6 +583,24 @@ async function handleClearPasswordMarker(c: Context) {
     return jsonInternalServerError(c, error);
   }
 }
+
+interface AdminAccountRow {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  account_type: string | null;
+  role: string | null;
+  fleet_id: string | null;
+  fleet_name: string | null;
+  is_active: boolean;
+  created_at: string;
+  expires_at: string | null;
+  expiration_source: "demo" | "subscription" | null;
+  must_set_password: boolean;
+  is_platform_admin: boolean;
+  is_super_admin: boolean;
+}
+
 export function registerAdminDemoRoutes(app: Hono) {
   app.post("/api/admin/create-prospect", handleCreateProspect);
 
