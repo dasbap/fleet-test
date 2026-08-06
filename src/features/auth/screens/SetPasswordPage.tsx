@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,7 @@ export default function SetPasswordPage() {
   if (!user) {
     return <Navigate to={ROUTE_PATHS.login} replace />;
   }
+
   const mustSetPassword =
     user.app_metadata?.must_set_password === true ||
     user.user_metadata?.must_set_password === true;
@@ -30,7 +32,13 @@ export default function SetPasswordPage() {
   }
 
   const clearPasswordMarker = async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+
+    if (sessionError) {
+      throw sessionError;
+    }
+
     const accessToken = sessionData.session?.access_token;
 
     if (!accessToken) {
@@ -81,6 +89,10 @@ export default function SetPasswordPage() {
         password,
       });
 
+      if (updateError) {
+        throw updateError;
+      }
+
       await clearPasswordMarker();
 
       const { error: refreshError } = await supabase.auth.refreshSession();
@@ -89,14 +101,6 @@ export default function SetPasswordPage() {
         throw refreshError;
       }
 
-      navigate(ROUTE_PATHS.dashboard, { replace: true });
-
-      if (updateError) {
-        setError(updateError.message);
-        return;
-      }
-
-      await clearPasswordMarker();
       navigate(ROUTE_PATHS.dashboard, { replace: true });
     } catch (submissionError) {
       setError(
@@ -117,6 +121,7 @@ export default function SetPasswordPage() {
       >
         <div>
           <h1 className="text-2xl font-semibold">Créez votre mot de passe</h1>
+
           <p className="mt-2 text-sm text-muted-foreground">
             Vous devez définir un mot de passe avant d’accéder à votre espace.
           </p>
@@ -124,6 +129,7 @@ export default function SetPasswordPage() {
 
         <div className="space-y-2">
           <Label htmlFor="password">Nouveau mot de passe</Label>
+
           <Input
             id="password"
             type="password"
@@ -131,12 +137,15 @@ export default function SetPasswordPage() {
             placeholder="Nouveau mot de passe"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            disabled={isSubmitting}
+            minLength={MIN_PASSWORD_LENGTH}
             required
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="confirmation">Confirmer le mot de passe</Label>
+
           <Input
             id="confirmation"
             type="password"
@@ -144,6 +153,8 @@ export default function SetPasswordPage() {
             placeholder="Confirmer le mot de passe"
             value={confirmation}
             onChange={(event) => setConfirmation(event.target.value)}
+            disabled={isSubmitting}
+            minLength={MIN_PASSWORD_LENGTH}
             required
           />
         </div>
@@ -154,7 +165,7 @@ export default function SetPasswordPage() {
           </p>
         ) : null}
 
-        <Button className="w-full" disabled={isSubmitting}>
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? "Enregistrement..." : "Créer mon mot de passe"}
         </Button>
       </form>
