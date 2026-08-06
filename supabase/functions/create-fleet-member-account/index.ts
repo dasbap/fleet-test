@@ -22,17 +22,20 @@ const ALLOWED_ORIGINS = [
 ];
 
 const VALID_ROLES: RoleType[] = ["organizer", "manager", "driver", "mechanic"];
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin)
+    ? origin
+    : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Vary": "Origin",
+    Vary: "Origin",
   };
 }
 
@@ -71,14 +74,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   const authHeader = req.headers.get("Authorization") ?? "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
   if (!token) {
     return json(req, { ok: false, error: "missing_authorization" }, 401);
   }
 
   let body: CreateFleetMemberAccountBody;
   try {
-    body = await req.json() as CreateFleetMemberAccountBody;
+    body = (await req.json()) as CreateFleetMemberAccountBody;
   } catch {
     return json(req, { ok: false, error: "invalid_json" }, 400);
   }
@@ -106,7 +111,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     auth: { persistSession: false },
   });
 
-  const { data: callerData, error: callerErr } = await admin.auth.getUser(token);
+  const { data: callerData, error: callerErr } = await admin.auth.getUser(
+    token
+  );
   const caller = callerData?.user;
   if (callerErr || !caller) {
     return json(req, { ok: false, error: "unauthorized" }, 401);
@@ -125,7 +132,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json(req, { ok: false, error: "membership_check_failed" }, 500);
   }
   if (!callerMembership) {
-    return json(req, { ok: false, error: "forbidden_fleet_access_required" }, 403);
+    return json(
+      req,
+      { ok: false, error: "forbidden_fleet_access_required" },
+      403
+    );
   }
 
   const callerRole = callerMembership.role as RoleType;
@@ -134,18 +145,27 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   if (role === "organizer") {
-    const { count: activeOrganizerCount, error: organizerCountErr } = await admin
-      .from("flotte_adhesions")
-      .select("id", { count: "exact", head: true })
-      .eq("fleet_id", fleetId)
-      .eq("role", "organizer")
-      .eq("is_active", true);
+    const { count: activeOrganizerCount, error: organizerCountErr } =
+      await admin
+        .from("flotte_adhesions")
+        .select("id", { count: "exact", head: true })
+        .eq("fleet_id", fleetId)
+        .eq("role", "organizer")
+        .eq("is_active", true);
 
     if (organizerCountErr) {
-      return json(req, { ok: false, error: "organizer_count_check_failed" }, 500);
+      return json(
+        req,
+        { ok: false, error: "organizer_count_check_failed" },
+        500
+      );
     }
     if ((activeOrganizerCount ?? 0) >= 1) {
-      return json(req, { ok: false, error: "active_organizer_limit_reached" }, 409);
+      return json(
+        req,
+        { ok: false, error: "active_organizer_limit_reached" },
+        409
+      );
     }
   }
 
@@ -154,6 +174,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     email,
     password: tempPassword,
     email_confirm: true,
+    app_metadata: {
+      must_set_password: true,
+    },
     user_metadata: {
       full_name: fullName,
       phone,
@@ -166,10 +189,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   if (authErr || !authData?.user) {
     const message = authErr?.message?.toLowerCase() ?? "";
-    if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
+    if (
+      message.includes("already") ||
+      message.includes("registered") ||
+      message.includes("exists")
+    ) {
       return json(req, { ok: false, error: "email_already_registered" }, 409);
     }
-    return json(req, { ok: false, error: authErr?.message ?? "auth_create_failed" }, 500);
+    return json(
+      req,
+      { ok: false, error: authErr?.message ?? "auth_create_failed" },
+      500
+    );
   }
 
   const userId = authData.user.id;
@@ -177,20 +208,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const cleanupUser = async () => {
     const { error } = await admin.auth.admin.deleteUser(userId);
     if (error) {
-      console.error("[create-fleet-member-account] cleanup failed:", error.message);
+      console.error(
+        "[create-fleet-member-account] cleanup failed:",
+        error.message
+      );
     }
   };
 
-  const { error: profileErr } = await admin
-    .from("profils")
-    .upsert(
-      {
-        user_id: userId,
-        full_name: fullName,
-        phone,
-      },
-      { onConflict: "user_id" },
-    );
+  const { error: profileErr } = await admin.from("profils").upsert(
+    {
+      user_id: userId,
+      full_name: fullName,
+      phone,
+    },
+    { onConflict: "user_id" }
+  );
 
   if (profileErr) {
     await cleanupUser();
@@ -206,7 +238,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         role,
         is_active: true,
       },
-      { onConflict: "fleet_id,user_id" },
+      { onConflict: "fleet_id,user_id" }
     )
     .select("id")
     .single();

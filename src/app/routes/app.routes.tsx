@@ -5,6 +5,7 @@ import AuthProviderLayout from "@/components/auth/AuthProviderLayout";
 import { dashboardRoutes } from "@/app/routes/dashboard.routes";
 import { authPublicRoutes } from "@/features/auth/routes";
 import { AdminGuard } from "@/components/auth/RoleGuard";
+import { RequireAuth } from "@/navigation/guards/RequireAuth";
 import { RoleGuard } from "@/navigation/guards/RequireRole";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { LANDING_CTA, PUBLIC_DEMO_HREF } from "@/config/navigation";

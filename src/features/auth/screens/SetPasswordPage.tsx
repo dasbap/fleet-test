@@ -21,6 +21,13 @@ export default function SetPasswordPage() {
   if (!user) {
     return <Navigate to={ROUTE_PATHS.login} replace />;
   }
+  const mustSetPassword =
+    user.app_metadata?.must_set_password === true ||
+    user.user_metadata?.must_set_password === true;
+
+  if (!mustSetPassword) {
+    return <Navigate to={ROUTE_PATHS.dashboard} replace />;
+  }
 
   const clearPasswordMarker = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -44,7 +51,10 @@ export default function SetPasswordPage() {
     };
 
     if (!response.ok || result.ok !== true) {
-      throw new Error(result.error ?? "Impossible de finaliser l'accès.");
+      throw new Error(
+        result.error ??
+          "Votre mot de passe a été enregistré, mais l’accès n’a pas pu être finalisé. Réessayez."
+      );
     }
   };
 
@@ -70,6 +80,16 @@ export default function SetPasswordPage() {
       const { error: updateError } = await supabase.auth.updateUser({
         password,
       });
+
+      await clearPasswordMarker();
+
+      const { error: refreshError } = await supabase.auth.refreshSession();
+
+      if (refreshError) {
+        throw refreshError;
+      }
+
+      navigate(ROUTE_PATHS.dashboard, { replace: true });
 
       if (updateError) {
         setError(updateError.message);
