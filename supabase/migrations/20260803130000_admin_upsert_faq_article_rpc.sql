@@ -22,12 +22,6 @@ begin
   if not (
     public.is_platform_admin()
     or public.is_help_center_admin()
-    or exists (
-      select 1
-      from public.flotte_adhesions fa
-      where fa.user_id = auth.uid()
-        and fa.role = 'organizer'
-    )
   ) then
     raise exception 'admin_required';
   end if;
