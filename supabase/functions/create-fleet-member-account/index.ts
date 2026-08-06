@@ -19,6 +19,9 @@ const ALLOWED_ORIGINS = [
   "https://app.e-samba.com",
   "capacitor://localhost",
   "http://localhost:5173",
+  "http://localhost:8080",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:8080",
 ];
 
 const VALID_ROLES: RoleType[] = ["organizer", "manager", "driver", "mechanic"];
@@ -28,13 +31,17 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
+
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin)
     ? origin
     : ALLOWED_ORIGINS[0];
+
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };
 }
@@ -62,7 +69,10 @@ function canCreateRole(callerRole: RoleType, targetRole: RoleType): boolean {
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders(req) });
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders(req),
+    });
   }
 
   if (req.method !== "POST") {
