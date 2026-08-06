@@ -53,7 +53,7 @@ export default function SetPasswordPage() {
     if (!response.ok || result.ok !== true) {
       throw new Error(
         result.error ??
-          "Votre mot de passe a été enregistré, mais l’accès n’a pas pu être finalisé. Réessayez."
+          "Votre mot de passe a été enregistré, mais l'accès n'a pas pu être finalisé. Réessayez."
       );
     }
   };
