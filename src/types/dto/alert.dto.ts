@@ -13,7 +13,8 @@ export type OperationalAlertTypeDto =
   | "maintenance_due"
   | "document_expired"
   | "failure_risk"
-  | "geofence_exit";
+  | "geofence_exit"
+  | "faq_answer";
 
 export type IncidentWorkflowStatusDto = "NOUVEAU" | "EN_COURS" | "RESOLU";
 
@@ -34,4 +35,6 @@ export interface AlertDto {
   assignee_user_id: string | null;
   assigned_at: string | null;
   status_updated_at: string | null;
+  recipient_user_id?: string | null;
+  faq_question_id?: string | null;
 }

@@ -167,7 +167,7 @@ def draw_page(c):
             "name": "Pro",
             "price": "21 000 FCFA",
             "period": "/ véhicule / mois",
-            "features": ["Jusqu'à 75 véhicules", "Suite complète Samba", "Coaching · Dashcam IA", "Alertes push/SMS · prioritaire"],
+            "features": ["Jusqu'à 100 véhicules", "Suite complète Samba", "Coaching · Dashcam IA", "Alertes push/SMS · prioritaire"],
             "color": GREEN,
             "popular": True,
         },

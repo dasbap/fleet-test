@@ -4,6 +4,7 @@ import { mapSupabaseErrorToFrench } from "@/lib/mapSupabaseError";
 import { FleetMemberService } from "@/services/fleet-member.service";
 import { FleetMemberRepository } from "@/repositories/fleet-member.repository";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import type { RoleType } from "@/repositories/fleet-member.repository";
 
 // Instances singleton des services et repositories
@@ -36,6 +37,23 @@ export interface AddMemberData {
   role: RoleType;
   /** Numéro normalisé E.164 (+237XXXXXXXXX) — optionnel, pré-active le chauffeur côté SMS. */
   phone?: string;
+}
+
+export interface CreateFleetMemberAccountData {
+  email: string;
+  fullName: string;
+  role: RoleType;
+  phone?: string;
+}
+
+export interface CreateFleetMemberAccountResult {
+  ok: true;
+  user_id: string;
+  membership_id: string;
+  email?: string;
+  fleet_id?: string;
+  role?: RoleType;
+  temp_password?: string;
 }
 
 function toMemberRow(m: FleetMember): MemberRow {
@@ -156,6 +174,82 @@ export function useAddFleetMember() {
       toast({
         title: "✅ Membre ajouté",
         description: "Le membre a été ajouté à l'équipe avec succès.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur",
+        description: mapSupabaseErrorToFrench(error.message),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+/**
+ * Crée un compte utilisateur Supabase Auth et le rattache directement à une flotte.
+ */
+export function useCreateFleetMemberAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    CreateFleetMemberAccountResult,
+    Error,
+    { fleetId: string; data: CreateFleetMemberAccountData }
+  >({
+    mutationFn: async ({ fleetId, data }) => {
+      if (!fleetId) {
+        throw new Error("L'ID de la flotte est requis");
+      }
+
+      const email = data.email.trim().toLowerCase();
+      const fullName = data.fullName.trim();
+      const phone = data.phone?.trim() || undefined;
+      const validRoles: RoleType[] = ["organizer", "manager", "driver", "mechanic"];
+
+      if (!email) {
+        throw new Error("L'email est requis");
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error("Format d'email invalide");
+      }
+      if (!fullName) {
+        throw new Error("Le nom complet est requis");
+      }
+      if (!validRoles.includes(data.role)) {
+        throw new Error("Rôle invalide");
+      }
+
+      const { data: response, error } =
+        await supabase.functions.invoke<CreateFleetMemberAccountResult>(
+          "create-fleet-member-account",
+          {
+            body: {
+              fleet_id: fleetId,
+              email,
+              full_name: fullName,
+              role: data.role,
+              phone,
+            },
+          },
+        );
+
+      if (error) {
+        throw new Error(error.message);
+      }
+      if (!response?.ok) {
+        throw new Error("Impossible de créer le compte membre.");
+      }
+
+      return response;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['fleet-members', variables.fleetId] });
+      queryClient.invalidateQueries({ queryKey: ['invitations', variables.fleetId] });
+      queryClient.invalidateQueries({ queryKey: ['role-audit-log', variables.fleetId] });
+      toast({
+        title: "Compte membre créé",
+        description: "Le compte a été créé et rattaché à la flotte.",
       });
     },
     onError: (error) => {

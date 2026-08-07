@@ -75,7 +75,7 @@ const CreateFleet = () => {
         navigate("/dashboard");
       } catch (error) {
         console.error("Erreur refreshMemberships après création flotte:", error);
-        window.location.href = "/dashboard";
+        navigate("/dashboard", { replace: true });
       }
     },
   });

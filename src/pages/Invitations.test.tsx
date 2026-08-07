@@ -5,8 +5,6 @@ import Invitations from "./Invitations";
 
 const useAuthMock = vi.fn();
 const usePermissionsMock = vi.fn();
-const useInvitationsMock = vi.fn();
-const useDeleteInvitationMock = vi.fn();
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
@@ -14,15 +12,6 @@ vi.mock("@/hooks/useAuth", () => ({
 
 vi.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => usePermissionsMock(),
-}));
-
-vi.mock("@/hooks/useInvitations", () => ({
-  useInvitations: () => useInvitationsMock(),
-  useDeleteInvitation: () => useDeleteInvitationMock(),
-}));
-
-vi.mock("@/hooks/use-toast", () => ({
-  useToast: () => ({ toast: vi.fn() }),
 }));
 
 vi.mock("@/components/invitations/CreateInvitationDialog", () => ({
@@ -38,15 +27,6 @@ describe("Invitations", () => {
       isLoading: false,
     });
     usePermissionsMock.mockReturnValue({ canAccessBackoffice: true });
-    useInvitationsMock.mockReturnValue({
-      data: [],
-      isLoading: false,
-      refetch: vi.fn(),
-    });
-    useDeleteInvitationMock.mockReturnValue({
-      isPending: false,
-      mutateAsync: vi.fn(),
-    });
 
     render(
       <MemoryRouter>
@@ -54,12 +34,12 @@ describe("Invitations", () => {
       </MemoryRouter>,
     );
 
-    const title = screen.getByRole("heading", { name: /gestion des invitations/i });
+    const title = screen.getByRole("heading", { name: /comptes de flotte/i });
     const header = title.parentElement?.parentElement;
     expect(header).not.toBeNull();
 
     const createButton = within(header as HTMLElement).getByRole("button", {
-      name: /créer une invitation/i,
+      name: /créer un compte/i,
     });
     const actions = createButton.parentElement;
 

@@ -10,6 +10,7 @@ import {
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { computePlanGate } from "@/lib/compute-plan-gate";
 import { useBilling } from "@/hooks/useBilling";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import {
@@ -22,7 +23,10 @@ import {
 } from "@/lib/auth-flow";
 import { buildAuthContext } from "@/lib/build-auth-context";
 import { computeAuthFlowPermissions } from "@/lib/auth-flow-permissions";
-import { signIn as signInAction, signOut as signOutAction } from "@/lib/auth-actions";
+import {
+  signIn as signInAction,
+  signOut as signOutAction,
+} from "@/lib/auth-actions";
 import {
   getSafePostLoginPath,
   LEGACY_POST_LOGIN_REDIRECT_PARAM,
@@ -83,9 +87,11 @@ export function useAuthFlow(): UseAuthFlowReturn {
   const hasMemberships = memberships.length > 0;
 
   const safeNextPath = useMemo(() => {
-    const fromNext = getSafePostLoginPath(searchParams.get(POST_LOGIN_NEXT_PARAM));
+    const fromNext = getSafePostLoginPath(
+      searchParams.get(POST_LOGIN_NEXT_PARAM)
+    );
     const fromLegacy = getSafePostLoginPath(
-      searchParams.get(LEGACY_POST_LOGIN_REDIRECT_PARAM),
+      searchParams.get(LEGACY_POST_LOGIN_REDIRECT_PARAM)
     );
     const raw = fromNext ?? fromLegacy ?? ROUTE_PATHS.dashboard;
     return raw.startsWith(ROUTE_PATHS.postLogin) ? ROUTE_PATHS.dashboard : raw;
@@ -93,7 +99,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
 
   const { data: billing, isLoading: billingLoading } = useBilling(
     hasMemberships ? orgId : null,
-    hasMemberships ? fleetId : null,
+    hasMemberships ? fleetId : null
   );
 
   const onboardingQuery = useQuery({
@@ -105,7 +111,8 @@ export function useAuthFlow(): UseAuthFlowReturn {
 
   const fleetBillingQuery = useQuery({
     queryKey: ["fleet-billing-context", fleetId],
-    queryFn: () => fleetBillingService.getFleetBillingContext(fleetId as string),
+    queryFn: () =>
+      fleetBillingService.getFleetBillingContext(fleetId as string),
     enabled: Boolean(hasMemberships && orgId && fleetId),
     staleTime: 60_000,
   });
@@ -122,17 +129,33 @@ export function useAuthFlow(): UseAuthFlowReturn {
     !orgId || !hasMemberships
       ? true
       : onboardingQuery.isError
-        ? false
-        : (onboardingQuery.data ?? false);
+      ? false
+      : onboardingQuery.data ?? false;
   const onboardingReady =
-    !hasMemberships || !orgId || (!onboardingQuery.isLoading && !onboardingQuery.isPending);
+    !hasMemberships ||
+    !orgId ||
+    (!onboardingQuery.isLoading && !onboardingQuery.isPending);
+
+  const fleetBillingReady =
+    !hasMemberships ||
+    !orgId ||
+    !fleetId ||
+    fleetBillingQuery.isFetched ||
+    fleetBillingQuery.isError;
 
   const isReady =
     !authLoading &&
     !isRoleAccessLoading &&
     !isTenantOrgLoading &&
-    (timedOut || (orgAndFleetReady && billingReady && onboardingReady));
-
+    (timedOut ||
+      (orgAndFleetReady &&
+        billingReady &&
+        fleetBillingReady &&
+        onboardingReady));
+  const planGate = computePlanGate(
+    fleetBillingQuery.data ?? null,
+    billing ?? null
+  );
   const decision = useMemo((): AuthFlowComputeResult | null => {
     if (!isReady) return null;
     return computeAuthFlowDecision({
@@ -142,7 +165,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
       userCreatedAt: user?.created_at,
       lastSignInAt: session?.user?.last_sign_in_at ?? null,
       onboardingCompleted,
-      lapsedPaid: Boolean(billing?.lapsedPaid),
+      lapsedPaid: planGate.plan_expired,
       role: activeTenantContext?.role ?? null,
       safeNextPath,
     });
@@ -153,14 +176,14 @@ export function useAuthFlow(): UseAuthFlowReturn {
     hasMemberships,
     session?.user?.last_sign_in_at,
     onboardingCompleted,
-    billing?.lapsedPaid,
+    planGate.plan_expired,
     activeTenantContext?.role,
     safeNextPath,
   ]);
 
   const decisionSnapshot = useMemo(
     () => (decision ? toAuthFlowDecisionSnapshot(decision) : null),
-    [decision],
+    [decision]
   );
 
   const status = useMemo(
@@ -170,23 +193,19 @@ export function useAuthFlow(): UseAuthFlowReturn {
         isTenantOrgLoading,
         isReady,
         Boolean(user),
-        decision,
+        decision
       ),
-    [authLoading, isTenantOrgLoading, isReady, user, decision],
+    [authLoading, isTenantOrgLoading, isReady, user, decision]
   );
 
   const isFirstLogin = useMemo(
     () =>
-      detectFirstLogin(user?.created_at, session?.user?.last_sign_in_at ?? null),
-    [user?.created_at, session?.user?.last_sign_in_at],
+      detectFirstLogin(
+        user?.created_at,
+        session?.user?.last_sign_in_at ?? null
+      ),
+    [user?.created_at, session?.user?.last_sign_in_at]
   );
-
-  const fleetBillingReady =
-    !hasMemberships ||
-    !orgId ||
-    !fleetId ||
-    fleetBillingQuery.isFetched ||
-    fleetBillingQuery.isError;
 
   const context = useMemo(() => {
     if (!user) {
@@ -237,9 +256,9 @@ export function useAuthFlow(): UseAuthFlowReturn {
     () =>
       computeAuthFlowPermissions(
         context?.role ?? null,
-        context?.enables ?? EMPTY_ENABLES,
+        context?.enables ?? EMPTY_ENABLES
       ),
-    [context?.role, context?.enables],
+    [context?.role, context?.enables]
   );
 
   const isLoading = useMemo(
@@ -248,7 +267,10 @@ export function useAuthFlow(): UseAuthFlowReturn {
       isRoleAccessLoading ||
       isTenantOrgLoading ||
       (Boolean(user) && !isReady) ||
-      (Boolean(user) && hasMemberships && Boolean(orgId && fleetId) && !fleetBillingReady),
+      (Boolean(user) &&
+        hasMemberships &&
+        Boolean(orgId && fleetId) &&
+        !fleetBillingReady),
     [
       authLoading,
       isRoleAccessLoading,
@@ -259,7 +281,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
       orgId,
       fleetId,
       fleetBillingReady,
-    ],
+    ]
   );
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -278,7 +300,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
     const { error } = await signOutAction();
     if (error) {
       setFlowError(
-        error instanceof Error ? error.message : "Déconnexion impossible.",
+        error instanceof Error ? error.message : "Déconnexion impossible."
       );
     }
   }, []);
@@ -288,7 +310,9 @@ export function useAuthFlow(): UseAuthFlowReturn {
     await refreshUser();
     await refreshMemberships();
     await queryClient.invalidateQueries({ queryKey: ["billing-snapshot"] });
-    await queryClient.invalidateQueries({ queryKey: ["fleet-billing-context"] });
+    await queryClient.invalidateQueries({
+      queryKey: ["fleet-billing-context"],
+    });
     await queryClient.invalidateQueries({
       queryKey: ["auth-flow-onboarding-completed"],
     });
@@ -297,7 +321,8 @@ export function useAuthFlow(): UseAuthFlowReturn {
   const aggregatedError = useMemo(() => {
     if (flowError) return flowError;
     if (onboardingQuery.isError) return "Impossible de vérifier l’onboarding.";
-    if (fleetBillingQuery.isError) return "Impossible de charger le contexte facturation.";
+    if (fleetBillingQuery.isError)
+      return "Impossible de charger le contexte facturation.";
     return null;
   }, [flowError, onboardingQuery.isError, fleetBillingQuery.isError]);
 

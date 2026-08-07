@@ -30,6 +30,7 @@ export interface DemoRpcActionResult {
   expires_at?: string;
   max_expires_at?: string;
   vehicles_deleted?: number;
+  plan_code?: string;
 }
 
 export class AdminDemoRepository {
@@ -129,6 +130,25 @@ export class AdminDemoRepository {
 
     if (error) {
       console.error("Erreur admin_reset_demo_fleet:", error);
+      throw new Error(error.message);
+    }
+
+    return (data ?? { ok: false }) as DemoRpcActionResult;
+  }
+
+  async setFleetPlan(
+    fleetId: string,
+    adminId: string,
+    planCode: string,
+  ): Promise<DemoRpcActionResult> {
+    const { data, error } = await supabase.rpc("admin_set_fleet_plan", {
+      p_fleet_id: fleetId,
+      p_plan_code: planCode,
+      p_reason: `changement manuel depuis admin UI par ${adminId}`,
+    });
+
+    if (error) {
+      console.error("Erreur admin_set_fleet_plan:", error);
       throw new Error(error.message);
     }
 

@@ -1,17 +1,25 @@
-import { useEffect, useMemo, useRef } from "react";
-import type mapboxgl from "mapbox-gl";
-import type { GeoJSONSource } from "mapbox-gl";
+import { useEffect, useMemo } from "react";
+import "leaflet/dist/leaflet.css";
+import { Circle, CircleMarker, GeoJSON, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
+import type { LatLngBoundsExpression } from "leaflet";
+import { leafletLayer } from "protomaps-leaflet";
 import type { Geofence, VehiclePositionLatest } from "@/types/gps";
 
 interface FleetLiveMapProps {
   positions: VehiclePositionLatest[];
   geofences: Geofence[];
-  mapboxToken: string;
+  protomapsPmtilesUrl?: string;
+  tileUrl?: string;
+  tileAttribution?: string;
 }
 
 type GeoJsonFeatureCollection = GeoJSON.FeatureCollection<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>;
 
-const DEFAULT_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+const DEFAULT_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const DEFAULT_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const PROTOMAPS_ATTRIBUTION =
+  '<a href="https://github.com/protomaps/basemaps">Protomaps</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>';
+const YAOUNDE_CENTER: [number, number] = [3.848, 11.5174];
 
 function parseGeofenceGeometry(value: Geofence["polygon_geojson"]): GeoJSON.Polygon | GeoJSON.MultiPolygon | null {
   if (!value) {
@@ -31,17 +39,68 @@ function parseGeofenceGeometry(value: Geofence["polygon_geojson"]): GeoJSON.Poly
   return null;
 }
 
-export function FleetLiveMap({ positions, geofences, mapboxToken }: FleetLiveMapProps) {
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const mapboxModuleRef = useRef<(typeof import("mapbox-gl"))["default"] | null>(null);
+function FitFleetBounds({ positions }: { positions: VehiclePositionLatest[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (positions.length === 0) {
+      map.setView(YAOUNDE_CENTER, 10);
+      return;
+    }
+
+    const bounds = positions.map((position) => [position.latitude, position.longitude]) as LatLngBoundsExpression;
+    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 14 });
+  }, [map, positions]);
+
+  return null;
+}
+
+function ProtomapsPmtilesLayer({ url }: { url: string }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const layer = leafletLayer({
+      url,
+      flavor: "light",
+      lang: "fr",
+      attribution: PROTOMAPS_ATTRIBUTION,
+    });
+
+    layer.addTo(map);
+
+    return () => {
+      layer.remove();
+    };
+  }, [map, url]);
+
+  return null;
+}
+
+export function FleetLiveMap({
+  positions,
+  geofences,
+  protomapsPmtilesUrl,
+  tileUrl = DEFAULT_TILE_URL,
+  tileAttribution = DEFAULT_ATTRIBUTION,
+}: FleetLiveMapProps) {
+  const activeCircleGeofences = useMemo(
+    () =>
+      geofences.filter(
+        (geofence) =>
+          geofence.is_active &&
+          geofence.geofence_type === "circle" &&
+          geofence.center_lat !== null &&
+          geofence.center_lng !== null &&
+          geofence.radius_m !== null,
+      ),
+    [geofences],
+  );
 
   const geofenceFeatures = useMemo<GeoJsonFeatureCollection>(() => {
     const features: GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>[] = [];
 
     geofences.forEach((geofence) => {
-      if (geofence.geofence_type === "polygon" && geofence.polygon_geojson) {
+      if (geofence.is_active && geofence.geofence_type === "polygon" && geofence.polygon_geojson) {
         try {
           const geometry = parseGeofenceGeometry(geofence.polygon_geojson);
           if (geometry) {
@@ -52,7 +111,7 @@ export function FleetLiveMap({ positions, geofences, mapboxToken }: FleetLiveMap
             });
           }
         } catch (error) {
-          console.warn("[FleetLiveMap] Polygone geofence invalide ignoré:", error);
+          console.warn("[FleetLiveMap] Polygone geofence invalide ignore:", error);
         }
       }
     });
@@ -60,114 +119,50 @@ export function FleetLiveMap({ positions, geofences, mapboxToken }: FleetLiveMap
     return { type: "FeatureCollection", features };
   }, [geofences]);
 
-  useEffect(() => {
-    let cancelled = false;
+  return (
+    <div className="h-[32rem] w-full overflow-hidden rounded-card border border-surface-raised">
+      <MapContainer center={YAOUNDE_CENTER} zoom={10} className="h-full w-full" scrollWheelZoom>
+        {protomapsPmtilesUrl ? (
+          <ProtomapsPmtilesLayer url={protomapsPmtilesUrl} />
+        ) : (
+          <TileLayer attribution={tileAttribution} url={tileUrl} />
+        )}
+        <FitFleetBounds positions={positions} />
 
-    const setupMap = async () => {
-      if (!mapContainerRef.current || mapRef.current || !mapboxToken) {
-        return;
-      }
+        {geofenceFeatures.features.length > 0 ? (
+          <GeoJSON
+            key={JSON.stringify(geofenceFeatures)}
+            data={geofenceFeatures}
+            pathOptions={{ color: "#2563eb", fillColor: "#3b82f6", fillOpacity: 0.15, weight: 2 }}
+          />
+        ) : null}
 
-      const [{ default: mapboxglRuntime }] = await Promise.all([
-        import("mapbox-gl"),
-        import("mapbox-gl/dist/mapbox-gl.css"),
-      ]);
+        {activeCircleGeofences.map((geofence) => (
+          <Circle
+            key={geofence.id}
+            center={[geofence.center_lat!, geofence.center_lng!]}
+            radius={geofence.radius_m!}
+            pathOptions={{ color: "#2563eb", fillColor: "#3b82f6", fillOpacity: 0.12, weight: 2 }}
+          />
+        ))}
 
-      if (cancelled || !mapContainerRef.current || mapRef.current) {
-        return;
-      }
-
-      mapboxModuleRef.current = mapboxglRuntime;
-      mapboxglRuntime.accessToken = mapboxToken;
-
-      const map = new mapboxglRuntime.Map({
-        container: mapContainerRef.current,
-        style: DEFAULT_STYLE,
-        center: [11.5174, 3.848], // Yaoundé (fallback)
-        zoom: 10,
-        attributionControl: true,
-      });
-
-      map.addControl(new mapboxglRuntime.NavigationControl(), "top-right");
-      mapRef.current = map;
-
-      map.on("load", () => {
-        map.addSource("geofences-source", {
-          type: "geojson",
-          data: geofenceFeatures,
-        });
-        map.addLayer({
-          id: "geofences-fill",
-          type: "fill",
-          source: "geofences-source",
-          paint: {
-            "fill-color": "#3b82f6",
-            "fill-opacity": 0.15,
-          },
-        });
-        map.addLayer({
-          id: "geofences-line",
-          type: "line",
-          source: "geofences-source",
-          paint: {
-            "line-color": "#3b82f6",
-            "line-width": 2,
-          },
-        });
-      });
-    };
-
-    void setupMap();
-
-    return () => {
-      cancelled = true;
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
-      mapRef.current?.remove();
-      mapRef.current = null;
-      mapboxModuleRef.current = null;
-    };
-  }, [mapboxToken, geofenceFeatures]);
-
-  useEffect(() => {
-    if (!mapRef.current) {
-      return;
-    }
-    const source = mapRef.current.getSource("geofences-source") as GeoJSONSource | undefined;
-    if (source) {
-      source.setData(geofenceFeatures);
-    }
-  }, [geofenceFeatures]);
-
-  useEffect(() => {
-    const mapboxModule = mapboxModuleRef.current;
-    if (!mapRef.current || !mapboxModule) {
-      return;
-    }
-
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
-
-    positions.forEach((position) => {
-      const marker = new mapboxModule.Marker({ color: "#22c55e" })
-        .setLngLat([position.longitude, position.latitude])
-        .setPopup(
-          new mapboxModule.Popup({ offset: 18 }).setHTML(
-            `<strong>${position.vehicle_id}</strong><br/>Vitesse: ${Math.round(
-              position.speed_kmh ?? 0,
-            )} km/h<br/>Maj: ${new Date(position.tracker_time).toLocaleString("fr-FR")}`,
-          ),
-        )
-        .addTo(mapRef.current!);
-      markersRef.current.push(marker);
-    });
-
-    if (positions.length > 0) {
-      const bounds = new mapboxgl.LngLatBounds();
-      positions.forEach((position) => bounds.extend([position.longitude, position.latitude]));
-      mapRef.current.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 400 });
-    }
-  }, [positions]);
-
-  return <div ref={mapContainerRef} className="h-[32rem] w-full rounded-card overflow-hidden" />;
+        {positions.map((position) => (
+          <CircleMarker
+            key={position.id}
+            center={[position.latitude, position.longitude]}
+            radius={8}
+            pathOptions={{ color: "#166534", fillColor: "#22c55e", fillOpacity: 0.9, weight: 2 }}
+          >
+            <Popup>
+              <div className="space-y-1 text-sm">
+                <p className="font-semibold">{position.vehicle_id}</p>
+                <p>Vitesse: {Math.round(position.speed_kmh ?? 0)} km/h</p>
+                <p>Maj: {new Date(position.tracker_time).toLocaleString("fr-FR")}</p>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
+      </MapContainer>
+    </div>
+  );
 }

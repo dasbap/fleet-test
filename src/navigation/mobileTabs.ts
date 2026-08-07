@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Bell,
+  Shield,
   Home,
   Menu,
   User,
@@ -24,8 +25,32 @@ export interface MobileTabDefinition {
 /** Chemin de l’onglet Flotte selon le rôle (conducteur → mon véhicule). */
 /** Onglets principaux Flotte E-Samba (ordre fixe). */
 export function getMobileTabsForRole(
-  _role: AppRole | null
+  _role: AppRole | null,
+  isAdmin = false,
 ): MobileTabDefinition[] {
+  if (isAdmin) {
+    return [
+      {
+        id: "home",
+        label: "Admin",
+        to: ROUTE_PATHS.dashboardAdmin,
+        icon: Shield,
+      },
+      {
+        id: "menu",
+        label: "Menu",
+        to: "#mobile-menu",
+        icon: Menu,
+      },
+      {
+        id: "account",
+        label: "Compte",
+        to: ROUTE_PATHS.dashboardProfile,
+        icon: User,
+      },
+    ];
+  }
+
   return [
     {
       id: "home",
@@ -63,7 +88,16 @@ export function isTabActive(
 ): boolean {
   const dash = ROUTE_PATHS.dashboard;
   if (tab.id === "home") {
-    return pathname === dash || pathname === `${dash}/`;
+    if (tab.to === ROUTE_PATHS.dashboardAdmin) {
+      return (
+        pathname === ROUTE_PATHS.dashboardAdmin ||
+        pathname.startsWith(`${ROUTE_PATHS.dashboardAdmin}/`)
+      );
+    }
+    return (
+      pathname === dash ||
+      pathname === `${dash}/`
+    );
   }
   if (tab.id === "alerts") {
     return pathname.startsWith("/dashboard/alerts");

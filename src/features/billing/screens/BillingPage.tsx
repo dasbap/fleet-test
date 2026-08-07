@@ -9,7 +9,6 @@ import {
   Download,
   ExternalLink,
   Info,
-  MessageCircle,
   QrCode,
   RefreshCw,
   TriangleAlert,
@@ -41,7 +40,7 @@ import { isBffConfigured } from "@/lib/bff-config";
 import { formatPublicPriceXaf } from "@/lib/public-pricing";
 import { cn } from "@/lib/utils";
 import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
-import { buildWhatsAppUrl, buildSupportMailto, SOCIAL, SUPPORT } from "@/config/navigation";
+import { buildSupportMailto, SUPPORT } from "@/config/navigation";
 import { STATUS_CONFIG } from "@/features/billing/constants/billingStatusConfig";
 import { useNotchPayCallback } from "@/features/billing/hooks/useNotchPayCallback";
 import type { FleetBillingContext } from "@/types/fleet-billing";
@@ -302,16 +301,6 @@ export default function BillingPage() {
           )}
 
           {/* Support — visible par tous */}
-          <Button asChild size="sm" variant="outline">
-            <a
-              href={buildWhatsAppUrl(SOCIAL.whatsappBillingMessage)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <MessageCircle className="mr-1.5 h-4 w-4" />
-              WhatsApp support
-            </a>
-          </Button>
           <Button asChild size="sm" variant="outline">
             <a href={buildSupportMailto("Support facturation E-Samba")}>
               <ExternalLink className="mr-1.5 h-4 w-4" />

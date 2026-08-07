@@ -1,13 +1,12 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { PublicPageLayout } from "@/components/landing/PublicPageLayout";
 import { PublicPageHero } from "@/components/landing/PublicPageHero";
 import { FaqSchemaOrg } from "@/components/faq/FaqSchemaOrg";
+import { FaqQuestionForm } from "@/components/faq/FaqQuestionForm";
 import { FaqSearch } from "@/components/faq/FaqSearch";
 import { usePublicFaqEntries } from "@/hooks/useHelpArticles";
 import { usePageSeo } from "@/hooks/usePageSeo";
-import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { cn } from "@/lib/utils";
 
 function FaqAccordionItem({
@@ -72,8 +71,8 @@ export default function FaqPage() {
       <FaqSchemaOrg items={schemaItems} />
       <PublicPageHero
         eyebrow="FAQ"
-        title="Questions fréquentes"
-        description="Tout ce que vous devez savoir avant de démarrer avec E-Samba."
+        title="Questions frequentes"
+        description="Tout ce que vous devez savoir avant de demarrer avec E-Samba."
       />
 
       <section className="py-20 md:py-32">
@@ -82,10 +81,7 @@ export default function FaqPage() {
 
           {filteredFaqs.length === 0 ? (
             <p className="text-center text-muted-foreground text-sm md:text-base py-8">
-              Aucun résultat pour « {query.trim()} ».{" "}
-              <Link to={ROUTE_PATHS.contact} className="text-primary hover:underline">
-                Contactez-nous
-              </Link>
+              Aucun resultat pour "{query.trim()}". Posez votre question ci-dessous.
             </p>
           ) : (
             <div className="space-y-3 animate-fade-in-up">
@@ -106,12 +102,9 @@ export default function FaqPage() {
             </div>
           )}
 
-          <p className="text-center text-sm text-muted-foreground mt-10">
-            Une autre question ?{" "}
-            <Link to={ROUTE_PATHS.contact} className="text-primary hover:underline font-medium">
-              Contactez-nous →
-            </Link>
-          </p>
+          <div className="mt-10">
+            <FaqQuestionForm />
+          </div>
         </div>
       </section>
     </PublicPageLayout>

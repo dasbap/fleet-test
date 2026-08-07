@@ -13,8 +13,8 @@ export default function FleetLiveMapPage() {
   const geofencesQuery = useGeofences();
   const eventsQuery = useRecentGeofenceEvents(10);
   const devicesQuery = useGpsDevices();
-
-  const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN ?? "";
+  const mapTileUrl = import.meta.env.VITE_MAP_TILE_URL;
+  const protomapsPmtilesUrl = import.meta.env.VITE_PROTOMAPS_PM_TILES_URL;
 
   return (
     <div className="space-y-6">
@@ -63,19 +63,12 @@ export default function FleetLiveMapPage() {
         </Card>
       </div>
 
-      {!mapboxToken ? (
-        <Card className="border-destructive">
-          <CardContent className="pt-6 text-destructive">
-            La variable `VITE_MAPBOX_TOKEN` est requise pour afficher la carte.
-          </CardContent>
-        </Card>
-      ) : (
-        <FleetLiveMap
-          positions={positionsQuery.data ?? []}
-          geofences={geofencesQuery.data ?? []}
-          mapboxToken={mapboxToken}
-        />
-      )}
+      <FleetLiveMap
+        positions={positionsQuery.data ?? []}
+        geofences={geofencesQuery.data ?? []}
+        protomapsPmtilesUrl={protomapsPmtilesUrl}
+        tileUrl={mapTileUrl}
+      />
 
       <Card>
         <CardHeader>

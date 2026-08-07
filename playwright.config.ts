@@ -36,14 +36,15 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: `npm run dev -- --host ${E2E_HOST} --port ${E2E_PORT} --strictPort`,
+    command: `npm run dev:vite -- --host ${E2E_HOST} --port ${E2E_PORT} --strictPort`,
     env: {
       ESAMBA_E2E: "1",
       VITE_USE_MOCK_AUTH: "true",
     },
     url: BASE_URL,
     reuseExistingServer: !isCI,
-    timeout: 120_000,
+    // En CI, l'installation/initialisation peut retarder le boot Vite.
+    timeout: isCI ? 240_000 : 120_000,
   },
   // Chromium (desktop + mobile), Firefox et WebKit (desktop) — aligné sur `playwright:install:browsers`.
   projects: [

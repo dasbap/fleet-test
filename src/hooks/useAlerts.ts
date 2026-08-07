@@ -108,6 +108,7 @@ export function useResolveAlert() {
       alertService.resolveAlert(alertId, resolvedBy),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['alerts-list'] });
       queryClient.invalidateQueries({ queryKey: ['alert'] });
     },
   });

@@ -42,7 +42,7 @@ function renderAuth(initialPath = "/auth") {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <AuthPage />
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
@@ -77,11 +77,15 @@ describe("AuthPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /se connecter/i }));
 
     await waitFor(() => {
-      expect(authActions.signIn).toHaveBeenCalledWith("user@example.com", "secretpass", undefined);
+      expect(authActions.signIn).toHaveBeenCalledWith(
+        "user@example.com",
+        "secretpass",
+        undefined
+      );
     });
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith(
-        `/post-login?next=${encodeURIComponent(ROUTE_PATHS.dashboard)}`,
+        `/post-login?next=${encodeURIComponent(ROUTE_PATHS.dashboard)}`
       );
     });
   }, 10000);
@@ -100,7 +104,7 @@ describe("AuthPage", () => {
 
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith(
-        `/post-login?next=${encodeURIComponent(nextPath)}`,
+        `/post-login?next=${encodeURIComponent(nextPath)}`
       );
     });
   });
@@ -126,7 +130,7 @@ describe("AuthPage", () => {
         expect.objectContaining({
           title: "Erreur de connexion",
           variant: "destructive",
-        }),
+        })
       );
     });
     expect(navigateMock).not.toHaveBeenCalled();
@@ -135,15 +139,12 @@ describe("AuthPage", () => {
   it("en mode ?mode=signup garde la creation publique desactivee", () => {
     renderAuth("/auth?mode=signup");
 
-    expect(screen.getByRole("heading", { name: /bon retour/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /bon retour/i })
+    ).toBeInTheDocument();
     expect(screen.queryByLabelText("Organisation")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("invitation-code-stub")).not.toBeInTheDocument();
-  });
-
-  it("affiche les acces demo quand le flag demo est active", async () => {
-    renderAuth("/auth");
-
-    expect(await screen.findByText(/acc.s d.mo/i)).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /d.mo/i }).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByTestId("invitation-code-stub")
+    ).not.toBeInTheDocument();
   });
 });

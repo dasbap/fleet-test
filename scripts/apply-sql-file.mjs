@@ -12,7 +12,15 @@ const DIRECT_DATA_MUTATION_PATTERN =
 
 export function resolveDatabaseUrl(env = process.env) {
   const direct = env.DATABASE_URL?.trim() || env.DIRECT_URL?.trim();
-  if (direct) return direct;
+  if (direct) {
+    try {
+      new URL(direct);
+      return direct;
+    } catch {
+      // Fall back to SUPABASE_DB_PASSWORD + VITE_SUPABASE_URL when a local
+      // direct URL contains unencoded special characters.
+    }
+  }
 
   const dbUrl = env.SUPABASE_DB_URL?.trim();
   if (dbUrl) return dbUrl;

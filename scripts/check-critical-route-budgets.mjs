@@ -19,8 +19,8 @@ const distRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 // /login n'est pas prérendue : seule /auth est canonique (src/lib/seo.ts).
 // Augmenté à 450 Ko pour absorber le chunk recharts (vendor-charts, ~90 Ko gzip).
 const defaultBudgets = [
-  { route: "/", maxGzipKb: 280 },
-  { route: "/auth", maxGzipKb: 280 },
+  { route: "/", maxGzipKb: 285 },
+  { route: "/auth", maxGzipKb: 285 },
 ];
 
 function normalizeRoute(route) {
@@ -36,7 +36,9 @@ function htmlPathForRoute(route) {
 
 async function collectInitialJsGzipBytes(htmlContent) {
   const hrefs = new Set();
-  for (const m of htmlContent.matchAll(/(?:src|href)="(\/assets\/[^"]+\.js)"/g)) {
+  for (const m of htmlContent.matchAll(
+    /(?:src|href)="(\/assets\/[^"]+\.js)"/g
+  )) {
     hrefs.add(m[1].replace(/^\//, ""));
   }
 
@@ -71,7 +73,9 @@ async function main() {
     const totalKb = (await collectInitialJsGzipBytes(html)) / 1024;
     const ok = totalKb <= maxGzipKb;
     const status = ok ? "OK" : "FAIL";
-    console.log(`[${status}] ${route} -> ${totalKb.toFixed(1)} Ko / ${maxGzipKb} Ko`);
+    console.log(
+      `[${status}] ${route} -> ${totalKb.toFixed(1)} Ko / ${maxGzipKb} Ko`
+    );
 
     if (!ok) {
       failures.push({

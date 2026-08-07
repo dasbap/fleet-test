@@ -9,6 +9,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import {
   useFleetMembers,
   useAddFleetMember,
+  useCreateFleetMemberAccount,
   useUpdateMemberRole,
   useRemoveFleetMember,
 } from "./useFleetMembers";
@@ -16,6 +17,7 @@ import { createQueryClientWrapper } from "@/test/utils";
 import { withConsoleSilenced } from "@/test/withConsoleSilenced";
 
 const rpcMock = vi.fn();
+const functionsInvokeMock = vi.fn();
 
 vi.mock("@/lib/rbac/server", () => ({
   requirePermission: vi.fn().mockResolvedValue("organizer"),
@@ -24,6 +26,9 @@ vi.mock("@/lib/rbac/server", () => ({
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: (name: string, args: unknown) => rpcMock(name, args),
+    functions: {
+      invoke: (name: string, args: unknown) => functionsInvokeMock(name, args),
+    },
     from: vi.fn(),
   },
 }));
@@ -155,6 +160,54 @@ describe("useAddFleetMember", () => {
         expect(result.current.error?.message).toMatch(/aucun utilisateur|créer un compte/i);
       },
     );
+  });
+});
+
+describe("useCreateFleetMemberAccount", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    functionsInvokeMock.mockResolvedValue({
+      data: {
+        ok: true,
+        user_id: "user-1",
+        membership_id: "membership-1",
+        temp_password: "Samba1234!",
+      },
+      error: null,
+    });
+  });
+
+  it("cree un compte membre via Edge Function au lieu de creer un code d'invitation", async () => {
+    const { result } = renderHook(() => useCreateFleetMemberAccount(), {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    result.current.mutate({
+      fleetId: "fleet-1",
+      data: {
+        email: "driver@example.com",
+        fullName: "Driver Test",
+        role: "driver",
+        phone: "+237699000000",
+      },
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(functionsInvokeMock).toHaveBeenCalledWith("create-fleet-member-account", {
+      body: {
+        fleet_id: "fleet-1",
+        email: "driver@example.com",
+        full_name: "Driver Test",
+        role: "driver",
+        phone: "+237699000000",
+      },
+    });
+    expect(rpcMock).not.toHaveBeenCalledWith("creer_invitation_esamba", expect.anything());
+    expect(rpcMock).not.toHaveBeenCalledWith("ajouter_membre_par_email", expect.anything());
+    expect(result.current.data?.temp_password).toBe("Samba1234!");
   });
 });
 
