@@ -1,0 +1,158 @@
+name: Sync Vercel Environment Variables
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Environnement Vercel
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - production
+          - preview
+          - development
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_PROTOMAPS_PM_TILES_URL: ${{ vars.VITE_PROTOMAPS_PM_TILES_URL }}
+      VITE_ANDROID_APK_URL: ${{ vars.VITE_ANDROID_APK_URL }}
+
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_POOLER_HOST: ${{ secrets.SUPABASE_POOLER_HOST }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Validate Vercel credentials
+        shell: bash
+        run: |
+          test -n "$VERCEL_TOKEN"
+          test -n "$VERCEL_ORG_ID"
+          test -n "$VERCEL_PROJECT_ID"
+
+      - name: Sync environment variables
+        shell: bash
+        env:
+          TARGET: ${{ inputs.target }}
+        run: |
+          node <<'NODE'
+          const { spawnSync } = require("node:child_process")
+
+          const publicVars = [
+            "VITE_SUPABASE_ANON_KEY",
+            "VITE_SUPABASE_URL",
+            "VITE_PROTOMAPS_PM_TILES_URL",
+            "VITE_ANDROID_APK_URL"
+          ]
+
+          const sensitiveVars = [
+            "SUPABASE_SERVICE_ROLE_KEY",
+            "SUPABASE_DB_PASSWORD",
+            "SUPABASE_PROJECT_REF",
+            "DIRECT_URL",
+            "SUPABASE_DB_URL",
+            "SUPABASE_POOLER_HOST",
+            "DATABASE_URL"
+          ]
+
+          const targets =
+            process.env.TARGET === "all"
+              ? ["production", "preview", "development"]
+              : [process.env.TARGET]
+
+          function runVercel(args, value) {
+            const result = spawnSync(
+              "vercel",
+              args,
+              {
+                input: value,
+                encoding: "utf8",
+                stdio: ["pipe", "inherit", "inherit"],
+                env: process.env
+              }
+            )
+
+            if (result.status !== 0) {
+              process.exit(result.status ?? 1)
+            }
+          }
+
+          function syncVariable(key, target, sensitive) {
+            const value = process.env[key]
+
+            if (!value) {
+              console.log(`Skip ${key}: valeur absente`)
+              return
+            }
+
+            console.log(`Sync ${key} -> ${target}`)
+
+            const args = [
+              "env",
+              "add",
+              key,
+              target,
+              "--force",
+              "--yes",
+              "--token",
+              process.env.VERCEL_TOKEN,
+              "--scope",
+              process.env.VERCEL_ORG_ID
+            ]
+
+            if (sensitive && target !== "development") {
+              args.push("--sensitive")
+            }
+
+            runVercel(args, value)
+          }
+
+          for (const target of targets) {
+            for (const key of publicVars) {
+              syncVariable(key, target, false)
+            }
+
+            for (const key of sensitiveVars) {
+              syncVariable(key, target, true)
+            }
+          }
+          NODE
+
+      - name: Summary
+        shell: bash
+        run: |
+          echo "### Synchronisation Vercel terminée" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Environnement : \`${{ inputs.target }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Variables publiques :" >> "$GITHUB_STEP_SUMMARY"
+          echo "- VITE_SUPABASE_ANON_KEY" >> "$GITHUB_STEP_SUMMARY"
+          echo "- VITE_SUPABASE_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- VITE_PROTOMAPS_PM_TILES_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- VITE_ANDROID_APK_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Variables sensibles :" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SUPABASE_SERVICE_ROLE_KEY" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SUPABASE_DB_PASSWORD" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SUPABASE_PROJECT_REF" >> "$GITHUB_STEP_SUMMARY"
+          echo "- DIRECT_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SUPABASE_DB_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SUPABASE_POOLER_HOST" >> "$GITHUB_STEP_SUMMARY"
+          echo "- DATABASE_URL" >> "$GITHUB_STEP_SUMMARY"
