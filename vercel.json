@@ -4,7 +4,6 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": "vite",
-
   "redirects": [
     {
       "source": "/:path*",
@@ -53,7 +52,6 @@
       "permanent": true
     }
   ],
-
   "rewrites": [
     {
       "source": "/ressources/seo-ia/modeles/:path*",
@@ -76,14 +74,12 @@
       "destination": "/index.html"
     }
   ],
-
   "crons": [
     {
       "path": "/api/crons/expire-demo-accounts",
       "schedule": "0 2 * * *"
     }
   ],
-
   "headers": [
     {
       "source": "/:path*",
@@ -114,7 +110,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://eu-assets.i.posthog.com; worker-src 'self' blob: data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.e-samba.com https://marketing.e-samba.com https://*.supabase.co wss://*.supabase.co https://eu.posthog.com https://eu-assets.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://eu-assets.i.posthog.com; worker-src 'self' blob: data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https://api.e-samba.com https://marketing.e-samba.com https://*.supabase.co wss://*.supabase.co https://eu.posthog.com https://eu-assets.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
         }
       ]
     },
@@ -137,7 +133,7 @@
       ]
     },
     {
-      "source": "/workbox-:path*.js",
+      "source": "/workbox-*.js",
       "headers": [
         {
           "key": "Cache-Control",
