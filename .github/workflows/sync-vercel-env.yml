@@ -1,158 +1,130 @@
-name: Sync Vercel Environment Variables
+name: Supabase Integration (Remote)
 
 on:
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
   workflow_dispatch:
-    inputs:
-      target:
-        description: Environnement Vercel
-        required: true
-        default: all
-        type: choice
-        options:
-          - all
-          - production
-          - preview
-          - development
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  sync:
+  integration-remote:
+    name: Integration tests on remote Supabase
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-      VITE_PROTOMAPS_PM_TILES_URL: ${{ vars.VITE_PROTOMAPS_PM_TILES_URL }}
-      VITE_ANDROID_APK_URL: ${{ vars.VITE_ANDROID_APK_URL }}
-
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-      DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      SUPABASE_POOLER_HOST: ${{ secrets.SUPABASE_POOLER_HOST }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+      - name: Checkout
+        uses: actions/checkout@v5
 
-      - name: Validate Vercel credentials
-        shell: bash
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Validate required environment variables
         run: |
-          test -n "$VERCEL_TOKEN"
-          test -n "$VERCEL_ORG_ID"
-          test -n "$VERCEL_PROJECT_ID"
+          missing=()
 
-      - name: Sync environment variables
-        shell: bash
-        env:
-          TARGET: ${{ inputs.target }}
+          for key in \
+            VITE_SUPABASE_URL \
+            VITE_SUPABASE_ANON_KEY \
+            SUPABASE_SERVICE_ROLE_KEY
+          do
+            if [ -z "${!key:-}" ]; then
+              missing+=("$key")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Variables GitHub manquantes: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
+
+      - name: Run targeted Supabase integration tests
+        run: |
+          mkdir -p test-results
+
+          npx vitest run \
+            -c vitest.integration.config.ts \
+            tests/integration/rls.fleet-access.test.ts \
+            tests/integration/triggers.vehicle-limit.test.ts \
+            tests/integration/fuel.fraud-scoring.test.ts \
+            --reporter=default \
+            --reporter=json \
+            --outputFile=test-results/supabase-integration.json
+
+      - name: Publish integration summary
+        if: always()
         run: |
           node <<'NODE'
-          const { spawnSync } = require("node:child_process")
+          const fs = require("fs")
 
-          const publicVars = [
-            "VITE_SUPABASE_ANON_KEY",
-            "VITE_SUPABASE_URL",
-            "VITE_PROTOMAPS_PM_TILES_URL",
-            "VITE_ANDROID_APK_URL"
-          ]
+          let total = "n/a"
+          let failed = "n/a"
 
-          const sensitiveVars = [
-            "SUPABASE_SERVICE_ROLE_KEY",
-            "SUPABASE_DB_PASSWORD",
-            "SUPABASE_PROJECT_REF",
-            "DIRECT_URL",
-            "SUPABASE_DB_URL",
-            "SUPABASE_POOLER_HOST",
-            "DATABASE_URL"
-          ]
-
-          const targets =
-            process.env.TARGET === "all"
-              ? ["production", "preview", "development"]
-              : [process.env.TARGET]
-
-          function runVercel(args, value) {
-            const result = spawnSync(
-              "vercel",
-              args,
-              {
-                input: value,
-                encoding: "utf8",
-                stdio: ["pipe", "inherit", "inherit"],
-                env: process.env
-              }
+          try {
+            const result = JSON.parse(
+              fs.readFileSync(
+                "test-results/supabase-integration.json",
+                "utf8"
+              )
             )
 
-            if (result.status !== 0) {
-              process.exit(result.status ?? 1)
-            }
-          }
+            total = result.numTotalTests ?? "n/a"
+            failed = result.numFailedTests ?? "n/a"
+          } catch {}
 
-          function syncVariable(key, target, sensitive) {
-            const value = process.env[key]
+          const md = [
+            "## Supabase integration (remote)",
+            "",
+            `- Tests: ${total}`,
+            `- Echecs: ${failed}`,
+            "- Seed SQL de reference: supabase/seed/test_fleet_africa.sql",
+            ""
+          ].join("\n")
 
-            if (!value) {
-              console.log(`Skip ${key}: valeur absente`)
-              return
-            }
-
-            console.log(`Sync ${key} -> ${target}`)
-
-            const args = [
-              "env",
-              "add",
-              key,
-              target,
-              "--force",
-              "--yes",
-              "--token",
-              process.env.VERCEL_TOKEN,
-              "--scope",
-              process.env.VERCEL_ORG_ID
-            ]
-
-            if (sensitive && target !== "development") {
-              args.push("--sensitive")
-            }
-
-            runVercel(args, value)
-          }
-
-          for (const target of targets) {
-            for (const key of publicVars) {
-              syncVariable(key, target, false)
-            }
-
-            for (const key of sensitiveVars) {
-              syncVariable(key, target, true)
-            }
-          }
+          fs.appendFileSync(
+            process.env.GITHUB_STEP_SUMMARY,
+            md
+          )
           NODE
 
-      - name: Summary
-        shell: bash
-        run: |
-          echo "### Synchronisation Vercel terminée" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Environnement : \`${{ inputs.target }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Variables publiques :" >> "$GITHUB_STEP_SUMMARY"
-          echo "- VITE_SUPABASE_ANON_KEY" >> "$GITHUB_STEP_SUMMARY"
-          echo "- VITE_SUPABASE_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- VITE_PROTOMAPS_PM_TILES_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- VITE_ANDROID_APK_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Variables sensibles :" >> "$GITHUB_STEP_SUMMARY"
-          echo "- SUPABASE_SERVICE_ROLE_KEY" >> "$GITHUB_STEP_SUMMARY"
-          echo "- SUPABASE_DB_PASSWORD" >> "$GITHUB_STEP_SUMMARY"
-          echo "- SUPABASE_PROJECT_REF" >> "$GITHUB_STEP_SUMMARY"
-          echo "- DIRECT_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- SUPABASE_DB_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- SUPABASE_POOLER_HOST" >> "$GITHUB_STEP_SUMMARY"
-          echo "- DATABASE_URL" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-integration-results
+          path: test-results/supabase-integration.json
+          if-no-files-found: warn
+          retention-days: 7
