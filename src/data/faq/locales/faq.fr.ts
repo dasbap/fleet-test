@@ -53,7 +53,7 @@ export const faqFr: FaqRegistry = {
         id: 'bill-plans',
         question: 'Quels sont les différents abonnements disponibles ?',
         answer:
-          'E-Samba propose quatre formules : Gratuit (jusqu\'à 3 véhicules), Starter (jusqu\'à 25 véhicules), Pro (jusqu\'à 75 véhicules) et Enterprise (flotte illimitée). Chaque plan payant inclut un essai gratuit de 7 jours.',
+          'E-Samba propose quatre formules : Gratuit (jusqu\'à 3 véhicules), Starter (jusqu\'à 25 véhicules), Pro (jusqu\'à 100 véhicules) et Enterprise (flotte illimitée). Chaque plan payant inclut un essai gratuit de 7 jours.',
         tags: ['abonnement', 'tarif', 'plan', 'formule'],
       },
       {

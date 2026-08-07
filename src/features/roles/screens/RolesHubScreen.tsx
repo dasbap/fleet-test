@@ -5,15 +5,15 @@
  *   1. Membres     — liste, rôle actif, changement de rôle, offboarding
  *   2. Permissions — matrice lecture seule 5 rôles × 9 domaines
  *   3. Historique  — audit_logs member.* filtré par flotte
- *   4. Invitations — lien flotte copiable
+ *   4. Comptes    — création directe de comptes membres
  */
 
 import { useState } from "react";
 import {
-  Shield, Users, Grid3X3, Link2, History,
+  Shield, Users, Grid3X3, History,
   Check, X, MoreVertical, RefreshCw,
   UserX, UserCheck, AlertTriangle, Loader2,
-  LogOut,
+  LogOut, UserPlus,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -43,7 +43,6 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useFleetMembersHub, type MemberRow } from "@/hooks/useFleetMembers";
 import { useRoleAuditLog, AUDIT_ACTION_LABELS } from "../hooks/useRoleAuditLog";
-import { useInvitations } from "@/hooks/useInvitations";
 import { CreateInvitationDialog } from "@/components/invitations/CreateInvitationDialog";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useAuth } from "@/hooks/useAuth";
@@ -473,28 +472,11 @@ function HistoriqueTab() {
   );
 }
 
-// ─── Onglet Invitations ───────────────────────────────────────────────────────
+// ─── Onglet Comptes ───────────────────────────────────────────────────────────
 
 function InvitationsTab() {
   const { userFleetId } = useAuth();
-  const { toast } = useToast();
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const { data: invitations, isLoading, refetch } = useInvitations(userFleetId ?? undefined);
-
-  const inviteLink = `${window.location.origin}/auth`;
-
-  const copyLink = () => {
-    if (!inviteLink) return;
-    void navigator.clipboard.writeText(inviteLink).then(() => {
-      toast({ title: "Lien copié", description: "Partagez-le avec le futur membre." });
-    });
-  };
-
-  const copyCode = (code: string) => {
-    void navigator.clipboard.writeText(code).then(() => {
-      toast({ title: "Code copié", description: "Le code d'invitation a été copié." });
-    });
-  };
 
   return (
     <div className="space-y-4">
@@ -502,13 +484,13 @@ function InvitationsTab() {
         {userFleetId && (
           <>
             <Button size="sm" onClick={() => setInviteDialogOpen(true)}>
-              Créer un code
+              <UserPlus className="mr-2 h-4 w-4" />
+              Créer un compte
             </Button>
             <CreateInvitationDialog
               open={inviteDialogOpen}
               onOpenChange={setInviteDialogOpen}
               fleetId={userFleetId}
-              onSuccess={() => void refetch()}
             />
           </>
         )}
@@ -517,53 +499,25 @@ function InvitationsTab() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Link2 className="h-4 w-4" /> Codes d'invitation actifs
+            <UserPlus className="h-4 w-4" /> Création de comptes membres
           </CardTitle>
           <CardDescription>
-            Créez un code à usage limité ou partagez le lien d'invitation flotte.
+            Les nouveaux utilisateurs sont créés directement dans Supabase Auth et rattachés à la flotte active.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {isLoading && (
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Chargement…
-            </p>
-          )}
-          {!isLoading && (!invitations || invitations.length === 0) && (
-            <p className="text-sm text-muted-foreground">Aucun code actif. Créez une invitation ci-dessus.</p>
-          )}
-          {invitations?.map((inv) => (
-            <div key={inv.id} className="flex items-center gap-2 p-2 rounded-lg border bg-card">
-              <span className="font-mono text-sm flex-1 truncate">{inv.code}</span>
-              <span className="text-xs text-muted-foreground shrink-0">
-                {inv.current_uses}{inv.max_uses != null ? `/${inv.max_uses}` : ""} utilisations
-              </span>
-              <Button size="sm" variant="outline" onClick={() => copyCode(inv.code)}>Copier</Button>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Link2 className="h-4 w-4" /> Lien d'invitation flotte
-          </CardTitle>
-          <CardDescription>
-            Page d&apos;inscription : le futur membre saisit un code d&apos;invitation après création de compte.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {inviteLink ? (
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-muted rounded px-3 py-2 text-xs font-mono text-muted-foreground truncate">
-                {inviteLink}
-              </div>
-              <Button size="sm" variant="outline" onClick={copyLink}>Copier</Button>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Flotte non chargée.</p>
-          )}
+        <CardContent className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-md border p-3">
+            <p className="text-sm font-medium">Email et mot de passe</p>
+            <p className="mt-1 text-xs text-muted-foreground">Le membre reçoit des accès temporaires.</p>
+          </div>
+          <div className="rounded-md border p-3">
+            <p className="text-sm font-medium">Affectation flotte</p>
+            <p className="mt-1 text-xs text-muted-foreground">L'adhésion est créée sous votre flotte.</p>
+          </div>
+          <div className="rounded-md border p-3">
+            <p className="text-sm font-medium">Rôle immédiat</p>
+            <p className="mt-1 text-xs text-muted-foreground">Le rôle choisi est actif dès la création.</p>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -608,7 +562,7 @@ export default function RolesHubScreen() {
           </TabsTrigger>
           {can("member.invite") && (
             <TabsTrigger value="invitations" className="gap-1.5">
-              <Link2 className="h-3.5 w-3.5" /> Invitations
+              <UserPlus className="h-3.5 w-3.5" /> Comptes
             </TabsTrigger>
           )}
         </TabsList>

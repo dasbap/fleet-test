@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Check, Zap, ArrowRight } from "lucide-react";
 import {
   PUBLIC_BILLING_PERIOD_LABEL,
@@ -11,7 +10,6 @@ import {
   formatPublicPriceXaf,
 } from "@/lib/public-pricing";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
-import { getPrimaryAuthHref } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 
 type PricingPlan = {
@@ -21,10 +19,7 @@ type PricingPlan = {
   currency: string;
   period: string;
   features: string[];
-  cta: string;
   popular: boolean;
-  /** Si défini, le bouton pointe vers cette route (ex. contact) au lieu de l’inscription. */
-  ctaTo?: string;
 };
 
 const plans: PricingPlan[] = [
@@ -40,7 +35,6 @@ const plans: PricingPlan[] = [
       "Sans Samba-Cash ni assistance IA",
       "Rapports, scoring conducteur et analyses d'anomalies : offres payantes",
     ],
-    cta: "Commencer gratuitement",
     popular: false,
   },
   {
@@ -56,7 +50,6 @@ const plans: PricingPlan[] = [
       "Samba-Cash (fonctions essentielles)",
       "Support par e-mail",
     ],
-    cta: "Commencer",
     popular: false,
   },
   {
@@ -66,14 +59,13 @@ const plans: PricingPlan[] = [
     currency: PUBLIC_CURRENCY_LABEL,
     period: PUBLIC_BILLING_PERIOD_LABEL,
     features: [
-      "Jusqu'à 75 véhicules",
+      "Jusqu'à 100 véhicules",
       "Jusqu'à 3 rôles Gestionnaire",
       "Samba-Fleet à Samba-Check (suite complète)",
       "Scoring & KPIs",
       "Alertes intelligentes (push, e-mail, SMS)",
       "Support prioritaire",
     ],
-    cta: "Démarrer l'essai",
     popular: true,
   },
   {
@@ -90,8 +82,6 @@ const plans: PricingPlan[] = [
       "Formation sur site",
       "Chargé de compte dédié",
     ],
-    cta: "Nous contacter",
-    ctaTo: "/contact",
     popular: false,
   },
 ];
@@ -173,15 +163,6 @@ const PricingSection = () => {
                   </li>
                 ))}
               </ul>
-
-              {/* CTA */}
-              <Button
-                className="w-full"
-                variant={plan.popular ? "default" : "outline"}
-                asChild
-              >
-                <Link to={plan.ctaTo ?? getPrimaryAuthHref()}>{plan.cta}</Link>
-              </Button>
             </div>
           ))}
         </div>

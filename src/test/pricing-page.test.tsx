@@ -79,6 +79,23 @@ describe("PricingPage", () => {
     expect(proCard).toHaveTextContent("Support prioritaire");
   });
 
+  it("met le plan Pro en populaire avec 100 vehicules", () => {
+    render(
+      <MemoryRouter>
+        <PricingPage />
+      </MemoryRouter>,
+    );
+
+    const starterCard = screen.getByRole("heading", { name: "Starter" }).closest(".relative");
+    const proCard = screen.getByRole("heading", { name: "Pro" }).closest(".relative");
+
+    expect(starterCard).toBeInTheDocument();
+    expect(proCard).toBeInTheDocument();
+    expect(starterCard).not.toHaveTextContent("Populaire");
+    expect(proCard).toHaveTextContent("Populaire");
+    expect(proCard).toHaveTextContent(/Jusqu.*100 v/);
+  });
+
   it("ne propose aucun lien Outlook WhatsApp ou contact sur les tarifs", () => {
     render(
       <MemoryRouter>

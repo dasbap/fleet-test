@@ -13,7 +13,9 @@ describe("global demo fleet removal policy", () => {
     expect(sql).toContain("demo_fleet_assignment_not_allowed_at_creation");
     expect(sql).toContain("set fleet_id = null");
     expect(sql).toContain("delete from public.flotte_adhesions");
-    expect(sql).toContain("delete from public.flottes");
+    expect(sql).not.toContain("delete from public.flottes");
+    expect(sql).toContain("update public.flottes");
+    expect(sql).toContain("set archived_at = now()");
     expect(sql).toContain("'Flotte DEMO Starter'");
     expect(sql).toContain("'Flotte DEMO Pro'");
     expect(sql).toContain("'Flotte DEMO Entreprise'");

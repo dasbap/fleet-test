@@ -86,19 +86,21 @@ export function BottomTabBar({ userRole }: BottomTabBarProps) {
   const { userFleetId } = useAuth();
   const { isAdmin } = useRoleAccess();
   const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
-  const tabs = getMobileTabsForRole(userRole);
+  const tabs = getMobileTabsForRole(userRole, isAdmin);
   const leftTabs = tabs.slice(0, 2);
   const rightTabs = tabs.slice(2);
   const scanActive = location.pathname.startsWith(ROUTE_PATHS.dashboardScan);
-  const planOptions = {
-    financeEnabled:
-      billingQuery.isError || billingQuery.data?.financeEnabled !== false,
-    reportsEnabled:
-      billingQuery.isError || billingQuery.data?.reportsEnabled !== false,
-  };
+  const financeEnabled =
+    billingQuery.isError || billingQuery.data?.financeEnabled !== false;
+  const reportsEnabled =
+    billingQuery.isError || billingQuery.data?.reportsEnabled !== false;
+  const planOptions = useMemo(
+    () => ({ financeEnabled, reportsEnabled }),
+    [financeEnabled, reportsEnabled],
+  );
   const menuItems = useMemo(
     () => buildMobileMenuItems(userRole, planOptions, isAdmin),
-    [isAdmin, planOptions.financeEnabled, planOptions.reportsEnabled, userRole],
+    [isAdmin, planOptions, userRole],
   );
   const menuActions = useMemo(
     () =>
@@ -181,6 +183,7 @@ export function BottomTabBar({ userRole }: BottomTabBarProps) {
       >
         <ul className="mx-auto flex max-w-lg items-end justify-between gap-0.5 px-1 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]">
           {leftTabs.map(renderTab)}
+          {!isAdmin ? (
           <li className="relative -mt-5 flex min-w-[4.4rem] items-center justify-center">
             <button
               type="button"
@@ -197,6 +200,7 @@ export function BottomTabBar({ userRole }: BottomTabBarProps) {
               </span>
             </button>
           </li>
+          ) : null}
           {rightTabs.map(renderTab)}
         </ul>
       </nav>

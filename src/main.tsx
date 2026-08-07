@@ -105,20 +105,22 @@ const bootstrap = async () => {
 
   try {
     // Sentry (`instrument`) est chargé après le 1er rendu : son gros chunk ne doit pas bloquer i18n + React sur réseau lent / LAN.
-    await withTimeout(
+    void withTimeout(
       i18nReady,
       I18N_READY_TIMEOUT_MS,
       () =>
         new Error(
           "Les traductions (/locales/…) n’ont pas répondu à temps. En accès via l’IP locale (192.168…), vérifiez le pare-feu, la connexion Wi‑Fi et désactivez temporairement le VPN du navigateur (ex. Opera GX). Sinon ouvrez http://localhost:8080 sur la machine qui exécute Vite."
         )
-    );
-    preloadRouteChunksForPath(window.location.pathname);
+    ).catch((error) => {
+      console.warn("Chargement i18n differe ou en echec apres le premier rendu:", error);
+    });
     createRoot(rootEl).render(
       <Suspense fallback={<RoutePageFallback />}>
         <App />
       </Suspense>
     );
+    preloadRouteChunksForPath(window.location.pathname);
     void import("./instrument").catch((err) => {
       console.error("Échec du chargement instrument (Sentry) :", err);
     });

@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { WhatsAppSupportButton } from '@/components/help/WhatsAppSupportButton';
 import { buildSupportMailto, SUPPORT } from '@/config/navigation';
 import { useCreateSupportTicket, useCreateSupportCallback } from '@/hooks/useSupportTicket';
 import { useLocation } from 'react-router-dom';
@@ -71,7 +70,6 @@ export function SupportPanel({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
       <div className="flex flex-wrap gap-2">
-        <WhatsAppSupportButton compact />
         <Button variant="outline" size="sm" asChild onClick={() => trackSupportClick('email')}>
           <a href={emailHref}>
             <Mail className="h-4 w-4 mr-1" aria-hidden />
@@ -88,7 +86,6 @@ export function SupportPanel({ compact = false }: { compact?: boolean }) {
 
       {tab === 'channels' && (
         <div className="space-y-3">
-          <WhatsAppSupportButton />
           <a
             href={emailHref}
             onClick={() => trackSupportClick('email')}

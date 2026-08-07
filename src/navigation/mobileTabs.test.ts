@@ -19,6 +19,16 @@ describe("mobileTabs", () => {
     ]);
   });
 
+  it("donne une entree admin dediee aux administrateurs plateforme", () => {
+    const tabs = getMobileTabsForRole("organizer", true);
+    const adminTab = tabs.find((tab) => tab.id === "home");
+
+    expect(tabs.map((tab) => tab.id)).toEqual(["home", "menu", "account"]);
+    expect(adminTab?.label).toBe("Admin");
+    expect(adminTab?.to).toBe(ROUTE_PATHS.dashboardAdmin);
+    expect(isTabActive(adminTab!, ROUTE_PATHS.dashboardAdminDemo)).toBe(true);
+  });
+
   it("considere les routes secondaires comme actives sur l'onglet menu", () => {
     const tabs = getMobileTabsForRole("organizer");
     const menuTab = tabs.find((tab) => tab.id === "menu");

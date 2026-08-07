@@ -96,7 +96,7 @@ const upgradePlans: Array<{
     priceXAF: PUBLIC_PRICE_PRO_PER_VEHICLE_XAF,
     popular: true,
     features: [
-      "Jusqu'à 75 véhicules",
+      "Jusqu'à 100 véhicules",
       "Jusqu'à 3 rôles Gestionnaire",
       "Suite complète et scoring",
       "Alertes intelligentes",

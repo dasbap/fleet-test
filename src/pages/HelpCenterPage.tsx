@@ -6,7 +6,7 @@
  *   - Tutoriels rapides (accordéons, top 6)
  *   - Guides par rôle (chauffeur / gestionnaire / mécanicien)
  *   - FAQ contextuelle (composants existants)
- *   - Contact WhatsApp support
+ *   - Contact support
  *
  * UX : mobile-first, chargement immédiat (tout statique), accessible hors ligne.
  */
@@ -19,7 +19,6 @@ import { ROUTE_PATHS } from '@/navigation/routePaths';
 import { HelpSearchBar }       from '@/components/help/HelpSearchBar';
 import { QuickTutorialCard }   from '@/components/help/QuickTutorialCard';
 import { RoleGuideSection }    from '@/components/help/RoleGuideSection';
-import { WhatsAppSupportButton } from '@/components/help/WhatsAppSupportButton';
 import { HelpFAQ }             from '@/components/shared/HelpCenter';
 import { useHelpSearch }       from '@/hooks/useHelpSearch';
 import { QUICK_TUTORIALS, type GuideRole } from '@/data/help/guides';
@@ -206,9 +205,6 @@ export default function HelpCenterPage() {
             </h2>
             <HelpFAQ />
           </section>
-
-          {/* Contact WhatsApp */}
-          <WhatsAppSupportButton />
 
           {/* Footer */}
           <p className="text-center text-[11px] text-muted-foreground pb-2">

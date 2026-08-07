@@ -21,9 +21,20 @@ vi.mock("@/components/admin/DemoSessionsPanel", () => ({
 }));
 
 vi.mock("@/components/admin/CreateDemoForm", () => ({
-  CreateDemoForm: ({ canCreatePermanentAccess }: { canCreatePermanentAccess?: boolean }) => (
-    <div data-testid="create-demo-form" data-permanent={String(canCreatePermanentAccess)} />
+  CreateDemoForm: ({
+    canCreatePermanentAccess,
+  }: {
+    canCreatePermanentAccess?: boolean;
+  }) => (
+    <div
+      data-testid="create-demo-form"
+      data-permanent={String(canCreatePermanentAccess)}
+    />
   ),
+}));
+
+vi.mock("@/components/admin/DemoRequestsPanel", () => ({
+  DemoRequestsPanel: () => <div data-testid="demo-requests-panel" />,
 }));
 
 describe("DemoAdminPage", () => {
@@ -54,9 +65,12 @@ describe("DemoAdminPage", () => {
       <MemoryRouter initialEntries={["/dashboard/admin/demo"]}>
         <Routes>
           <Route path="/dashboard/admin/demo" element={<DemoAdminPage />} />
-          <Route path="/dashboard" element={<div data-testid="dashboard-page">Dashboard</div>} />
+          <Route
+            path="/dashboard"
+            element={<div data-testid="dashboard-page">Dashboard</div>}
+          />
         </Routes>
-      </MemoryRouter>,
+      </MemoryRouter>
     );
 
     expect(screen.queryByTestId("dashboard-page")).not.toBeInTheDocument();
@@ -74,15 +88,31 @@ describe("DemoAdminPage", () => {
         <Routes>
           <Route path="/dashboard/admin/demo" element={<DemoAdminPage />} />
         </Routes>
-      </MemoryRouter>,
+      </MemoryRouter>
     );
 
-    expect(screen.getByRole("heading", { name: /acces demo e-samba/i })).toBeInTheDocument();
-    expect(screen.getByTestId("demo-sessions-panel")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /acc.s et comptes e-samba/i })
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("demo-requests-panel")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /sessions/i })).toBeInTheDocument();
   });
 
   it("passe le droit acces permanent depuis le role super admin", () => {
-    const source = readFileSync(join(process.cwd(), "src/pages/admin/DemoAdminPage.tsx"), "utf8");
+    const source = readFileSync(
+      join(process.cwd(), "src/pages/admin/DemoAdminPage.tsx"),
+      "utf8"
+    );
+
+    expect(source).toContain("isSuperAdmin");
+    expect(source).toContain("canCreatePermanentAccess={isSuperAdmin}");
+  });
+
+  it("passe le droit acces permanent depuis le role super admin", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/pages/admin/DemoAdminPage.tsx"),
+      "utf8"
+    );
 
     expect(source).toContain("isSuperAdmin");
     expect(source).toContain("canCreatePermanentAccess={isSuperAdmin}");
