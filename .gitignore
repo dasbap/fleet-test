@@ -88,3 +88,4 @@ scripts/android-release.env.ps1
 releases/
 android/keystore.properties
 android/keystores/
+.vercel
