@@ -34,5 +34,6 @@ export function mapOperationalAlertDtoToDomain(dto: AlertDto): Alert {
     createdAt: dto.created_at,
     updatedAt: dto.resolved_at ?? dto.created_at,
     resolvedAt: dto.resolved_at,
+    faqQuestionId: dto.faq_question_id ?? null,
   };
 }

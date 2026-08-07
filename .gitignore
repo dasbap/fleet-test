@@ -82,3 +82,9 @@ android/.github-android-secrets.local.txt
 
 # Skills agents locaux (non partagés)
 .agents/
+
+
+scripts/android-release.env.ps1
+releases/
+android/keystore.properties
+android/keystores/

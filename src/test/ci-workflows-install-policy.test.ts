@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const workflowDir = ".github/workflows";
 const workflowFiles = readdirSync(workflowDir)
   .filter((file) => file.endsWith(".yml") || file.endsWith(".yaml"))
-  .map((file) => path.join(workflowDir, file).replaceAll("\\", "/"));
+  .map((file) => path.join(workflowDir, file).replace(/\\/g, "/"));
 
 function getJobBlocks(workflow: string): string[] {
   const lines = workflow.split(/\r?\n/);
@@ -256,5 +256,14 @@ describe("GitHub workflow dependency install policy", () => {
       '["index.html", "src/main.tsx", "src/App.tsx"]'
     );
     expect(viteConfig).not.toContain("src/**/*.{tsx,ts,jsx,js}");
+  });
+
+  it("does not require .env.local when Playwright starts the dev server in CI", () => {
+    const devWithOpen = readFileSync("scripts/dev-with-open.mjs", "utf8");
+
+    expect(devWithOpen).toContain("existsSync");
+    expect(devWithOpen).toContain("hasLocalEnvFile");
+    expect(devWithOpen).toContain('["watch", "--env-file=.env.local"]');
+    expect(devWithOpen).toContain(': ["watch"]');
   });
 });

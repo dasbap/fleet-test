@@ -39,6 +39,7 @@ function renderHeader(props: {
   userRole: "organizer" | "manager" | "driver" | "mechanic";
   displayName?: string;
   initials?: string;
+  isPlatformAdmin?: boolean;
 }) {
   return render(
     <MemoryRouter>
@@ -93,5 +94,29 @@ describe("DashboardHeader", () => {
         className: "max-w-md",
       }),
     );
+  });
+
+  it("affiche un bouton pour revenir a l'accueil public", () => {
+    renderHeader({
+      userRole: "manager",
+      displayName: "Utilisateur Test",
+      initials: "UT",
+    });
+
+    expect(screen.getByRole("link", { name: /retour accueil/i })).toHaveAttribute("href", "/");
+  });
+
+  it("masque les contrôles métier flotte pour un admin plateforme", () => {
+    renderHeader({
+      userRole: "organizer",
+      displayName: "Super Admin",
+      initials: "SA",
+      isPlatformAdmin: true,
+    });
+
+    expect(screen.queryByTestId("universal-search-mock")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /alerte/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Admin plateforme")).toBeInTheDocument();
+    expect(universalSearchSpy).not.toHaveBeenCalled();
   });
 });

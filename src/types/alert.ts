@@ -15,7 +15,8 @@ export type AlertType =
   | "maintenance_due"
   | "document_expired"
   | "failure_risk"
-  | "geofence_exit";
+  | "geofence_exit"
+  | "faq_answer";
 
 export type AlertStatus = "open" | "acknowledged" | "resolved";
 
@@ -32,6 +33,7 @@ export interface Alert {
   createdAt: string;
   updatedAt: string;
   resolvedAt: string | null;
+  faqQuestionId?: string | null;
 }
 
 export interface AlertFilters {

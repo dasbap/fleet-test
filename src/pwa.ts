@@ -3,9 +3,10 @@ import { registerSW } from "virtual:pwa-register";
 export const updateSW = registerSW({
   immediate: true,
   onOfflineReady() {
-    console.info("E-Samba est prêt pour un usage hors ligne.");
+    console.info("E-Samba est pret pour un usage hors ligne.");
   },
   onNeedRefresh() {
-    console.info("Une nouvelle version d'E-Samba sera utilisée au prochain chargement.");
+    console.info("Nouvelle version E-Samba detectee, mise a jour immediate.");
+    void updateSW(true);
   },
 });

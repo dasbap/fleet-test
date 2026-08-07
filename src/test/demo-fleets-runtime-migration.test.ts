@@ -14,7 +14,9 @@ describe("demo fleets runtime migration", () => {
     );
 
     expect(oldSql).toContain("Flotte DEMO Pro");
-    expect(newSql).toContain("delete from public.flottes");
+    expect(newSql).not.toContain("delete from public.flottes");
+    expect(newSql).toContain("update public.flottes");
+    expect(newSql).toContain("set archived_at = now()");
     expect(newSql).toContain("demo_fleet_assignment_not_allowed_at_creation");
     expect(newSql).toContain("notify pgrst, 'reload schema'");
   });

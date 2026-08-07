@@ -10,10 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { buildWhatsAppUrl, SOCIAL } from "@/config/navigation";
 import { useSubmitDemoRequest } from "@/hooks/useSubmitDemoRequest";
-
-export const DEMO_WHATSAPP_URL = buildWhatsAppUrl(SOCIAL.whatsappDemoMessage);
 
 const CENTRAL_AFRICA_COUNTRIES = [
   { code: "CM", label: "Cameroun" },
@@ -21,14 +18,13 @@ const CENTRAL_AFRICA_COUNTRIES = [
   { code: "TD", label: "Tchad" },
   { code: "CG", label: "Congo" },
   { code: "GA", label: "Gabon" },
-  { code: "GQ", label: "Guinée équatoriale" },
+  { code: "GQ", label: "Guinee equatoriale" },
 ] as const;
 
 interface ContactDemoFormProps {
   className?: string;
 }
 
-/** Formulaire de demande de démo (contact / landing). */
 export function ContactDemoForm({ className }: ContactDemoFormProps) {
   const [form, setForm] = useState({
     name: "",
@@ -42,11 +38,11 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const submitDemoRequest = useSubmitDemoRequest();
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setFormError(null);
     if (!form.country_code) {
-      setFormError("Sélectionnez un pays d'Afrique centrale.");
+      setFormError("Selectionnez un pays d'Afrique centrale.");
       return;
     }
 
@@ -60,9 +56,8 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
         countryCode: form.country_code,
       });
       setSent(true);
-    } catch {
-      window.open(DEMO_WHATSAPP_URL, "_blank");
-      setSent(true);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Impossible d'envoyer la demande.");
     }
   }
 
@@ -71,23 +66,19 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       <div className={className}>
         <div className="py-8 text-center">
           <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-primary" />
-          <h3 className="mb-2 text-xl font-heading font-bold">Demande envoyée !</h3>
-          <p className="mb-6 text-sm text-muted-foreground">
-            Notre équipe vous contactera sous 24h ouvrées pour planifier votre démo.
+          <h3 className="mb-2 text-xl font-heading font-bold">Demande envoyee !</h3>
+          <p className="text-sm text-muted-foreground">
+            Votre demande est transmise aux admins. Vous recevrez un email quand votre acces
+            sera accepte ou refuse.
           </p>
-          <Button asChild variant="outline" className="w-full">
-            <a href={DEMO_WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-              WhatsApp (réponse immédiate)
-            </a>
-          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className={className}>
-      <h3 className="mb-6 text-xl font-heading font-bold">Planifier ma démo gratuite</h3>
+    <form onSubmit={(event) => void handleSubmit(event)} className={className}>
+      <h3 className="mb-6 text-xl font-heading font-bold">Planifier ma demo gratuite</h3>
       <div className="space-y-4">
         <div>
           <Label htmlFor="demo-name">Nom complet *</Label>
@@ -95,7 +86,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
             id="demo-name"
             required
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(event) => setForm({ ...form, name: event.target.value })}
             placeholder="Jean Dupont"
             className="mt-1"
           />
@@ -105,7 +96,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
           <Input
             id="demo-company"
             value={form.company}
-            onChange={(e) => setForm({ ...form, company: e.target.value })}
+            onChange={(event) => setForm({ ...form, company: event.target.value })}
             placeholder="TransCam SARL"
             className="mt-1"
           />
@@ -118,39 +109,44 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
             type="email"
             autoComplete="email"
             value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            onChange={(event) => setForm({ ...form, email: event.target.value })}
             placeholder="vous@entreprise.com"
             className="mt-1"
           />
         </div>
         <div>
-          <Label htmlFor="demo-phone">Téléphone *</Label>
+          <Label htmlFor="demo-phone">Telephone *</Label>
           <Input
             id="demo-phone"
             required
             type="tel"
             value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            onChange={(event) => setForm({ ...form, phone: event.target.value })}
             placeholder="+237 6 XX XX XX XX"
             className="mt-1"
           />
         </div>
         <div>
-          <Label htmlFor="demo-company-identifier">Numéro d'identifiant entreprise *</Label>
+          <Label htmlFor="demo-company-identifier">Numero d'identifiant entreprise *</Label>
           <Input
             id="demo-company-identifier"
             required
             value={form.company_identifier}
-            onChange={(e) => setForm({ ...form, company_identifier: e.target.value })}
+            onChange={(event) =>
+              setForm({ ...form, company_identifier: event.target.value })
+            }
             placeholder="RCCM, NIU, NIF..."
             className="mt-1"
           />
         </div>
         <div>
           <Label htmlFor="demo-country">Pays *</Label>
-          <Select value={form.country_code} onValueChange={(v) => setForm({ ...form, country_code: v })}>
+          <Select
+            value={form.country_code}
+            onValueChange={(value) => setForm({ ...form, country_code: value })}
+          >
             <SelectTrigger id="demo-country" className="mt-1">
-              <SelectValue placeholder="Sélectionner un pays" />
+              <SelectValue placeholder="Selectionner un pays" />
             </SelectTrigger>
             <SelectContent>
               {CENTRAL_AFRICA_COUNTRIES.map((country) => (
@@ -160,10 +156,10 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
               ))}
             </SelectContent>
           </Select>
-          {formError ? <p className="mt-1 text-xs text-destructive">{formError}</p> : null}
         </div>
+        {formError ? <p className="text-xs text-destructive">{formError}</p> : null}
         <Button type="submit" className="w-full gap-2" disabled={submitDemoRequest.isPending}>
-          {submitDemoRequest.isPending ? "Envoi..." : "Demander ma démo"}
+          {submitDemoRequest.isPending ? "Envoi..." : "Demander ma demo"}
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>

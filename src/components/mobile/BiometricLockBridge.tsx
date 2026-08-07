@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useBiometricLock } from "@/hooks/useBiometricLock";
 import { signOut } from "@/lib/auth-actions";
@@ -8,6 +9,7 @@ import { BiometricLockOverlay } from "@/components/mobile/BiometricLockOverlay";
  * Verrou biométrique natif : monté sous AuthProvider, sans impact navigateur web.
  */
 export function BiometricLockBridge() {
+  const navigate = useNavigate();
   const { session, isLoading } = useAuth();
   const promptStartedRef = useRef(false);
 
@@ -30,7 +32,7 @@ export function BiometricLockBridge() {
     },
     onForceSignOut: async () => {
       await signOut();
-      window.location.href = "/";
+      navigate("/", { replace: true });
     },
   });
 

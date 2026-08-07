@@ -59,6 +59,7 @@ export default function DashboardLayout() {
             userRole={userRole}
             displayName={fullName}
             initials={initials}
+            isPlatformAdmin={isAdmin}
           />
           <OfflinePendingSyncBridge />
           <OfflineBanner />

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Client } from "pg";
+import { buildPgClientConfig } from "./apply-sql-file.mjs";
 
 function resolveDatabaseUrl() {
   const direct = process.env.DATABASE_URL?.trim() || process.env.DIRECT_URL?.trim();
@@ -29,7 +30,12 @@ if (!connectionString) {
   process.exit(1);
 }
 
-const client = new Client({ connectionString });
+const client = new Client(
+  buildPgClientConfig({
+    databaseUrl: connectionString,
+    env: { ...process.env, SUPABASE_DB_SSL_NO_VERIFY: "1" },
+  }),
+);
 
 const checks = [];
 

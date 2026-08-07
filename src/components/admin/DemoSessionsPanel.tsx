@@ -52,10 +52,18 @@ interface DemoSessionsPanelProps {
   onReload: () => Promise<void>;
   onSuspend: (userId: string) => Promise<boolean>;
   onReactivate: (userId: string) => Promise<boolean>;
-  onUpdateExpiration: (userId: string, expiresAt: string | null) => Promise<boolean>;
+  onUpdateExpiration: (
+    userId: string,
+    expiresAt: string | null
+  ) => Promise<boolean>;
   onDelete: (userId: string) => Promise<boolean>;
   onResetFleet: (fleetId: string) => Promise<boolean>;
-  onGenerateMagicLink: (userId: string, email: string, fleetId?: string | null) => Promise<string | null>;
+  onSetFleetPlan: (fleetId: string, planCode: string) => Promise<boolean>;
+  onGenerateMagicLink: (
+    userId: string,
+    email: string,
+    fleetId?: string | null
+  ) => Promise<string | null>;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -79,6 +87,14 @@ const ROLE_LABELS: Record<string, string> = {
   organizer: "Organisateur",
 };
 
+const PLAN_LABELS: Record<string, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+  enterprise: "Enterprise",
+  organizer: "Organizer",
+};
+
 function formatRelative(iso: string | null): string {
   if (!iso) return "-";
   const d = new Date(iso);
@@ -89,21 +105,34 @@ function formatRelative(iso: string | null): string {
   return `${Math.floor(diffH / 24)}j`;
 }
 
-function formatExpiry(expiresAt: string | null, isActive: boolean): { label: string; cls: string } {
+function formatExpiry(
+  expiresAt: string | null,
+  isActive: boolean
+): { label: string; cls: string } {
   if (!isActive) return { label: "Suspendu", cls: "bg-red-100 text-red-800" };
-  if (!expiresAt) return { label: "Permanent", cls: "bg-slate-100 text-slate-600" };
+  if (!expiresAt)
+    return { label: "Permanent", cls: "bg-slate-100 text-slate-600" };
 
   const diffH = (new Date(expiresAt).getTime() - Date.now()) / 3_600_000;
   if (diffH <= 0) return { label: "Expire", cls: "bg-red-100 text-red-800" };
-  if (diffH <= 24) return { label: `${Math.ceil(diffH)}h`, cls: "bg-amber-100 text-amber-800" };
-  return { label: `${Math.floor(diffH / 24)}j`, cls: "bg-emerald-100 text-emerald-800" };
+  if (diffH <= 24)
+    return {
+      label: `${Math.ceil(diffH)}h`,
+      cls: "bg-amber-100 text-amber-800",
+    };
+  return {
+    label: `${Math.floor(diffH / 24)}j`,
+    cls: "bg-emerald-100 text-emerald-800",
+  };
 }
 
 function toDatetimeLocalValue(iso: string | null): string {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
 }
 
 function fromDatetimeLocalValue(value: string): string | null {
@@ -127,6 +156,7 @@ export function DemoSessionsPanel({
   onUpdateExpiration,
   onDelete,
   onResetFleet: _onResetFleet,
+  onSetFleetPlan,
   onGenerateMagicLink,
 }: DemoSessionsPanelProps) {
   const { toast } = useToast();
@@ -134,6 +164,9 @@ export function DemoSessionsPanel({
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
   const [expirationDraft, setExpirationDraft] = useState("");
+  const [planDraftByFleet, setPlanDraftByFleet] = useState<
+    Record<string, string>
+  >({});
 
   const filtered = sessions.filter((s) => {
     if (filter === "active" && !s.is_active) return false;
@@ -155,10 +188,17 @@ export function DemoSessionsPanel({
 
   async function handleGenerateLink(session: DemoSession) {
     await withBusy(session.user_id, async () => {
-      const url = await onGenerateMagicLink(session.user_id, session.email, session.fleet_id);
+      const url = await onGenerateMagicLink(
+        session.user_id,
+        session.email,
+        session.fleet_id
+      );
       if (url) {
         void navigator.clipboard.writeText(url);
-        toast({ title: "Lien genere et copie", description: `${url.slice(0, 60)}...` });
+        toast({
+          title: "Lien genere et copie",
+          description: `${url.slice(0, 60)}...`,
+        });
       }
     });
   }
@@ -172,6 +212,14 @@ export function DemoSessionsPanel({
     await withBusy(userId, () => onUpdateExpiration(userId, expiresAt));
   }
 
+  async function handleSetPlan(session: DemoSession) {
+    if (!session.fleet_id) return;
+    const planCode = planDraftByFleet[session.fleet_id] ?? "pro";
+    await withBusy(session.user_id, () =>
+      onSetFleetPlan(session.fleet_id!, planCode)
+    );
+  }
+
   function copyExistingLink(session: DemoSession) {
     if (!session.magic_link_token) return;
     const url = `${window.location.origin}/demo/access?token=${session.magic_link_token}`;
@@ -183,7 +231,10 @@ export function DemoSessionsPanel({
     return (
       <div className="space-y-3">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-12 w-full animate-pulse rounded-md bg-muted" />
+          <div
+            key={i}
+            className="h-12 w-full animate-pulse rounded-md bg-muted"
+          />
         ))}
       </div>
     );
@@ -197,7 +248,8 @@ export function DemoSessionsPanel({
         <div>
           <h2 className="text-lg font-semibold">Sessions demo</h2>
           <p className="text-sm text-muted-foreground">
-            {sessions.length} compte{sessions.length > 1 ? "s" : ""} - {activeCount} actif{activeCount > 1 ? "s" : ""}
+            {sessions.length} compte{sessions.length > 1 ? "s" : ""} -{" "}
+            {activeCount} actif{activeCount > 1 ? "s" : ""}
           </p>
         </div>
 
@@ -206,13 +258,23 @@ export function DemoSessionsPanel({
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <Filter className="h-4 w-4 mr-1.5" />
-                {filter === "all" ? "Tous" : filter === "active" ? "Actifs" : "Inactifs"}
+                {filter === "all"
+                  ? "Tous"
+                  : filter === "active"
+                  ? "Actifs"
+                  : "Inactifs"}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setFilter("all")}>Tous</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilter("active")}>Actifs seulement</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilter("inactive")}>Inactifs seulement</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilter("all")}>
+                Tous
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilter("active")}>
+                Actifs seulement
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilter("inactive")}>
+                Inactifs seulement
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -241,14 +303,17 @@ export function DemoSessionsPanel({
               <TableHead>Type</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Organisation</TableHead>
+              <TableHead>Plan</TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" />Expiration
+                  <Clock className="h-3.5 w-3.5" />
+                  Expiration
                 </span>
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <Activity className="h-3.5 w-3.5" />Activite
+                  <Activity className="h-3.5 w-3.5" />
+                  Activite
                 </span>
               </TableHead>
               <TableHead>Liens utilises</TableHead>
@@ -259,18 +324,27 @@ export function DemoSessionsPanel({
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                <TableCell
+                  colSpan={9}
+                  className="text-center text-muted-foreground py-10"
+                >
                   {search ? "Aucun resultat" : "Aucune session demo"}
                 </TableCell>
               </TableRow>
             )}
 
             {filtered.map((session) => {
-              const expiry = formatExpiry(session.expires_at, session.is_active);
+              const expiry = formatExpiry(
+                session.expires_at,
+                session.is_active
+              );
               const busy = actionInProgress === session.user_id;
 
               return (
-                <TableRow key={session.user_id} className={cn(!session.is_active && "opacity-60")}>
+                <TableRow
+                  key={session.user_id}
+                  className={cn(!session.is_active && "opacity-60")}
+                >
                   <TableCell className="font-mono text-xs max-w-[160px] truncate">
                     {session.email}
                     {session.magic_link_label && (
@@ -281,27 +355,75 @@ export function DemoSessionsPanel({
                   </TableCell>
 
                   <TableCell>
-                    <span className={cn(
-                      "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                      TYPE_COLORS[session.account_type] ?? TYPE_COLORS.dev,
-                    )}>
-                      {TYPE_LABELS[session.account_type] ?? session.account_type}
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                        TYPE_COLORS[session.account_type] ?? TYPE_COLORS.dev
+                      )}
+                    >
+                      {TYPE_LABELS[session.account_type] ??
+                        session.account_type}
                     </span>
                   </TableCell>
 
                   <TableCell className="text-sm">
-                    {session.demo_role ? (ROLE_LABELS[session.demo_role] ?? session.demo_role) : "-"}
+                    {session.demo_role
+                      ? ROLE_LABELS[session.demo_role] ?? session.demo_role
+                      : "-"}
                   </TableCell>
 
                   <TableCell className="text-sm">
-                    {session.fleet_name ?? <span className="text-muted-foreground">Aucune flotte creee</span>}
+                    {session.fleet_name ?? (
+                      <span className="text-muted-foreground">
+                        Aucune flotte creee
+                      </span>
+                    )}
                   </TableCell>
 
                   <TableCell>
-                    <span className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                      expiry.cls,
-                    )}>
+                    {session.fleet_id ? (
+                      <div className="flex min-w-[180px] items-center gap-2">
+                        <select
+                          aria-label={`Plan de ${session.email}`}
+                          className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+                          value={planDraftByFleet[session.fleet_id] ?? "pro"}
+                          onChange={(event) =>
+                            setPlanDraftByFleet((current) => ({
+                              ...current,
+                              [session.fleet_id!]: event.target.value,
+                            }))
+                          }
+                          disabled={busy}
+                        >
+                          {Object.entries(PLAN_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => void handleSetPlan(session)}
+                        >
+                          Appliquer
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        Apres creation flotte
+                      </span>
+                    )}
+                  </TableCell>
+
+                  <TableCell>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                        expiry.cls
+                      )}
+                    >
                       {expiry.label}
                     </span>
                   </TableCell>
@@ -310,13 +432,17 @@ export function DemoSessionsPanel({
                     {session.last_activity_at
                       ? `il y a ${formatRelative(session.last_activity_at)}`
                       : session.last_login
-                        ? `conn. il y a ${formatRelative(session.last_login)}`
-                        : "Jamais connecte"}
+                      ? `conn. il y a ${formatRelative(session.last_login)}`
+                      : "Jamais connecte"}
                   </TableCell>
 
                   <TableCell className="text-sm text-center">
                     {session.magic_link_token ? (
-                      <span title={`Derniere utilisation: ${session.last_used_at ?? "jamais"}`}>
+                      <span
+                        title={`Derniere utilisation: ${
+                          session.last_used_at ?? "jamais"
+                        }`}
+                      >
                         {session.used_count}x
                       </span>
                     ) : (
@@ -327,7 +453,12 @@ export function DemoSessionsPanel({
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" disabled={busy} className="h-8 w-8 p-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busy}
+                          className="h-8 w-8 p-0"
+                        >
                           <MoreVertical className="h-4 w-4" />
                           <span className="sr-only">Actions</span>
                         </Button>
@@ -335,13 +466,17 @@ export function DemoSessionsPanel({
 
                       <DropdownMenuContent align="end">
                         {session.magic_link_token && (
-                          <DropdownMenuItem onClick={() => copyExistingLink(session)}>
+                          <DropdownMenuItem
+                            onClick={() => copyExistingLink(session)}
+                          >
                             <Copy className="h-4 w-4 mr-2" />
                             Copier le lien actuel
                           </DropdownMenuItem>
                         )}
 
-                        <DropdownMenuItem onClick={() => void handleGenerateLink(session)}>
+                        <DropdownMenuItem
+                          onClick={() => void handleGenerateLink(session)}
+                        >
                           <Link2 className="h-4 w-4 mr-2" />
                           Nouveau magic link
                         </DropdownMenuItem>
@@ -353,7 +488,9 @@ export function DemoSessionsPanel({
                             <DropdownMenuItem
                               onSelect={(e) => {
                                 e.preventDefault();
-                                setExpirationDraft(toDatetimeLocalValue(session.expires_at));
+                                setExpirationDraft(
+                                  toDatetimeLocalValue(session.expires_at)
+                                );
                               }}
                             >
                               <CalendarClock className="h-4 w-4 mr-2" />
@@ -362,26 +499,41 @@ export function DemoSessionsPanel({
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Modifier la date de fin</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                Modifier la date de fin
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                La demo ne peut pas depasser un mois depuis sa creation.
-                                Tu peux aussi choisir une date plus proche pour reduire l'acces.
+                                La demo ne peut pas depasser un mois depuis sa
+                                creation. Tu peux aussi choisir une date plus
+                                proche pour reduire l'acces.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <div className="space-y-2">
                               <Input
                                 type="datetime-local"
                                 value={expirationDraft}
-                                max={maxExpirationLocalValue(session.created_at)}
-                                onChange={(e) => setExpirationDraft(e.target.value)}
+                                max={maxExpirationLocalValue(
+                                  session.created_at
+                                )}
+                                onChange={(e) =>
+                                  setExpirationDraft(e.target.value)
+                                }
                               />
                               <p className="text-xs text-muted-foreground">
-                                Maximum: {new Date(session.created_at).toLocaleDateString("fr-FR")} + 1 mois
+                                Maximum:{" "}
+                                {new Date(
+                                  session.created_at
+                                ).toLocaleDateString("fr-FR")}{" "}
+                                + 1 mois
                               </p>
                             </div>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Annuler</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => void handleUpdateExpiration(session.user_id)}>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  void handleUpdateExpiration(session.user_id)
+                                }
+                              >
                                 Enregistrer
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -401,16 +553,23 @@ export function DemoSessionsPanel({
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Suspendre ce compte ?</AlertDialogTitle>
+                                <AlertDialogTitle>
+                                  Suspendre ce compte ?
+                                </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  <strong>{session.email}</strong> sera immediatement desactive.
+                                  <strong>{session.email}</strong> sera
+                                  immediatement desactive.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Annuler</AlertDialogCancel>
                                 <AlertDialogAction
                                   className="bg-destructive hover:bg-destructive/90"
-                                  onClick={() => void withBusy(session.user_id, () => onSuspend(session.user_id))}
+                                  onClick={() =>
+                                    void withBusy(session.user_id, () =>
+                                      onSuspend(session.user_id)
+                                    )
+                                  }
                                 >
                                   Suspendre
                                 </AlertDialogAction>
@@ -418,7 +577,13 @@ export function DemoSessionsPanel({
                             </AlertDialogContent>
                           </AlertDialog>
                         ) : (
-                          <DropdownMenuItem onClick={() => void withBusy(session.user_id, () => onReactivate(session.user_id))}>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              void withBusy(session.user_id, () =>
+                                onReactivate(session.user_id)
+                              )
+                            }
+                          >
                             <UserCheck className="h-4 w-4 mr-2" />
                             Reactiver
                           </DropdownMenuItem>
@@ -438,17 +603,24 @@ export function DemoSessionsPanel({
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Supprimer ce compte demo ?</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                Supprimer ce compte demo ?
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                <strong>{session.email}</strong> sera supprime avec ses liens demo et ses rattachements.
-                                Cette action est definitive.
+                                <strong>{session.email}</strong> sera supprime
+                                avec ses liens demo et ses rattachements. Cette
+                                action est definitive.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Annuler</AlertDialogCancel>
                               <AlertDialogAction
                                 className="bg-destructive hover:bg-destructive/90"
-                                onClick={() => void withBusy(session.user_id, () => onDelete(session.user_id))}
+                                onClick={() =>
+                                  void withBusy(session.user_id, () =>
+                                    onDelete(session.user_id)
+                                  )
+                                }
                               >
                                 Supprimer
                               </AlertDialogAction>

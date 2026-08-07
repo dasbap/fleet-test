@@ -3,7 +3,16 @@ import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Truck, ArrowLeft, Mail, Lock, User, Building2, Eye, EyeOff } from "lucide-react";
+import {
+  Truck,
+  ArrowLeft,
+  Mail,
+  Lock,
+  User,
+  Building2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -67,9 +76,11 @@ const Auth = () => {
   const postLoginTarget = useMemo(
     () =>
       getSafePostLoginPath(searchParams.get(POST_LOGIN_NEXT_PARAM)) ??
-      getSafePostLoginPath(searchParams.get(LEGACY_POST_LOGIN_REDIRECT_PARAM)) ??
+      getSafePostLoginPath(
+        searchParams.get(LEGACY_POST_LOGIN_REDIRECT_PARAM)
+      ) ??
       ROUTE_PATHS.dashboard,
-    [searchParams],
+    [searchParams]
   );
   const showDemoUi = DEMO_FEATURE_ENABLED;
 
@@ -80,17 +91,26 @@ const Auth = () => {
   const [isRecovery, setIsRecovery] = useState(false);
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState("");
-  const [invitationFleetId, setInvitationFleetId] = useState<string | null>(null);
-  const [invitationFleetName, setInvitationFleetName] = useState<string | null>(null);
+  const [invitationFleetId, setInvitationFleetId] = useState<string | null>(
+    null
+  );
+  const [invitationFleetName, setInvitationFleetName] = useState<string | null>(
+    null
+  );
   const [invitationCode, setInvitationCode] = useState<string | null>(null);
   const [hasUnverifiedCode, setHasUnverifiedCode] = useState(false);
   const [showDemoCredentials, setShowDemoCredentials] = useState(false);
-  const [mockLoginRole, setMockLoginRole] = useState<MobileAppRole>("FLEET_MANAGER");
+  const [mockLoginRole, setMockLoginRole] =
+    useState<MobileAppRole>("FLEET_MANAGER");
 
   // Données démo chargées dynamiquement — absentes du bundle production
-  const [demoAccounts,      setDemoAccounts]      = useState<DemoCredentialAccount[]>([]);
-  const [demoQuickAccounts, setDemoQuickAccounts]  = useState<DemoCredentialAccount[]>([]);
-  const [demoRoleColors,    setDemoRoleColors]     = useState<ReadonlyArray<string>>([]);
+  const [demoAccounts, setDemoAccounts] = useState<DemoCredentialAccount[]>([]);
+  const [demoQuickAccounts, setDemoQuickAccounts] = useState<
+    DemoCredentialAccount[]
+  >([]);
+  const [demoRoleColors, setDemoRoleColors] = useState<ReadonlyArray<string>>(
+    []
+  );
 
   const [formData, setFormData] = useState({
     email: "",
@@ -122,7 +142,7 @@ const Auth = () => {
       const { error } = await signIn(
         demoEmail,
         DEMO_DEV_PASSWORD,
-        isMockAuthEnabled() ? mockLoginRole : undefined,
+        isMockAuthEnabled() ? mockLoginRole : undefined
       );
       if (error) {
         const description =
@@ -164,7 +184,8 @@ const Auth = () => {
   useEffect(() => {
     if (!showDemoUi) return;
     void (async () => {
-      const { demoAccounts, demoQuickAccounts, demoRoleColors } = await loadDemoAuthUiData();
+      const { demoAccounts, demoQuickAccounts, demoRoleColors } =
+        await loadDemoAuthUiData();
       setDemoAccounts(demoAccounts);
       setDemoQuickAccounts(demoQuickAccounts);
       setDemoRoleColors(demoRoleColors);
@@ -175,7 +196,11 @@ const Auth = () => {
     e.preventDefault();
     const email = formData.email.trim();
     if (!email) {
-      toast({ title: "Email requis", description: "Saisissez votre adresse email.", variant: "destructive" });
+      toast({
+        title: "Email requis",
+        description: "Saisissez votre adresse email.",
+        variant: "destructive",
+      });
       return;
     }
     setIsLoading(true);
@@ -187,34 +212,54 @@ const Auth = () => {
       // Rate limit : seul cas où on remonte une erreur visible (anti-énumération).
       if (error) {
         const msg = error.message?.toLowerCase() ?? "";
-        const isNetworkError = msg.includes("failed to fetch") || msg.includes("networkerror") || msg.includes("load failed");
+        const isNetworkError =
+          msg.includes("failed to fetch") ||
+          msg.includes("networkerror") ||
+          msg.includes("load failed");
         if (isNetworkError) {
-          toast({ title: "Erreur réseau", description: "Vérifie ta connexion et réessaie.", variant: "destructive" });
+          toast({
+            title: "Erreur réseau",
+            description: "Vérifie ta connexion et réessaie.",
+            variant: "destructive",
+          });
           setIsLoading(false);
           return;
         }
-        const isRateLimit = msg.includes("rate") || (error as { status?: number }).status === 429;
+        const isRateLimit =
+          msg.includes("rate") || (error as { status?: number }).status === 429;
         if (isRateLimit) {
-          toast({ title: "Trop de tentatives", description: "Réessaie dans quelques minutes.", variant: "destructive" });
+          toast({
+            title: "Trop de tentatives",
+            description: "Réessaie dans quelques minutes.",
+            variant: "destructive",
+          });
           setIsLoading(false);
           return;
         }
         // Toute autre erreur Supabase → on affiche quand même "succès" (anti-énumération).
         // L'erreur est loggée en dev uniquement.
         if (import.meta.env.DEV) {
-          console.warn("[AuthPage] resetPasswordForEmail error:", error.message);
+          console.warn(
+            "[AuthPage] resetPasswordForEmail error:",
+            error.message
+          );
         }
       }
       toast({
         title: "Email envoyé",
-        description: "Si un compte existe pour cet email, vous recevrez un lien pour réinitialiser votre mot de passe. Vérifiez aussi les spams.",
+        description:
+          "Si un compte existe pour cet email, vous recevrez un lien pour réinitialiser votre mot de passe. Vérifiez aussi les spams.",
       });
       setIsForgotPassword(false);
     } catch (err) {
       if (import.meta.env.DEV) {
         console.error("[AuthPage] handleForgotPasswordSubmit unexpected:", err);
       }
-      toast({ title: "Erreur réseau", description: "Vérifie ta connexion et réessaie.", variant: "destructive" });
+      toast({
+        title: "Erreur réseau",
+        description: "Vérifie ta connexion et réessaie.",
+        variant: "destructive",
+      });
     }
     setIsLoading(false);
   };
@@ -222,29 +267,48 @@ const Auth = () => {
   const handleRecoverySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (recoveryPassword.length < 6) {
-      toast({ title: "Mot de passe trop court", description: "Utilisez au moins 6 caractères.", variant: "destructive" });
+      toast({
+        title: "Mot de passe trop court",
+        description: "Utilisez au moins 6 caractères.",
+        variant: "destructive",
+      });
       return;
     }
     if (recoveryPassword !== recoveryPasswordConfirm) {
-      toast({ title: "Les mots de passe ne correspondent pas", variant: "destructive" });
+      toast({
+        title: "Les mots de passe ne correspondent pas",
+        variant: "destructive",
+      });
       return;
     }
     setIsLoading(true);
     try {
       const { error } = await updateCurrentUserPassword(recoveryPassword);
       if (error) {
-        toast({ title: "Erreur", description: error.message, variant: "destructive" });
+        toast({
+          title: "Erreur",
+          description: error.message,
+          variant: "destructive",
+        });
         setIsLoading(false);
         return;
       }
-      toast({ title: "Mot de passe mis à jour", description: "Vous pouvez vous connecter avec votre nouveau mot de passe." });
+      toast({
+        title: "Mot de passe mis à jour",
+        description:
+          "Vous pouvez vous connecter avec votre nouveau mot de passe.",
+      });
       setRecoveryPassword("");
       setRecoveryPasswordConfirm("");
       setIsRecovery(false);
       window.history.replaceState(null, "", window.location.pathname);
       navigate(postLoginTarget);
     } catch {
-      toast({ title: "Erreur", description: "Impossible de mettre à jour le mot de passe.", variant: "destructive" });
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le mot de passe.",
+        variant: "destructive",
+      });
     }
     setIsLoading(false);
   };
@@ -265,7 +329,8 @@ const Auth = () => {
     if (isSignup && hasUnverifiedCode) {
       toast({
         title: "Code non vérifié",
-        description: "Veuillez vérifier votre code d'invitation avant de continuer, ou supprimez-le.",
+        description:
+          "Veuillez vérifier votre code d'invitation avant de continuer, ou supprimez-le.",
         variant: "destructive",
       });
       return;
@@ -276,8 +341,8 @@ const Auth = () => {
     try {
       if (isSignup) {
         const { data, error } = await signUp(
-          formData.email, 
-          formData.password, 
+          formData.email,
+          formData.password,
           formData.fullName,
           invitationFleetId || undefined,
           invitationCode || undefined
@@ -285,9 +350,10 @@ const Auth = () => {
         if (error) {
           toast({
             title: "Erreur d'inscription",
-            description: error.message === "User already registered" 
-              ? "Un compte existe déjà avec cet email"
-              : error.message,
+            description:
+              error.message === "User already registered"
+                ? "Un compte existe déjà avec cet email"
+                : error.message,
             variant: "destructive",
           });
           setIsLoading(false);
@@ -304,7 +370,7 @@ const Auth = () => {
         }
         toast({
           title: "Compte créé avec succès!",
-          description: invitationFleetId 
+          description: invitationFleetId
             ? `Votre demande pour rejoindre la flotte "${invitationFleetName}" est enregistrée.`
             : "Votre compte est créé. Vous pouvez maintenant vous connecter.",
         });
@@ -312,7 +378,7 @@ const Auth = () => {
         const { error } = await signIn(
           formData.email,
           formData.password,
-          isMockAuthEnabled() ? mockLoginRole : undefined,
+          isMockAuthEnabled() ? mockLoginRole : undefined
         );
         if (error) {
           const description =
@@ -349,7 +415,9 @@ const Auth = () => {
       <div className="hidden lg:flex flex-col justify-between w-1/2 max-w-xl bg-surface p-12 border-r border-border/50">
         <div className="flex items-center gap-3">
           <Truck className="w-8 h-8 text-brand" aria-hidden />
-          <span className="text-xl font-heading font-semibold text-foreground">E-Samba</span>
+          <span className="text-xl font-heading font-semibold text-foreground">
+            E-Samba
+          </span>
         </div>
         <div>
           <blockquote className="text-2xl font-heading font-medium text-foreground leading-relaxed">
@@ -361,7 +429,9 @@ const Auth = () => {
             Suivi temps réel · Alertes automatiques · Rapports XAF
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">© 2026 E-Samba · Douala, Cameroun</p>
+        <p className="text-xs text-muted-foreground">
+          © 2026 E-Samba · Douala, Cameroun
+        </p>
       </div>
 
       {/* Colonne formulaire */}
@@ -389,19 +459,19 @@ const Auth = () => {
             {isRecovery
               ? "Nouveau mot de passe"
               : isForgotPassword
-                ? "Mot de passe oublié"
-                : isSignup
-                  ? "Créer un compte"
-                  : "Bon retour!"}
+              ? "Mot de passe oublié"
+              : isSignup
+              ? "Créer un compte"
+              : "Bon retour!"}
           </h1>
           <p className="text-muted-foreground mb-8">
             {isRecovery
               ? "Choisissez un nouveau mot de passe pour votre compte"
               : isForgotPassword
-                ? "Saisissez votre email pour recevoir un lien de réinitialisation"
-                : isSignup
-                  ? "Commencez à gérer votre flotte intelligemment"
-                  : "Connectez-vous pour accéder à votre tableau de bord"}
+              ? "Saisissez votre email pour recevoir un lien de réinitialisation"
+              : isSignup
+              ? "Commencez à gérer votre flotte intelligemment"
+              : "Connectez-vous pour accéder à votre tableau de bord"}
           </p>
 
           {/* Form */}
@@ -426,7 +496,9 @@ const Auth = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="recoveryPasswordConfirm">Confirmer le mot de passe</Label>
+                  <Label htmlFor="recoveryPasswordConfirm">
+                    Confirmer le mot de passe
+                  </Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <Input
@@ -435,7 +507,9 @@ const Auth = () => {
                       placeholder="••••••••"
                       className="pl-11"
                       value={recoveryPasswordConfirm}
-                      onChange={(e) => setRecoveryPasswordConfirm(e.target.value)}
+                      onChange={(e) =>
+                        setRecoveryPasswordConfirm(e.target.value)
+                      }
                       required
                       minLength={6}
                     />
@@ -448,7 +522,11 @@ const Auth = () => {
                   type="button"
                   onClick={() => {
                     setIsRecovery(false);
-                    window.history.replaceState(null, "", window.location.pathname);
+                    window.history.replaceState(
+                      null,
+                      "",
+                      window.location.pathname
+                    );
                   }}
                   className="w-full text-sm text-muted-foreground hover:text-primary"
                 >
@@ -470,13 +548,17 @@ const Auth = () => {
                       placeholder="vous@exemple.com"
                       className="pl-11"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
                       required
                     />
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Envoi..." : "Envoyer le lien de réinitialisation"}
+                  {isLoading
+                    ? "Envoi..."
+                    : "Envoyer le lien de réinitialisation"}
                 </Button>
                 <button
                   type="button"
@@ -491,154 +573,175 @@ const Auth = () => {
             {/* Formulaire connexion / inscription */}
             {!isRecovery && !isForgotPassword && (
               <>
-            {isSignup && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Nom complet</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="fullName"
-                      type="text"
-                      placeholder="Jean Dupont"
-                      className="pl-11"
-                      value={formData.fullName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, fullName: e.target.value })
-                      }
-                      required
+                {isSignup && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">Nom complet</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Input
+                          id="fullName"
+                          type="text"
+                          placeholder="Jean Dupont"
+                          className="pl-11"
+                          value={formData.fullName}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              fullName: e.target.value,
+                            })
+                          }
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="organization">Organisation</Label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Input
+                          id="organization"
+                          type="text"
+                          placeholder="Nom de votre entreprise"
+                          className="pl-11"
+                          value={formData.organization}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              organization: e.target.value,
+                            })
+                          }
+                          required
+                        />
+                      </div>
+                    </div>
+                    <InvitationCodeInput
+                      onValidCode={(fleetId, fleetName, code) => {
+                        setInvitationFleetId(fleetId);
+                        setInvitationFleetName(fleetName);
+                        setInvitationCode(code);
+                        setHasUnverifiedCode(false);
+                      }}
+                      onClear={() => {
+                        setInvitationFleetId(null);
+                        setInvitationFleetName(null);
+                        setInvitationCode(null);
+                        setHasUnverifiedCode(false);
+                      }}
+                      onStatusChange={setHasUnverifiedCode}
                     />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="organization">Organisation</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <Input
-                      id="organization"
-                      type="text"
-                      placeholder="Nom de votre entreprise"
-                      className="pl-11"
-                      value={formData.organization}
-                      onChange={(e) =>
-                        setFormData({ ...formData, organization: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                </div>
-                <InvitationCodeInput
-                  onValidCode={(fleetId, fleetName, code) => {
-                    setInvitationFleetId(fleetId);
-                    setInvitationFleetName(fleetName);
-                    setInvitationCode(code);
-                    setHasUnverifiedCode(false);
-                  }}
-                  onClear={() => {
-                    setInvitationFleetId(null);
-                    setInvitationFleetName(null);
-                    setInvitationCode(null);
-                    setHasUnverifiedCode(false);
-                  }}
-                  onStatusChange={setHasUnverifiedCode}
-                />
-              </>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="vous@exemple.com"
-                  className="pl-11"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  required
-                />
-              </div>
-            </div>
-
-            {showDemoUi && isMockAuthEnabled() && !isSignup && (
-              <div className="space-y-2">
-                <Label htmlFor="mock-role">Rôle (session démo)</Label>
-                <Select
-                  value={mockLoginRole}
-                  onValueChange={(v) => setMockLoginRole(v as MobileAppRole)}
-                >
-                  <SelectTrigger id="mock-role" className="w-full">
-                    <SelectValue placeholder="Choisir un rôle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MOBILE_APP_ROLE_ORDER.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {MOBILE_APP_ROLE_LABELS[r]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  En mode mock, ce rôle détermine les écrans et permissions (aligné mobile Flotte E-Samba).
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Mot de passe</Label>
-                {!isSignup && (
-                  <button
-                    type="button"
-                    onClick={() => setIsForgotPassword(true)}
-                    className="text-sm text-primary hover:underline"
-                  >
-                    Mot de passe oublié?
-                  </button>
+                  </>
                 )}
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder={isSignup ? "Minimum 8 caractères" : "••••••••"}
-                  className="pl-11 pr-11"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  required
-                  minLength={isSignup ? 8 : undefined}
-                  autoComplete={isSignup ? "new-password" : "current-password"}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  tabIndex={-1}
-                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
 
-            <Button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
-              disabled={isLoading}
-            >
-              {isLoading
-                ? "Chargement..."
-                : isSignup
-                  ? "Créer mon compte"
-                  : "Se connecter"}
-            </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="vous@exemple.com"
+                      className="pl-11"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                {showDemoUi && isMockAuthEnabled() && !isSignup && (
+                  <div className="space-y-2">
+                    <Label htmlFor="mock-role">Rôle (session démo)</Label>
+                    <Select
+                      value={mockLoginRole}
+                      onValueChange={(v) =>
+                        setMockLoginRole(v as MobileAppRole)
+                      }
+                    >
+                      <SelectTrigger id="mock-role" className="w-full">
+                        <SelectValue placeholder="Choisir un rôle" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MOBILE_APP_ROLE_ORDER.map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {MOBILE_APP_ROLE_LABELS[r]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      En mode mock, ce rôle détermine les écrans et permissions
+                      (aligné mobile Flotte E-Samba).
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Mot de passe</Label>
+                    {!isSignup && (
+                      <button
+                        type="button"
+                        onClick={() => setIsForgotPassword(true)}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Mot de passe oublié?
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder={
+                        isSignup ? "Minimum 8 caractères" : "••••••••"
+                      }
+                      className="pl-11 pr-11"
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      required
+                      minLength={isSignup ? 8 : undefined}
+                      autoComplete={
+                        isSignup ? "new-password" : "current-password"
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      tabIndex={-1}
+                      aria-label={
+                        showPassword
+                          ? "Masquer le mot de passe"
+                          : "Afficher le mot de passe"
+                      }
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+                  disabled={isLoading}
+                >
+                  {isLoading
+                    ? "Chargement..."
+                    : isSignup
+                    ? "Créer mon compte"
+                    : "Se connecter"}
+                </Button>
               </>
             )}
           </form>
@@ -664,51 +767,6 @@ const Auth = () => {
                   </Link>
                 )}
               </p>
-
-              {/* Accès démo rapide — uniquement si DEMO_UI_ENABLED (dev/staging explicite) */}
-              {showDemoUi && !isSignup && (
-                <>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-8">
-                    <div className="flex-1 h-px bg-border" />
-                    <span>ou accès démo</span>
-                    <div className="flex-1 h-px bg-border" />
-                  </div>
-                  <div className="space-y-2 mt-4">
-                    {demoQuickAccounts.map((account, index) => (
-                      <button
-                        key={account.email}
-                        type="button"
-                        onClick={() => void handleDemoQuickLogin(account.email)}
-                        disabled={isLoading}
-                        className={cn(
-                          "w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-border",
-                          "bg-card hover:bg-surface-raised text-sm transition-colors",
-                          "disabled:opacity-50 disabled:pointer-events-none",
-                        )}
-                      >
-                        <span className="font-medium">
-                          Démo{" "}
-                          <span className={demoRoleColors[index] ?? "text-muted-foreground"}>
-                            {account.role}
-                          </span>
-                        </span>
-                        <span className="text-xs text-muted-foreground font-mono">
-                          {account.email.split("@")[0]}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-4 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setShowDemoCredentials(true)}
-                      className="text-xs text-muted-foreground hover:text-primary underline"
-                    >
-                      Voir tous les identifiants démo
-                    </button>
-                  </div>
-                </>
-              )}
             </>
           )}
         </div>
@@ -716,13 +774,18 @@ const Auth = () => {
 
       {/* Dialog identifiants démo — visible uniquement si DEMO_UI_ENABLED */}
       {showDemoUi && (
-        <Dialog open={showDemoCredentials} onOpenChange={setShowDemoCredentials}>
+        <Dialog
+          open={showDemoCredentials}
+          onOpenChange={setShowDemoCredentials}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Identifiants démo</DialogTitle>
               <DialogDescription>
                 Comptes de démonstration — environnement dev/staging uniquement.
-                Mot de passe via <code className="text-xs">VITE_DEMO_PASSWORD</code> dans <code className="text-xs">.env.development</code>.
+                Mot de passe via{" "}
+                <code className="text-xs">VITE_DEMO_PASSWORD</code> dans{" "}
+                <code className="text-xs">.env.development</code>.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -736,7 +799,10 @@ const Auth = () => {
                   </thead>
                   <tbody>
                     {demoAccounts.map((account, index) => (
-                      <tr key={account.email} className={index > 0 ? "border-t" : undefined}>
+                      <tr
+                        key={account.email}
+                        className={index > 0 ? "border-t" : undefined}
+                      >
                         <td className="px-3 py-2">{account.role}</td>
                         <td className="px-3 py-2 font-mono text-xs">
                           <button
@@ -753,7 +819,8 @@ const Auth = () => {
                 </table>
               </div>
               <p className="text-xs text-muted-foreground">
-                Ces comptes sont soumis aux restrictions démo (RLS, sessions limitées, billing masqué).
+                Ces comptes sont soumis aux restrictions démo (RLS, sessions
+                limitées, billing masqué).
               </p>
             </div>
           </DialogContent>
