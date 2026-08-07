@@ -38,10 +38,7 @@ describe("PWA service worker update", () => {
     expect(noStoreSources).toContain("/manifest.webmanifest");
 
     expect(
-      noStoreSources.some(
-        (source) =>
-          source === "/workbox-*.js" || source === "/workbox-:path*.js"
-      )
+      noStoreSources.some((source) => source === "/workbox-:path*.js")
     ).toBe(true);
   });
 });
