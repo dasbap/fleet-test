@@ -279,7 +279,7 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         disable: mode === "capacitor",
 
-        registerType: "prompt",
+        registerType: "autoUpdate",
 
         injectRegister: "auto",
 
