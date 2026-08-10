@@ -8,7 +8,8 @@ describe("PWA service worker update", () => {
     const viteConfig = readFileSync("vite.config.ts", "utf8");
 
     expect(pwaSource).toContain("updateSW(true)");
-    expect(viteConfig).toContain('registerType: "prompt"');
+    expect(viteConfig).toContain('registerType: "autoUpdate"');
+    expect(viteConfig).not.toContain('registerType: "prompt"');
     expect(viteConfig).toContain("skipWaiting: true");
     expect(viteConfig).toContain("clientsClaim: true");
   });
