@@ -1,51 +1,74 @@
-<!doctype html>
+<!DOCTYPE html>
+<!--todo  -->
 <html lang="fr" class="dark">
   <head>
     <meta charset="UTF-8" />
     <script>
-      (function(){ try { document.documentElement.classList.add('dark'); } catch(e) {} })();
+      (function () {
+        try {
+          document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
     </script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
     <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https: wss: http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com;"
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-
+    <meta
+      http-equiv="Permissions-Policy"
+      content="camera=(), microphone=(), geolocation=()"
+    />
     <style>
       /* Thème sombre dès le premier paint (évite FOUC / CLS) */
-      html.dark { background-color: #0f0f0f; color: hsl(0, 0%, 98%); }
-      html:not(.dark) { background-color: #fafafa; color: hsl(0, 0%, 6%); }
-      body { font-family: "Poppins", ui-sans-serif, system-ui, sans-serif; }
+      html.dark {
+        background-color: #0f0f0f;
+        color: hsl(0, 0%, 98%);
+      }
+      html:not(.dark) {
+        background-color: #fafafa;
+        color: hsl(0, 0%, 6%);
+      }
+      body {
+        font-family: "Poppins", ui-sans-serif, system-ui, sans-serif;
+      }
     </style>
     <!-- Pas de preload hero ici : en dev / réseau lent, il concurrence le téléchargement de /src/main.tsx et retarde le bootstrap. -->
-
     <title>E-Samba | Gestion intelligente de flotte en Afrique Centrale</title>
 
-    <meta name="description" content="E-Samba est une application web et mobile de gestion de flotte de transport en Afrique Centrale. Suivi des véhicules, gestion des entretiens, alertes automatisées et supervision intelligente des opérations quotidiennes." />
+    <meta
+      name="description"
+      content="E-Samba est une application web et mobile de gestion de flotte de transport en Afrique Centrale. Suivi des véhicules, gestion des entretiens, alertes automatisées et supervision intelligente des opérations quotidiennes."
+    />
 
     <meta name="author" content="E-Samba" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-
     <!-- Canonical URL -->
     <link rel="canonical" href="https://www.e-samba.com/" />
-
     <!-- Open Graph (Facebook, LinkedIn, WhatsApp) -->
-    <meta property="og:title" content="E-Samba | Gestion intelligente de flotte" />
-    <meta property="og:description" content="Optimisez votre flotte de transport en Afrique Centrale avec un suivi automatisé, des alertes intelligentes et une supervision en temps réel." />
+    <meta
+      property="og:title"
+      content="E-Samba | Gestion intelligente de flotte"
+    />
+    <meta
+      property="og:description"
+      content="Optimisez votre flotte de transport en Afrique Centrale avec un suivi automatisé, des alertes intelligentes et une supervision en temps réel."
+    />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://www.e-samba.com/" />
     <meta property="og:image" content="https://www.e-samba.com/og-image.svg" />
-
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="E-Samba | Supervision intelligente de flotte" />
-    <meta name="twitter:description" content="Automatisation, suivi des véhicules et gestion proactive des opérations de transport." />
+    <meta
+      name="twitter:title"
+      content="E-Samba | Supervision intelligente de flotte"
+    />
+    <meta
+      name="twitter:description"
+      content="Automatisation, suivi des véhicules et gestion proactive des opérations de transport."
+    />
     <meta name="twitter:image" content="https://www.e-samba.com/og-image.svg" />
-
   </head>
-
   <body>
     <div id="root">
       <!--
@@ -53,34 +76,58 @@
         Garantit un First Contentful Paint rapide (Lighthouse/Web Vitals)
         meme si le bundle met plusieurs secondes a s'initialiser.
       -->
-      <div id="app-loader" aria-hidden="true" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;text-align:center;color:inherit;font-family:inherit">
-        <p style="margin:0;font-size:1rem;letter-spacing:0.02em;opacity:0.9">E-Samba — chargement de l'application...</p>
+      <div
+        id="app-loader"
+        aria-hidden="true"
+        style="
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 1.5rem;
+          text-align: center;
+          color: inherit;
+          font-family: inherit;
+        "
+      >
+        <p
+          style="
+            margin: 0;
+            font-size: 1rem;
+            letter-spacing: 0.02em;
+            opacity: 0.9;
+          "
+        >
+          E-Samba — chargement de l'application...
+        </p>
       </div>
-    <script>
-      (function () {
-        try {
-          var h = location.hostname || "";
-          if (
-            /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(h)
-          ) {
-            var el = document.getElementById("app-loader");
-            if (!el) return;
-            var hint = document.createElement("p");
-            hint.setAttribute("role", "status");
-            hint.style.cssText =
-              "margin:14px 0 0 0;font-size:0.8rem;opacity:0.72;max-width:26rem;line-height:1.4;color:inherit";
-            hint.textContent =
-              "Réseau local : si l’écran reste figé, désactivez le VPN du navigateur (ex. Opera GX) ou ouvrez http://localhost:" +
-              (location.port || "8080") +
-              "/ sur le PC qui lance Vite (même port que dans le terminal).";
-            el.appendChild(hint);
-          }
-        } catch (e) {}
-      })();
-    </script>
+      <script>
+        (function () {
+          try {
+            var h = location.hostname || "";
+            if (/^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(h)) {
+              var el = document.getElementById("app-loader");
+              if (!el) return;
+              var hint = document.createElement("p");
+              hint.setAttribute("role", "status");
+              hint.style.cssText =
+                "margin:14px 0 0 0;font-size:0.8rem;opacity:0.72;max-width:26rem;line-height:1.4;color:inherit";
+              hint.textContent =
+                "Réseau local : si l’écran reste figé, désactivez le VPN du navigateur (ex. Opera GX) ou ouvrez http://localhost:" +
+                (location.port || "8080") +
+                "/ sur le PC qui lance Vite (même port que dans le terminal).";
+              el.appendChild(hint);
+            }
+          } catch (e) {}
+        })();
+      </script>
     </div>
     <noscript>
-      <p>E-Samba – Gestion intelligente de flotte en Afrique Centrale. Suivi des véhicules, entretiens, alertes et supervision des opérations.</p>
+      <p>
+        E-Samba – Gestion intelligente de flotte en Afrique Centrale. Suivi des
+        véhicules, entretiens, alertes et supervision des opérations.
+      </p>
     </noscript>
     <!-- Récupération cache PWA obsolète (service worker) puis message après maxMs -->
     <script>
@@ -91,7 +138,6 @@
         var sec = Math.round(maxMs / 1000);
         var start = Date.now();
         var swRecoveryDone = false;
-
         function trySwRecovery(loader) {
           if (swRecoveryDone || !loader) return;
           swRecoveryDone = true;
@@ -109,21 +155,30 @@
                 location.reload();
                 return;
               }
-              return Promise.all(regs.map(function (r) { return r.unregister(); })).then(function () {
-                if ("caches" in window) {
-                  return caches.keys().then(function (keys) {
-                    return Promise.all(keys.map(function (k) { return caches.delete(k); }));
-                  });
-                }
-              }).then(function () {
-                location.reload();
-              });
+              return Promise.all(
+                regs.map(function (r) {
+                  return r.unregister();
+                })
+              )
+                .then(function () {
+                  if ("caches" in window) {
+                    return caches.keys().then(function (keys) {
+                      return Promise.all(
+                        keys.map(function (k) {
+                          return caches.delete(k);
+                        })
+                      );
+                    });
+                  }
+                })
+                .then(function () {
+                  location.reload();
+                });
             })
             .catch(function () {
               location.reload();
             });
         }
-
         var id = window.setInterval(function () {
           var loader = document.getElementById("app-loader");
           if (!loader) {
@@ -143,17 +198,17 @@
             host !== "127.0.0.1" &&
             host !== "localhost";
           var hint = lan
-            ? "<p style=\"margin:12px 0 0 0;color:#888;font-size:14px;line-height:1.45\">Accès par IP locale : désactivez le <strong>VPN du navigateur</strong> (ex. Opera GX), vérifiez le pare-feu, ou ouvrez <strong>http://localhost:" +
+            ? '<p style="margin:12px 0 0 0;color:#888;font-size:14px;line-height:1.45">Accès par IP locale : désactivez le <strong>VPN du navigateur</strong> (ex. Opera GX), vérifiez le pare-feu, ou ouvrez <strong>http://localhost:' +
               port +
               "/</strong> sur le PC qui lance Vite.</p>"
             : "";
           loader.innerHTML =
-            "<p style=\"margin:0 0 8px 0;font-size:16px\">Le chargement dépasse " +
-              sec +
-              "&nbsp;s (premier chargement ou connexion lente).</p>" +
-            "<p style=\"margin:0;color:#bbb;font-size:14px;line-height:1.45\">Rechargez (Ctrl+Shift+R) ou videz le cache du site (F12 → Application → Service Workers → Unregister).</p>" +
+            '<p style="margin:0 0 8px 0;font-size:16px">Le chargement dépasse ' +
+            sec +
+            "&nbsp;s (premier chargement ou connexion lente).</p>" +
+            '<p style="margin:0;color:#bbb;font-size:14px;line-height:1.45">Rechargez (Ctrl+Shift+R) ou videz le cache du site (F12 → Application → Service Workers → Unregister).</p>' +
             hint +
-            "<p style=\"margin:14px 0 0 0\"><a href=\"#\" id=\"esamba-retry-load\" style=\"color:#6ee7b7\">Réessayer</a></p>";
+            '<p style="margin:14px 0 0 0"><a href="#" id="esamba-retry-load" style="color:#6ee7b7">Réessayer</a></p>';
           var a = document.getElementById("esamba-retry-load");
           if (a)
             a.addEventListener("click", function (e) {

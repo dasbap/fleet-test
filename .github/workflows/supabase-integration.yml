@@ -2,9 +2,21 @@ name: Supabase Integration (Remote)
 
 on:
   pull_request:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
   push:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
   workflow_dispatch:
 
 concurrency:
@@ -20,34 +32,38 @@ jobs:
     name: Integration tests on remote Supabase
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-        with:
-          clean: false
 
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
           node-version: "22"
+          cache: npm
 
-      - name: Validate required secrets
-        shell: bash
+      - name: Validate required environment variables
         run: |
           missing=()
-          for key in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
-            if [ -z "${!key}" ]; then
+
+          for key in \
+            VITE_SUPABASE_URL \
+            VITE_SUPABASE_ANON_KEY \
+            SUPABASE_SERVICE_ROLE_KEY
+          do
+            if [ -z "${!key:-}" ]; then
               missing+=("$key")
             fi
           done
 
           if [ "${#missing[@]}" -gt 0 ]; then
-            echo "::error::Secrets manquants: ${missing[*]}"
+            echo "::error::Variables GitHub manquantes: ${missing[*]}"
             exit 1
           fi
 
@@ -58,37 +74,50 @@ jobs:
       - name: Run targeted Supabase integration tests
         run: |
           mkdir -p test-results
-          npx vitest run -c vitest.integration.config.ts \
+
+          npx vitest run \
+            -c vitest.integration.config.ts \
             tests/integration/rls.fleet-access.test.ts \
             tests/integration/triggers.vehicle-limit.test.ts \
             tests/integration/fuel.fraud-scoring.test.ts \
-            --reporter=default --reporter=json --outputFile=test-results/supabase-integration.json
+            --reporter=default \
+            --reporter=json \
+            --outputFile=test-results/supabase-integration.json
 
       - name: Publish integration summary
         if: always()
-        shell: bash
         run: |
           node <<'NODE'
-          const fs = require('fs');
-          let total = 'n/a';
-          let failed = 'n/a';
+          const fs = require("fs")
+
+          let total = "n/a"
+          let failed = "n/a"
 
           try {
-            const result = JSON.parse(fs.readFileSync('test-results/supabase-integration.json', 'utf8'));
-            total = result.numTotalTests ?? 'n/a';
-            failed = result.numFailedTests ?? 'n/a';
+            const result = JSON.parse(
+              fs.readFileSync(
+                "test-results/supabase-integration.json",
+                "utf8"
+              )
+            )
+
+            total = result.numTotalTests ?? "n/a"
+            failed = result.numFailedTests ?? "n/a"
           } catch {}
 
           const md = [
-            '## Supabase integration (remote)',
-            '',
+            "## Supabase integration (remote)",
+            "",
             `- Tests: ${total}`,
             `- Echecs: ${failed}`,
-            '- Seed SQL de reference: supabase/seed/test_fleet_africa.sql',
-            '',
-          ].join('\n');
+            "- Seed SQL de reference: supabase/seed/test_fleet_africa.sql",
+            ""
+          ].join("\n")
 
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
+          fs.appendFileSync(
+            process.env.GITHUB_STEP_SUMMARY,
+            md
+          )
           NODE
 
       - name: Upload test artifacts
@@ -98,3 +127,4 @@ jobs:
           name: supabase-integration-results
           path: test-results/supabase-integration.json
           if-no-files-found: warn
+          retention-days: 7
