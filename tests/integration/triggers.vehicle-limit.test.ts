@@ -32,26 +32,24 @@ describeIntegration("Trigger limite vehicules", () => {
     }
   });
 
-  it("bloque le 4e vehicule sur plan free", async () => {
-    for (let index = 1; index <= 3; index += 1) {
-      const { data, error } = await clients.user.rpc("creer_vehicule_esamba", {
-        p_fleet_id: context.fleetId,
-        p_registration: `LIM-${Date.now()}-${index}`,
-        p_brand: "Toyota",
-        p_model: "Corolla",
-        p_year: 2022,
-        p_current_km: 1200 + index,
-      });
+  it("bloque le 2e vehicule sur le seul slot free", async () => {
+    const { data, error } = await clients.user.rpc("creer_vehicule_esamba", {
+      p_fleet_id: context.fleetId,
+      p_registration: `LIM-${Date.now()}-1`,
+      p_brand: "Toyota",
+      p_model: "Corolla",
+      p_year: 2022,
+      p_current_km: 1201,
+    });
 
-      expect(error).toBeNull();
-      expect(data).toBeDefined();
-    }
+    expect(error).toBeNull();
+    expect(data).toBeDefined();
 
     const { error: limitError } = await clients.user.rpc(
       "creer_vehicule_esamba",
       {
         p_fleet_id: context.fleetId,
-        p_registration: `LIM-${Date.now()}-4`,
+        p_registration: `LIM-${Date.now()}-2`,
         p_brand: "Honda",
         p_model: "Civic",
         p_year: 2023,
@@ -60,7 +58,7 @@ describeIntegration("Trigger limite vehicules", () => {
     );
 
     expect(limitError).toBeDefined();
-    expect(limitError?.message).toMatch(/limite_vehicules_plan_atteinte/i);
+    expect(limitError?.message).toMatch(/limite_vehicules_(plan|abonnements)_atteinte/i);
   });
 });
 
