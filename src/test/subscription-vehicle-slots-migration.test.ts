@@ -103,6 +103,22 @@ describe("subscription vehicle slots migration", () => {
     expect(migration).toContain("notify pgrst, 'reload schema'");
   });
 
+  it("exposes plan feature flags for vehicle-scoped subscription access", () => {
+    const migration = readFileSync(
+      "supabase/migrations/20260811143000_expose_subscription_plan_features.sql",
+      "utf8",
+    );
+
+    expect(migration).toContain("create or replace function public.list_fleet_subscriptions");
+    expect(migration).toContain("'finance_enabled', row_source.finance_enabled");
+    expect(migration).toContain("'ai_enabled', row_source.ai_enabled");
+    expect(migration).toContain("'reports_enabled', row_source.reports_enabled");
+    expect(migration).toContain("'driver_scoring_enabled', row_source.driver_scoring_enabled");
+    expect(migration).toContain("'geofencing_enabled', row_source.geofencing_enabled");
+    expect(migration).toContain("p.enables_scheduled_reports");
+    expect(migration).toContain("notify pgrst, 'reload schema'");
+  });
+
   it("repairs admin grant RPCs when the original version was already marked applied", () => {
     const migration = repairSql();
 

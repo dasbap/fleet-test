@@ -48,6 +48,35 @@ describe("normalizeSubscriptionSummaries", () => {
     });
   });
 
+  it("normalizes plan feature flags for vehicle-scoped access", () => {
+    const result = normalizeSubscriptionSummaries([
+      {
+        id: "sub-pro",
+        plan_code: "pro",
+        finance_enabled: "true",
+        ai_enabled: true,
+        reports_enabled: true,
+        driver_scoring_enabled: true,
+        anomaly_insights_enabled: true,
+        geofencing_enabled: true,
+        scheduled_reports_enabled: true,
+        offline_driver_enabled: true,
+        vehicles: [],
+      },
+    ]);
+
+    expect(result[0]).toMatchObject({
+      financeEnabled: true,
+      aiEnabled: true,
+      reportsEnabled: true,
+      driverScoringEnabled: true,
+      anomalyInsightsEnabled: true,
+      geofencingEnabled: true,
+      scheduledReportsEnabled: true,
+      offlineDriverEnabled: true,
+    });
+  });
+
   it("uses granted vehicle_slots instead of the Pro catalog capacity", () => {
     const result = normalizeSubscriptionSummaries([
       {

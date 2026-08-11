@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ArrowRightLeft, CalendarClock, Car, Eye, Loader2, ShieldOff, XCircle } from "lucide-react";
+import { ArrowRightLeft, CalendarClock, Car, CheckCircle2, Eye, Loader2, ShieldOff, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -267,6 +267,7 @@ export function SubscriptionManagementPanel({
                     <p className="font-medium tabular-nums">{formatCapacity(subscription.vehicleCapacity)}</p>
                   </div>
                 </div>
+                <SubscriptionModuleBadges subscription={subscription} />
                 <div className="flex flex-wrap gap-2">
                   {subscription.vehicles.length === 0 ? (
                     <span className="text-sm text-muted-foreground">Aucun véhicule associé</span>
@@ -309,6 +310,10 @@ export function SubscriptionManagementPanel({
                 <Metric label="Début" value={formatDate(selected.startsAt)} />
                 <Metric label="Capacité" value={`${selected.vehicleCount} / ${formatCapacity(selected.vehicleCapacity)}`} />
                 <Metric label="Emplacements libres" value={`${formatAvailableSlots(selected)} / ${formatCapacity(selected.vehicleCapacity)}`} />
+              </div>
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <p className="mb-3 font-medium">Modules actifs sur cet abonnement</p>
+                <SubscriptionModuleBadges subscription={selected} />
               </div>
 
               <div className="rounded-lg border">
@@ -434,6 +439,29 @@ export function SubscriptionManagementPanel({
   );
 }
 
+function SubscriptionModuleBadges({ subscription }: { subscription: SubscriptionSummary }) {
+  const modules = getEnabledSubscriptionModules(subscription);
+
+  if (modules.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Aucun module payant actif sur cet abonnement.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {modules.map((module) => (
+        <Badge key={module} variant="outline" className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700">
+          <CheckCircle2 className="h-3 w-3" />
+          {module}
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border bg-muted/20 px-3 py-2">
@@ -466,6 +494,19 @@ function isSameSubscriptionPlanType(source: SubscriptionSummary, target: Subscri
 
 function isEndedSubscription(subscription: SubscriptionSummary): boolean {
   return ENDED_STATUSES.has(subscription.status ?? "");
+}
+
+function getEnabledSubscriptionModules(subscription: SubscriptionSummary): string[] {
+  return [
+    subscription.financeEnabled ? "Finances & collectes" : null,
+    subscription.reportsEnabled ? "Rapports d'activité" : null,
+    subscription.driverScoringEnabled ? "Scoring conducteur" : null,
+    subscription.anomalyInsightsEnabled ? "IA Pulse+ (anomalies)" : null,
+    subscription.geofencingEnabled ? "Géofencing" : null,
+    subscription.scheduledReportsEnabled ? "Rapports auto PDF" : null,
+    subscription.offlineDriverEnabled ? "Offline conducteur" : null,
+    subscription.aiEnabled ? "IA avancée (Pulse+)" : null,
+  ].filter((module): module is string => Boolean(module));
 }
 
 function buildRenewalPricingHref(subscription: SubscriptionSummary): string {

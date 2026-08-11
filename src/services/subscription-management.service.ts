@@ -25,6 +25,14 @@ export interface SubscriptionSummary {
   vehicleCount: number;
   availableSlots: number;
   vehicles: SubscriptionVehicle[];
+  financeEnabled: boolean;
+  aiEnabled: boolean;
+  reportsEnabled: boolean;
+  driverScoringEnabled: boolean;
+  anomalyInsightsEnabled: boolean;
+  geofencingEnabled: boolean;
+  scheduledReportsEnabled: boolean;
+  offlineDriverEnabled: boolean;
 }
 
 export class SubscriptionManagementService {
@@ -125,6 +133,14 @@ function normalizeSubscriptionRow(raw: unknown): SubscriptionSummary {
     vehicleCount: num(row.vehicle_count),
     availableSlots: num(row.available_slots),
     vehicles: vehiclesRaw.map(normalizeVehicleRow),
+    financeEnabled: bool(row.finance_enabled),
+    aiEnabled: bool(row.ai_enabled),
+    reportsEnabled: bool(row.reports_enabled),
+    driverScoringEnabled: bool(row.driver_scoring_enabled),
+    anomalyInsightsEnabled: bool(row.anomaly_insights_enabled),
+    geofencingEnabled: bool(row.geofencing_enabled),
+    scheduledReportsEnabled: bool(row.scheduled_reports_enabled),
+    offlineDriverEnabled: bool(row.offline_driver_enabled),
   };
 }
 
@@ -159,6 +175,16 @@ function nullableNum(value: unknown): number | null {
     return null;
   }
   return num(value);
+}
+
+function bool(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    return value.toLowerCase() === "true";
+  }
+  return false;
 }
 
 export function mapSubscriptionError(message: string): string {
