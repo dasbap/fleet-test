@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoRequestsPanel } from "@/components/admin/DemoRequestsPanel";
 import type { AdminDemoRequest } from "@/types/demo-request";
-// todo
+
 const hookMocks = vi.hoisted(() => ({
   requests: undefined as AdminDemoRequest[] | undefined,
   error: null as unknown,
@@ -68,16 +68,22 @@ describe("DemoRequestsPanel", () => {
     hookMocks.error = { code: "DEMO_REQUEST_SCHEMA_MISSING" };
     hookMocks.isError = true;
 
-    render(<DemoRequestsPanel onCreateAccess={vi.fn()} onReloadSessions={vi.fn()} />);
+    render(
+      <DemoRequestsPanel onCreateAccess={vi.fn()} onReloadSessions={vi.fn()} />
+    );
 
-    expect(screen.getByText(/migration des demandes demo/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/migration des demandes demo/i)
+    ).toBeInTheDocument();
     expect(screen.getByText(/applique la migration/i)).toBeInTheDocument();
   });
 
   it("met a jour visuellement le mode automatique des qu'un admin coche le switch", () => {
     hookMocks.requests = [demoRequest];
 
-    render(<DemoRequestsPanel onCreateAccess={vi.fn()} onReloadSessions={vi.fn()} />);
+    render(
+      <DemoRequestsPanel onCreateAccess={vi.fn()} onReloadSessions={vi.fn()} />
+    );
 
     const autoMode = screen.getByRole("switch", {
       name: /decision automatique apres 48h/i,
@@ -96,16 +102,22 @@ describe("DemoRequestsPanel", () => {
   it("garde la decision choisie visible apres le changement", async () => {
     hookMocks.requests = [demoRequest];
 
-    render(<DemoRequestsPanel onCreateAccess={vi.fn()} onReloadSessions={vi.fn()} />);
+    render(
+      <DemoRequestsPanel onCreateAccess={vi.fn()} onReloadSessions={vi.fn()} />
+    );
 
     const decisionSelect = screen.getByRole("combobox");
     expect(decisionSelect).toHaveTextContent("Refuser auto");
 
     decisionSelect.focus();
     fireEvent.keyDown(decisionSelect, { key: "ArrowDown" });
-    fireEvent.click(await screen.findByRole("option", { name: "Accepter auto" }));
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Accepter auto" })
+    );
 
-    await waitFor(() => expect(decisionSelect).toHaveTextContent("Accepter auto"));
+    await waitFor(() =>
+      expect(decisionSelect).toHaveTextContent("Accepter auto")
+    );
     expect(hookMocks.updateAutoModeMutate).toHaveBeenCalledWith({
       enabled: false,
       decision: "accept",
@@ -113,24 +125,30 @@ describe("DemoRequestsPanel", () => {
   });
 
   it("affiche toutes les informations du formulaire de demande demo", () => {
-    hookMocks.requests = [{
-      ...demoRequest,
-      full_name: "Awa Test",
-      email: "awa@example.com",
-      phone: "+237699000000",
-      company: "Awa Logistics",
-      company_identifier: "RCCM-123",
-      country_code: "CM",
-      source: "faq",
-      message: "Je veux tester la plateforme avec 12 vehicules.",
-    }];
+    hookMocks.requests = [
+      {
+        ...demoRequest,
+        full_name: "Awa Test",
+        email: "awa@example.com",
+        phone: "+237699000000",
+        company: "Awa Logistics",
+        company_identifier: "RCCM-123",
+        country_code: "CM",
+        source: "faq",
+        message: "Je veux tester la plateforme avec 12 vehicules.",
+      },
+    ];
 
-    render(<DemoRequestsPanel onCreateAccess={vi.fn()} onReloadSessions={vi.fn()} />);
+    render(
+      <DemoRequestsPanel onCreateAccess={vi.fn()} onReloadSessions={vi.fn()} />
+    );
 
     expect(screen.getByText("Awa Test")).toBeInTheDocument();
     expect(screen.getByText("awa@example.com")).toBeInTheDocument();
     expect(screen.getByText("+237699000000")).toBeInTheDocument();
-    expect(screen.getByText("Awa Logistics - RCCM-123 - CM")).toBeInTheDocument();
+    expect(
+      screen.getByText("Awa Logistics - RCCM-123 - CM")
+    ).toBeInTheDocument();
     expect(screen.getByText(/source/i)).toBeInTheDocument();
     expect(screen.getByText("faq")).toBeInTheDocument();
     expect(screen.getByText(/12 vehicules/i)).toBeInTheDocument();
