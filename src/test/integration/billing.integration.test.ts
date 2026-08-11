@@ -22,6 +22,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   makeAdminClient,
   seedTenant,
+  seedVehicles,
   seedTrialSubscription,
   seedActivePaidSubscription,
   seedExpiredSubscription,
@@ -60,12 +61,14 @@ describe("Billing integration — Supabase live", () => {
 
   beforeAll(async () => {
     admin = makeAdminClient();
-    // Crée org + flotte + 3 véhicules (limite Free)
-    tenant = await seedTenant(admin, tag, 3);
+    // Cree org + flotte; les vehicules sont ajoutes apres l'ouverture des slots.
+    tenant = await seedTenant(admin, tag, 0);
   });
 
   afterAll(async () => {
-    await cleanupTenant(admin, tenant.orgId);
+    if (tenant) {
+      await cleanupTenant(admin, tenant.orgId);
+    }
   });
 
   // ── 1. Création abonnement trial ─────────────────────────────────────────
@@ -99,6 +102,11 @@ describe("Billing integration — Supabase live", () => {
         .eq("event_type", "subscription.activated")
         .limit(1);
       expect(data?.length).toBeGreaterThan(0);
+    });
+
+    it("cree les vehicules apres ouverture des slots trial", async () => {
+      tenant.vehicleIds = await seedVehicles(admin, tenant.fleetId, tag, 3);
+      expect(tenant.vehicleIds).toHaveLength(3);
     });
   });
 
@@ -303,7 +311,7 @@ describe("Billing integration — Supabase live", () => {
     let subId: string;
 
     beforeAll(async () => {
-      expiredTenant = await seedTenant(admin, `${tag}-gc`, 1);
+      expiredTenant = await seedTenant(admin, `${tag}-gc`, 0);
       subId = await seedExpiredSubscription(admin, expiredTenant, "starter");
     });
 
@@ -347,7 +355,7 @@ describe("Billing integration — Supabase live", () => {
     let subId: string;
 
     beforeAll(async () => {
-      suspendTenant = await seedTenant(admin, `${tag}-sp`, 1);
+      suspendTenant = await seedTenant(admin, `${tag}-sp`, 0);
 
       // Créer un plan + abonnement déjà en grace_period expirée
       const { data: plan } = await admin
@@ -415,8 +423,14 @@ describe("Billing integration — Supabase live", () => {
     let proTenant: TestTenant;
 
     beforeAll(async () => {
-      proTenant = await seedTenant(admin, `${tag}-pro`, 2);
+      proTenant = await seedTenant(admin, `${tag}-pro`, 0);
       await seedActivePaidSubscription(admin, proTenant, { planCode: "pro" });
+      proTenant.vehicleIds = await seedVehicles(
+        admin,
+        proTenant.fleetId,
+        `${tag}-pro`,
+        2
+      );
     });
 
     afterAll(async () => {
@@ -445,8 +459,14 @@ describe("Billing integration — Supabase live", () => {
     let freeTenant: TestTenant;
 
     beforeAll(async () => {
-      freeTenant = await seedTenant(admin, `${tag}-free`, 1);
+      freeTenant = await seedTenant(admin, `${tag}-free`, 0);
       await seedTrialSubscription(admin, freeTenant.fleetId, 30);
+      freeTenant.vehicleIds = await seedVehicles(
+        admin,
+        freeTenant.fleetId,
+        `${tag}-free`,
+        1
+      );
     });
 
     afterAll(async () => {

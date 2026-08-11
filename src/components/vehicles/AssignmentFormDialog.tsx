@@ -173,7 +173,7 @@ export function AssignmentFormDialog({
                     <FormLabel>Chauffeur</FormLabel>
                     {drivers.length > 0 && availableDrivers.length === 0 ? (
                       <p className="text-xs text-muted-foreground">
-                        Aucun chauffeur disponible. Tous les chauffeurs actifs ont dÃ©jÃ  un vÃ©hicule affectÃ©.
+                        Aucun chauffeur disponible. Tous les chauffeurs actifs ont déjà un véhicule affecté.
                       </p>
                     ) : null}
                     <Select
@@ -205,7 +205,7 @@ export function AssignmentFormDialog({
                           </div>
                         ) : availableDrivers.length === 0 ? (
                           <div className="p-3 text-center text-sm text-muted-foreground">
-                            Aucun chauffeur disponible. Tous les chauffeurs actifs ont dÃ©jÃ  un vÃ©hicule affectÃ©.
+                            Aucun chauffeur disponible. Tous les chauffeurs actifs ont déjà un véhicule affecté.
                           </div>
                         ) : (
                           availableDrivers.map((driver) => (

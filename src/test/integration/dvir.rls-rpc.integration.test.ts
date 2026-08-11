@@ -153,6 +153,12 @@ describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
 
     await setMembershipRole("organizer", true);
 
+    const { error: trialError } = await supabaseAdmin.rpc("billing_start_trial", {
+      p_fleet_id: testFleetId,
+      p_trial_days: 30,
+    });
+    expect(trialError).toBeNull();
+
     const { data: vehicleIdA, error: vehicleAError } = await supabase.rpc(
       "create_esamba_vehicle",
       {

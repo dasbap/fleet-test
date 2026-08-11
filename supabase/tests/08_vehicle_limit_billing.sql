@@ -132,6 +132,8 @@ BEGIN
     RAISE EXCEPTION 'org_id incohérent dans le contexte interne';
   END IF;
 
+  PERFORM public.billing_start_trial(v_fleet_id, 30);
+
   FOR i IN 1..3 LOOP
     INSERT INTO vehicules (fleet_id, registration, current_km)
     VALUES (v_fleet_id, 'LIM-' || i, 1000 + i);
@@ -148,12 +150,18 @@ BEGIN
     RAISE EXCEPTION 'attendu: limite_vehicules_plan_atteinte';
   EXCEPTION
     WHEN OTHERS THEN
-      IF SQLERRM NOT ILIKE '%limite_vehicules_plan_atteinte%' THEN
+      IF SQLERRM NOT ILIKE '%limite_vehicules_plan_atteinte%'
+         AND SQLERRM NOT ILIKE '%limite_vehicules_abonnements_atteinte%' THEN
         RAISE;
       END IF;
   END;
 
+  DELETE FROM droits_vehicules WHERE vehicle_id IN (
+    SELECT id FROM vehicules WHERE fleet_id = v_fleet_id
+  );
   DELETE FROM vehicules WHERE fleet_id = v_fleet_id;
+  DELETE FROM billing_events WHERE fleet_id = v_fleet_id;
+  DELETE FROM abonnements WHERE fleet_id = v_fleet_id;
   DELETE FROM public.flotte_adhesions WHERE fleet_id = v_fleet_id AND user_id = v_user_id;
   DELETE FROM flottes WHERE id = v_fleet_id;
   DELETE FROM organisations WHERE id = v_org_id;
