@@ -1,16 +1,27 @@
 import { Link } from "react-router-dom";
-import { KeyRound, Shield, Users } from "lucide-react";
+import { CreditCard, KeyRound, Shield, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const ADMIN_ACTIONS = [
   {
     title: "Comptes utilisateurs",
-    description: "Créer des comptes, attribuer les accès et promouvoir un administrateur plateforme.",
+    description:
+      "Créer des comptes, attribuer les accès et promouvoir un administrateur plateforme.",
     href: ROUTE_PATHS.dashboardAdminUsers,
     icon: Users,
     cta: "Gérer",
+  },
+  {
+    title: "Abonnements",
+    description:
+      "Donner un plan a une flotte avec date d'expiration ou permanence.",
+    href: ROUTE_PATHS.dashboardAdminSubscriptions,
+    icon: CreditCard,
+    cta: "Attribuer",
+    superAdminOnly: true,
   },
   {
     title: "Accès démo",
@@ -22,6 +33,11 @@ const ADMIN_ACTIONS = [
 ] as const;
 
 export default function AdminDashboardPage() {
+  const { isSuperAdmin } = useRoleAccess();
+  const actions = ADMIN_ACTIONS.filter(
+    (action) => !("superAdminOnly" in action) || isSuperAdmin,
+  );
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <header className="flex flex-col gap-2">
@@ -39,7 +55,7 @@ export default function AdminDashboardPage() {
       </header>
 
       <section className="grid gap-4 md:grid-cols-2">
-        {ADMIN_ACTIONS.map((action) => (
+        {actions.map((action) => (
           <Card key={action.href} className="rounded-lg">
             <CardHeader className="flex flex-row items-start gap-3 space-y-0">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
@@ -47,7 +63,9 @@ export default function AdminDashboardPage() {
               </span>
               <div className="min-w-0">
                 <CardTitle className="text-base">{action.title}</CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">{action.description}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {action.description}
+                </p>
               </div>
             </CardHeader>
             <CardContent>

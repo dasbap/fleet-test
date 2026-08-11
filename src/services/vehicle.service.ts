@@ -1,5 +1,4 @@
 import { VehicleRepository } from '@/repositories/vehicle.repository';
-import { planValueMessages } from '@/lib/plan-value-messages';
 import type { FleetBillingService } from '@/services/fleet-billing.service';
 import { vehicleInsertSchema } from '@/domain/schemas/vehicle.schema';
 import { parseSchemaOrThrow } from '@/domain/lib/parseSchema';
@@ -102,8 +101,12 @@ export class VehicleService {
       return await this.repository.create(normalizedData);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('limite_vehicules_plan_atteinte')) {
-        throw new Error(planValueMessages.vehicleLimit.short);
+      if (
+        msg.includes('limite_vehicules_plan_atteinte') ||
+        msg.includes('limite_vehicules_abonnements_atteinte') ||
+        msg.includes('limite_vehicules_abonnement_atteinte')
+      ) {
+        throw new Error("Vous avez atteint la limite de véhicules autorisée par vos abonnements.");
       }
       throw err instanceof Error ? err : new Error(msg);
     }

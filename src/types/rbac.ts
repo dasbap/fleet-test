@@ -33,6 +33,7 @@ export type Permission =
   | "fleet.delete"
   // Véhicules
   | "vehicle.view"
+  | "vehicle.read_by_subscription"
   | "vehicle.create"
   | "vehicle.update"
   | "vehicle.delete"

@@ -5,6 +5,7 @@ import {
   CalendarClock,
   Car,
   CheckCircle2,
+  ClipboardList,
   CreditCard,
   Download,
   ExternalLink,
@@ -131,7 +132,7 @@ export default function BillingPage() {
       {/* ── En-tête ──────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Abonnement & Facturation</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Abonnements & Facturation</h1>
           <p className="text-sm text-muted-foreground">
             Gérez votre plan, vos licences véhicules et l'historique de paiements
           </p>
@@ -317,6 +318,12 @@ export default function BillingPage() {
               </Link>
             </Button>
           )}
+          <Button asChild size="sm" variant="outline">
+            <Link to={ROUTE_PATHS.dashboardSubscriptions}>
+              <ClipboardList className="mr-1.5 h-4 w-4" />
+              Gérer les abonnements
+            </Link>
+          </Button>
         </div>
       </section>
 

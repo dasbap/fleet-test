@@ -33,6 +33,7 @@ import {
   Map,
   MapPin,
   CalendarClock,
+  ClipboardList,
   CreditCard,
   KeyRound,
   Mic,
@@ -80,6 +81,7 @@ const DASHBOARD_NAV_ICONS: Record<string, LucideIcon> = {
   [ROUTE_PATHS.dashboardFinances]: DollarSign,
   [ROUTE_PATHS.dashboardCollections]: DollarSign,
   [ROUTE_PATHS.dashboardBilling]: CreditCard,
+  [ROUTE_PATHS.dashboardSubscriptions]: ClipboardList,
   [ROUTE_PATHS.dashboardAlerts]: Bell,
   [ROUTE_PATHS.dashboardCoaching]: Mic,
   [ROUTE_PATHS.dashboardDashcam]: Video,
@@ -90,6 +92,7 @@ const DASHBOARD_NAV_ICONS: Record<string, LucideIcon> = {
   [ROUTE_PATHS.dashboardRoles]: Shield,
   [ROUTE_PATHS.dashboardAdmin]: Shield,
   [ROUTE_PATHS.dashboardAdminUsers]: Shield,
+  [ROUTE_PATHS.dashboardAdminSubscriptions]: CreditCard,
   [ROUTE_PATHS.dashboardAdminDemo]: KeyRound,
   [ROUTE_PATHS.dashboardAdminFaq]: Shield,
   [ROUTE_PATHS.dashboardHelpAdmin]: Shield,
@@ -123,7 +126,7 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { userFleetId } = useAuth();
-  const { isAdmin } = useRoleAccess();
+  const { isAdmin, isSuperAdmin } = useRoleAccess();
   const billingQuery = useFleetBillingContext(userFleetId ?? undefined);
   const planOptions = {
     financeEnabled:
@@ -139,7 +142,12 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
     mechanic: withIcons(DASHBOARD_NAV.mechanic),
   };
 
-  const items = isAdmin ? withIcons(DASHBOARD_NAV.admin) : menuItems[userRole];
+  const adminItems = isSuperAdmin
+    ? DASHBOARD_NAV.admin
+    : DASHBOARD_NAV.admin.filter(
+        (item) => item.href !== ROUTE_PATHS.dashboardAdminSubscriptions,
+      );
+  const items = isAdmin ? withIcons(adminItems) : menuItems[userRole];
   const footerLinks = isAdmin
     ? DASHBOARD_SIDEBAR_FOOTER.filter((link) => link.href === ROUTE_PATHS.dashboardProfile)
     : DASHBOARD_SIDEBAR_FOOTER;
