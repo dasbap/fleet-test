@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -22,8 +22,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateVehicle } from "@/hooks/useVehicles";
 import { useActivation } from "@/hooks/useActivation";
+import { useFleetSubscriptions } from "@/hooks/useSubscriptionManagement";
 
 const vehicleFormSchema = vehicleCreateFormSchema;
 type VehicleFormValues = VehicleCreateFormValues;
@@ -37,12 +39,23 @@ interface VehicleFormDialogProps {
 
 const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFormDialogProps) => {
   const createVehicle = useCreateVehicle();
+  const { data: subscriptions = [], isLoading: subscriptionsLoading } = useFleetSubscriptions(fleetId);
   const { completeStep } = useActivation();
+  const subscriptionOptions = useMemo(
+    () =>
+      subscriptions.filter(
+        (subscription) =>
+          (subscription.status === "active" || subscription.status === "trial") &&
+          subscription.availableSlots > 0,
+      ),
+    [subscriptions],
+  );
 
   const form = useForm<VehicleFormValues>({
     resolver: zodResolver(vehicleFormSchema),
     defaultValues: {
       registration: "",
+      subscription_id: "",
       brand: "",
       model: "",
       year: new Date().getFullYear(),
@@ -53,6 +66,7 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
   const onSubmit = async (data: VehicleFormValues) => {
     await createVehicle.mutateAsync({
       fleet_id: fleetId,
+      subscription_id: data.subscription_id,
       registration: data.registration,
       brand: data.brand,
       model: data.model,
@@ -88,6 +102,39 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
                     <Input placeholder="LT 1234 A" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="subscription_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Abonnement</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger aria-label="Selectionner un abonnement">
+                        <SelectValue placeholder="Choisir un abonnement actif" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {subscriptionOptions.map((subscription) => (
+                        <SelectItem key={subscription.id} value={subscription.id}>
+                          {subscription.planName ?? subscription.planCode ?? "Abonnement"} -{" "}
+                          {subscription.availableSlots} slot
+                          {subscription.availableSlots > 1 ? "s" : ""} disponible
+                          {subscription.availableSlots > 1 ? "s" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                  {!subscriptionsLoading && subscriptionOptions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Aucun abonnement actif avec slot vehicule disponible.
+                    </p>
+                  ) : null}
                 </FormItem>
               )}
             />
@@ -160,7 +207,10 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
               >
                 Annuler
               </Button>
-              <Button type="submit" disabled={createVehicle.isPending}>
+              <Button
+                type="submit"
+                disabled={createVehicle.isPending || subscriptionsLoading || subscriptionOptions.length === 0}
+              >
                 {createVehicle.isPending ? "Enregistrement..." : "Ajouter"}
               </Button>
             </div>

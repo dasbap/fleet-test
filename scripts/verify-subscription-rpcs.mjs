@@ -24,6 +24,7 @@ try {
       ) as migration_recorded,
       to_regprocedure('public.admin_list_subscription_grant_options()')::text as list_options_rpc,
       to_regprocedure('public.admin_create_fleet_subscription(uuid,text,timestamptz,boolean,boolean,integer,text)')::text as create_subscription_rpc,
+      to_regprocedure('public.create_vehicle_with_subscription(uuid,uuid,text,text,text,integer,integer)')::text as create_vehicle_with_subscription_rpc,
       exists (
         select 1
         from information_schema.columns

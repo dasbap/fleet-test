@@ -55,11 +55,12 @@ export function canCreateVehicle(ctx: FleetBillingContext): PlanAccessResult {
     };
   }
 
-  const atMax = ctx.vehicleCount >= ctx.maxVehicles;
+  const effectiveVehicleLimit = Math.min(ctx.vehicleSlots, ctx.maxVehicles);
+  const atMax = ctx.vehicleCount >= effectiveVehicleLimit;
   if (atMax) {
     return {
       allowed: false,
-      upgradeMessage: `Limite de ${ctx.maxVehicles} véhicule${ctx.maxVehicles > 1 ? "s" : ""} atteinte. Passez à un plan supérieur pour en ajouter davantage.`,
+      upgradeMessage: `Limite de ${effectiveVehicleLimit} véhicule${effectiveVehicleLimit > 1 ? "s" : ""} atteinte. Passez à un plan supérieur pour en ajouter davantage.`,
       requiredPlan: isPlanAtLeast(ctx, "pro") ? "organizer" : "pro",
     };
   }

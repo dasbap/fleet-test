@@ -108,6 +108,20 @@ export class VehicleService {
       ) {
         throw new Error("Vous avez atteint la limite de véhicules autorisée par vos abonnements.");
       }
+      if (msg.includes('subscription_id_required')) {
+        throw new Error("Choisissez un abonnement avant de creer le vehicule.");
+      }
+      if (msg.includes('abonnement_inactif')) {
+        throw new Error("Cet abonnement n'est pas actif.");
+      }
+      if (msg.includes('abonnement_flotte_incompatible')) {
+        throw new Error("L'abonnement cible n'appartient pas a la meme flotte.");
+      }
+      if (msg.includes('schema cache') && msg.includes('create_vehicle_with_subscription')) {
+        throw new Error(
+          "Le lien vehicule-abonnement n'est pas encore actif cote base de donnees.",
+        );
+      }
       throw err instanceof Error ? err : new Error(msg);
     }
   }

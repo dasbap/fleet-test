@@ -24,6 +24,8 @@ export function useTransferVehicleSubscription(fleetId?: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["fleet-subscriptions", fleetId] });
       void queryClient.invalidateQueries({ queryKey: ["fleet-billing-context", fleetId] });
+      void queryClient.invalidateQueries({ queryKey: ["vehicles-list"] });
+      void queryClient.invalidateQueries({ queryKey: ["vehicles"] });
     },
   });
 }

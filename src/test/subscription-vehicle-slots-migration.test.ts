@@ -74,6 +74,35 @@ describe("subscription vehicle slots migration", () => {
     expect(migration).toContain("notify pgrst, 'reload schema'");
   });
 
+  it("keeps vehicle transfers inside the same subscription plan type", () => {
+    const migration = readFileSync(
+      "supabase/migrations/20260811140000_repair_subscription_slots_view_and_transfer_plan_type.sql",
+      "utf8",
+    );
+
+    expect(migration).toContain("create or replace function public.transfer_vehicle_subscription");
+    expect(migration).toContain("v_source_plan_code");
+    expect(migration).toContain("v_target.plan_code");
+    expect(migration).toContain("abonnement_type_incompatible");
+    expect(migration).toContain("v_source_plan_code is distinct from v_target.plan_code");
+    expect(migration).toContain("'available_slots', greatest(0,");
+    expect(migration).toContain("'available_slots_label'");
+  });
+
+  it("repairs active plan-max slots from the previous same-plan subscription", () => {
+    const migration = readFileSync(
+      "supabase/migrations/20260811141500_repair_plan_max_subscription_slots_from_previous.sql",
+      "utf8",
+    );
+
+    expect(migration).toContain("ranked_repairs");
+    expect(migration).toContain("a.vehicle_slots = p.max_vehicles");
+    expect(migration).toContain("previous.vehicle_slots is not null");
+    expect(migration).toContain("previous.vehicle_slots <> p.max_vehicles");
+    expect(migration).toContain("set vehicle_slots = ranked.previous_vehicle_slots");
+    expect(migration).toContain("notify pgrst, 'reload schema'");
+  });
+
   it("repairs admin grant RPCs when the original version was already marked applied", () => {
     const migration = repairSql();
 

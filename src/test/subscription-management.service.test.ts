@@ -48,6 +48,30 @@ describe("normalizeSubscriptionSummaries", () => {
     });
   });
 
+  it("uses granted vehicle_slots instead of the Pro catalog capacity", () => {
+    const result = normalizeSubscriptionSummaries([
+      {
+        id: "sub-pro-limited",
+        plan_code: "pro",
+        plan_name: "Pro",
+        status: "active",
+        vehicle_slots: "2",
+        vehicle_capacity: "100",
+        vehicle_count: "0",
+        available_slots: "2",
+        vehicles: [],
+      },
+    ]);
+
+    expect(result[0]).toMatchObject({
+      id: "sub-pro-limited",
+      planCode: "pro",
+      vehicleCapacity: 2,
+      availableSlots: 2,
+      vehicleCount: 0,
+    });
+  });
+
   it("keeps enterprise capacity unbounded when RPC returns null", () => {
     const result = normalizeSubscriptionSummaries([
       {
@@ -89,5 +113,9 @@ describe("mapSubscriptionError", () => {
         "Could not find the function public.list_fleet_subscriptions(p_fleet_id) in the schema cache",
       ),
     ).toContain("module Abonnements");
+  });
+
+  it("explains incompatible plan transfers", () => {
+    expect(mapSubscriptionError("abonnement_type_incompatible")).toContain("mÃªme type");
   });
 });

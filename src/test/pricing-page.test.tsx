@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import PricingPage from "@/pages/Pricing";
@@ -37,6 +37,36 @@ describe("PricingPage", () => {
     );
 
     expect(screen.getByTestId("pricing-plans-grid")).toHaveClass("lg:grid-cols-3");
+  });
+
+  it("permet de choisir le nombre de vehicules facture sur les plans publics", () => {
+    render(
+      <MemoryRouter>
+        <PricingPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText("Nombre de vehicules"), {
+      target: { value: "3" },
+    });
+
+    const starterCard = screen.getByRole("heading", { name: "Starter" }).closest(".relative");
+    expect(starterCard).toHaveTextContent("45 000");
+    expect(starterCard).toHaveTextContent("15 000 FCFA × 3");
+  });
+
+  it("prefill le renouvellement depuis les parametres d'URL", () => {
+    render(
+      <MemoryRouter initialEntries={["/pricing?plan=starter&vehicles=3&renew=sub-cancelled"]}>
+        <PricingPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByLabelText("Nombre de vehicules")).toHaveValue(3);
+
+    const starterCard = screen.getByRole("heading", { name: "Starter" }).closest(".relative");
+    expect(starterCard).toHaveTextContent("45 000");
+    expect(starterCard).toHaveTextContent("Renouvellement");
   });
 
   it("n'affiche plus le configurateur d'abonnement", () => {

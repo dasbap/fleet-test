@@ -1,5 +1,10 @@
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useFleetSubscriptions } from "@/hooks/useSubscriptionManagement";
+import {
+  resolveEffectiveVehicleSlots,
+  sumActiveSubscriptionVehicleCapacity,
+} from "@/lib/subscription-vehicle-capacity";
 import {
   SUBSCRIPTION_ACCESS,
   type SubscriptionAccessRule,
@@ -32,8 +37,9 @@ const FALLBACK_STATUS: SubscriptionStatus = "suspended";
 export function useSubscriptionAccess(): SubscriptionAccessState {
   const { userFleetId } = useAuth();
   const billing = useFleetBillingContext(userFleetId ?? undefined);
+  const subscriptions = useFleetSubscriptions(userFleetId ?? undefined);
 
-  if (billing.isLoading || !billing.data) {
+  if (billing.isLoading || subscriptions.isLoading || !billing.data) {
     return {
       status: null,
       isLoading: true,
@@ -55,10 +61,16 @@ export function useSubscriptionAccess(): SubscriptionAccessState {
     : (rawStatus as SubscriptionStatus) ?? FALLBACK_STATUS;
 
   const rule = SUBSCRIPTION_ACCESS[status] ?? SUBSCRIPTION_ACCESS[FALLBACK_STATUS];
+  const subscriptionSlots = sumActiveSubscriptionVehicleCapacity(subscriptions.data ?? []);
+  const vehicleSlots = resolveEffectiveVehicleSlots({
+    subscriptionSlots,
+    contextSlots: ctx.vehicleSlots,
+    planMax: ctx.maxVehicles,
+  });
 
   const effectiveMax = status === "trial"
     ? 3
-    : (ctx.maxVehicles ?? Infinity);
+    : vehicleSlots;
 
   const canAddMoreVehicles =
     rule.canAddVehicles && ctx.vehicleCount < effectiveMax;
@@ -67,7 +79,7 @@ export function useSubscriptionAccess(): SubscriptionAccessState {
     status,
     isLoading: false,
     vehicleCount: ctx.vehicleCount,
-    vehicleSlots: ctx.vehicleSlots,
+    vehicleSlots,
     canAddMoreVehicles,
     endsAt: ctx.subscriptionEndsAt ?? null,
     graceUntil: ctx.gracePeriodEndsAt ?? null,

@@ -5,6 +5,10 @@ import {
   normalizeInboundPaymentStatus,
   type PaymentStatus,
 } from "@/lib/billing/paymentStates";
+import {
+  assertVehicleCountWithinPlanLimit,
+  resolveRenewedVehicleSlots,
+} from "@/server/domain/billing/vehicleSlotLimits";
 
 const rawPayloadSchema = z.object({
   planCode: z.string().min(1),
@@ -149,15 +153,21 @@ async function activateSubscriptionForSucceededPayment(
 
   const { data: planRow, error: planErr } = await admin
     .from("plans")
-    .select("id")
+    .select("id, code, max_vehicles")
     .eq("code", planCode)
     .eq("is_active", true)
-    .maybeSingle<{ id: string }>();
+    .maybeSingle<{ id: string; code: string; max_vehicles: number | null }>();
 
   if (planErr) throw new Error(planErr.message);
   if (!planRow) {
     throw new Error(`Plan actif introuvable pour le code « ${planCode} ».`);
   }
+
+  assertVehicleCountWithinPlanLimit({
+    planCode: planRow.code,
+    requestedVehicleCount: vehicleCount,
+    planMaxVehicles: planRow.max_vehicles,
+  });
 
   const now = new Date();
   const nowIso = now.toISOString();
@@ -165,14 +175,14 @@ async function activateSubscriptionForSucceededPayment(
 
   const { data: activeSub, error: subErr } = await admin
     .from("abonnements")
-    .select("id, plan_id, starts_at, ends_at, status")
+    .select("id, plan_id, starts_at, ends_at, status, vehicle_slots")
     .eq("fleet_id", fleetId)
     .eq("status", "active")
     .lte("starts_at", nowIso)
     .gte("ends_at", nowIso)
     .order("ends_at", { ascending: false })
     .limit(1)
-    .maybeSingle<{ id: string; plan_id: string; starts_at: string; ends_at: string; status: string }>();
+    .maybeSingle<{ id: string; plan_id: string; starts_at: string; ends_at: string; status: string; vehicle_slots: number | null }>();
 
   if (subErr) throw new Error(subErr.message);
 
@@ -188,7 +198,15 @@ async function activateSubscriptionForSucceededPayment(
     endsAtIso = newEnd.toISOString();
     const { error: extErr } = await admin
       .from("abonnements")
-      .update({ ends_at: endsAtIso, payment_id: payment.id })
+      .update({
+        ends_at: endsAtIso,
+        payment_id: payment.id,
+        vehicle_slots: resolveRenewedVehicleSlots({
+          currentVehicleSlots: activeSub.vehicle_slots,
+          requestedVehicleCount: vehicleCount,
+          planMaxVehicles: planRow.max_vehicles,
+        }),
+      })
       .eq("id", activeSub.id);
     if (extErr) throw new Error(extErr.message);
     subscriptionId = activeSub.id;
@@ -211,6 +229,7 @@ async function activateSubscriptionForSucceededPayment(
         starts_at: startsAtIso,
         ends_at: endsAtIso,
         status: "active",
+        vehicle_slots: Math.max(1, vehicleCount),
       })
       .select("id")
       .single<{ id: string }>();

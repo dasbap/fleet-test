@@ -6,14 +6,24 @@ import { toPlanCode } from "@/lib/fleet-billing-plan-enables";
 /** Valeurs par défaut alignées sur `normalizeFleetBillingContext` / `buildAuthContext`. */
 export const DEFAULT_FLEET_BILLING_CONTEXT: FleetBillingContext = {
   planCode: "free",
+  planName: "Gratuit",
   isPaid: false,
   vehicleCount: 0,
+  activeVehicles: 0,
+  vehicleSlots: 3,
   maxVehicles: 3,
+  billingStatus: "trial",
+  trialEndsAt: null,
+  subscriptionEndsAt: null,
+  graceUntil: null,
   financeEnabled: false,
   aiEnabled: false,
   reportsEnabled: false,
   driverScoringEnabled: false,
   anomalyInsightsEnabled: false,
+  geofencingEnabled: false,
+  scheduledReportsEnabled: false,
+  offlineDriverEnabled: false,
 };
 
 export interface PlanGateResult {

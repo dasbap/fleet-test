@@ -200,7 +200,7 @@ export async function fetchAbonnementPageData(
   );
 
   const maxVehicles =
-    billing.max_vehicles ?? billing.vehicle_slots ?? 3;
+    billing.vehicle_slots ?? billing.max_vehicles ?? 3;
 
   return {
     org: {

@@ -196,6 +196,7 @@ export async function initiateSubscriptionPayment(
         starts_at: now.toISOString(),
         ends_at: endsAt.toISOString(),
         status: "pending_payment",
+        vehicle_slots: Math.max(1, plan.max_vehicles ?? 1),
       })
       .select("id")
       .single<{ id: string }>();

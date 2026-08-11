@@ -477,7 +477,7 @@ function VehicleInfoPanel({
           </div>
         ))}
       </div>
-      {canAssignDriver && vehicle.status === "ok" ? (
+      {canAssignDriver && (vehicle.status === "ok" || vehicle.active_assignment) ? (
         <div className="border-t border-border p-4">
           {vehicle.active_assignment ? (
             <Button
@@ -489,7 +489,7 @@ function VehicleInfoPanel({
               onClick={onEndAssignment}
             >
               <UserMinus className="h-4 w-4" aria-hidden />
-              Delier le chauffeur
+              Retirer le chauffeur
             </Button>
           ) : (
             <Button type="button" variant="outline" size="sm" className="w-full gap-2" onClick={onAssign}>
@@ -753,7 +753,7 @@ export default function FleetVehicleDetailPage() {
     if (!assignment) return;
 
     const driverName = assignment.driver?.full_name?.trim() || "ce chauffeur";
-    const confirmed = window.confirm(`Delier ${driverName} de ce vehicule ?`);
+    const confirmed = window.confirm(`Retirer ${driverName} de ce vehicule ?`);
     if (!confirmed) return;
 
     try {

@@ -20,6 +20,7 @@ export interface SubscriptionSummary {
   startsAt: string | null;
   endsAt: string | null;
   cancelledAt: string | null;
+  vehicleSlots: number | null;
   vehicleCapacity: number | null;
   vehicleCount: number;
   availableSlots: number;
@@ -106,6 +107,7 @@ export function normalizeSubscriptionDetail(raw: unknown): SubscriptionSummary |
 function normalizeSubscriptionRow(raw: unknown): SubscriptionSummary {
   const row = isRecord(raw) ? raw : {};
   const vehiclesRaw = Array.isArray(row.vehicles) ? row.vehicles : [];
+  const vehicleSlots = nullableNum(row.vehicle_slots);
 
   return {
     id: str(row.id) ?? "",
@@ -118,7 +120,8 @@ function normalizeSubscriptionRow(raw: unknown): SubscriptionSummary {
     startsAt: str(row.starts_at),
     endsAt: str(row.ends_at),
     cancelledAt: str(row.cancelled_at),
-    vehicleCapacity: nullableNum(row.vehicle_capacity),
+    vehicleSlots,
+    vehicleCapacity: vehicleSlots ?? nullableNum(row.vehicle_capacity),
     vehicleCount: num(row.vehicle_count),
     availableSlots: num(row.available_slots),
     vehicles: vehiclesRaw.map(normalizeVehicleRow),
@@ -173,6 +176,9 @@ export function mapSubscriptionError(message: string): string {
   }
   if (message.includes("abonnement_standard_deja_utilise")) {
     return "Cet abonnement standard est déjà associé à un véhicule.";
+  }
+  if (message.includes("abonnement_type_incompatible")) {
+    return "Ce vÃ©hicule doit rester sur un abonnement du mÃªme type.";
   }
   if (message.includes("abonnement_inactif")) {
     return "Cet abonnement n'est pas actif.";

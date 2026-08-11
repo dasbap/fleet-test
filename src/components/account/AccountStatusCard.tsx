@@ -87,7 +87,12 @@ export function AccountStatusCard() {
         <SubscriptionTimeline subscription={subscription} />
 
         {/* Métriques flotte */}
-        {fleet && <FleetMetricsRow fleet={fleet} maxVehicles={subscription.plan.max_vehicles} />}
+        {fleet && (
+          <FleetMetricsRow
+            fleet={fleet}
+            maxVehicles={subscription.plan.vehicle_slots ?? fleet.vehicle_slots ?? subscription.plan.max_vehicles}
+          />
+        )}
 
         {/* Fonctionnalités actives */}
         <FeatureGrid features={subscription.plan.features} />
