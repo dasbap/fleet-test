@@ -104,9 +104,9 @@ describe("Billing integration — Supabase live", () => {
       expect(data?.length).toBeGreaterThan(0);
     });
 
-    it("cree les vehicules apres ouverture des slots trial", async () => {
-      tenant.vehicleIds = await seedVehicles(admin, tenant.fleetId, tag, 3);
-      expect(tenant.vehicleIds).toHaveLength(3);
+    it("cree le vehicule apres ouverture du slot trial", async () => {
+      tenant.vehicleIds = await seedVehicles(admin, tenant.fleetId, tag, 1);
+      expect(tenant.vehicleIds).toHaveLength(1);
     });
   });
 
@@ -114,7 +114,7 @@ describe("Billing integration — Supabase live", () => {
 
   describe("2 — Limite Free (3 véhicules)", () => {
     it("can_create_vehicle retourne FALSE quand flotte est à la limite", async () => {
-      // Le tenant a déjà 3 véhicules + trial Free (max 3)
+      // Le tenant a deja 1 vehicule + 1 abonnement trial Free (1 slot).
       const allowed = await canFleetCreateVehicle(admin, tenant.fleetId);
       expect(allowed).toBe(false);
     });
@@ -483,9 +483,9 @@ describe("Billing integration — Supabase live", () => {
       expect(access.reports_enabled).toBe(false);
     });
 
-    it("can_create_vehicle = true avec 1 véhicule sur Free (limite 3)", async () => {
+    it("can_create_vehicle = false avec 1 vehicule sur le seul slot Free", async () => {
       const allowed = await canFleetCreateVehicle(admin, freeTenant.fleetId);
-      expect(allowed).toBe(true);
+      expect(allowed).toBe(false);
     });
   });
 });

@@ -159,6 +159,13 @@ describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
     });
     expect(trialError).toBeNull();
 
+    const { error: trialSlotsError } = await supabaseAdmin
+      .from("abonnements")
+      .update({ vehicle_slots: 2 })
+      .eq("fleet_id", testFleetId)
+      .eq("status", "trial");
+    expect(trialSlotsError).toBeNull();
+
     const { data: vehicleIdA, error: vehicleAError } = await supabase.rpc(
       "create_esamba_vehicle",
       {
