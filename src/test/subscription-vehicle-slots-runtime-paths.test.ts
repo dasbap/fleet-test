@@ -31,6 +31,15 @@ describe("subscription vehicle slots runtime paths", () => {
       expect(upgradePageSource()).not.toContain("const vehicleCount = DEFAULT_VEHICLE_COUNTS[plan.key]");
     });
 
+  it("does not offer the free plan from the upgrade page", () => {
+    const source = upgradePageSource();
+
+    expect(source).not.toContain('type PlanKey = "free"');
+    expect(source).not.toContain('key: "free"');
+    expect(source).not.toContain("Demander le gratuit");
+    expect(source).not.toContain("PUBLIC_PRICE_FREE_PER_VEHICLE_XAF");
+  });
+
   it("keeps existing same-plan subscriptions aligned when a payment extends them", () => {
     expect(inboundWebhookSource()).toContain(
       "vehicle_slots: resolveRenewedVehicleSlots({",

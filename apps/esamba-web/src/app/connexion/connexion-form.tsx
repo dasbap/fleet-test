@@ -222,7 +222,7 @@ export function ConnexionForm({ nextPath = "/dashboard" }: ConnexionFormProps) {
             href="/inscription"
             className="font-medium text-primary hover:underline"
           >
-            Créer un compte gratuit
+            Créer un compte
           </Link>
         </p>
       </CardContent>

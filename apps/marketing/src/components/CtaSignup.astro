@@ -6,7 +6,7 @@ interface Props {
   variant?: "primary" | "outline";
 }
 
-const { label = "Démarrer gratuitement", variant = "primary" } = Astro.props;
+const { label = "Choisir une offre", variant = "primary" } = Astro.props;
 const classes =
   variant === "primary"
     ? "inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"

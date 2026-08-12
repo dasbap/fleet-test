@@ -21,7 +21,7 @@ describe("AdminSubscriptionService", () => {
   it("normalizes fleets and plans returned by the grant-options RPC", () => {
     const options = normalizeSubscriptionGrantOptions({
       fleets: [{ id: "fleet-1", name: "Douala", org_name: "Org" }],
-      plans: [{ code: "pro", name: "Pro" }],
+      plans: [{ code: "starter", name: "Starter", max_vehicles: 25 }],
     });
 
     expect(options.fleets[0]).toEqual({
@@ -29,7 +29,7 @@ describe("AdminSubscriptionService", () => {
       name: "Douala",
       orgName: "Org",
     });
-    expect(options.plans[0]).toEqual({ code: "pro", name: "Pro" });
+    expect(options.plans[0]).toEqual({ code: "starter", name: "Starter", maxVehicles: 25 });
   });
 
   it("sends null expires_at when permanence is enabled", async () => {
@@ -69,6 +69,24 @@ describe("AdminSubscriptionService", () => {
         vehicleSlots: 0,
       }),
     ).rejects.toThrow("Choisissez un nombre de vehicules superieur a 0.");
+
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("rejects vehicle counts above the selected plan limit before calling the RPC", async () => {
+    const service = new AdminSubscriptionService();
+
+    await expect(
+      service.grantSubscription({
+        fleetId: "fleet-1",
+        planCode: "starter",
+        expiresAt: "2026-12-31T23:59:59.000Z",
+        permanent: false,
+        replaceExisting: true,
+        vehicleSlots: 26,
+        planMaxVehicles: 25,
+      }),
+    ).rejects.toThrow("Le plan Starter autorise jusqu'a 25 vehicules.");
 
     expect(rpc).not.toHaveBeenCalled();
   });

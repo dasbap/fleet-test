@@ -14,6 +14,12 @@ const repairSql = () =>
     "utf8",
   );
 
+const planLimitsSql = () =>
+  readFileSync(
+    "supabase/migrations/20260812100000_expose_admin_subscription_plan_limits.sql",
+    "utf8",
+  );
+
 describe("subscription vehicle slots migration", () => {
   it("centralizes plan capacity and active subscription vehicles", () => {
     const migration = sql();
@@ -117,6 +123,19 @@ describe("subscription vehicle slots migration", () => {
     expect(migration).toContain("'geofencing_enabled', row_source.geofencing_enabled");
     expect(migration).toContain("p.enables_scheduled_reports");
     expect(migration).toContain("notify pgrst, 'reload schema'");
+  });
+
+  it("exposes plan vehicle limits to the admin grant UI", () => {
+    const migration = planLimitsSql();
+    const deltaMigrations = readFileSync("supabase/baseline/delta-migrations.txt", "utf8");
+
+    expect(migration).toContain("create or replace function public.admin_list_subscription_grant_options()");
+    expect(migration).toContain("'max_vehicles', p.max_vehicles");
+    expect(migration).toContain("grant execute on function public.admin_list_subscription_grant_options() to authenticated");
+    expect(migration).toContain("notify pgrst, 'reload schema'");
+    expect(deltaMigrations).toContain(
+      "supabase/migrations/20260812100000_expose_admin_subscription_plan_limits.sql",
+    );
   });
 
   it("repairs admin grant RPCs when the original version was already marked applied", () => {

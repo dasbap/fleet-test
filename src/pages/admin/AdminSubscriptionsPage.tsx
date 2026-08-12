@@ -53,6 +53,12 @@ export default function AdminSubscriptionsPage() {
     () => options.fleets.find((fleet) => fleet.id === fleetId),
     [fleetId, options.fleets],
   );
+  const selectedPlan = useMemo(
+    () => options.plans.find((plan) => plan.code === planCode),
+    [planCode, options.plans],
+  );
+  const exceedsPlanLimit =
+    selectedPlan?.maxVehicles != null && vehicleSlots > selectedPlan.maxVehicles;
 
   useEffect(() => {
     if (isLoading || !isSuperAdmin) return;
@@ -100,6 +106,7 @@ export default function AdminSubscriptionsPage() {
         permanent,
         replaceExisting,
         vehicleSlots,
+        planMaxVehicles: selectedPlan?.maxVehicles,
       });
     } catch (submitError) {
       const message = submitError instanceof Error ? submitError.message : "Abonnement non attribue";
@@ -230,16 +237,23 @@ export default function AdminSubscriptionsPage() {
                 id="vehicle-slots"
                 type="number"
                 min={1}
+                max={selectedPlan?.maxVehicles ?? undefined}
                 step={1}
                 inputMode="numeric"
                 value={vehicleSlots}
                 disabled={submitting}
+                aria-invalid={exceedsPlanLimit}
                 required
                 onChange={(event) => {
                   const nextValue = Number.parseInt(event.target.value || "1", 10);
                   setVehicleSlots(Number.isFinite(nextValue) ? Math.max(1, nextValue) : 1);
                 }}
               />
+              {selectedPlan?.maxVehicles != null && (
+                <p className="text-xs text-muted-foreground">
+                  Maximum {selectedPlan.maxVehicles} vehicule{selectedPlan.maxVehicles > 1 ? "s" : ""} pour ce plan.
+                </p>
+              )}
             </div>
 
             <div className="grid gap-2">
@@ -283,6 +297,7 @@ export default function AdminSubscriptionsPage() {
                   !fleetId ||
                   !planCode ||
                   vehicleSlots <= 0 ||
+                  exceedsPlanLimit ||
                   (!permanent && !expiresOn)
                 }
               >

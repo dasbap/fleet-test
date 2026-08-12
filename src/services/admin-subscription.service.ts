@@ -9,6 +9,7 @@ export interface AdminSubscriptionFleetOption {
 export interface AdminSubscriptionPlanOption {
   code: string;
   name: string;
+  maxVehicles: number | null;
 }
 
 export interface AdminSubscriptionGrantOptions {
@@ -23,6 +24,7 @@ export interface AdminSubscriptionGrantInput {
   permanent: boolean;
   replaceExisting: boolean;
   vehicleSlots: number;
+  planMaxVehicles?: number | null;
 }
 
 export class AdminSubscriptionService {
@@ -45,6 +47,11 @@ export class AdminSubscriptionService {
     }
     if (!Number.isInteger(input.vehicleSlots) || input.vehicleSlots <= 0) {
       throw new Error("Choisissez un nombre de vehicules superieur a 0.");
+    }
+    if (input.planMaxVehicles != null && input.vehicleSlots > input.planMaxVehicles) {
+      throw new Error(
+        `Le plan ${formatPlanName(input.planCode)} autorise jusqu'a ${input.planMaxVehicles} vehicules.`,
+      );
     }
 
     const { error } = await supabase.rpc("admin_create_fleet_subscription", {
@@ -82,6 +89,7 @@ export function normalizeSubscriptionGrantOptions(raw: unknown): AdminSubscripti
       return {
         code: str(row.code),
         name: str(row.name) || str(row.code),
+        maxVehicles: nullableNum(row.max_vehicles),
       };
     }).filter((plan) => plan.code),
   };
@@ -100,6 +108,9 @@ function mapAdminSubscriptionError(message: string): string {
   if (message.includes("vehicle_slots_must_be_positive")) {
     return "Choisissez un nombre de vehicules superieur a 0.";
   }
+  if (message.includes("limite_vehicules_plan_flotte_atteinte")) {
+    return "Ce nombre de vehicules depasse le plafond autorise pour ce plan.";
+  }
   if (message.includes("fleet_not_found")) {
     return "Flotte introuvable.";
   }
@@ -115,4 +126,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function str(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function nullableNum(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function formatPlanName(planCode: string): string {
+  const normalized = planCode.trim().toLowerCase();
+  if (normalized === "starter") return "Starter";
+  if (normalized === "pro") return "Pro";
+  if (normalized === "enterprise") return "Enterprise";
+  return planCode || "selectionne";
 }

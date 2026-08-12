@@ -17,6 +17,8 @@ describe("admin subscription grant module", () => {
     expect(page).toContain("isSuperAdmin");
     expect(page).toContain("Plan");
     expect(page).toContain("Nombre de vehicules");
+    expect(page).toContain("selectedPlan?.maxVehicles");
+    expect(page).toContain("max={selectedPlan?.maxVehicles ?? undefined}");
     expect(page).toContain("Date d'expiration");
     expect(page).toContain("Permanent");
   });
