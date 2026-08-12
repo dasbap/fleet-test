@@ -18,4 +18,14 @@ describe("create_vehicle_with_subscription RPC", () => {
     expect(sql).toContain("grant execute on function public.create_vehicle_with_subscription");
     expect(sql).toContain("notify pgrst, 'reload schema'");
   });
+
+  it("activates an inactive subscription when the first vehicle is created", () => {
+    const sql = migration();
+
+    expect(sql).toContain("if v_target.status = 'inactive' then");
+    expect(sql).toContain("update public.abonnements");
+    expect(sql).toContain("set status = 'active'");
+    expect(sql).toContain("where id = p_subscription_id");
+    expect(sql).toContain("v_target.status := 'active'");
+  });
 });

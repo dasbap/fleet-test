@@ -56,6 +56,14 @@ begin
     raise exception 'abonnement_flotte_incompatible';
   end if;
 
+  if v_target.status = 'inactive' then
+    update public.abonnements
+       set status = 'active'
+     where id = p_subscription_id;
+
+    v_target.status := 'active';
+  end if;
+
   if not public.is_vehicle_subscription_status_active(v_target.status) then
     raise exception 'abonnement_inactif';
   end if;

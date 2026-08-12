@@ -4,13 +4,12 @@
  */
 import type PosthogType from "posthog-js";
 import i18n from "@/i18n";
-import { isNativePlatform } from "@/lib/platform";
 
 const PH_KEY = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
 /** Hôte API PostHog (variable d'environnement, repli UE si absent). */
 const PH_HOST =
   (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ||
-  "https://eu.posthog.com";
+  "https://eu.i.posthog.com";
 
 let didInit = false;
 let analyticsEnabled = false;
@@ -25,35 +24,38 @@ function registerPosthogSuperProps(): void {
   });
 }
 
+function getPosthogKey(): string | null {
+  const key = PH_KEY?.trim();
+
+  if (!key || /x{6,}/i.test(key) || /^(?:phc_)?x+$/i.test(key)) {
+    return null;
+  }
+
+  return key;
+}
+
 export function initAnalytics(): void {
   if (didInit) return;
   didInit = true;
-  if (!PH_KEY) {
+  const posthogKey = getPosthogKey();
+  if (!posthogKey) {
     if (import.meta.env.DEV) {
       console.info("[Analytics] PostHog key manquante — désactivé");
     }
     return;
   }
-  const native = isNativePlatform();
   // Import dynamique : posthog-js ne bloque pas le rendu initial.
   void import("posthog-js").then(({ default: posthog }) => {
     try {
-      posthog.init(PH_KEY!, {
+      posthog.init(posthogKey, {
         api_host: PH_HOST,
         persistence: "localStorage",
         autocapture: false,
         capture_pageview: false,
         capture_pageleave: false,
-        /** WebView natif : session replay souvent fragile ou coûteux ; le web garde le masquage champs sensibles. */
-        disable_session_recording: native,
-        ...(!native
-          ? {
-              session_recording: {
-                maskAllInputs: true,
-                maskInputOptions: { password: true, email: true },
-              },
-            }
-          : {}),
+        advanced_disable_feature_flags: true,
+        disable_surveys: true,
+        disable_session_recording: true,
         sanitize_properties: (properties) => {
           delete properties["$email"];
           delete properties["phone"];

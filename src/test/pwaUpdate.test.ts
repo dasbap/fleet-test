@@ -41,4 +41,13 @@ describe("PWA service worker update", () => {
       noStoreSources.some((source) => source === "/workbox-:path*.js")
     ).toBe(true);
   });
+
+  it("does not serve the SPA fallback for marketing routes redirected cross-origin", () => {
+    const viteConfig = readFileSync("vite.config.ts", "utf8");
+
+    expect(viteConfig).toContain("/^\\/blog(?:\\/|$)/");
+    expect(viteConfig).toContain("/^\\/guides(?:\\/|$)/");
+    expect(viteConfig).toContain("/^\\/fonctionnalites(?:\\/|$)/");
+    expect(viteConfig).toContain("/^\\/solutions(?:\\/|$)/");
+  });
 });

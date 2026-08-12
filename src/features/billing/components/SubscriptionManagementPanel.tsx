@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
+  useActivateSubscription,
   useFleetSubscriptions,
   useTerminateSubscriptionEarly,
   useTransferVehicleSubscription,
@@ -45,6 +46,7 @@ interface SubscriptionManagementPanelProps {
 
 const STATUS_LABELS: Record<string, string> = {
   trial: "Essai",
+  inactive: "Inactif",
   active: "Actif",
   grace_period: "Grâce",
   suspended: "Suspendu",
@@ -54,6 +56,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_CLASSES: Record<string, string> = {
   trial: "border-blue-200 bg-blue-50 text-blue-700",
+  inactive: "border-slate-200 bg-slate-50 text-slate-700",
   active: "border-green-200 bg-green-50 text-green-700",
   grace_period: "border-amber-200 bg-amber-50 text-amber-700",
   suspended: "border-red-200 bg-red-50 text-red-700",
@@ -71,8 +74,10 @@ export function SubscriptionManagementPanel({
   const subscriptions = useFleetSubscriptions(fleetId ?? undefined);
   const transfer = useTransferVehicleSubscription(fleetId ?? undefined);
   const terminate = useTerminateSubscriptionEarly(fleetId ?? undefined);
+  const activate = useActivateSubscription(fleetId ?? undefined);
   const [selected, setSelected] = useState<SubscriptionSummary | null>(null);
   const [terminatingId, setTerminatingId] = useState<string | null>(null);
+  const [activatingId, setActivatingId] = useState<string | null>(null);
   const [confirmTerminateId, setConfirmTerminateId] = useState<string | null>(null);
   const [transferDraft, setTransferDraft] = useState<Record<string, string>>({});
   const [showEndedSubscriptions, setShowEndedSubscriptions] = useState(false);
@@ -131,6 +136,26 @@ export function SubscriptionManagementPanel({
     }
   };
 
+  const handleActivate = async (subscriptionId: string) => {
+    if (activatingId) {
+      return;
+    }
+
+    setActivatingId(subscriptionId);
+    try {
+      await activate.mutateAsync(subscriptionId);
+      toast({ title: "Abonnement activÃ©" });
+    } catch (error) {
+      toast({
+        title: "Activation impossible",
+        description: error instanceof Error ? error.message : "Erreur inconnue.",
+        variant: "destructive",
+      });
+    } finally {
+      setActivatingId(null);
+    }
+  };
+
   if (!fleetId) {
     return null;
   }
@@ -175,14 +200,14 @@ export function SubscriptionManagementPanel({
           </p>
         </div>
         {endedCount > 0 ? (
-          <label className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm">
             <Switch
               checked={showEndedSubscriptions}
               onCheckedChange={setShowEndedSubscriptions}
               aria-label="Afficher les abonnements termines"
             />
             <span>Afficher les abonnements termines</span>
-          </label>
+          </div>
         ) : null}
       </div>
 
@@ -227,6 +252,21 @@ export function SubscriptionManagementPanel({
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    {canManage && subscription.status === "inactive" ? (
+                      <Button
+                        size="sm"
+                        onClick={() => void handleActivate(subscription.id)}
+                        disabled={activatingId === subscription.id || activate.isPending}
+                        aria-label={`Activer ${subscription.planName ?? subscription.planCode ?? "abonnement"}`}
+                      >
+                        {activatingId === subscription.id || activate.isPending ? (
+                          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                        )}
+                        Activer
+                      </Button>
+                    ) : null}
                     {canManage && isEndedSubscription(subscription) ? (
                       <Button asChild size="sm">
                         <Link to={buildRenewalPricingHref(subscription)}>

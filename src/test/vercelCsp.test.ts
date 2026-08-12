@@ -23,4 +23,19 @@ describe("vercel Content-Security-Policy", () => {
   it("allows Vite module workers emitted as same-origin or data/blob URLs", () => {
     expect(getCsp()).toContain("worker-src 'self' blob: data:");
   });
+
+  it("allows the PostHog EU ingestion and asset endpoints used by the browser SDK", () => {
+    const csp = getCsp();
+
+    expect(csp).toContain("script-src");
+    expect(csp).toContain("https://eu-assets.i.posthog.com");
+    expect(csp).toContain("connect-src");
+    expect(csp).toContain("https://eu.i.posthog.com");
+  });
+
+  it("allows the configured public PMTiles archive host", () => {
+    expect(getCsp()).toContain(
+      "https://pub-8c4a7313a75946149688b380cba66fba.r2.dev"
+    );
+  });
 });

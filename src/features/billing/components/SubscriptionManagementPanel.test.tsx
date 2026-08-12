@@ -1,8 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SubscriptionManagementPanel } from "./SubscriptionManagementPanel";
+
+const activateMutation = vi.fn();
 
 vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
@@ -29,6 +31,23 @@ vi.mock("@/hooks/useSubscriptionManagement", () => ({
         vehicles: [{ id: "v1", registration: "AA-001", status: "ok" }],
       },
       {
+        id: "sub-inactive",
+        fleetId: "fleet-1",
+        fleetName: "Flotte tuto",
+        planId: "plan-starter",
+        planCode: "starter",
+        planName: "Starter demo",
+        status: "inactive",
+        startsAt: "2026-08-12T00:00:00.000Z",
+        endsAt: "2026-09-12T00:00:00.000Z",
+        cancelledAt: null,
+        vehicleSlots: 10,
+        vehicleCapacity: 10,
+        vehicleCount: 0,
+        availableSlots: 10,
+        vehicles: [],
+      },
+      {
         id: "sub-cancelled",
         fleetId: "fleet-1",
         fleetName: "Flotte tuto",
@@ -52,10 +71,16 @@ vi.mock("@/hooks/useSubscriptionManagement", () => ({
   }),
   useTerminateSubscriptionEarly: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useTransferVehicleSubscription: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useActivateSubscription: () => ({ mutateAsync: activateMutation, isPending: false }),
 }));
 
 describe("SubscriptionManagementPanel", () => {
-  it("masque les abonnements termines par defaut et permet de les renouveler", () => {
+  beforeEach(() => {
+    activateMutation.mockReset();
+    activateMutation.mockResolvedValue(undefined);
+  });
+
+  it("masque les abonnements termines par defaut et permet de les renouveler", async () => {
     render(
       <MemoryRouter>
         <SubscriptionManagementPanel fleetId="fleet-1" canManage />
@@ -67,14 +92,14 @@ describe("SubscriptionManagementPanel", () => {
 
     fireEvent.click(screen.getByRole("switch", { name: /Afficher les abonnements termines/i }));
 
-    expect(screen.getByText("Starter")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Starter")).toBeInTheDocument());
     expect(screen.getByRole("link", { name: /Renouveler Starter/i })).toHaveAttribute(
       "href",
       "/pricing?plan=starter&vehicles=3&renew=sub-cancelled",
     );
   });
 
-  it("permet de recacher les abonnements termines apres les avoir affiches", () => {
+  it("permet de recacher les abonnements termines apres les avoir affiches", async () => {
     render(
       <MemoryRouter>
         <SubscriptionManagementPanel fleetId="fleet-1" canManage />
@@ -84,10 +109,10 @@ describe("SubscriptionManagementPanel", () => {
     const toggle = screen.getByRole("switch", { name: /Afficher les abonnements termines/i });
 
     fireEvent.click(toggle);
-    expect(screen.getByText("Starter")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Starter")).toBeInTheDocument());
 
     fireEvent.click(toggle);
-    expect(screen.queryByText("Starter")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Starter")).not.toBeInTheDocument());
   });
 
   it("affiche les emplacements disponibles par abonnement", () => {
@@ -97,7 +122,19 @@ describe("SubscriptionManagementPanel", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Emplacements disponibles")).toBeInTheDocument();
+    expect(screen.getAllByText("Emplacements disponibles").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("1 / 2").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("permet d'activer manuellement un abonnement inactif", async () => {
+    render(
+      <MemoryRouter>
+        <SubscriptionManagementPanel fleetId="fleet-1" canManage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Activer Starter demo/i }));
+
+    await waitFor(() => expect(activateMutation).toHaveBeenCalledWith("sub-inactive"));
   });
 });

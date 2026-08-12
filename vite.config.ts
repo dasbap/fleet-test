@@ -377,6 +377,10 @@ export default defineConfig(({ mode }) => {
             /^\/_/,
             /^\/api(?:\/|$)/,
             /^\/functions(?:\/|$)/,
+            /^\/blog(?:\/|$)/,
+            /^\/guides(?:\/|$)/,
+            /^\/fonctionnalites(?:\/|$)/,
+            /^\/solutions(?:\/|$)/,
             /\/[^/?]+\.[^/]+$/,
           ],
 

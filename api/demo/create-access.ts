@@ -57,7 +57,7 @@ export default async function handler(
       body: JSON.stringify({
         email,
         company_name: body.company_name,
-        trial_days: body.trial_days ?? 7,
+        trial_days: body.trial_days ?? 31,
         send_email: false,
         invited_by: auth.user.id,
       }),

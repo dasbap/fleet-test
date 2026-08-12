@@ -41,3 +41,17 @@ export function useTerminateSubscriptionEarly(fleetId?: string) {
     },
   });
 }
+
+export function useActivateSubscription(fleetId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (subscriptionId: string) =>
+      subscriptionManagementService.activateSubscription(subscriptionId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["fleet-subscriptions", fleetId] });
+      void queryClient.invalidateQueries({ queryKey: ["fleet-billing-context", fleetId] });
+      void queryClient.invalidateQueries({ queryKey: ["vehicles-list"] });
+      void queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    },
+  });
+}

@@ -96,6 +96,20 @@ export class SubscriptionManagementService {
       throw new Error(mapSubscriptionError(error.message));
     }
   }
+
+  async activateSubscription(subscriptionId: string): Promise<void> {
+    if (!subscriptionId?.trim()) {
+      throw new Error("L'identifiant de l'abonnement est requis.");
+    }
+
+    const { error } = await supabase.rpc("activate_fleet_subscription", {
+      p_subscription_id: subscriptionId,
+    });
+
+    if (error) {
+      throw new Error(mapSubscriptionError(error.message));
+    }
+  }
 }
 
 export function normalizeSubscriptionSummaries(raw: unknown): SubscriptionSummary[] {
@@ -207,7 +221,7 @@ export function mapSubscriptionError(message: string): string {
     return "Ce vÃ©hicule doit rester sur un abonnement du mÃªme type.";
   }
   if (message.includes("abonnement_inactif")) {
-    return "Cet abonnement n'est pas actif.";
+    return "Cet abonnement n'est pas actif. Ajoutez un vÃ©hicule ou activez-le depuis la page Abonnements.";
   }
   if (message.includes("abonnement_flotte_incompatible")) {
     return "L'abonnement cible n'appartient pas à la même flotte.";

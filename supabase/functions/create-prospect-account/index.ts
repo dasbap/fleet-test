@@ -222,7 +222,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const accountType = body.account_type ?? "prospect";
   const invitedBy = body.invited_by ?? null;
   const fleetId = body.fleet_id ?? null;
-  const trialDays = Number(body.trial_days ?? 7);
+  const trialDays = Number(body.trial_days ?? 31);
   const sendEmail = body.send_email === true;
   const permanentAccess = body.permanent_access === true;
 
