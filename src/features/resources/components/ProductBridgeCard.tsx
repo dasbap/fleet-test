@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { usePublicEntryCta } from "@/hooks/usePublicEntryCta";
 import { buildSeoIaCtaUrl } from "@/lib/seo-utm";
 
 interface ProductBridgeCardProps {
@@ -10,7 +11,10 @@ interface ProductBridgeCardProps {
 
 /** Encart unique vers le produit flotte (pas de claim outil SEO). */
 export function ProductBridgeCard({ contentSlug }: ProductBridgeCardProps) {
-  const demoHref = buildSeoIaCtaUrl("/contact", contentSlug);
+  const primaryCta = usePublicEntryCta();
+  const ctaHref = primaryCta.isAuthenticated
+    ? primaryCta.href
+    : buildSeoIaCtaUrl(primaryCta.href, contentSlug);
 
   return (
     <Card className="border-primary/20 bg-primary/5">
@@ -24,8 +28,8 @@ export function ProductBridgeCard({ contentSlug }: ProductBridgeCardProps) {
           éditorial structuré.
         </p>
         <Button asChild variant="default" size="sm">
-          <Link to={demoHref}>
-            Demander une démo
+          <Link to={ctaHref}>
+            {primaryCta.isAuthenticated ? "Dashboard" : "Demander une démo"}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
