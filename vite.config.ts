@@ -241,30 +241,14 @@ export default defineConfig(({ mode }) => {
         clientFiles: ["./src/main.tsx", "./src/App.tsx", "./src/i18n/index.ts"],
       },
 
-      proxy:
-        env.VITE_DEV_BFF_PROXY === "true"
-          ? {
-              "/billing": {
-                target: "http://127.0.0.1:8787",
-                changeOrigin: true,
-              },
-
-              "/webhooks": {
-                target: "http://127.0.0.1:8787",
-                changeOrigin: true,
-              },
-
-              "/health": {
-                target: "http://127.0.0.1:8787",
-                changeOrigin: true,
-              },
-
-              "/api": {
-                target: "http://127.0.0.1:8787",
-                changeOrigin: true,
-              },
-            }
-          : undefined,
+      proxy: {
+        "/api": {
+          target: "http://127.0.0.1:8787",
+          changeOrigin: true,
+          rewrite: (p) =>
+            p.replace(/^\/api(?=\/(?:billing|webhooks|health)(?:\/|$))/, ""),
+        },
+      },
     },
 
     plugins: [

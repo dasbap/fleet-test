@@ -8,14 +8,13 @@ import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
 import { SubscriptionManagementPanel } from "@/features/billing/components/SubscriptionManagementPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { isBffConfigured } from "@/lib/bff-config";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 export default function SubscriptionsPage() {
   const { userFleetId } = useAuth();
   const { can } = useRoleAccess();
   const canManageBilling = can("billing.manage");
-  const canPayOnline = isBffConfigured();
+  const canPayOnline = true;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">

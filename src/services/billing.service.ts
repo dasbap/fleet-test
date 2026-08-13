@@ -1,4 +1,3 @@
-import { getBffBaseUrl, isBffConfigured } from "@/lib/bff-config";
 import { computeLapsedPaidFromLatestSubscription } from "@/lib/billing/computeLapsedPaidFromLatestSubscription";
 import { BillingRepository } from "@/repositories/billing.repository";
 import type { BillingSnapshot } from "@/types/billing-snapshot";
@@ -8,7 +7,7 @@ export type { BillingSnapshot } from "@/types/billing-snapshot";
 export { computeLapsedPaidFromLatestSubscription } from "@/lib/billing/computeLapsedPaidFromLatestSubscription";
 
 export interface BillingSnapshotRequestOptions {
-  /** Jeton Supabase utilisateur ; requis si `VITE_API_BASE_URL` pointe vers le BFF. */
+  /** Jeton Supabase utilisateur ; requis pour interroger le BFF same-origin. */
   accessToken?: string | null;
 }
 
@@ -27,9 +26,8 @@ export class BillingService {
       throw new Error("L'identifiant de la flotte est requis.");
     }
 
-    const bff = getBffBaseUrl();
-    if (isBffConfigured() && options?.accessToken) {
-      const url = `${bff ?? ""}/billing/subscriptions?org_id=${encodeURIComponent(orgId.trim())}&fleet_id=${encodeURIComponent(fleetId.trim())}`;
+    if (options?.accessToken) {
+      const url = `/api/billing/subscriptions?org_id=${encodeURIComponent(orgId.trim())}&fleet_id=${encodeURIComponent(fleetId.trim())}`;
       const res = await fetch(url, {
         method: "GET",
         headers: {

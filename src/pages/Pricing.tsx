@@ -122,7 +122,7 @@ export default function PricingPage() {
   );
   const selectedDuration = DEFAULT_DURATION_MONTHS;
 
-  const { state, initiate, reset, isLoading, bffAvailable } = useBillingCheckout();
+  const { state, initiate, reset, isLoading } = useBillingCheckout();
 
   // ─── Calculateur mensuel ──────────────────────────────────────────────
 
@@ -239,7 +239,6 @@ export default function PricingPage() {
                 calcMonthly={calcMonthlyTotal}
                 calcTotal={calcTotalXaf}
                 isLoading={isLoading}
-                bffAvailable={bffAvailable}
                 isRenewalTarget={renewalPlan === plan.code}
                 onPay={handlePay}
               />
@@ -276,7 +275,6 @@ interface PlanCardProps {
   calcMonthly: (price: number) => number;
   calcTotal: (price: number) => number;
   isLoading: boolean;
-  bffAvailable: boolean;
   isRenewalTarget: boolean;
   onPay: (plan: PlanConfig) => void;
 }
@@ -289,13 +287,12 @@ function PlanCard({
   calcMonthly,
   calcTotal,
   isLoading,
-  bffAvailable,
   isRenewalTarget,
   onPay,
 }: PlanCardProps) {
   const isPaid = plan.pricePerVehicle !== null && plan.pricePerVehicle > 0;
   const isEnterprise = plan.code === "enterprise";
-  const showPayButton = !isEnterprise && bffAvailable;
+  const showPayButton = !isEnterprise;
 
   const monthlyTotal = isPaid ? calcMonthly(plan.pricePerVehicle!) : 0;
   const grandTotal   = isPaid ? calcTotal(plan.pricePerVehicle!) : 0;
@@ -402,10 +399,6 @@ function PlanCard({
               <ExternalLink className="mr-2 h-4 w-4" />
             )}
             {isLoading ? "Connexion Notch Pay…" : plan.ctaLabel}
-          </Button>
-        ) : !bffAvailable ? (
-          <Button variant="outline" className="w-full" disabled>
-            Paiement indisponible
           </Button>
         ) : null}
 

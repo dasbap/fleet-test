@@ -18,7 +18,6 @@ import { cn } from "@/lib/utils";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { buildSupportMailto } from "@/config/navigation";
 import { MoMoPaymentDialog } from "@/components/billing/MoMoPaymentDialog";
-import { isBffConfigured } from "@/lib/bff-config";
 
 type PlanKey = "starter" | "pro";
 
@@ -127,8 +126,7 @@ export default function Upgrade() {
   const notchPay = useNotchPayPayment();
   // Quelle carte est en cours de paiement Notch Pay
   const [notchPendingKey, setNotchPendingKey] = useState<PlanKey | null>(null);
-
-  const notchAvailable = isBffConfigured();
+  const notchAvailable = true;
 
   function handleVehicleCountChange(planKey: PlanKey, value: string) {
     const parsed = Number.parseInt(value, 10);
@@ -265,8 +263,7 @@ export default function Upgrade() {
                     />
                   </div>
                   {/* Bouton Notch Pay — paiement automatisé (webhook) */}
-                  {notchAvailable && (
-                    <Button
+                  <Button
                       className="w-full"
                       onClick={() => handleNotchPay(plan)}
                       disabled={notchPay.isPending}
@@ -282,8 +279,7 @@ export default function Upgrade() {
                           Payer avec Notch Pay
                         </>
                       )}
-                    </Button>
-                  )}
+                  </Button>
 
                   {/* Bouton Mobile Money manuel (Orange / MTN) */}
                   <Button

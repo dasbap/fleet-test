@@ -1,4 +1,3 @@
-import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serializeServerError } from "@/lib/supabase-runtime-errors";
@@ -35,7 +34,6 @@ export function createServerApp() {
     "*",
     cors({
       origin: (origin) => {
-        // Requêtes sans origin (curl, Postman, server-to-server) : pas soumises au CORS navigateur.
         if (!origin) return null;
         if (
           origin === appOrigin ||
@@ -44,7 +42,6 @@ export function createServerApp() {
         ) {
           return origin;
         }
-        // Origine non reconnue → refus CORS explicite (null = pas d'en-tête ACAO).
         return null;
       },
       allowHeaders: [
@@ -73,19 +70,4 @@ export function createServerApp() {
   registerLegacyWebhooksPaymentRoutes(app);
 
   return app;
-}
-
-export function startBffServer() {
-  const app = createServerApp();
-  const port = Number(process.env.BFF_PORT || process.env.PORT || 8787);
-  const server = serve({ fetch: app.fetch, port }, (info) => {
-    console.info(`[BFF] écoute sur http://127.0.0.1:${info.port}`);
-  });
-  server.on("error", (error: NodeJS.ErrnoException) => {
-    if (error.code === "EADDRINUSE") {
-      console.warn(`[BFF] port ${port} deja utilise, serveur existant conserve.`);
-      return;
-    }
-    throw error;
-  });
 }

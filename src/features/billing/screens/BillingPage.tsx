@@ -38,7 +38,6 @@ import {
   type PaymentRecord,
 } from "@/hooks/usePaymentHistory";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
-import { isBffConfigured } from "@/lib/bff-config";
 import { formatPublicPriceXaf } from "@/lib/public-pricing";
 import { cn } from "@/lib/utils";
 import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
@@ -124,7 +123,7 @@ export default function BillingPage() {
 
   const isGraceOrSuspended = ctx.billingStatus === "grace" || ctx.billingStatus === "suspended";
   const showUpgradeCta     = ctx.billingStatus !== "enterprise" && ctx.billingStatus !== "active";
-  const canPayOnline       = isBffConfigured();
+  const canPayOnline       = true;
 
   // Modules actifs
   const modules = [
