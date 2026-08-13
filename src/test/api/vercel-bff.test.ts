@@ -22,18 +22,52 @@ describe("extractBearerToken", () => {
 });
 
 describe("health handler", () => {
-  it("retourne status ok avec timestamp ISO", async () => {
+  it("retourne l'etat ok du BFF Vercel", async () => {
     const handler = (await import("../../../api/health")).default;
-    const json = vi.fn();
-    const status = vi.fn(() => ({ json }));
+    const chunks: Buffer[] = [];
+    const writeHead = vi.fn();
+    const write = vi.fn((chunk: Uint8Array | string) => {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      return true;
+    });
+    const end = vi.fn((chunk?: Uint8Array | string) => {
+      if (chunk) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+    });
 
-    handler({ method: "GET" } as never, { status } as never);
+    await handler(
+      {
+        method: "GET",
+        url: "/api/health",
+        headers: { host: "fleet.test" },
+        rawHeaders: ["host", "fleet.test"],
+        socket: { encrypted: true },
+        on: vi.fn(),
+        errored: null,
+      } as never,
+      {
+        headersSent: false,
+        writableFinished: false,
+        writeHead,
+        write,
+        end,
+        on: vi.fn(),
+      } as never,
+    );
 
-    expect(status).toHaveBeenCalledWith(200);
-    expect(json).toHaveBeenCalledWith(
+    expect(writeHead).toHaveBeenCalledWith(
+      200,
       expect.objectContaining({
-        status: "ok",
-        ts: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+        "content-type": expect.stringContaining("application/json"),
+      }),
+    );
+    expect(end).toHaveBeenCalled();
+    expect(JSON.parse(Buffer.concat(chunks).toString("utf8"))).toEqual(
+      expect.objectContaining({
+        ok: true,
+        service: "smart-fleet-bff",
+        backendUrl: expect.stringMatching(/^https?:\/\//),
       }),
     );
   });
