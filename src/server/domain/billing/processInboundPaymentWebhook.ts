@@ -4,11 +4,11 @@ import {
   canTransitionPaymentStatus,
   normalizeInboundPaymentStatus,
   type PaymentStatus,
-} from "@/lib/billing/paymentStates";
+} from "../../../lib/billing/paymentStates.js";
 import {
   assertVehicleCountWithinPlanLimit,
   resolveRenewedVehicleSlots,
-} from "@/server/domain/billing/vehicleSlotLimits";
+} from "./vehicleSlotLimits.js";
 
 const rawPayloadSchema = z.object({
   planCode: z.string().min(1),

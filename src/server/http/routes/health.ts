@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { getBackendUrl } from "@/server/env";
+import { getBackendUrl } from "../../env.js";
 
 export function registerHealthRoutes(app: Hono) {
   app.get("/health", (c) =>

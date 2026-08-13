@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PaymentProviderId } from "@/server/env";
-import { assertVehicleCountWithinPlanLimit } from "@/server/domain/billing/vehicleSlotLimits";
+import type { PaymentProviderId } from "../env.js";
+import { assertVehicleCountWithinPlanLimit } from "./billing/vehicleSlotLimits.js";
 
 export interface BillingCheckoutIntent {
   orgId: string;

@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server";
-import { createServerApp } from "@/server/http/app";
+import { createServerApp } from "./app.js";
 
 export function startBffServer() {
   const app = createServerApp();

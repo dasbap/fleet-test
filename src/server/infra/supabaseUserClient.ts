@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseAnonKey, getSupabaseUrl } from "@/server/env";
+import { getSupabaseAnonKey, getSupabaseUrl } from "../env.js";
 
 /**
  * Client Supabase dont les requêtes s’exécutent avec le JWT utilisateur (RLS identique au navigateur).

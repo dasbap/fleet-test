@@ -1,24 +1,24 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { serializeServerError } from "@/lib/supabase-runtime-errors";
-import { getAppUrl } from "@/server/env";
-import { registerBillingCheckoutRoutes } from "@/server/http/routes/billingCheckout";
+import { serializeServerError } from "../../lib/supabase-runtime-errors.js";
+import { getAppUrl } from "../env.js";
+import { registerBillingCheckoutRoutes } from "./routes/billingCheckout.js";
 import {
   registerBillingMobileMoneyRoutes,
   registerLegacyMobileMoneyRoute,
-} from "@/server/http/routes/billingMobileMoney";
+} from "./routes/billingMobileMoney.js";
 import {
   registerBillingSubscriptionsRoutes,
   registerLegacyBillingSnapshotRoute,
-} from "@/server/http/routes/billingSubscriptions";
-import { registerTerrainShiftCloseRoutes } from "@/server/http/routes/terrainShiftClose";
-import { registerBillingNotchPayRoutes } from "@/server/http/routes/billingNotchPay";
-import { registerHealthRoutes } from "@/server/http/routes/health";
-import { registerAdminDemoRoutes } from "@/server/http/routes/adminDemo";
+} from "./routes/billingSubscriptions.js";
+import { registerTerrainShiftCloseRoutes } from "./routes/terrainShiftClose.js";
+import { registerBillingNotchPayRoutes } from "./routes/billingNotchPay.js";
+import { registerHealthRoutes } from "./routes/health.js";
+import { registerAdminDemoRoutes } from "./routes/adminDemo.js";
 import {
   registerLegacyWebhooksPaymentRoutes,
   registerWebhooksPaymentRoutes,
-} from "@/server/http/routes/webhooksPayment";
+} from "./routes/webhooksPayment.js";
 
 export function createServerApp() {
   const app = new Hono();

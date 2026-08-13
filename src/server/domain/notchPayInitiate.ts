@@ -1,12 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getNotchApiKey, getAppUrl } from "@/server/env";
+import { getNotchApiKey, getAppUrl } from "../env.js";
 import type {
   NotchPayCreatePaymentRequest,
   NotchPayCreatePaymentResponse,
   NotchPayIntent,
   NotchPayInitiateResult,
-} from "@/types/notch-pay";
-import { assertVehicleCountWithinPlanLimit } from "@/server/domain/billing/vehicleSlotLimits";
+} from "../../types/notch-pay.js";
+import { assertVehicleCountWithinPlanLimit } from "./billing/vehicleSlotLimits.js";
 
 const NOTCH_PAY_API_URL = "https://api.notchpay.co";
 

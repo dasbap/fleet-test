@@ -6,7 +6,7 @@
  * Permission   = action fine pouvant être vérifiée côté client ET serveur
  */
 
-import type { AppRole } from "@/types/auth";
+import type { AppRole } from "./auth.js";
 
 // ─── Rôle plateforme ─────────────────────────────────────────────────────────
 

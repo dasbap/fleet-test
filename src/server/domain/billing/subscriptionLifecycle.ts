@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { SubscriptionStatus } from "@/types/billing-production";
+import type { SubscriptionStatus } from "../../../types/billing-production.js";
 
 // ─── Règles d'accès par statut ─────────────────────────────
 

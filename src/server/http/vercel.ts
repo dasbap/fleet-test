@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { createServerApp } from "@/server/http/app";
+import { createServerApp } from "./app.js";
 
 function withStrippedApiPrefix(input: Request): Request {
   const url = new URL(input.url);

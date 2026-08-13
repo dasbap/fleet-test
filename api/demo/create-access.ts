@@ -9,7 +9,7 @@ import {
   getSupabaseEnv,
   handlePreflight,
   requirePlatformAdmin,
-} from "../_lib/vercel-api";
+} from "../_lib/vercel-api.js";
 
 interface CreateAccessBody {
   email?: string;
