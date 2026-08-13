@@ -52,6 +52,10 @@ function clearInvalidActiveFleetStorage(): void {
   }
 }
 
+function isProtectedVercelPreview(): boolean {
+  return window.location.hostname.endsWith(".vercel.app");
+}
+
 // En dev : log des requêtes Supabase en échec (URL = table ou RPC) pour diagnostic
 if (import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL) {
   const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, "");
@@ -140,7 +144,7 @@ const bootstrap = async () => {
     }
 
     // PWA est chargée après load avec un délai pour éviter la compétition réseau initiale.
-    if (import.meta.env.PROD) {
+    if (import.meta.env.PROD && !isProtectedVercelPreview()) {
       window.addEventListener("load", () => {
         scheduleDeferredMainThreadWork(() => {
           void import("@/pwa").catch((error) => {

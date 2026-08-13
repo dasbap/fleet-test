@@ -74,6 +74,35 @@ function hasAndroidFirebaseClient(expectedPackageName: string): boolean {
   }
 }
 
+function vercelPreviewPwaGuardPlugin(enabled: boolean): Plugin {
+  return {
+    name: "vercel-preview-pwa-guard",
+    transformIndexHtml(html) {
+      if (!enabled) {
+        return html;
+      }
+
+      return html.replace(
+        /\s*<link rel="manifest" href="\/manifest\.webmanifest" \/>\r?\n?/g,
+        "\n"
+      );
+    },
+    closeBundle() {
+      if (!enabled) {
+        return;
+      }
+
+      for (const fileName of [
+        "manifest.webmanifest",
+        "manifest.webmanifest.gz",
+        "manifest.webmanifest.br",
+      ]) {
+        fs.rmSync(path.resolve(__dirname, "dist", fileName), { force: true });
+      }
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
@@ -88,6 +117,8 @@ export default defineConfig(({ mode }) => {
     : env.VITE_SUPABASE_ANON_KEY ?? "";
 
   const isProd = mode === "production" || mode === "capacitor";
+  const isVercelPreview = process.env.VERCEL_ENV === "preview";
+  const shouldEnablePwa = mode !== "capacitor" && !isVercelPreview;
 
   const isAnalyze = mode === "analyze" || process.env.ANALYZE === "true";
 
@@ -252,6 +283,8 @@ export default defineConfig(({ mode }) => {
     },
 
     plugins: [
+      vercelPreviewPwaGuardPlugin(isVercelPreview),
+
       react(),
 
       prerenderSeoPlugin(),
@@ -260,9 +293,8 @@ export default defineConfig(({ mode }) => {
         defaultDirectives: new URLSearchParams(),
       }),
 
-      VitePWA({
-        disable: mode === "capacitor",
-
+      shouldEnablePwa &&
+        VitePWA({
         registerType: "autoUpdate",
 
         injectRegister: "auto",
@@ -369,6 +401,18 @@ export default defineConfig(({ mode }) => {
           ],
 
           runtimeCaching: [
+            {
+              urlPattern: ({ request, url }) =>
+                request.mode === "navigate" &&
+                /^\/(?:blog|guides|fonctionnalites|solutions)(?:\/|$)/.test(
+                  url.pathname
+                ),
+              handler: "NetworkOnly",
+              options: {
+                cacheName: "esamba-marketing-redirects",
+              },
+            },
+
             // Polices Google — très stables
             {
               urlPattern: /^https:\/\/fonts\.(?:gstatic|googleapis)\.com\/.*/i,
@@ -552,6 +596,12 @@ export default defineConfig(({ mode }) => {
 
     resolve: {
       alias: {
+        ...(shouldEnablePwa
+          ? {}
+          : {
+              "@/pwa": path.resolve(__dirname, "./src/pwa.noop.ts"),
+            }),
+
         "@": path.resolve(__dirname, "./src"),
 
         "@esamba/offline-contracts": path.resolve(

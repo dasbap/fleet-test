@@ -50,4 +50,30 @@ describe("PWA service worker update", () => {
     expect(viteConfig).toContain("/^\\/fonctionnalites(?:\\/|$)/");
     expect(viteConfig).toContain("/^\\/solutions(?:\\/|$)/");
   });
+
+  it("does not cache marketing redirects that resolve cross-origin", () => {
+    const viteConfig = readFileSync("vite.config.ts", "utf8");
+
+    expect(viteConfig).toContain('cacheName: "esamba-marketing-redirects"');
+    expect(viteConfig).toContain('handler: "NetworkOnly"');
+  });
+
+  it("does not register the service worker on protected Vercel preview deployments", () => {
+    const mainSource = readFileSync("src/main.tsx", "utf8");
+    const viteConfig = readFileSync("vite.config.ts", "utf8");
+    const pwaBlock = mainSource.slice(mainSource.indexOf("// PWA"));
+
+    expect(viteConfig).toContain('process.env.VERCEL_ENV === "preview"');
+    expect(viteConfig).toContain(
+      "mode !== \"capacitor\" && !isVercelPreview"
+    );
+    expect(viteConfig).toContain("shouldEnablePwa &&");
+    expect(viteConfig).toContain('"@/pwa": path.resolve');
+    expect(viteConfig).toContain("./src/pwa.noop.ts");
+    expect(viteConfig).toContain("vercelPreviewPwaGuardPlugin(isVercelPreview)");
+    expect(viteConfig).toContain('rel="manifest"');
+    expect(viteConfig).toContain("manifest.webmanifest");
+    expect(mainSource).toContain("isProtectedVercelPreview");
+    expect(pwaBlock).toContain("!isProtectedVercelPreview()");
+  });
 });
