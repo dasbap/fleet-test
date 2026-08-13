@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import { extractBearerToken } from "../../../api/_lib/vercel-api";
 import { createVercelApiApp } from "../../server/http/vercel";
@@ -42,6 +43,13 @@ describe("health handler", () => {
 });
 
 describe("billing subscriptions handler", () => {
+  it("dispose d'une fonction Vercel dediee pour eviter le fallback SPA HTML", () => {
+    const source = readFileSync("api/billing/subscriptions.ts", "utf8");
+
+    expect(source).toContain('from "@hono/node-server/vercel"');
+    expect(source).toContain("createVercelApiApp");
+  });
+
   it("atteint le BFF Vercel et renvoie du JSON quand le Bearer manque", async () => {
     const app = createVercelApiApp();
     const response = await app.fetch(
