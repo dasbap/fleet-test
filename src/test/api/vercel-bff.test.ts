@@ -66,3 +66,12 @@ describe("billing subscriptions handler", () => {
     });
   });
 });
+
+describe("billing Notch Pay handler", () => {
+  it("dispose d'une fonction Vercel dediee pour accepter POST sans fallback 405", () => {
+    const source = readFileSync("api/billing/notch/initiate.ts", "utf8");
+
+    expect(source).toContain('from "@hono/node-server/vercel"');
+    expect(source).toContain("createVercelApiApp");
+  });
+});
