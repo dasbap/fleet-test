@@ -40,3 +40,21 @@ describe("health handler", () => {
     );
   });
 });
+
+describe("billing subscriptions handler", () => {
+  it("atteint le BFF Vercel et renvoie du JSON quand le Bearer manque", async () => {
+    const app = createVercelApiApp();
+    const response = await app.fetch(
+      new Request(
+        "https://fleet.test/api/billing/subscriptions?org_id=00000000-0000-4000-8000-000000000001&fleet_id=00000000-0000-4000-8000-000000000002",
+        { method: "GET" },
+      ),
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(await response.json()).toEqual({
+      error: "Authorization Bearer requis",
+    });
+  });
+});

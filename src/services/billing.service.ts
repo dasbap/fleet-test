@@ -11,6 +11,28 @@ export interface BillingSnapshotRequestOptions {
   accessToken?: string | null;
 }
 
+async function readBillingSnapshotJson(res: Response): Promise<BillingSnapshot> {
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    const text = await res.text().catch(() => "");
+    const trimmed = text.trimStart();
+    if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
+      throw new Error(
+        "La route API facturation a renvoye du HTML. Verifiez que le deploiement Vercel courant expose bien /api/billing/subscriptions et que Deployment Protection est contournee pour ce domaine.",
+      );
+    }
+    throw new Error(
+      `La route API facturation a renvoye une reponse non JSON (${res.status}).`,
+    );
+  }
+
+  try {
+    return (await res.json()) as BillingSnapshot;
+  } catch {
+    throw new Error("La route API facturation a renvoye un JSON invalide.");
+  }
+}
+
 export class BillingService {
   constructor(private repository: BillingRepository) {}
 
@@ -39,7 +61,7 @@ export class BillingService {
         const text = await res.text().catch(() => "");
         throw new Error(text || `Erreur API facturation (${res.status})`);
       }
-      return (await res.json()) as BillingSnapshot;
+      return readBillingSnapshotJson(res);
     }
 
     try {
