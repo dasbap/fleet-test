@@ -58,19 +58,22 @@ describe("PWA service worker update", () => {
     expect(viteConfig).toContain('handler: "NetworkOnly"');
   });
 
-  it("does not register the service worker on protected Vercel preview deployments", () => {
+  it("does not register the service worker on protected Vercel deployments", () => {
     const mainSource = readFileSync("src/main.tsx", "utf8");
     const viteConfig = readFileSync("vite.config.ts", "utf8");
     const pwaBlock = mainSource.slice(mainSource.indexOf("// PWA"));
 
     expect(viteConfig).toContain('process.env.VERCEL_ENV === "preview"');
     expect(viteConfig).toContain(
-      "mode !== \"capacitor\" && !isVercelPreview"
+      'process.env.ESAMBA_DISABLE_PWA === "true"'
+    );
+    expect(viteConfig).toContain(
+      "mode !== \"capacitor\" && !shouldDisablePwa"
     );
     expect(viteConfig).toContain("shouldEnablePwa &&");
     expect(viteConfig).toContain('"@/pwa": path.resolve');
     expect(viteConfig).toContain("./src/pwa.noop.ts");
-    expect(viteConfig).toContain("vercelPreviewPwaGuardPlugin(isVercelPreview)");
+    expect(viteConfig).toContain("pwaManifestGuardPlugin(shouldDisablePwa)");
     expect(viteConfig).toContain('rel="manifest"');
     expect(viteConfig).toContain("manifest.webmanifest");
     expect(mainSource).toContain("isProtectedVercelPreview");

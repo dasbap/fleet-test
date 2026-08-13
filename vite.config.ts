@@ -74,9 +74,9 @@ function hasAndroidFirebaseClient(expectedPackageName: string): boolean {
   }
 }
 
-function vercelPreviewPwaGuardPlugin(enabled: boolean): Plugin {
+function pwaManifestGuardPlugin(enabled: boolean): Plugin {
   return {
-    name: "vercel-preview-pwa-guard",
+    name: "pwa-manifest-guard",
     transformIndexHtml(html) {
       if (!enabled) {
         return html;
@@ -118,7 +118,9 @@ export default defineConfig(({ mode }) => {
 
   const isProd = mode === "production" || mode === "capacitor";
   const isVercelPreview = process.env.VERCEL_ENV === "preview";
-  const shouldEnablePwa = mode !== "capacitor" && !isVercelPreview;
+  const shouldDisablePwa =
+    isVercelPreview || process.env.ESAMBA_DISABLE_PWA === "true";
+  const shouldEnablePwa = mode !== "capacitor" && !shouldDisablePwa;
 
   const isAnalyze = mode === "analyze" || process.env.ANALYZE === "true";
 
@@ -283,7 +285,7 @@ export default defineConfig(({ mode }) => {
     },
 
     plugins: [
-      vercelPreviewPwaGuardPlugin(isVercelPreview),
+      pwaManifestGuardPlugin(shouldDisablePwa),
 
       react(),
 
