@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { extractBearerToken } from "../../../api/_lib/vercel-api";
+import { createVercelApiApp } from "../../server/http/vercel";
 
 describe("extractBearerToken", () => {
   it("extrait un token Bearer valide", () => {
@@ -23,47 +24,14 @@ describe("extractBearerToken", () => {
 
 describe("health handler", () => {
   it("retourne l'etat ok du BFF Vercel", async () => {
-    const handler = (await import("../../../api/health")).default;
-    const chunks: Buffer[] = [];
-    const writeHead = vi.fn();
-    const write = vi.fn((chunk: Uint8Array | string) => {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      return true;
-    });
-    const end = vi.fn((chunk?: Uint8Array | string) => {
-      if (chunk) {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      }
-    });
-
-    await handler(
-      {
-        method: "GET",
-        url: "/api/health",
-        headers: { host: "fleet.test" },
-        rawHeaders: ["host", "fleet.test"],
-        socket: { encrypted: true },
-        on: vi.fn(),
-        errored: null,
-      } as never,
-      {
-        headersSent: false,
-        writableFinished: false,
-        writeHead,
-        write,
-        end,
-        on: vi.fn(),
-      } as never,
+    const app = createVercelApiApp();
+    const response = await app.fetch(
+      new Request("https://fleet.test/api/health", { method: "GET" }),
     );
 
-    expect(writeHead).toHaveBeenCalledWith(
-      200,
-      expect.objectContaining({
-        "content-type": expect.stringContaining("application/json"),
-      }),
-    );
-    expect(end).toHaveBeenCalled();
-    expect(JSON.parse(Buffer.concat(chunks).toString("utf8"))).toEqual(
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(await response.json()).toEqual(
       expect.objectContaining({
         ok: true,
         service: "smart-fleet-bff",
