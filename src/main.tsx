@@ -52,8 +52,23 @@ function clearInvalidActiveFleetStorage(): void {
   }
 }
 
-function isProtectedVercelPreview(): boolean {
+function isProtectedVercelDeployment(): boolean {
   return window.location.hostname.endsWith(".vercel.app");
+}
+
+function unregisterProtectedVercelServiceWorkers(): void {
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+
+  void navigator.serviceWorker
+    .getRegistrations()
+    .then((registrations) =>
+      Promise.all(registrations.map((registration) => registration.unregister()))
+    )
+    .catch((error) => {
+      console.warn("Nettoyage Service Worker Vercel ignore:", error);
+    });
 }
 
 // En dev : log des requêtes Supabase en échec (URL = table ou RPC) pour diagnostic
@@ -130,6 +145,10 @@ const bootstrap = async () => {
     });
     reportWebVitals();
 
+    if (import.meta.env.PROD && isProtectedVercelDeployment()) {
+      unregisterProtectedVercelServiceWorkers();
+    }
+
     // Analytics est différé en production pour préserver le LCP/INP.
     if (import.meta.env.PROD) {
       scheduleDeferredMainThreadWork(() => {
@@ -144,7 +163,7 @@ const bootstrap = async () => {
     }
 
     // PWA est chargée après load avec un délai pour éviter la compétition réseau initiale.
-    if (import.meta.env.PROD && !isProtectedVercelPreview()) {
+    if (import.meta.env.PROD && !isProtectedVercelDeployment()) {
       window.addEventListener("load", () => {
         scheduleDeferredMainThreadWork(() => {
           void import("@/pwa").catch((error) => {

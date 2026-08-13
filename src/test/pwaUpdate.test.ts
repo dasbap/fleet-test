@@ -76,7 +76,10 @@ describe("PWA service worker update", () => {
     expect(viteConfig).toContain("pwaManifestGuardPlugin(shouldDisablePwa)");
     expect(viteConfig).toContain('rel="manifest"');
     expect(viteConfig).toContain("manifest.webmanifest");
-    expect(mainSource).toContain("isProtectedVercelPreview");
-    expect(pwaBlock).toContain("!isProtectedVercelPreview()");
+    expect(mainSource).toContain("isProtectedVercelDeployment");
+    expect(mainSource).toContain("unregisterProtectedVercelServiceWorkers");
+    expect(mainSource).toContain(".getRegistrations()");
+    expect(mainSource).toContain("registration.unregister()");
+    expect(pwaBlock).toContain("!isProtectedVercelDeployment()");
   });
 });
