@@ -127,7 +127,11 @@ export function mapSupabaseErrorToFrench(message: string): string {
   if (m.includes("invalid login") || m.includes("invalid_credentials")) {
     return "Email ou mot de passe incorrect.";
   }
-  if (m.includes("user already registered") || m.includes("already been registered")) {
+  if (
+    m.includes("email_already_registered") ||
+    m.includes("user already registered") ||
+    m.includes("already been registered")
+  ) {
     return "Un compte existe déjà avec cet email.";
   }
 
@@ -160,6 +164,7 @@ export function mapSupabaseErrorToFrench(message: string): string {
   if (
     message.includes("introuvable") ||
     message.includes("Impossible") ||
+    message.includes("Ce chauffeur") ||
     message.includes("non trouvé") ||
     message.toLowerCase().includes("vérifier") // Ajout : si erreur métier contient "vérifier"
   ) {

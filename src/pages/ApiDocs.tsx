@@ -71,7 +71,7 @@ export default function ApiDocsPage() {
               {" \\"}
               <br />
               {"  "}
-              <span className="text-muted-foreground">https://api.e-samba.com/v1/fleets/</span>
+              <span className="text-muted-foreground">https://www.e-samba.com/api/v1/fleets/</span>
               <span className="text-primary">{"{"}</span>
               fleetId
               <span className="text-primary">{"}"}</span>
@@ -85,7 +85,7 @@ export default function ApiDocsPage() {
               <Lock className="w-5 h-5 text-primary" /> URL de base
             </h2>
             <div className="bg-muted/60 border border-border rounded-xl p-4 font-mono text-sm">
-              https://api.e-samba.com/v1
+              https://www.e-samba.com/api/v1
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Toutes les requêtes sont HTTPS. Les requêtes HTTP sont redirigées

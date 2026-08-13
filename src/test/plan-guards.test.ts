@@ -66,22 +66,34 @@ describe("canCreateVehicle", () => {
   });
 
   it("permet sur Pro avec beaucoup de véhicules", () => {
-    const result = canCreateVehicle(makeCtx({ ...PRO_CTX, vehicleCount: 10, maxVehicles: 100 }));
+    const result = canCreateVehicle(makeCtx({ ...PRO_CTX, vehicleCount: 10, vehicleSlots: 100, maxVehicles: 100 }));
     expect(result.allowed).toBe(true);
   });
 
+  it("bloque sur Pro quand les slots achetes sont atteints meme si le catalogue autorise 100", () => {
+    const result = canCreateVehicle(makeCtx({
+      ...PRO_CTX,
+      vehicleCount: 2,
+      vehicleSlots: 2,
+      maxVehicles: 100,
+    }));
+
+    expect(result.allowed).toBe(false);
+    expect(result.upgradeMessage).toContain("2 v");
+  });
+
   it("bloque sur Pro à la limite de 75", () => {
-    const result = canCreateVehicle(makeCtx({ ...PRO_CTX, vehicleCount: 100, maxVehicles: 100 }));
+    const result = canCreateVehicle(makeCtx({ ...PRO_CTX, vehicleCount: 100, vehicleSlots: 100, maxVehicles: 100 }));
     expect(result.allowed).toBe(false);
   });
 
   it("permet illimité sur Enterprise (maxVehicles = Infinity)", () => {
-    const result = canCreateVehicle(makeCtx({ ...ENTERPRISE, vehicleCount: 500, maxVehicles: Infinity }));
+    const result = canCreateVehicle(makeCtx({ ...ENTERPRISE, vehicleCount: 500, vehicleSlots: Infinity, maxVehicles: Infinity }));
     expect(result.allowed).toBe(true);
   });
 
   it("permet en grace_period si sous la limite", () => {
-    const result = canCreateVehicle(makeCtx({ ...GRACE, vehicleCount: 3, maxVehicles: 25 }));
+    const result = canCreateVehicle(makeCtx({ ...GRACE, vehicleCount: 3, vehicleSlots: 25, maxVehicles: 25 }));
     expect(result.allowed).toBe(true);
   });
 });

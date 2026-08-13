@@ -41,7 +41,7 @@ flowchart TB
 
 Le détail des conventions (exemples, anti-patterns) est maintenu dans [docs/ARCHITECTURE.md](../ARCHITECTURE.md).
 
-Un **BFF Node optionnel** (`src/server/`, `npm run dev:api`) expose des routes `/api/*` pour la facturation et les paiements lorsque `VITE_API_BASE_URL` est configuré ; la vérité schéma et la RLS restent sur Supabase. Voir [PAYMENTS.md](./PAYMENTS.md) et [TARGET_ARCHITECTURE.md](./TARGET_ARCHITECTURE.md).
+Un **BFF Hono** (`src/server/`) est expose en production par les Vercel Functions du meme projet sous `/api/*` pour la facturation et les paiements ; en local `npm run dev` lance aussi le serveur Node BFF et Vite proxifie `/api/*`. Voir [PAYMENTS.md](./PAYMENTS.md) et [TARGET_ARCHITECTURE.md](./TARGET_ARCHITECTURE.md).
 
 ## Point d’entrée et routage
 
@@ -75,8 +75,6 @@ Préfixe **`VITE_`** : exposées au bundle client — ne jamais y mettre de secr
 | `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` | Analytics (optionnel) |
 | `VITE_APP_URL` | URL canonique du site (SEO / partage) |
 | `VITE_ORANGE_MONEY_MERCHANT` / `VITE_MTN_MOMO_MERCHANT` | Affichage / flux paiement MoMo côté front |
-| `VITE_API_BASE_URL` | URL de base du BFF (ex. `/api` avec proxy Vite) ; si absent, facturation / MoMo passent par le client Supabase direct |
-| `VITE_DEV_BFF_PROXY` | `true` : proxy Vite vers le BFF local (voir [vite.config.ts](../../vite.config.ts)) |
 
 Les secrets Edge Functions, BFF (`SUPABASE_SERVICE_ROLE_KEY`, `PAYMENTS_WEBHOOK_SECRET`, etc.) et crons ne sont **pas** préfixés `VITE_` ; ils se configurent côté projet Supabase. Voir [docs/SUPABASE-SETUP.md](../SUPABASE-SETUP.md).
 

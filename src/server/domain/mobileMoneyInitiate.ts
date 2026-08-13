@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { MoMoInstructions, MoMoPaymentIntent, MoMoPaymentResult, MoMoProvider } from "@/types/mobile-money";
-import { SUPPORT } from "@/config/navigation";
+import type { MoMoInstructions, MoMoPaymentIntent, MoMoPaymentResult, MoMoProvider } from "../../types/mobile-money.js";
 
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "support@e-samba.com";
 const ESAMBA_ORANGE_MONEY_PHONE = "6XX XXX XXX";
 const ESAMBA_MTN_MOMO_PHONE = "6XX XXX XXX";
 
@@ -25,7 +25,7 @@ function buildInstructions(
         `Entrez le montant : ${amountXaf.toLocaleString("fr-FR")} FCFA`,
         `Saisissez votre code PIN Orange Money`,
         `Gardez la capture du SMS de confirmation — référence : ${reference}`,
-        `Envoyez la capture par WhatsApp ou email à ${SUPPORT.email}`,
+        `Envoyez la capture par WhatsApp ou email à ${SUPPORT_EMAIL}`,
       ],
     };
   }
@@ -43,7 +43,7 @@ function buildInstructions(
       `Entrez le montant : ${amountXaf.toLocaleString("fr-FR")} FCFA`,
       `Saisissez votre code PIN MoMo`,
       `Gardez la capture du SMS de confirmation — référence : ${reference}`,
-      `Envoyez la capture par WhatsApp ou email à ${SUPPORT.email}`,
+      `Envoyez la capture par WhatsApp ou email à ${SUPPORT_EMAIL}`,
     ],
   };
 }

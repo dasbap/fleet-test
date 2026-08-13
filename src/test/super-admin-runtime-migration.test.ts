@@ -20,4 +20,18 @@ describe("super admin runtime migration", () => {
     expect(sql).toContain("grant execute on function public.is_platform_super_admin() to authenticated");
     expect(sql).toContain("notify pgrst, 'reload schema'");
   });
+
+  it("keeps platform admin boolean guards callable before a user session is ready", () => {
+    const sql = readFileSync(
+      resolve(
+        process.cwd(),
+        "supabase/migrations/20260811130000_allow_anon_platform_admin_boolean_guards.sql",
+      ),
+      "utf8",
+    );
+
+    expect(sql).toContain("grant execute on function public.is_platform_admin() to anon, authenticated");
+    expect(sql).toContain("grant execute on function public.is_platform_super_admin() to anon, authenticated");
+    expect(sql).toContain("notify pgrst, 'reload schema'");
+  });
 });

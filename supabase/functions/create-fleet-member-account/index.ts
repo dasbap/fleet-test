@@ -67,6 +67,38 @@ function canCreateRole(callerRole: RoleType, targetRole: RoleType): boolean {
   return false;
 }
 
+async function findAuthUserIdByEmail(
+  admin: ReturnType<typeof createClient>,
+  email: string
+): Promise<string | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  for (let page = 1; page <= 20; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({
+      page,
+      perPage: 100,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    const user = data.users.find(
+      (candidate) => candidate.email?.trim().toLowerCase() === normalizedEmail
+    );
+
+    if (user) {
+      return user.id;
+    }
+
+    if (data.users.length < 100) {
+      return null;
+    }
+  }
+
+  return null;
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -179,7 +211,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
   }
 
-  const tempPassword = generateTempPassword();
+  let tempPassword: string | undefined = generateTempPassword();
+  let existingAuthUserAttached = false;
+  let userId: string | null = null;
   const { data: authData, error: authErr } = await admin.auth.admin.createUser({
     email,
     password: tempPassword,
@@ -197,25 +231,49 @@ Deno.serve(async (req: Request): Promise<Response> => {
     },
   });
 
-  if (authErr || !authData?.user) {
+  if (authData?.user) {
+    userId = authData.user.id;
+  } else if (authErr) {
     const message = authErr?.message?.toLowerCase() ?? "";
     if (
       message.includes("already") ||
       message.includes("registered") ||
       message.includes("exists")
     ) {
-      return json(req, { ok: false, error: "email_already_registered" }, 409);
+      try {
+        userId = await findAuthUserIdByEmail(admin, email);
+      } catch {
+        return json(req, { ok: false, error: "existing_user_lookup_failed" }, 500);
+      }
+
+      if (!userId) {
+        return json(req, { ok: false, error: "email_already_registered" }, 409);
+      }
+
+      tempPassword = undefined;
+      existingAuthUserAttached = true;
+    } else {
+      return json(
+        req,
+        { ok: false, error: authErr?.message ?? "auth_create_failed" },
+        500
+      );
     }
+  }
+
+  if (!userId) {
     return json(
       req,
-      { ok: false, error: authErr?.message ?? "auth_create_failed" },
+      { ok: false, error: "auth_create_failed" },
       500
     );
   }
 
-  const userId = authData.user.id;
-
   const cleanupUser = async () => {
+    if (existingAuthUserAttached) {
+      return;
+    }
+
     const { error } = await admin.auth.admin.deleteUser(userId);
     if (error) {
       console.error(
@@ -267,5 +325,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     role,
     login_url: `${APP_URL}/login`,
     temp_password: tempPassword,
+    existing_auth_user_attached: existingAuthUserAttached,
   });
 });

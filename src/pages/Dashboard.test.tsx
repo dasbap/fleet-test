@@ -208,12 +208,12 @@ describe("DashboardPage", () => {
     );
 
     expect(
-      screen.getAllByRole("heading", { name: "Tableau de bord" }).length,
+      screen.getAllByRole("heading", { name: "Centre de controle flotte" }).length,
     ).toBeGreaterThan(0);
     expect(screen.getByText("activation-checklist")).toBeInTheDocument();
   });
 
-  it("affiche le dashboard avec bandeau dégradé sans squelette KPI", () => {
+  it("affiche le dashboard avec bandeau dégradé sans squelette KPI", async () => {
     const refetchKpis = vi.fn().mockResolvedValue({});
     useActivationMock.mockReturnValue({
       loading: false,
@@ -253,7 +253,9 @@ describe("DashboardPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId("actionable-dashboard")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Réessayer/i }));
-    expect(refetchKpis).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(refetchKpis).toHaveBeenCalled();
+    });
   });
 
   it("charge le widget scores conducteurs avec limit 5", () => {
@@ -288,6 +290,66 @@ describe("DashboardPage", () => {
     expect(useDriverScores).toHaveBeenCalledWith(FLEET_ID, { enabled: true, limit: 5 });
     expect(screen.getByText("Scores conducteurs")).toBeInTheDocument();
     expect(screen.getByText(/1\. Driver A/)).toBeInTheDocument();
+  });
+
+  it("affiche un poste de pilotage avec les actions rapides principales", () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        created_at: "2026-04-10T00:00:00.000Z",
+        email: "organizer@example.test",
+        user_metadata: { full_name: "Baptiste" },
+      },
+      userFleetId: FLEET_ID,
+      role: "organizer",
+    });
+    useActivationMock.mockReturnValue({
+      loading: false,
+      completedCount: 2,
+      steps: [
+        { id: "a", label: "a", description: "", cta: "", href: "/", icon: "", impact: "", completed: true },
+        { id: "b", label: "b", description: "", cta: "", href: "/", icon: "", impact: "", completed: true },
+      ],
+    });
+    useActionableDashboardMock.mockReturnValue({
+      kpis: { ...DASHBOARD_EMPTY_KPIS, activeVehicles: 4, criticalAlerts: 1, overdueServices: 2 },
+      kpisDegraded: false,
+      kpiError: null,
+      refetchKpis: vi.fn(),
+      alerts: [{ id: "alert-1" }],
+      resolveAlert: vi.fn(),
+      scheduledJobs: [{ id: "job-1" }],
+      avgKm: 12000,
+      todayRevenueXaf: 0,
+      totalVehicles: 6,
+      fuelSpendXof: 0,
+      fuelLiters: 0,
+      coreLoading: false,
+      loading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+      { wrapper: queryWrapper },
+    );
+
+    expect(screen.getByRole("heading", { name: "Centre de controle flotte" })).toBeInTheDocument();
+    expect(screen.getByText("Bonjour Baptiste")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Declarer un incident/i })).toHaveAttribute(
+      "href",
+      "/dashboard/incidents/declare",
+    );
+    expect(screen.getByRole("link", { name: /Ajouter un vehicule/i })).toHaveAttribute(
+      "href",
+      "/dashboard/vehicles",
+    );
+    expect(screen.getByRole("link", { name: /Planifier entretien/i })).toHaveAttribute(
+      "href",
+      "/dashboard/maintenance",
+    );
+    expect(screen.getByText(/1 alerte critique/)).toBeInTheDocument();
+    expect(screen.getByText(/2 entretiens en retard/)).toBeInTheDocument();
   });
 
   describe("bannière téléphones (flotte + rôle backoffice)", () => {

@@ -245,6 +245,8 @@ export function useCreateFleetMemberAccount() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['fleet-members', variables.fleetId] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-drivers', variables.fleetId] });
+      queryClient.invalidateQueries({ queryKey: ['active-assignments', variables.fleetId] });
       queryClient.invalidateQueries({ queryKey: ['invitations', variables.fleetId] });
       queryClient.invalidateQueries({ queryKey: ['role-audit-log', variables.fleetId] });
       toast({

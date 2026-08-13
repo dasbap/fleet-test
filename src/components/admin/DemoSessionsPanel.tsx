@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -33,6 +33,7 @@ import {
   CalendarClock,
   Clock,
   Copy,
+  CreditCard,
   Filter,
   Link2,
   MoreVertical,
@@ -45,6 +46,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { DemoSession } from "@/hooks/useAdminDemoAccounts";
+import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 interface DemoSessionsPanelProps {
   sessions: DemoSession[];
@@ -58,7 +60,6 @@ interface DemoSessionsPanelProps {
   ) => Promise<boolean>;
   onDelete: (userId: string) => Promise<boolean>;
   onResetFleet: (fleetId: string) => Promise<boolean>;
-  onSetFleetPlan: (fleetId: string, planCode: string) => Promise<boolean>;
   onGenerateMagicLink: (
     userId: string,
     email: string,
@@ -85,14 +86,6 @@ const ROLE_LABELS: Record<string, string> = {
   manager: "Manager",
   mechanic: "Mecanicien",
   organizer: "Organisateur",
-};
-
-const PLAN_LABELS: Record<string, string> = {
-  free: "Free",
-  starter: "Starter",
-  pro: "Pro",
-  enterprise: "Enterprise",
-  organizer: "Organizer",
 };
 
 function formatRelative(iso: string | null): string {
@@ -156,7 +149,6 @@ export function DemoSessionsPanel({
   onUpdateExpiration,
   onDelete,
   onResetFleet: _onResetFleet,
-  onSetFleetPlan,
   onGenerateMagicLink,
 }: DemoSessionsPanelProps) {
   const { toast } = useToast();
@@ -164,9 +156,6 @@ export function DemoSessionsPanel({
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
   const [expirationDraft, setExpirationDraft] = useState("");
-  const [planDraftByFleet, setPlanDraftByFleet] = useState<
-    Record<string, string>
-  >({});
 
   const filtered = sessions.filter((s) => {
     if (filter === "active" && !s.is_active) return false;
@@ -210,14 +199,6 @@ export function DemoSessionsPanel({
       return;
     }
     await withBusy(userId, () => onUpdateExpiration(userId, expiresAt));
-  }
-
-  async function handleSetPlan(session: DemoSession) {
-    if (!session.fleet_id) return;
-    const planCode = planDraftByFleet[session.fleet_id] ?? "pro";
-    await withBusy(session.user_id, () =>
-      onSetFleetPlan(session.fleet_id!, planCode)
-    );
   }
 
   function copyExistingLink(session: DemoSession) {
@@ -303,7 +284,7 @@ export function DemoSessionsPanel({
               <TableHead>Type</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Organisation</TableHead>
-              <TableHead>Plan</TableHead>
+              <TableHead>Abonnement</TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />
@@ -382,37 +363,15 @@ export function DemoSessionsPanel({
 
                   <TableCell>
                     {session.fleet_id ? (
-                      <div className="flex min-w-[180px] items-center gap-2">
-                        <select
-                          aria-label={`Plan de ${session.email}`}
-                          className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-                          value={planDraftByFleet[session.fleet_id] ?? "pro"}
-                          onChange={(event) =>
-                            setPlanDraftByFleet((current) => ({
-                              ...current,
-                              [session.fleet_id!]: event.target.value,
-                            }))
-                          }
-                          disabled={busy}
-                        >
-                          {Object.entries(PLAN_LABELS).map(([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={busy}
-                          onClick={() => void handleSetPlan(session)}
-                        >
-                          Appliquer
-                        </Button>
-                      </div>
+                      <Button asChild variant="outline" size="sm" className="gap-2">
+                        <Link to={ROUTE_PATHS.dashboardAdminSubscriptions}>
+                          <CreditCard className="h-4 w-4" aria-hidden />
+                          Gérer
+                        </Link>
+                      </Button>
                     ) : (
                       <span className="text-muted-foreground">
-                        Apres creation flotte
+                        Après création flotte
                       </span>
                     )}
                   </TableCell>

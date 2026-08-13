@@ -49,9 +49,25 @@ export async function seedTenant(
     .single();
   if (fleetErr) throw new Error(`seedTenant fleet: ${fleetErr.message}`);
 
-  // Véhicules
+  const vehicleIds = vehicleCount > 0
+    ? await seedVehicles(admin, fleet.id, tag, vehicleCount)
+    : [];
+
+  return {
+    orgId: org.id,
+    fleetId: fleet.id,
+    vehicleIds,
+  };
+}
+
+export async function seedVehicles(
+  admin: SupabaseClient,
+  fleetId: string,
+  tag: string,
+  vehicleCount: number,
+): Promise<string[]> {
   const vehicleRows = Array.from({ length: vehicleCount }, (_, i) => ({
-    fleet_id: fleet.id,
+    fleet_id: fleetId,
     registration: `LT-${tag}-${i + 1}`,
     brand: "Toyota",
     model: "Hilux",
@@ -64,11 +80,7 @@ export async function seedTenant(
     .select("id");
   if (vErr) throw new Error(`seedTenant vehicles: ${vErr.message}`);
 
-  return {
-    orgId: org.id,
-    fleetId: fleet.id,
-    vehicleIds: (vehicles ?? []).map((v: { id: string }) => v.id),
-  };
+  return (vehicles ?? []).map((v: { id: string }) => v.id);
 }
 
 // ─── Seed : abonnement trial ──────────────────────────────────────────────────

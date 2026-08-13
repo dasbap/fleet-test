@@ -92,7 +92,7 @@ export function getAppUrl(): string {
 
 export function getBackendUrl(): string {
   const v = process.env.BACKEND_URL?.trim();
-  return (v || "https://api.e-samba.com").replace(/\/$/, "");
+  return (v || `${getAppUrl()}/api`).replace(/\/$/, "");
 }
 
 /** URL publique du webhook paiement (documentation / logs PSP). */

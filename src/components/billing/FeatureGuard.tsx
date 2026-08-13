@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
+import { useVehiclePlanAccess } from "@/hooks/usePlanAccess";
 import { useAuth } from "@/hooks/useAuth";
 import type { FleetBillingContext } from "@/types/fleet-billing";
 
@@ -31,6 +32,7 @@ const FEATURE_REQUIRED_PLAN: Partial<Record<FeatureKey, string>> = {
 
 interface FeatureGuardProps {
   feature: FeatureKey;
+  vehicleId?: string;
   /** Rendu alternatif si la feature est inaccessible. Si absent : null. */
   fallback?: ReactNode;
   children: ReactNode;
@@ -40,13 +42,16 @@ interface FeatureGuardProps {
  * Affiche `children` uniquement si la feature est activée sur le plan de la flotte.
  * Sinon affiche `fallback` (ou un prompt d'upgrade par défaut).
  */
-export function FeatureGuard({ feature, fallback, children }: FeatureGuardProps) {
+export function FeatureGuard({ feature, vehicleId, fallback, children }: FeatureGuardProps) {
   const { userFleetId } = useAuth();
   const billing = useFleetBillingContext(userFleetId ?? undefined);
+  const vehicleBilling = useVehiclePlanAccess(userFleetId ?? undefined, vehicleId);
 
-  if (billing.isLoading) return null;
+  if (vehicleId ? vehicleBilling.isLoading : billing.isLoading) return null;
 
-  const enabled = billing.data?.[feature] ?? false;
+  const enabled = vehicleId
+    ? vehicleBilling.billingCtx?.[feature] ?? false
+    : billing.data?.[feature] ?? false;
   if (enabled) return <>{children}</>;
 
   if (fallback !== undefined) return <>{fallback}</>;

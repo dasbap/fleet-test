@@ -5,6 +5,7 @@ import {
   CalendarClock,
   Car,
   CheckCircle2,
+  ClipboardList,
   CreditCard,
   Download,
   ExternalLink,
@@ -27,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
+import { useFleetSubscriptions } from "@/hooks/useSubscriptionManagement";
 import {
   usePaymentHistory,
   PAYMENT_STATUS_LABELS,
@@ -36,13 +38,16 @@ import {
   type PaymentRecord,
 } from "@/hooks/usePaymentHistory";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
-import { isBffConfigured } from "@/lib/bff-config";
 import { formatPublicPriceXaf } from "@/lib/public-pricing";
 import { cn } from "@/lib/utils";
 import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
 import { buildSupportMailto, SUPPORT } from "@/config/navigation";
 import { STATUS_CONFIG } from "@/features/billing/constants/billingStatusConfig";
 import { useNotchPayCallback } from "@/features/billing/hooks/useNotchPayCallback";
+import {
+  resolveEffectiveVehicleSlots,
+  sumActiveSubscriptionVehicleCapacity,
+} from "@/lib/subscription-vehicle-capacity";
 import type { FleetBillingContext } from "@/types/fleet-billing";
 
 // ─── Page principale ────────────────────────────────────────────────────────
@@ -53,11 +58,12 @@ export default function BillingPage() {
   useNotchPayCallback();
 
   const billing        = useFleetBillingContext(userFleetId ?? undefined);
+  const subscriptions  = useFleetSubscriptions(userFleetId ?? undefined);
   const paymentHistory = usePaymentHistory();
   const canManageBilling = can("billing.manage");
 
   // ── Squelette chargement ──
-  if (billing.isLoading) {
+  if (billing.isLoading || subscriptions.isLoading) {
     return (
       <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -92,11 +98,17 @@ export default function BillingPage() {
   const ctx: FleetBillingContext | undefined = billing.data;
   if (!ctx) return null;
 
+  const subscriptionSlots = sumActiveSubscriptionVehicleCapacity(subscriptions.data ?? []);
+  const effectiveVehicleSlots = resolveEffectiveVehicleSlots({
+    subscriptionSlots,
+    contextSlots: ctx.vehicleSlots,
+    planMax: ctx.maxVehicles,
+  });
   const statusCfg  = STATUS_CONFIG[ctx.billingStatus] ?? STATUS_CONFIG.trial;
   const StatusIcon = statusCfg.icon;
-  const slotsPct   = ctx.vehicleSlots >= 999_999
+  const slotsPct   = effectiveVehicleSlots >= 999_999
     ? Math.min(100, Math.round((ctx.vehicleCount / Math.max(1, ctx.maxVehicles ?? 999999)) * 100))
-    : Math.min(100, Math.round((ctx.vehicleCount / Math.max(1, ctx.vehicleSlots)) * 100));
+    : Math.min(100, Math.round((ctx.vehicleCount / Math.max(1, effectiveVehicleSlots)) * 100));
 
   const expiryDate =
     ctx.billingStatus === "trial"  ? ctx.trialEndsAt         :
@@ -111,7 +123,7 @@ export default function BillingPage() {
 
   const isGraceOrSuspended = ctx.billingStatus === "grace" || ctx.billingStatus === "suspended";
   const showUpgradeCta     = ctx.billingStatus !== "enterprise" && ctx.billingStatus !== "active";
-  const canPayOnline       = isBffConfigured();
+  const canPayOnline       = true;
 
   // Modules actifs
   const modules = [
@@ -131,7 +143,7 @@ export default function BillingPage() {
       {/* ── En-tête ──────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Abonnement & Facturation</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Abonnements & Facturation</h1>
           <p className="text-sm text-muted-foreground">
             Gérez votre plan, vos licences véhicules et l'historique de paiements
           </p>
@@ -201,14 +213,14 @@ export default function BillingPage() {
             <p className="text-2xl font-bold tabular-nums">
               {ctx.vehicleCount}
               <span className="text-base font-normal text-muted-foreground">
-                {" "}/ {ctx.vehicleSlots >= 999_999 ? "∞" : ctx.vehicleSlots}
+                {" "}/ {effectiveVehicleSlots >= 999_999 ? "∞" : effectiveVehicleSlots}
               </span>
             </p>
             <Progress value={slotsPct} className="h-1.5" />
             <p className="text-xs text-muted-foreground">
               {ctx.activeVehicles} actif{ctx.activeVehicles !== 1 ? "s" : ""}
-              {ctx.vehicleSlots < 999_999 && (
-                <span className="ml-1">· {Math.max(0, ctx.vehicleSlots - ctx.vehicleCount)} slot{(ctx.vehicleSlots - ctx.vehicleCount) !== 1 ? "s" : ""} restant{(ctx.vehicleSlots - ctx.vehicleCount) !== 1 ? "s" : ""}</span>
+              {effectiveVehicleSlots < 999_999 && (
+                <span className="ml-1">· {Math.max(0, effectiveVehicleSlots - ctx.vehicleCount)} slot{(effectiveVehicleSlots - ctx.vehicleCount) !== 1 ? "s" : ""} restant{(effectiveVehicleSlots - ctx.vehicleCount) !== 1 ? "s" : ""}</span>
               )}
             </p>
           </CardContent>
@@ -317,6 +329,12 @@ export default function BillingPage() {
               </Link>
             </Button>
           )}
+          <Button asChild size="sm" variant="outline">
+            <Link to={ROUTE_PATHS.dashboardSubscriptions}>
+              <ClipboardList className="mr-1.5 h-4 w-4" />
+              Gérer les abonnements
+            </Link>
+          </Button>
         </div>
       </section>
 

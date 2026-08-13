@@ -209,7 +209,7 @@ export function InscriptionForm() {
             {isSubmitting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : null}
-            Créer mon compte gratuitement
+            Créer mon compte
           </Button>
         </form>
 

@@ -247,7 +247,7 @@ export default async function LandingPage() {
             </Link>
             <Link href="/inscription">
               <Button size="sm" className="gap-1 bg-blue-600 hover:bg-blue-700">
-                Essai gratuit <ArrowRight className="h-3.5 w-3.5" />
+                Choisir une offre <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             </Link>
           </div>
@@ -278,7 +278,7 @@ export default async function LandingPage() {
                 size="lg"
                 className="h-12 gap-2 bg-blue-600 px-8 text-base hover:bg-blue-700"
               >
-                Démarrer gratuitement — 14 jours
+                Choisir une offre
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
@@ -290,8 +290,7 @@ export default async function LandingPage() {
           </div>
 
           <p className="mt-4 text-sm text-gray-400">
-            Sans carte bancaire · Paiement MTN MoMo & Orange Money · Annulation à
-            tout moment
+            Paiement MTN MoMo & Orange Money · Activation après validation
           </p>
 
           <div className="mt-12 flex flex-wrap items-center justify-center gap-8">
@@ -394,8 +393,7 @@ export default async function LandingPage() {
               Tarifs transparents en XAF
             </h2>
             <p className="text-gray-500">
-              Commencez gratuitement, passez au plan supérieur quand vous en avez
-              besoin.
+              Choisissez Starter, Pro ou Entreprise selon la taille de votre flotte.
             </p>
           </div>
 
@@ -444,15 +442,14 @@ export default async function LandingPage() {
                     className={`w-full ${plan.highlight ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                     variant={plan.highlight ? "default" : "outline"}
                   >
-                    Démarrer gratuitement
+                    Choisir cette offre
                   </Button>
                 </Link>
               </div>
             ))}
           </div>
           <p className="mt-6 text-center text-sm text-gray-400">
-            Tous les plans incluent 14 jours d&apos;essai gratuit. Pas de carte
-            bancaire requise.
+            Activation après validation du paiement Mobile Money ou échange commercial.
           </p>
         </div>
       </section>
@@ -527,8 +524,7 @@ export default async function LandingPage() {
             Prêt à professionnaliser votre flotte ?
           </h2>
           <p className="mb-8 text-lg text-blue-100">
-            14 jours d&apos;essai gratuit · Aucune carte bancaire · Configuration
-            en 5 minutes
+            Activation rapide · Paiement Mobile Money · Accompagnement au démarrage
           </p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link href="/inscription">
@@ -536,7 +532,7 @@ export default async function LandingPage() {
                 size="lg"
                 className="h-12 gap-2 bg-white px-8 text-base font-bold text-blue-600 hover:bg-blue-50"
               >
-                Créer mon compte gratuit
+                Créer mon compte
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
@@ -592,7 +588,7 @@ export default async function LandingPage() {
                     href="/inscription"
                     className="transition-colors hover:text-white"
                   >
-                    Essai gratuit
+                    Tarifs
                   </Link>
                 </li>
               </ul>

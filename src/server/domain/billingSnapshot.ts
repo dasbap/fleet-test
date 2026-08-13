@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { computeLapsedPaidFromLatestSubscription } from "@/lib/billing/computeLapsedPaidFromLatestSubscription";
-import type { BillingSnapshot } from "@/types/billing-snapshot";
+import { computeLapsedPaidFromLatestSubscription } from "../../lib/billing/computeLapsedPaidFromLatestSubscription.js";
+import type { BillingSnapshot } from "../../types/billing-snapshot.js";
 
 interface SubscriptionRow {
   id: string;

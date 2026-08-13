@@ -74,6 +74,35 @@ function hasAndroidFirebaseClient(expectedPackageName: string): boolean {
   }
 }
 
+function pwaManifestGuardPlugin(enabled: boolean): Plugin {
+  return {
+    name: "pwa-manifest-guard",
+    transformIndexHtml(html) {
+      if (!enabled) {
+        return html;
+      }
+
+      return html.replace(
+        /\s*<link rel="manifest" href="\/manifest\.webmanifest" \/>\r?\n?/g,
+        "\n"
+      );
+    },
+    closeBundle() {
+      if (!enabled) {
+        return;
+      }
+
+      for (const fileName of [
+        "manifest.webmanifest",
+        "manifest.webmanifest.gz",
+        "manifest.webmanifest.br",
+      ]) {
+        fs.rmSync(path.resolve(__dirname, "dist", fileName), { force: true });
+      }
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
@@ -88,6 +117,10 @@ export default defineConfig(({ mode }) => {
     : env.VITE_SUPABASE_ANON_KEY ?? "";
 
   const isProd = mode === "production" || mode === "capacitor";
+  const isVercelPreview = process.env.VERCEL_ENV === "preview";
+  const shouldDisablePwa =
+    isVercelPreview || process.env.ESAMBA_DISABLE_PWA === "true";
+  const shouldEnablePwa = mode !== "capacitor" && !shouldDisablePwa;
 
   const isAnalyze = mode === "analyze" || process.env.ANALYZE === "true";
 
@@ -241,33 +274,19 @@ export default defineConfig(({ mode }) => {
         clientFiles: ["./src/main.tsx", "./src/App.tsx", "./src/i18n/index.ts"],
       },
 
-      proxy:
-        env.VITE_DEV_BFF_PROXY === "true"
-          ? {
-              "/billing": {
-                target: "http://127.0.0.1:8787",
-                changeOrigin: true,
-              },
-
-              "/webhooks": {
-                target: "http://127.0.0.1:8787",
-                changeOrigin: true,
-              },
-
-              "/health": {
-                target: "http://127.0.0.1:8787",
-                changeOrigin: true,
-              },
-
-              "/api": {
-                target: "http://127.0.0.1:8787",
-                changeOrigin: true,
-              },
-            }
-          : undefined,
+      proxy: {
+        "/api": {
+          target: "http://127.0.0.1:8787",
+          changeOrigin: true,
+          rewrite: (p) =>
+            p.replace(/^\/api(?=\/(?:billing|webhooks|health)(?:\/|$))/, ""),
+        },
+      },
     },
 
     plugins: [
+      pwaManifestGuardPlugin(shouldDisablePwa),
+
       react(),
 
       prerenderSeoPlugin(),
@@ -276,10 +295,9 @@ export default defineConfig(({ mode }) => {
         defaultDirectives: new URLSearchParams(),
       }),
 
-      VitePWA({
-        disable: mode === "capacitor",
-
-        registerType: "prompt",
+      shouldEnablePwa &&
+        VitePWA({
+        registerType: "autoUpdate",
 
         injectRegister: "auto",
 
@@ -377,10 +395,26 @@ export default defineConfig(({ mode }) => {
             /^\/_/,
             /^\/api(?:\/|$)/,
             /^\/functions(?:\/|$)/,
+            /^\/blog(?:\/|$)/,
+            /^\/guides(?:\/|$)/,
+            /^\/fonctionnalites(?:\/|$)/,
+            /^\/solutions(?:\/|$)/,
             /\/[^/?]+\.[^/]+$/,
           ],
 
           runtimeCaching: [
+            {
+              urlPattern: ({ request, url }) =>
+                request.mode === "navigate" &&
+                /^\/(?:blog|guides|fonctionnalites|solutions)(?:\/|$)/.test(
+                  url.pathname
+                ),
+              handler: "NetworkOnly",
+              options: {
+                cacheName: "esamba-marketing-redirects",
+              },
+            },
+
             // Polices Google — très stables
             {
               urlPattern: /^https:\/\/fonts\.(?:gstatic|googleapis)\.com\/.*/i,
@@ -564,6 +598,12 @@ export default defineConfig(({ mode }) => {
 
     resolve: {
       alias: {
+        ...(shouldEnablePwa
+          ? {}
+          : {
+              "@/pwa": path.resolve(__dirname, "./src/pwa.noop.ts"),
+            }),
+
         "@": path.resolve(__dirname, "./src"),
 
         "@esamba/offline-contracts": path.resolve(

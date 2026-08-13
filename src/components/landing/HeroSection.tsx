@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Download, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LANDING_CTA, getPrimaryAuthHref } from "@/config/navigation";
+import { usePublicEntryCta } from "@/hooks/usePublicEntryCta";
 
 import heroBg from "@/assets/hero-bg.jpg";
 import heroBg768Avif from "@/assets/hero-bg-768.avif";
@@ -14,6 +14,7 @@ import heroBg1920Webp from "@/assets/hero-bg-1920.webp";
 const DEFAULT_APK_URL = "";
 
 const HeroSection = () => {
+  const primaryCta = usePublicEntryCta();
   const priorityAttrs = {
     fetchpriority: "high",
   };
@@ -121,8 +122,8 @@ const HeroSection = () => {
               className="min-h-[44px] w-full shadow-glow sm:w-auto"
               asChild
             >
-              <Link to={getPrimaryAuthHref()}>
-                {LANDING_CTA.signupLabel}
+              <Link to={primaryCta.href}>
+                {primaryCta.label}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>

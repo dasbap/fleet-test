@@ -10,7 +10,6 @@ import { useNotchPayPayment } from "@/hooks/useNotchPayPayment";
 import {
   PUBLIC_BILLING_PERIOD_LABEL,
   PUBLIC_CURRENCY_LABEL,
-  PUBLIC_PRICE_FREE_PER_VEHICLE_XAF,
   PUBLIC_PRICE_PRO_PER_VEHICLE_XAF,
   PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF,
   formatPublicPriceXaf,
@@ -19,13 +18,11 @@ import { cn } from "@/lib/utils";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { buildSupportMailto } from "@/config/navigation";
 import { MoMoPaymentDialog } from "@/components/billing/MoMoPaymentDialog";
-import { isBffConfigured } from "@/lib/bff-config";
 
-type PlanKey = "free" | "starter" | "pro";
+type PlanKey = "starter" | "pro";
 
 function buildRenewalMailto(plan: PlanKey, fleetLabel: string): string {
   const subjects: Record<PlanKey, string> = {
-    free: "E-Samba — Passage à l'offre Gratuite",
     starter: "E-Samba — Renouvellement plan Starter",
     pro: "E-Samba — Renouvellement plan Pro",
   };
@@ -44,10 +41,16 @@ function buildRenewalMailto(plan: PlanKey, fleetLabel: string): string {
 }
 
 const DEFAULT_VEHICLE_COUNTS: Record<PlanKey, number> = {
-  free: 2,
   starter: 3,
   pro: 5,
 };
+
+const PLAN_VEHICLE_LIMITS: Record<PlanKey, number> = {
+  starter: 25,
+  pro: 100,
+};
+
+const MIN_VEHICLE_COUNT = 1;
 
 const upgradePlans: Array<{
   key: PlanKey;
@@ -59,20 +62,6 @@ const upgradePlans: Array<{
   features: string[];
   cta: string;
 }> = [
-  {
-    key: "free",
-    name: "Gratuit",
-    description: "Pour tester le pilotage sans engagement",
-    price: formatPublicPriceXaf(PUBLIC_PRICE_FREE_PER_VEHICLE_XAF),
-    priceXAF: PUBLIC_PRICE_FREE_PER_VEHICLE_XAF,
-    popular: false,
-    features: [
-      "Jusqu'à 3 véhicules",
-      "Samba-Fleet (cœur métier)",
-      "Sans Samba-Cash ni assistance IA",
-    ],
-    cta: "Demander le gratuit",
-  },
   {
     key: "starter",
     name: "Starter",
@@ -132,12 +121,25 @@ export default function Upgrade() {
     vehicleCount: number;
     amountXaf: number;
   } | null>(null);
+  const [selectedVehicleCounts, setSelectedVehicleCounts] = useState(DEFAULT_VEHICLE_COUNTS);
 
   const notchPay = useNotchPayPayment();
   // Quelle carte est en cours de paiement Notch Pay
   const [notchPendingKey, setNotchPendingKey] = useState<PlanKey | null>(null);
+  const notchAvailable = true;
 
-  const notchAvailable = isBffConfigured();
+  function handleVehicleCountChange(planKey: PlanKey, value: string) {
+    const parsed = Number.parseInt(value, 10);
+    const limit = PLAN_VEHICLE_LIMITS[planKey];
+    const nextValue = Number.isFinite(parsed)
+      ? Math.min(limit, Math.max(MIN_VEHICLE_COUNT, parsed))
+      : MIN_VEHICLE_COUNT;
+
+    setSelectedVehicleCounts((current) => ({
+      ...current,
+      [planKey]: nextValue,
+    }));
+  }
 
   if (authLoading) return <PageLoader />;
   if (!user) return <Navigate to={ROUTE_PATHS.auth} replace />;
@@ -148,8 +150,8 @@ export default function Upgrade() {
   const fleetLabel = [orgId, fleetId].filter(Boolean).join(" / ");
 
   function handleNotchPay(plan: typeof upgradePlans[number]) {
-    if (plan.key === "free" || notchPay.isPending) return;
-    const vehicleCount = DEFAULT_VEHICLE_COUNTS[plan.key];
+    if (notchPay.isPending) return;
+    const vehicleCount = selectedVehicleCounts[plan.key];
     setNotchPendingKey(plan.key);
     notchPay.mutate(
       {
@@ -194,9 +196,11 @@ export default function Upgrade() {
           </Alert>
         )}
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2">
           {upgradePlans.map((plan) => {
             const isPendingThis = notchPendingKey === plan.key;
+            const vehicleCount = selectedVehicleCounts[plan.key];
+            const vehicleLimit = PLAN_VEHICLE_LIMITS[plan.key];
 
             return (
               <div
@@ -239,9 +243,27 @@ export default function Upgrade() {
                 </ul>
 
                 <div className="flex flex-col gap-2">
+                  <div className="mb-2 rounded-lg border bg-muted/30 p-3">
+                    <label
+                      htmlFor={`upgrade-vehicle-count-${plan.key}`}
+                      className="text-xs font-medium"
+                    >
+                      Nombre de vehicules
+                    </label>
+                    <input
+                      id={`upgrade-vehicle-count-${plan.key}`}
+                      aria-label={`Nombre de vehicules ${plan.name}`}
+                      type="number"
+                      min={MIN_VEHICLE_COUNT}
+                      max={vehicleLimit}
+                      step={1}
+                      value={vehicleCount}
+                      onChange={(event) => handleVehicleCountChange(plan.key, event.target.value)}
+                      className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm tabular-nums outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    />
+                  </div>
                   {/* Bouton Notch Pay — paiement automatisé (webhook) */}
-                  {plan.key !== "free" && notchAvailable && (
-                    <Button
+                  <Button
                       className="w-full"
                       onClick={() => handleNotchPay(plan)}
                       disabled={notchPay.isPending}
@@ -257,38 +279,34 @@ export default function Upgrade() {
                           Payer avec Notch Pay
                         </>
                       )}
-                    </Button>
-                  )}
+                  </Button>
 
                   {/* Bouton Mobile Money manuel (Orange / MTN) */}
-                  {plan.key !== "free" && (
-                    <Button
-                      className="w-full bg-orange-500 hover:bg-orange-600"
-                      variant="default"
-                      disabled={notchPay.isPending}
-                      onClick={() => {
-                        const pricePerVehicle =
-                          plan.key === "pro"
-                            ? PUBLIC_PRICE_PRO_PER_VEHICLE_XAF
-                            : PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF;
-                        const defaultVehicles = DEFAULT_VEHICLE_COUNTS[plan.key];
-                        setMomoDialog({
-                          planCode: plan.key,
-                          planName: plan.name,
-                          vehicleCount: defaultVehicles,
-                          amountXaf: pricePerVehicle * defaultVehicles,
-                        });
-                      }}
-                    >
-                      <Smartphone className="h-4 w-4 mr-1.5" />
-                      Payer Mobile Money
-                    </Button>
-                  )}
+                  <Button
+                    className="w-full bg-orange-500 hover:bg-orange-600"
+                    variant="default"
+                    disabled={notchPay.isPending}
+                    onClick={() => {
+                      const pricePerVehicle =
+                        plan.key === "pro"
+                          ? PUBLIC_PRICE_PRO_PER_VEHICLE_XAF
+                          : PUBLIC_PRICE_STARTER_PER_VEHICLE_XAF;
+                      setMomoDialog({
+                        planCode: plan.key,
+                        planName: plan.name,
+                        vehicleCount,
+                        amountXaf: pricePerVehicle * vehicleCount,
+                      });
+                    }}
+                  >
+                    <Smartphone className="h-4 w-4 mr-1.5" />
+                    Payer Mobile Money
+                  </Button>
 
                   {/* Contact support */}
                   <Button
                     className="w-full"
-                    variant={plan.key !== "free" ? "outline" : plan.popular ? "default" : "outline"}
+                    variant="outline"
                     asChild
                   >
                     <a href={buildRenewalMailto(plan.key, fleetLabel)}>{plan.cta}</a>
