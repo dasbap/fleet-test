@@ -1,10 +1,10 @@
 import { LegalLayout, LegalSection } from "@/components/landing/LegalLayout";
 import { PRIVACY } from "@/config/navigation";
 
-const MAJ = "29 mai 2026";
+const MAJ = "13 août 2026";
 
 /**
- * Politique de confidentialité E-Samba — version complète
+ * Politique de confidentialité E-Samba — version publique
  *
  * Cadre légal :
  *   - Loi camerounaise n° 2010/012 du 21 décembre 2010 (cybersécurité / données)
@@ -32,9 +32,9 @@ export default function ConfidentialitePage() {
             "Finalités des traitements",
             "Bases légales",
             "Géolocalisation GPS",
-            "Paiements — NotchPay, Orange Money, MTN MoMo",
-            "Infrastructure et hébergement",
-            "Sous-traitants",
+            "Paiements",
+            "Hébergement et sécurité opérationnelle",
+            "Intervenants autorisés",
             "Durées de conservation",
             "Sécurité des données",
             "Vos droits",
@@ -101,9 +101,9 @@ export default function ConfidentialitePage() {
         <ul className="list-disc pl-5 space-y-1">
           <li>Nom et prénom</li>
           <li>Adresse e-mail professionnelle</li>
-          <li>Numéro de téléphone (utilisé pour l'OTP et WhatsApp Business)</li>
+          <li>Numéro de téléphone (utilisé pour l'authentification et les notifications autorisées)</li>
           <li>Rôle au sein de la flotte (organisateur, gestionnaire, chauffeur, mécanicien)</li>
-          <li>Photo de profil (optionnelle, stockée Supabase Storage)</li>
+          <li>Photo de profil (optionnelle)</li>
           <li>Préférences de langue et de notification</li>
           <li>Date et heure de création du compte</li>
         </ul>
@@ -114,7 +114,7 @@ export default function ConfidentialitePage() {
           <li>Pays et ville de domiciliation</li>
           <li>Nom(s) de flotte(s)</li>
           <li>Plan d'abonnement souscrit</li>
-          <li>Structure des rôles et permissions RBAC (contrôle d'accès par rôle)</li>
+          <li>Structure des rôles et permissions d'accès</li>
         </ul>
 
         <h3 className="font-semibold text-foreground mt-4 mb-2">2.3 Données véhicules</h3>
@@ -125,7 +125,7 @@ export default function ConfidentialitePage() {
           <li>Statut opérationnel (actif, en maintenance, suspendu)</li>
           <li>Documents administratifs : assurance, visite technique, carte grise (dates d'expiration)</li>
           <li>Code QR unique lié au véhicule (identifiant interne, non nominatif)</li>
-          <li>Historique complet des interventions de maintenance (DVIR, ordres de travail)</li>
+          <li>Historique des interventions de maintenance et contrôles associés</li>
         </ul>
 
         <h3 className="font-semibold text-foreground mt-4 mb-2">2.4 Données conducteurs</h3>
@@ -134,9 +134,9 @@ export default function ConfidentialitePage() {
           <li>Affectations véhicule (historique des créneaux d'exploitation)</li>
           <li>Kilométrages déclarés (début et fin de créneau)</li>
           <li>Recettes déclarées et preuves de reversement (captures Mobile Money)</li>
-          <li>Contrôles DVIR (Daily Vehicle Inspection Reports) pré et post-trajet</li>
+          <li>Contrôles d'état du véhicule avant et après exploitation</li>
           <li>Incidents déclarés (description, géolocalisation si disponible, photos)</li>
-          <li>Score de performance conducteur (calculé automatiquement sur critères DVIR, ponctualité, incidents)</li>
+          <li>Indicateurs de performance conducteur liés à l'activité de flotte</li>
           <li>Observations et notes du gestionnaire</li>
         </ul>
 
@@ -155,9 +155,9 @@ export default function ConfidentialitePage() {
 
         <h3 className="font-semibold text-foreground mt-4 mb-2">2.6 Données financières et de facturation</h3>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Historique des transactions d'abonnement (montant, date, référence NotchPay)</li>
+          <li>Historique des transactions d'abonnement (montant, date, référence transactionnelle)</li>
           <li>Statut de l'abonnement (actif, en période de grâce, suspendu)</li>
-          <li>Numéro de téléphone Mobile Money associé à la transaction (transmis par NotchPay)</li>
+          <li>Numéro de téléphone Mobile Money associé à la transaction lorsque nécessaire</li>
           <li>
             <strong className="text-foreground">Nous ne stockons pas</strong> les
             numéros complets de carte bancaire, les codes PIN, ni les mots de passe
@@ -167,19 +167,19 @@ export default function ConfidentialitePage() {
 
         <h3 className="font-semibold text-foreground mt-4 mb-2">2.7 Données techniques et de navigation</h3>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Adresse IP (anonymisée après 30 jours)</li>
+          <li>Adresse IP, limitée aux besoins de sécurité et de diagnostic</li>
           <li>Type de navigateur et version</li>
           <li>Système d'exploitation et type de terminal (mobile / desktop)</li>
           <li>Pages visitées et durée de session</li>
-          <li>Logs d'erreurs applicatifs (Sentry — anonymisés)</li>
+          <li>Journaux techniques d'erreur limités et minimisés</li>
           <li>Journaux d'audit des actions sensibles (accès, modifications, suppressions)</li>
-          <li>Tokens de session et identifiants de connexion (non permanents)</li>
+          <li>Données nécessaires au maintien sécurisé de la session</li>
         </ul>
 
         <h3 className="font-semibold text-foreground mt-4 mb-2">2.8 Données de support</h3>
         <ul className="list-disc pl-5 space-y-1">
           <li>Tickets de support soumis via la plateforme</li>
-          <li>Échanges via WhatsApp Business (+237 641 341 857)</li>
+          <li>Échanges via les canaux de support mis à disposition par E-Samba</li>
           <li>Demandes de rappel téléphonique</li>
           <li>Captures d'écran ou fichiers transmis lors d'un incident</li>
         </ul>
@@ -199,14 +199,14 @@ export default function ConfidentialitePage() {
             <tbody className="divide-y divide-border">
               {[
                 ["Fourniture du service", "Création de compte, gestion de flotte, suivi véhicules, conducteurs, maintenance", "Contrat"],
-                ["Authentification", "Connexion par e-mail, OTP SMS, lien magique, biométrie (mobile)", "Contrat"],
+                ["Authentification", "Connexion sécurisée et vérification de l'identité de l'utilisateur", "Contrat"],
                 ["Géolocalisation", "Suivi GPS des véhicules pour l'optimisation opérationnelle", "Contrat / Consentement"],
-                ["Facturation", "Traitement des paiements d'abonnement via NotchPay", "Contrat / Obligation légale"],
-                ["Sécurité et fraude", "Détection d'anomalies, journaux d'audit, protection des accès", "Intérêt légitime"],
+                ["Facturation", "Traitement des paiements d'abonnement via des prestataires autorisés", "Contrat / Obligation légale"],
+                ["Sécurité et fraude", "Détection d'anomalies, traçabilité et protection des accès", "Intérêt légitime"],
                 ["Maintenance & performance", "Monitoring technique, débogage, optimisation des temps de réponse", "Intérêt légitime"],
-                ["Notifications", "Alertes opérationnelles SMS, WhatsApp, push — événements flotte", "Contrat / Consentement"],
+                ["Notifications", "Alertes opérationnelles par les canaux activés par l'organisation", "Contrat / Consentement"],
                 ["Support client", "Traitement des tickets, assistance, rappels téléphoniques", "Contrat"],
-                ["Statistiques internes", "Analyse agrégée et anonymisée des usages produit (PostHog)", "Intérêt légitime"],
+                ["Statistiques internes", "Analyse agrégée et minimisée des usages produit", "Intérêt légitime"],
                 ["Conformité légale", "Conservation des données comptables, réponse aux autorités", "Obligation légale"],
               ].map(([f, d, b]) => (
                 <tr key={f} className="hover:bg-muted/30">
@@ -283,41 +283,37 @@ export default function ConfidentialitePage() {
 
         <h3 className="font-semibold text-foreground mt-4 mb-2">5.3 Fréquence de collecte</h3>
         <p>
-          La fréquence dépend de la configuration choisie par l'organisateur de la
-          flotte : de 30 secondes à 5 minutes en mode actif, aucune collecte
-          lorsque le module est désactivé.
+          La fréquence dépend de la configuration choisie par l'organisation et
+          du besoin opérationnel. Elle est limitée à ce qui est nécessaire au
+          service activé, et aucune collecte n'a lieu lorsque le module est
+          désactivé.
         </p>
 
         <h3 className="font-semibold text-foreground mt-4 mb-2">5.4 Durée de conservation des données GPS</h3>
         <p>
-          Les données GPS brutes sont conservées{" "}
-          <strong className="text-foreground">12 mois glissants</strong>. Les
-          données agrégées (kilométrage total, rapports de tournées) peuvent être
-          conservées pendant toute la durée de l'abonnement.
+          Les données GPS sont conservées pendant une durée proportionnée au
+          besoin opérationnel et aux obligations contractuelles applicables. Les
+          rapports agrégés nécessaires au suivi de la flotte peuvent être
+          conservés pendant la durée de l'abonnement.
         </p>
 
         <h3 className="font-semibold text-foreground mt-4 mb-2">5.5 Qui a accès aux données GPS ?</h3>
         <ul className="list-disc pl-5 space-y-1">
           <li>
-            <strong className="text-foreground">Organisateurs</strong> : accès
-            complet à toutes les positions de la flotte
+            <strong className="text-foreground">Utilisateurs habilités</strong> :
+            accès limité à leur périmètre opérationnel
           </li>
           <li>
-            <strong className="text-foreground">Gestionnaires</strong> : accès aux
-            véhicules de leur périmètre
+            <strong className="text-foreground">Conducteurs</strong> : accès aux
+            informations les concernant lorsque l'application le permet
           </li>
           <li>
-            <strong className="text-foreground">Chauffeurs</strong> : accès à leur
-            propre historique uniquement
+            <strong className="text-foreground">Personnel technique ou support</strong> :
+            accès ponctuel, justifié, limité et tracé
           </li>
           <li>
-            <strong className="text-foreground">Mécaniciens</strong> : aucun accès
-            aux données GPS
-          </li>
-          <li>
-            <strong className="text-foreground">E-Samba</strong> : accès technique
-            limité à des fins de support et de sécurité, soumis à journalisation
-            d'audit
+            <strong className="text-foreground">Tiers non autorisés</strong> :
+            aucun accès aux données de trajet
           </li>
         </ul>
 
@@ -347,126 +343,107 @@ export default function ConfidentialitePage() {
       </LegalSection>
 
       {/* ── 6. Paiements ──────────────────────────────────────────────────── */}
-      <LegalSection titre="6. Paiements — NotchPay, Orange Money, MTN MoMo">
+      <LegalSection titre="6. Paiements">
         <p>
           E-Samba confie l'intégralité du traitement des paiements à des
-          prestataires certifiés. E-Samba n'est pas un établissement de paiement
-          et ne traite pas directement les données bancaires ou Mobile Money
-          sensibles.
+          prestataires de paiement autorisés. E-Samba n'est pas un établissement
+          de paiement et ne traite pas directement les données bancaires ou Mobile
+          Money sensibles.
         </p>
 
-        <h3 className="font-semibold text-foreground mt-4 mb-2">6.1 NotchPay</h3>
-        <p>
-          <strong className="text-foreground">NotchPay</strong> (prestataire de
-          paiement panafricain, certifié PCI-DSS) est notre partenaire de
-          collecte. Les paiements Orange Money et MTN Mobile Money sont traités
-          via l'API NotchPay. La politique de confidentialité de NotchPay est
-          consultable sur{" "}
-          <a
-            href="https://notchpay.co"
-            className="text-primary hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            notchpay.co
-          </a>
-          .
-        </p>
-
-        <h3 className="font-semibold text-foreground mt-4 mb-2">6.2 Ce qu'E-Samba stocke</h3>
+        <h3 className="font-semibold text-foreground mt-4 mb-2">6.1 Ce qu'E-Samba conserve</h3>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Référence unique de transaction (ID NotchPay)</li>
+          <li>Référence transactionnelle nécessaire au suivi du paiement</li>
           <li>Montant et devise (XAF)</li>
           <li>Date et heure de la transaction</li>
-          <li>Statut du paiement (succès, échec, remboursé)</li>
-          <li>Les 4 derniers chiffres du numéro Mobile Money (fournis par NotchPay, à des fins de justificatif)</li>
+          <li>Statut du paiement ou du remboursement</li>
+          <li>Justificatifs limités nécessaires à la facturation et au support</li>
         </ul>
 
-        <h3 className="font-semibold text-foreground mt-4 mb-2">6.3 Ce qu'E-Samba ne stocke jamais</h3>
+        <h3 className="font-semibold text-foreground mt-4 mb-2">6.2 Ce qu'E-Samba ne stocke jamais</h3>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Numéro complet de téléphone Mobile Money</li>
           <li>Codes PIN de validation</li>
           <li>Numéros complets de carte bancaire (PAN)</li>
           <li>Mots de passe de services financiers</li>
           <li>Données biométriques liées aux paiements</li>
+          <li>Identifiants complets permettant d'autoriser un paiement</li>
         </ul>
 
-        <h3 className="font-semibold text-foreground mt-4 mb-2">6.4 Remboursements</h3>
+        <h3 className="font-semibold text-foreground mt-4 mb-2">6.3 Remboursements et litiges</h3>
         <p>
-          Les demandes de remboursement sont traitées via NotchPay. E-Samba
-          dispose d'un délai de traitement de 5 jours ouvrables. Les données du
-          remboursement sont conservées 10 ans conformément à l'OHADA.
+          Les demandes de remboursement et les contestations sont traitées via un
+          processus sécurisé, avec le prestataire concerné lorsque cela est
+          nécessaire. Les données comptables liées aux paiements sont conservées
+          pendant la durée imposée par la réglementation applicable.
         </p>
       </LegalSection>
 
       {/* ── 7. Infrastructure ─────────────────────────────────────────────── */}
-      <LegalSection titre="7. Infrastructure et hébergement">
-        <h3 className="font-semibold text-foreground mt-2 mb-2">7.1 Supabase</h3>
+      <LegalSection titre="7. Hébergement et sécurité opérationnelle">
+        <h3 className="font-semibold text-foreground mt-2 mb-2">7.1 Hébergement professionnel</h3>
         <p>
-          La base de données PostgreSQL, l'authentification, le stockage des
-          fichiers (photos, documents) et les fonctions edge sont hébergés sur{" "}
-          <strong className="text-foreground">Supabase Inc.</strong> Les données
-          sont stockées dans la région{" "}
-          <strong className="text-foreground">Europe Ouest (Francfort, Allemagne)</strong>,
-          soumises au RGPD. Supabase est signataire des Clauses Contractuelles
-          Types (CCT) de la Commission européenne.
+          Les données nécessaires au service sont hébergées auprès de prestataires
+          professionnels sélectionnés pour leurs garanties de sécurité, de
+          disponibilité et de conformité. E-Samba ne publie pas le détail de son
+          architecture technique afin de préserver la sécurité du service.
         </p>
 
-        <h3 className="font-semibold text-foreground mt-4 mb-2">7.2 Vercel</h3>
+        <h3 className="font-semibold text-foreground mt-4 mb-2">7.2 Données applicatives</h3>
         <p>
-          L'application web E-Samba est déployée sur{" "}
-          <strong className="text-foreground">Vercel Inc.</strong> Le réseau Edge
-          de Vercel distribue l'application mondialement pour des performances
-          optimales sur les connexions 2G/3G africaines. Les données en transit
-          sont chiffrées TLS 1.3. Vercel est certifié SOC 2 Type II.
+          Les comptes, paramètres de flotte, documents et informations
+          opérationnelles sont séparés par organisation et soumis à des contrôles
+          d'accès stricts. Les accès internes sont limités aux personnes
+          habilitées et aux besoins de support, de sécurité ou de conformité.
         </p>
 
-        <h3 className="font-semibold text-foreground mt-4 mb-2">7.3 Stockage cloud</h3>
+        <h3 className="font-semibold text-foreground mt-4 mb-2">7.3 Disponibilité et continuité</h3>
         <p>
-          Les fichiers utilisateurs (photos de profil, preuves de reversement,
-          photos d'incidents, tutoriels) sont stockés dans{" "}
-          <strong className="text-foreground">Supabase Storage</strong> (Object
-          Storage compatible S3, région Francfort). L'accès est contrôlé par des
-          politiques RLS (Row Level Security) et des URLs signées à durée limitée.
+          E-Samba met en place des procédures de supervision, de sauvegarde et de
+          reprise adaptées à la criticité du service. Les modalités opérationnelles
+          détaillées sont réservées aux échanges contractuels ou aux audits
+          autorisés.
         </p>
       </LegalSection>
 
       {/* ── 8. Sous-traitants ─────────────────────────────────────────────── */}
-      <LegalSection titre="8. Sous-traitants">
+      <LegalSection titre="8. Intervenants autorisés">
         <p>
-          E-Samba fait appel aux sous-traitants ci-dessous. Aucune donnée n'est
-          vendue à des tiers. Aucune utilisation à des fins publicitaires.
+          E-Samba peut faire appel à des intervenants autorisés pour fournir le
+          service. Aucune donnée n'est vendue à des tiers et aucune utilisation à
+          des fins publicitaires n'est réalisée.
         </p>
         <div className="overflow-x-auto mt-3">
           <table className="w-full text-xs border border-border rounded-lg overflow-hidden">
             <thead className="bg-muted">
               <tr>
-                <th className="text-left px-3 py-2 font-semibold text-foreground">Service</th>
+                <th className="text-left px-3 py-2 font-semibold text-foreground">Catégorie</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Finalité</th>
-                <th className="text-left px-3 py-2 font-semibold text-foreground">Pays</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground">Garanties</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {[
-                ["Supabase Inc.", "Base de données, authentification, stockage fichiers, edge functions", "États-Unis / UE (Francfort)", "CCT — RGPD compliant"],
-                ["Vercel Inc.", "Hébergement application web, réseau Edge", "États-Unis / Monde", "SOC 2 Type II — CCT"],
-                ["NotchPay", "Traitement paiements Mobile Money (Orange, MTN)", "Cameroun / Afrique", "PCI-DSS, réglementation BEAC"],
-                ["WhatsApp Business (Meta)", "Notifications opérationnelles, support client", "États-Unis", "CCT — DPA signé"],
-                ["Mapbox / Google Maps", "Cartographie, affichage des trajets GPS", "États-Unis", "CCT — Données anonymisées"],
-                ["PostHog Inc.", "Analytics produit anonymisé (pas de données personnelles)", "UE (Amsterdam)", "RGPD — Serveur EU"],
-                ["Sentry Inc.", "Journalisation erreurs applicatifs (anonymisé)", "UE", "RGPD — Données anonymisées"],
-              ].map(([s, f, p, g]) => (
+                ["Hébergement applicatif", "Mise à disposition du service et disponibilité", "Contrats de sous-traitance, sécurité et confidentialité"],
+                ["Stockage et base de données", "Conservation des données nécessaires au service", "Contrôles d'accès, chiffrement et engagements de conformité"],
+                ["Paiement", "Encaissement, remboursement et preuve de transaction", "Encadrement contractuel et obligations financières applicables"],
+                ["Communication client", "Notifications opérationnelles et support", "Utilisation limitée aux messages nécessaires au service"],
+                ["Cartographie", "Affichage de positions, zones et trajets lorsque le module est activé", "Minimisation et limitation des données transmises"],
+                ["Mesure d'usage et diagnostic", "Amélioration du produit et résolution d'incidents", "Agrégation, anonymisation ou minimisation selon le cas"],
+              ].map(([s, f, g]) => (
                 <tr key={s} className="hover:bg-muted/30">
                   <td className="px-3 py-2 font-medium text-foreground">{s}</td>
                   <td className="px-3 py-2">{f}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{p}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{g}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <p className="mt-3">
+          La liste détaillée des prestataires peut être communiquée aux clients,
+          utilisateurs concernés ou autorités compétentes sur demande légitime,
+          dans un cadre adapté de confidentialité.
+        </p>
       </LegalSection>
 
       {/* ── 9. Durées de conservation ─────────────────────────────────────── */}
@@ -483,18 +460,13 @@ export default function ConfidentialitePage() {
             <tbody className="divide-y divide-border">
               {[
                 ["Compte utilisateur actif", "Durée de l'abonnement", "Nécessaire à l'exécution du contrat"],
-                ["Compte résilié", "3 ans après résiliation", "Prescription commerciale OHADA"],
-                ["Données GPS brutes", "12 mois glissants", "Proportionnalité — usage opérationnel"],
-                ["Trajets agrégés (rapports)", "Durée abonnement + 3 ans", "Obligations de compte rendu employeur"],
-                ["Données DVIR / maintenance", "5 ans", "Prescription responsabilité civile"],
-                ["Transactions de paiement", "10 ans", "OHADA — Acte Uniforme Droit Comptable"],
-                ["Logs d'audit sécurité", "12 mois", "Détection incidents, obligations ANTIC"],
-                ["Logs techniques (erreurs)", "90 jours", "Débogage opérationnel"],
-                ["Adresses IP", "30 jours (puis anonymisées)", "Sécurité réseau"],
-                ["Tickets de support", "3 ans après clôture", "Preuve contractuelle"],
-                ["Échanges WhatsApp Business", "12 mois", "Historique support"],
-                ["Cookies analytiques", "13 mois", "Recommandation CNIL"],
-                ["Tokens de session", "Durée de session active", "Sécurité authentification"],
+                ["Compte résilié", "Durée nécessaire aux obligations légales ou contractuelles", "Prescription et défense des droits"],
+                ["Données de géolocalisation", "Durée proportionnée au module activé et au besoin opérationnel", "Gestion de flotte et sécurité des opérations"],
+                ["Rapports agrégés", "Durée utile au suivi contractuel", "Compte rendu et pilotage de la flotte"],
+                ["Données de maintenance", "Durée nécessaire au suivi de maintenance et aux obligations applicables", "Sécurité, maintenance et responsabilité"],
+                ["Transactions de paiement", "Durée légale comptable applicable", "Obligations comptables et fiscales"],
+                ["Journaux de sécurité et de support", "Durée limitée au besoin de sécurité, d'assistance ou de preuve", "Détection d'incidents et support"],
+                ["Cookies et préférences", "Selon leur finalité et vos choix", "Fonctionnement du service et consentement"],
               ].map(([c, d, j]) => (
                 <tr key={c} className="hover:bg-muted/30">
                   <td className="px-3 py-2 font-medium text-foreground">{c}</td>
@@ -510,67 +482,42 @@ export default function ConfidentialitePage() {
       {/* ── 10. Sécurité ──────────────────────────────────────────────────── */}
       <LegalSection titre="10. Sécurité des données">
         <p>
-          E-Samba met en œuvre les mesures techniques et organisationnelles
-          suivantes, conformément à l'état de l'art et aux exigences de l'Article
-          32 du RGPD.
+          E-Samba met en œuvre des mesures techniques et organisationnelles
+          adaptées à la nature des données traitées, conformément à l'état de
+          l'art et aux exigences de l'Article 32 du RGPD.
         </p>
 
-        <h3 className="font-semibold text-foreground mt-4 mb-2">10.1 Chiffrement</h3>
+        <h3 className="font-semibold text-foreground mt-4 mb-2">10.1 Mesures techniques</h3>
         <ul className="list-disc pl-5 space-y-1">
-          <li>
-            <strong className="text-foreground">En transit</strong> : protocole TLS 1.3
-            obligatoire sur toutes les connexions (HTTPS strict, HSTS activé)
-          </li>
-          <li>
-            <strong className="text-foreground">Au repos</strong> : chiffrement AES-256
-            de la base de données PostgreSQL (Supabase, disques chiffrés AWS)
-          </li>
-          <li>
-            <strong className="text-foreground">Fichiers</strong> : Supabase Storage avec
-            chiffrement côté serveur, URLs signées à durée limitée
-          </li>
+          <li>Chiffrement des échanges et protection des données stockées</li>
+          <li>Segmentation des accès par organisation et par périmètre autorisé</li>
+          <li>Supervision des événements techniques et de sécurité</li>
+          <li>Contrôles destinés à limiter les accès non autorisés</li>
         </ul>
 
-        <h3 className="font-semibold text-foreground mt-4 mb-2">10.2 Authentification</h3>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>E-mail + mot de passe (haché bcrypt côté Supabase)</li>
-          <li>OTP SMS à usage unique, validité 60 secondes</li>
-          <li>Lien magique (magic link) à usage unique, validité 15 minutes</li>
-          <li>Authentification biométrique Face ID / empreinte (application mobile)</li>
-          <li>Authentification à deux facteurs (2FA) disponible pour tous les comptes</li>
-          <li>Détection des connexions inhabituelles avec alerte automatique</li>
-        </ul>
-
-        <h3 className="font-semibold text-foreground mt-4 mb-2">10.3 Contrôle d'accès (RBAC)</h3>
+        <h3 className="font-semibold text-foreground mt-4 mb-2">10.2 Authentification et accès</h3>
         <p>
-          E-Samba applique un modèle de contrôle d'accès basé sur les rôles
-          (RBAC — Role-Based Access Control). Chaque rôle (organisateur,
-          gestionnaire, chauffeur, mécanicien) dispose d'un périmètre de
-          permissions strictement défini. L'isolation multi-tenant est assurée
-          par des politiques{" "}
-          <strong className="text-foreground">Row Level Security (RLS)</strong>{" "}
-          au niveau de la base de données PostgreSQL : aucun utilisateur ne peut
-          accéder aux données d'une autre organisation.
+          L'accès au service repose sur des mécanismes d'authentification sécurisés
+          et sur des permissions adaptées au rôle de chaque utilisateur. Les
+          fonctionnalités sensibles sont réservées aux comptes habilités par
+          l'organisation.
         </p>
 
-        <h3 className="font-semibold text-foreground mt-4 mb-2">10.4 Journaux d'audit</h3>
+        <h3 className="font-semibold text-foreground mt-4 mb-2">10.3 Traçabilité</h3>
         <p>
-          Toutes les actions sensibles (modification de rôle, suppression de
-          données, accès aux données d'un autre utilisateur par un administrateur,
-          modification de paramètres de sécurité) sont enregistrées dans un
-          journal d'audit horodaté et immuable. Ces logs sont conservés 12 mois
-          et accessibles aux organisateurs de flotte.
+          Les opérations sensibles peuvent être enregistrées dans des journaux de
+          sécurité afin de détecter les incidents, d'assister les utilisateurs et
+          de répondre aux obligations légales ou contractuelles.
         </p>
 
-        <h3 className="font-semibold text-foreground mt-4 mb-2">10.5 Sauvegardes</h3>
+        <h3 className="font-semibold text-foreground mt-4 mb-2">10.4 Sauvegardes et reprise</h3>
         <p>
-          Supabase effectue des sauvegardes automatiques quotidiennes de la base
-          de données avec rétention sur 7 jours (plan standard) ou 30 jours (plan
-          Enterprise). Les sauvegardes sont chiffrées et stockées dans une région
-          géographiquement distincte.
+          E-Samba maintient des procédures de sauvegarde et de reprise adaptées à
+          la continuité du service. Les détails opérationnels de ces procédures ne
+          sont pas publiés pour des raisons de sécurité.
         </p>
 
-        <h3 className="font-semibold text-foreground mt-4 mb-2">10.6 Réponse aux incidents</h3>
+        <h3 className="font-semibold text-foreground mt-4 mb-2">10.5 Réponse aux incidents</h3>
         <p>
           En cas de violation de données à caractère personnel susceptible
           d'engendrer un risque pour vos droits et libertés, E-Samba s'engage à
@@ -675,24 +622,23 @@ export default function ConfidentialitePage() {
           peuvent pas être désactivés sans empêcher l'accès à E-Samba.
         </p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Token de session d'authentification Supabase (durée : session)</li>
-          <li>Token de rafraîchissement sécurisé (durée : 7 jours)</li>
+          <li>Cookies de session nécessaires à l'authentification</li>
+          <li>Cookies de sécurité nécessaires au maintien de la connexion</li>
           <li>Préférence de langue et thème (durée : 1 an)</li>
-          <li>Protection CSRF (durée : session)</li>
+          <li>Protection contre les actions non autorisées</li>
         </ul>
 
         <h3 className="font-semibold text-foreground mt-4 mb-2">13.2 Cookies analytiques (opt-in)</h3>
         <p>
-          Avec votre consentement, nous utilisons{" "}
-          <strong className="text-foreground">PostHog</strong> (serveur UE) pour
-          mesurer l'usage du produit de façon agrégée et anonymisée. Aucune donnée
-          personnelle identifiante n'est transmise à PostHog.
+          Avec votre consentement, nous utilisons des outils de mesure d'audience
+          produit pour comprendre l'usage du service de façon agrégée et minimisée.
+          Ces données ne sont pas utilisées à des fins publicitaires.
         </p>
 
         <h3 className="font-semibold text-foreground mt-4 mb-2">13.3 Ce que nous n'utilisons pas</h3>
         <ul className="list-disc pl-5 space-y-1">
           <li>Cookies publicitaires (aucune régie publicitaire)</li>
-          <li>Pixels de tracking tiers (Meta Pixel, Google Ads, etc.)</li>
+          <li>Pixels de tracking publicitaire tiers</li>
           <li>Cookies de profilage comportemental à des fins commerciales</li>
         </ul>
 
@@ -708,25 +654,22 @@ export default function ConfidentialitePage() {
       {/* ── 14. Transferts internationaux ─────────────────────────────────── */}
       <LegalSection titre="14. Transferts internationaux de données">
         <p>
-          Certains de nos sous-traitants sont établis en dehors du Cameroun et de
-          l'espace CEMAC. Ces transferts sont encadrés par les garanties suivantes :
+          Certains intervenants autorisés peuvent traiter des données en dehors du
+          Cameroun ou de l'espace CEMAC lorsque cela est nécessaire au service.
+          Ces transferts sont encadrés par les garanties suivantes :
         </p>
         <ul className="list-disc pl-5 space-y-2 mt-2">
           <li>
-            <strong className="text-foreground">Vers l'Union européenne</strong> :
-            les données hébergées sur Supabase (Francfort) bénéficient du niveau
-            de protection le plus élevé au monde (RGPD).
+            Clauses contractuelles, accords de traitement de données ou garanties
+            équivalentes lorsque le prestataire est situé hors de la zone locale.
           </li>
           <li>
-            <strong className="text-foreground">Vers les États-Unis</strong> :
-            Vercel et Supabase sont soumis aux Clauses Contractuelles Types (CCT)
-            adoptées par la Commission européenne, garantissant un niveau de
-            protection équivalent au RGPD.
+            Limitation des données transmises à ce qui est strictement nécessaire
+            à la finalité du service.
           </li>
           <li>
-            <strong className="text-foreground">Via WhatsApp Business (Meta)</strong> :
-            les messages de notification transitent par les serveurs Meta (USA),
-            couverts par un Data Processing Agreement (DPA) conforme au RGPD.
+            Évaluation régulière des garanties de sécurité, de confidentialité et
+            de conformité des intervenants concernés.
           </li>
         </ul>
         <p className="mt-3">
@@ -819,11 +762,11 @@ export default function ConfidentialitePage() {
             },
             {
               q: "Qui peut voir mes trajets ?",
-              a: "Seuls l'organisateur de votre flotte, les gestionnaires de votre périmètre et vous-même avez accès à vos données de trajet. Les mécaniciens n'ont aucun accès aux données GPS. E-Samba n'accède à vos trajets qu'en cas de nécessité technique avérée, dans le cadre d'une assistance, et cet accès est tracé dans le journal d'audit.",
+              a: "Seuls les utilisateurs habilités par votre organisation peuvent accéder aux données de trajet dans la limite de leur périmètre. E-Samba n'y accède qu'en cas de nécessité de support, de sécurité ou de conformité, avec des contrôles internes adaptés.",
             },
             {
               q: "Combien de temps mes données sont-elles conservées ?",
-              a: "La durée varie selon le type de données : 12 mois pour les données GPS brutes, 3 ans pour votre compte après résiliation, 10 ans pour les données comptables liées aux paiements (obligation OHADA). Consultez le tableau de la Section 9 pour le détail complet.",
+              a: "La durée varie selon le type de données, la configuration de votre organisation et les obligations légales applicables. E-Samba applique une durée proportionnée au besoin du service, puis supprime, anonymise ou archive les données lorsque leur conservation n'est plus nécessaire.",
             },
             {
               q: "Comment supprimer mon compte ?",
@@ -831,7 +774,7 @@ export default function ConfidentialitePage() {
             },
             {
               q: "Les paiements Mobile Money sont-ils sécurisés ?",
-              a: "Oui. Les paiements sont traités exclusivement par NotchPay, prestataire certifié PCI-DSS. E-Samba ne reçoit jamais votre numéro complet de téléphone Mobile Money, ni votre code PIN, ni aucune donnée bancaire sensible. Seule la référence de transaction et son statut nous sont transmis.",
+              a: "Oui. Les paiements sont traités par des prestataires autorisés. E-Samba ne reçoit jamais votre code PIN, vos mots de passe financiers ni les informations sensibles permettant d'autoriser un paiement. Seules les informations nécessaires au suivi de la transaction sont conservées.",
             },
             {
               q: "Mon employeur peut-il voir ma position en permanence ?",
