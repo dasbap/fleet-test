@@ -28,7 +28,6 @@ export default function DemoAdminPage() {
     updateAccountExpiration,
     deleteAccount,
     resetFleet,
-    setFleetPlan,
     generateMagicLink,
   } = useAdminDemoAccounts();
 
@@ -99,7 +98,6 @@ export default function DemoAdminPage() {
             onUpdateExpiration={updateAccountExpiration}
             onDelete={deleteAccount}
             onResetFleet={resetFleet}
-            onSetFleetPlan={setFleetPlan}
             onGenerateMagicLink={generateMagicLink}
           />
         </TabsContent>

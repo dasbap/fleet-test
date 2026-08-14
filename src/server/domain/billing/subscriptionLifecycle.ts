@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { SubscriptionStatus } from "@/types/billing-production";
+import type { SubscriptionStatus } from "../../../types/billing-production.js";
 
 // ─── Règles d'accès par statut ─────────────────────────────
 
@@ -196,6 +196,7 @@ export async function initiateSubscriptionPayment(
         starts_at: now.toISOString(),
         ends_at: endsAt.toISOString(),
         status: "pending_payment",
+        vehicle_slots: Math.max(1, plan.max_vehicles ?? 1),
       })
       .select("id")
       .single<{ id: string }>();

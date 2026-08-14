@@ -20,7 +20,7 @@ function createMockAdmin(): SupabaseClient {
     status: "pending",
     raw_payload: {
       planCode: "starter",
-      vehicleCount: 0,
+      vehicleCount: 1,
       durationMonths: 1,
       phoneNumber: "600000000",
       fleetId: FLEET,
@@ -111,6 +111,19 @@ function createMockAdmin(): SupabaseClient {
               fn({ error: null });
               return Promise.resolve({ error: null });
             },
+          }),
+        };
+      }
+      if (table === "vehicules") {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => ({
+                  returns: async () => ({ data: [], error: null }),
+                }),
+              }),
+            }),
           }),
         };
       }

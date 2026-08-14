@@ -1,9 +1,9 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
-import { initiateMobileMoneyPaymentForUser } from "@/server/domain/mobileMoneyInitiate";
-import { getBearerToken } from "@/server/http/auth";
-import { jsonInternalServerError } from "@/server/http/errorResponse";
-import { createSupabaseUserClient } from "@/server/infra/supabaseUserClient";
+import { initiateMobileMoneyPaymentForUser } from "../../domain/mobileMoneyInitiate.js";
+import { getBearerToken } from "../auth.js";
+import { jsonInternalServerError } from "../errorResponse.js";
+import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
 
 const momoIntentSchema = z.object({
   orgId: z.string().uuid(),

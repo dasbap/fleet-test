@@ -6,7 +6,7 @@
  * Permission   = action fine pouvant être vérifiée côté client ET serveur
  */
 
-import type { AppRole } from "@/types/auth";
+import type { AppRole } from "./auth.js";
 
 // ─── Rôle plateforme ─────────────────────────────────────────────────────────
 
@@ -33,6 +33,7 @@ export type Permission =
   | "fleet.delete"
   // Véhicules
   | "vehicle.view"
+  | "vehicle.read_by_subscription"
   | "vehicle.create"
   | "vehicle.update"
   | "vehicle.delete"

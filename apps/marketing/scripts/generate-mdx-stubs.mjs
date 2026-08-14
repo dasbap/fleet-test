@@ -216,7 +216,7 @@ Ce guide présente les bonnes pratiques autour de **${title}** pour les gestionn
 
 ## Prochaines étapes
 
-Passez à l'action avec E-Samba : essai gratuit, configuration de votre flotte en moins d'une journée.
+Passez à l'action avec E-Samba : choisissez une offre et configurez votre flotte en moins d'une journée.
 `.trim();
 }
 

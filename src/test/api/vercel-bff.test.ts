@@ -1,5 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { describe, it, expect } from "vitest";
 import { extractBearerToken } from "../../../api/_lib/vercel-api";
+import { createVercelApiApp } from "../../server/http/vercel";
 
 describe("extractBearerToken", () => {
   it("extrait un token Bearer valide", () => {
@@ -22,19 +24,54 @@ describe("extractBearerToken", () => {
 });
 
 describe("health handler", () => {
-  it("retourne status ok avec timestamp ISO", async () => {
-    const handler = (await import("../../../api/health")).default;
-    const json = vi.fn();
-    const status = vi.fn(() => ({ json }));
+  it("retourne l'etat ok du BFF Vercel", async () => {
+    const app = createVercelApiApp();
+    const response = await app.fetch(
+      new Request("https://fleet.test/api/health", { method: "GET" }),
+    );
 
-    handler({ method: "GET" } as never, { status } as never);
-
-    expect(status).toHaveBeenCalledWith(200);
-    expect(json).toHaveBeenCalledWith(
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(await response.json()).toEqual(
       expect.objectContaining({
-        status: "ok",
-        ts: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+        ok: true,
+        service: "smart-fleet-bff",
+        backendUrl: expect.stringMatching(/^https?:\/\//),
       }),
     );
+  });
+});
+
+describe("billing subscriptions handler", () => {
+  it("dispose d'une fonction Vercel dediee pour eviter le fallback SPA HTML", () => {
+    const source = readFileSync("api/billing/subscriptions.ts", "utf8");
+
+    expect(source).toContain('from "@hono/node-server/vercel"');
+    expect(source).toContain("createVercelApiApp");
+  });
+
+  it("atteint le BFF Vercel et renvoie du JSON quand le Bearer manque", async () => {
+    const app = createVercelApiApp();
+    const response = await app.fetch(
+      new Request(
+        "https://fleet.test/api/billing/subscriptions?org_id=00000000-0000-4000-8000-000000000001&fleet_id=00000000-0000-4000-8000-000000000002",
+        { method: "GET" },
+      ),
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(await response.json()).toEqual({
+      error: "Authorization Bearer requis",
+    });
+  });
+});
+
+describe("billing Notch Pay handler", () => {
+  it("dispose d'une fonction Vercel dediee pour accepter POST sans fallback 405", () => {
+    const source = readFileSync("api/billing/notch/initiate.ts", "utf8");
+
+    expect(source).toContain('from "@hono/node-server/vercel"');
+    expect(source).toContain("createVercelApiApp");
   });
 });

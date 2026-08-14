@@ -181,12 +181,12 @@ curl -s -X POST https://zqxjvmejoktwlcqshnwi.supabase.co/functions/v1/billing-li
 curl -s -X POST .../billing-lifecycle-cron -d '{"secret":"ancien_secret"}' # → Unauthorized
 
 # Origine inconnue CORS
-curl -s -H "Origin: https://attacker.com" https://api.e-samba.com/billing/notch/initiate
+curl -s -H "Origin: https://attacker.com" https://www.e-samba.com/api/billing/notch/initiate
 # → pas d'en-tête Access-Control-Allow-Origin dans la réponse
 
 # Rate limit
 for i in {1..7}; do curl -s -o /dev/null -w "%{http_code}\n" \
-  -X POST https://api.e-samba.com/billing/notch/initiate \
+  -X POST https://www.e-samba.com/api/billing/notch/initiate \
   -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
   -d '{"planCode":"starter","vehicleCount":1}'; done
 # → 201 201 201 201 201 429 429

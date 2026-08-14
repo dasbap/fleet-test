@@ -19,6 +19,7 @@ export interface AccountPlan {
   id:           string;
   name:         string; // 'Starter' | 'Standard' | 'Pro'
   max_vehicles: number | null; // null = illimité
+  vehicle_slots: number | null;
   features: {
     qr_premium:    boolean;
     ai_pulse:      boolean;
@@ -58,6 +59,7 @@ export interface FleetMetrics {
   total_vehicles:   number;
   active_vehicles:  number;
   max_vehicles:     number | null;
+  vehicle_slots:    number | null;
   total_drivers:    number;
   active_drivers:   number;
 }

@@ -188,11 +188,6 @@ export const appRoutes = (
     />
     <Route path="/contact" element={<ContactPage />} />
     <Route path="/demo" element={<Navigate to={PUBLIC_DEMO_HREF} replace />} />
-    <Route path="/pricing" element={<PricingPage />} />
-    <Route
-      path="/tarifs"
-      element={<Navigate to={ROUTE_PATHS.pricing} replace />}
-    />
     <Route path="/cookies" element={<CookiesPage />} />
     <Route
       path="/privacy"
@@ -246,6 +241,15 @@ export const appRoutes = (
     <Route element={<AuthProviderLayout />}>
       <Route path="/" element={<Index />} />
       <Route path="/faq" element={<FaqPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
+      <Route
+        path="/tarif"
+        element={<Navigate to={ROUTE_PATHS.pricing} replace />}
+      />
+      <Route
+        path="/tarifs"
+        element={<Navigate to={ROUTE_PATHS.pricing} replace />}
+      />
       {authPublicRoutes}
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/start" element={<TenantBootstrapRoute />} />

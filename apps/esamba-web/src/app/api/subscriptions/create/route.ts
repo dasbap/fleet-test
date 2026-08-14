@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { resolveDurationMonths } from "@/lib/api/billing-env";
 import { requireBillingAccess } from "@/lib/api/require-billing-access";
-
+//todo
 interface CreateBody {
   planId?: string;
   vehicleCount?: number;
@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       status: "pending_payment",
       starts_at: now.toISOString(),
       ends_at: endsAt.toISOString(),
+      vehicle_slots: vehicleCount,
     })
     .select("id")
     .single();

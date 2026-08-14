@@ -68,6 +68,14 @@ describe("GitHub workflow dependency install policy", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("lets Vercel own the production dependency install during deployment", () => {
+    const workflow = readFileSync(".github/workflows/deploy.yml", "utf8");
+
+    expect(workflow).not.toContain("Install dependencies");
+    expect(workflow).not.toContain("node scripts/ci-install.mjs");
+    expect(workflow).toContain("npx --yes vercel@latest build --prod");
+  });
+
   it("does not use setup-node npm cache on self-hosted runners", () => {
     const offenders = workflowFiles.flatMap((file) => {
       const workflow = readFileSync(file, "utf8");
@@ -76,6 +84,33 @@ describe("GitHub workflow dependency install policy", () => {
           (job) =>
             runsOnSelfHostedLinux(job) &&
             /^\s+cache:\s+['"]?npm['"]?\s*$/m.test(job)
+        )
+        .map((job) => `${file}:${job.split("\n")[0].trim()}`);
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("uses the package Node engine for workflows that install dependencies", () => {
+    const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+      engines?: { node?: string };
+    };
+    const expectedMajor = packageJson.engines?.node?.match(/\d+/)?.[0];
+
+    expect(expectedMajor).toBeDefined();
+
+    const offenders = workflowFiles.flatMap((file) => {
+      const workflow = readFileSync(file, "utf8");
+      const installJobs = getJobBlocks(workflow).filter((job) =>
+        job.includes("node scripts/ci-install.mjs")
+      );
+
+      return installJobs
+        .filter(
+          (job) =>
+            !new RegExp(
+              `node-version:\\s*["']?${expectedMajor}(?:\\.x)?["']?`
+            ).test(job)
         )
         .map((job) => `${file}:${job.split("\n")[0].trim()}`);
     });

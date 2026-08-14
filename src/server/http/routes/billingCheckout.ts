@@ -1,10 +1,10 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
-import { createBillingCheckoutForUser } from "@/server/domain/billingCheckout";
-import { getPaymentProvider } from "@/server/env";
-import { getBearerToken } from "@/server/http/auth";
-import { jsonInternalServerError } from "@/server/http/errorResponse";
-import { createSupabaseUserClient } from "@/server/infra/supabaseUserClient";
+import { createBillingCheckoutForUser } from "../../domain/billingCheckout.js";
+import { getPaymentProvider } from "../../env.js";
+import { getBearerToken } from "../auth.js";
+import { jsonInternalServerError } from "../errorResponse.js";
+import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
 
 const checkoutBodySchema = z.object({
   orgId: z.string().uuid(),

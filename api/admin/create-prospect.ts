@@ -136,7 +136,7 @@ export default async function handler(
         company_name: body.company_name,
         account_type: body.account_type ?? "prospect",
         fleet_id:     null,
-        trial_days:   body.trial_days ?? 7,
+        trial_days:   body.trial_days ?? 31,
         send_email:   body.send_email ?? false,
         permanent_access: body.permanent_access === true,
         invited_by:   user.id,  // ID de l'admin qui crée le compte

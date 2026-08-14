@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { getBffBaseUrl, isBffConfigured } from "@/lib/bff-config";
 import { toast } from "@/hooks/use-toast";
 import type { GeneratedQr, QrScanResult } from "@/server/domain/billing/vehicleLicenseEngine";
 
@@ -9,8 +8,7 @@ export type { GeneratedQr, QrScanResult };
 // ─── helpers fetch BFF ──────────────────────────────────────
 
 async function bffPost<T>(path: string, body: unknown, token: string): Promise<T> {
-  const base = getBffBaseUrl() ?? "";
-  const res = await fetch(`${base}${path}`, {
+  const res = await fetch(`/api${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -40,7 +38,6 @@ export function useGenerateVehicleQr() {
       maxUses?: number;
     }): Promise<GeneratedQr> => {
       if (!session?.access_token) throw new Error("Session expirée.");
-      if (!isBffConfigured()) throw new Error("BFF non configuré.");
       return bffPost<GeneratedQr>("/billing/qr/vehicle", args, session.access_token);
     },
     onError: (err: Error) => {
@@ -62,7 +59,6 @@ export function useGenerateFleetLotQr() {
       expiresHours?: number;
     }): Promise<GeneratedQr> => {
       if (!session?.access_token) throw new Error("Session expirée.");
-      if (!isBffConfigured()) throw new Error("BFF non configuré.");
       return bffPost<GeneratedQr>("/billing/qr/fleet-lot", args, session.access_token);
     },
     onError: (err: Error) => {
@@ -80,7 +76,6 @@ export function useScanActivationQr() {
   return useMutation({
     mutationFn: async (code: string): Promise<QrScanResult> => {
       if (!session?.access_token) throw new Error("Session expirée.");
-      if (!isBffConfigured()) throw new Error("BFF non configuré.");
       return bffPost<QrScanResult>("/billing/qr/scan", { code }, session.access_token);
     },
     onSuccess: (result) => {

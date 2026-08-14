@@ -1,9 +1,9 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
-import { loadBillingSnapshotForUser } from "@/server/domain/billingSnapshot";
-import { getBearerToken } from "@/server/http/auth";
-import { jsonInternalServerError } from "@/server/http/errorResponse";
-import { createSupabaseUserClient } from "@/server/infra/supabaseUserClient";
+import { loadBillingSnapshotForUser } from "../../domain/billingSnapshot.js";
+import { getBearerToken } from "../auth.js";
+import { jsonInternalServerError } from "../errorResponse.js";
+import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
 
 const billingQuerySchema = z.object({
   org_id: z.string().uuid(),

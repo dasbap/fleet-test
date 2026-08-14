@@ -112,6 +112,7 @@ BEGIN
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLERRM NOT ILIKE '%Accès refusé%'
+         AND SQLERRM NOT ILIKE '%Acces refuse%'
          AND SQLERRM NOT ILIKE '%acces_refuse_flotte%'
          AND SQLERRM NOT ILIKE '%flotte_introuvable%'
          AND SQLERRM NOT ILIKE '%Flotte introuvable%' THEN
@@ -132,28 +133,34 @@ BEGIN
     RAISE EXCEPTION 'org_id incohérent dans le contexte interne';
   END IF;
 
-  FOR i IN 1..3 LOOP
-    INSERT INTO vehicules (fleet_id, registration, current_km)
-    VALUES (v_fleet_id, 'LIM-' || i, 1000 + i);
-  END LOOP;
+  PERFORM public.billing_start_trial(v_fleet_id, 30);
+
+  INSERT INTO vehicules (fleet_id, registration, current_km)
+  VALUES (v_fleet_id, 'LIM-1', 1001);
 
   v_ctx := public.get_fleet_billing_context_internal(v_fleet_id);
-  IF (v_ctx->>'vehicle_count')::int <> 3 THEN
-    RAISE EXCEPTION 'vehicle_count attendu 3, obtenu %', v_ctx->>'vehicle_count';
+  IF (v_ctx->>'vehicle_count')::int <> 1 THEN
+    RAISE EXCEPTION 'vehicle_count attendu 1, obtenu %', v_ctx->>'vehicle_count';
   END IF;
 
   BEGIN
     INSERT INTO vehicules (fleet_id, registration, current_km)
-    VALUES (v_fleet_id, 'LIM-4', 2000);
+    VALUES (v_fleet_id, 'LIM-2', 2000);
     RAISE EXCEPTION 'attendu: limite_vehicules_plan_atteinte';
   EXCEPTION
     WHEN OTHERS THEN
-      IF SQLERRM NOT ILIKE '%limite_vehicules_plan_atteinte%' THEN
+      IF SQLERRM NOT ILIKE '%limite_vehicules_plan_atteinte%'
+         AND SQLERRM NOT ILIKE '%limite_vehicules_abonnements_atteinte%' THEN
         RAISE;
       END IF;
   END;
 
+  DELETE FROM droits_vehicules WHERE vehicle_id IN (
+    SELECT id FROM vehicules WHERE fleet_id = v_fleet_id
+  );
   DELETE FROM vehicules WHERE fleet_id = v_fleet_id;
+  DELETE FROM billing_events WHERE fleet_id = v_fleet_id;
+  DELETE FROM abonnements WHERE fleet_id = v_fleet_id;
   DELETE FROM public.flotte_adhesions WHERE fleet_id = v_fleet_id AND user_id = v_user_id;
   DELETE FROM flottes WHERE id = v_fleet_id;
   DELETE FROM organisations WHERE id = v_org_id;

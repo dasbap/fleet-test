@@ -6,7 +6,7 @@ import {
   getSupabaseEnv,
   handlePreflight,
   requireAuthenticatedUser,
-} from "../_lib/vercel-api";
+} from "../_lib/vercel-api.js";
 
 export default async function handler(
   req: VercelRequest,

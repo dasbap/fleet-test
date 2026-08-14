@@ -41,4 +41,45 @@ describe("PWA service worker update", () => {
       noStoreSources.some((source) => source === "/workbox-:path*.js")
     ).toBe(true);
   });
+
+  it("does not serve the SPA fallback for marketing routes redirected cross-origin", () => {
+    const viteConfig = readFileSync("vite.config.ts", "utf8");
+
+    expect(viteConfig).toContain("/^\\/blog(?:\\/|$)/");
+    expect(viteConfig).toContain("/^\\/guides(?:\\/|$)/");
+    expect(viteConfig).toContain("/^\\/fonctionnalites(?:\\/|$)/");
+    expect(viteConfig).toContain("/^\\/solutions(?:\\/|$)/");
+  });
+
+  it("does not cache marketing redirects that resolve cross-origin", () => {
+    const viteConfig = readFileSync("vite.config.ts", "utf8");
+
+    expect(viteConfig).toContain('cacheName: "esamba-marketing-redirects"');
+    expect(viteConfig).toContain('handler: "NetworkOnly"');
+  });
+
+  it("does not register the service worker on protected Vercel deployments", () => {
+    const mainSource = readFileSync("src/main.tsx", "utf8");
+    const viteConfig = readFileSync("vite.config.ts", "utf8");
+    const pwaBlock = mainSource.slice(mainSource.indexOf("// PWA"));
+
+    expect(viteConfig).toContain('process.env.VERCEL_ENV === "preview"');
+    expect(viteConfig).toContain(
+      'process.env.ESAMBA_DISABLE_PWA === "true"'
+    );
+    expect(viteConfig).toContain(
+      "mode !== \"capacitor\" && !shouldDisablePwa"
+    );
+    expect(viteConfig).toContain("shouldEnablePwa &&");
+    expect(viteConfig).toContain('"@/pwa": path.resolve');
+    expect(viteConfig).toContain("./src/pwa.noop.ts");
+    expect(viteConfig).toContain("pwaManifestGuardPlugin(shouldDisablePwa)");
+    expect(viteConfig).toContain('rel="manifest"');
+    expect(viteConfig).toContain("manifest.webmanifest");
+    expect(mainSource).toContain("isProtectedVercelDeployment");
+    expect(mainSource).toContain("unregisterProtectedVercelServiceWorkers");
+    expect(mainSource).toContain(".getRegistrations()");
+    expect(mainSource).toContain("registration.unregister()");
+    expect(pwaBlock).toContain("!isProtectedVercelDeployment()");
+  });
 });

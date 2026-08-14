@@ -1,17 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getNotchApiKey, getAppUrl } from "@/server/env";
+import { getNotchApiKey, getAppUrl } from "../env.js";
 import type {
   NotchPayCreatePaymentRequest,
   NotchPayCreatePaymentResponse,
   NotchPayIntent,
   NotchPayInitiateResult,
-} from "@/types/notch-pay";
+} from "../../types/notch-pay.js";
+import { assertVehicleCountWithinPlanLimit } from "./billing/vehicleSlotLimits.js";
 
 const NOTCH_PAY_API_URL = "https://api.notchpay.co";
 
 interface PlanRow {
   id: string;
   price_per_vehicle: number;
+  max_vehicles: number | null;
   is_active: boolean;
 }
 
@@ -36,7 +38,7 @@ export async function initiateNotchPayPayment(
   // Récupère le prix du plan
   const { data: plan, error: planError } = await supabase
     .from("plans")
-    .select("id, price_per_vehicle, is_active")
+    .select("id, price_per_vehicle, max_vehicles, is_active")
     .eq("code", intent.planCode.trim())
     .maybeSingle<PlanRow>();
 
@@ -44,6 +46,11 @@ export async function initiateNotchPayPayment(
   if (!plan || !plan.is_active) {
     throw new Error("Plan introuvable ou inactif.");
   }
+  assertVehicleCountWithinPlanLimit({
+    planCode: intent.planCode,
+    requestedVehicleCount: intent.vehicleCount,
+    planMaxVehicles: plan.max_vehicles,
+  });
 
   const amountXaf = plan.price_per_vehicle * intent.vehicleCount * durationMonths;
   if (amountXaf <= 0) {

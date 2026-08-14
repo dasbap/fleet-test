@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
-import { applyCors, getSupabaseEnv, handlePreflight } from "../_lib/vercel-api";
+import { applyCors, getSupabaseEnv, handlePreflight } from "../_lib/vercel-api.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

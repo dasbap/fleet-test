@@ -143,8 +143,15 @@ async function main() {
       starts_at: new Date().toISOString(),
       ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'active',
+      vehicle_slots: TEST_VEHICLES.length,
     });
     if (subInsertError) fail('création abonnement impossible', subInsertError.message);
+  } else {
+    const { error: subUpdateError } = await supabase
+      .from('abonnements')
+      .update({ vehicle_slots: TEST_VEHICLES.length })
+      .eq('id', activeFreeSubscription.id);
+    if (subUpdateError) fail('mise a jour slots abonnement impossible', subUpdateError.message);
   }
 
   const vehiclesPayload = TEST_VEHICLES.map((vehicle) => ({

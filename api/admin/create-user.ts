@@ -5,7 +5,7 @@ import {
   applyCors,
   handlePreflight,
   requireAuthenticatedUser,
-} from "../_lib/vercel-api";
+} from "../_lib/vercel-api.js";
 
 const VALID_FLEET_ROLES = new Set(["organizer", "manager", "driver", "mechanic"]);
 

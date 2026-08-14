@@ -24,37 +24,44 @@ describeIntegration("Triggers - limite vehicules plan Free", () => {
       user: clients.user,
       role: "organizer",
     });
+    const { error: trialError } = await clients.admin.rpc("billing_start_trial", {
+      p_fleet_id: context.fleetId,
+      p_trial_days: 30,
+    });
+    expect(trialError).toBeNull();
   });
 
   afterAll(async () => {
     if (clients) {
+      if (context?.fleetId) {
+        await clients.admin.from("billing_events").delete().eq("fleet_id", context.fleetId);
+        await clients.admin.from("abonnements").delete().eq("fleet_id", context.fleetId);
+      }
       await cleanupFleetContext(clients.admin, context ?? { userId: clients.userId });
     }
   });
 
-  it("bloque le 4e vehicule si la flotte est sur plan free limite a 3", async () => {
+  it("bloque le 2e vehicule si la flotte est sur plan free limite a 1", async () => {
     const runToken = context.runId.slice(-8).toUpperCase();
-    for (const index of [1, 2, 3]) {
-      const { data, error } = await clients.user.rpc("creer_vehicule_esamba", {
-        p_fleet_id: context.fleetId,
-        p_registration: `IT-LIM-${runToken}-${index}`,
-        p_brand: "Renault",
-        p_model: "Master",
-        p_year: 2022,
-        p_current_km: 50000 + index,
-      });
-
-      expect(error).toBeNull();
-      expect(data).toBeDefined();
-    }
-
-    const { error } = await clients.user.rpc("creer_vehicule_esamba", {
+    const { data, error: createError } = await clients.user.rpc("creer_vehicule_esamba", {
       p_fleet_id: context.fleetId,
-      p_registration: `IT-LIM-${runToken}-4`,
+      p_registration: `IT-LIM-${runToken}-1`,
       p_brand: "Renault",
       p_model: "Master",
       p_year: 2022,
-      p_current_km: 50004,
+      p_current_km: 50001,
+    });
+
+    expect(createError).toBeNull();
+    expect(data).toBeDefined();
+
+    const { error } = await clients.user.rpc("creer_vehicule_esamba", {
+      p_fleet_id: context.fleetId,
+      p_registration: `IT-LIM-${runToken}-2`,
+      p_brand: "Renault",
+      p_model: "Master",
+      p_year: 2022,
+      p_current_km: 50002,
     });
 
     expect(error).not.toBeNull();

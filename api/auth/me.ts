@@ -9,7 +9,7 @@ import {
   getSupabaseEnv,
   handlePreflight,
   requireAuthenticatedUser,
-} from "../_lib/vercel-api";
+} from "../_lib/vercel-api.js";
 
 interface FleetMembership {
   fleet_id: string;

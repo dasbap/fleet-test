@@ -65,7 +65,10 @@ describe("GitHub Supabase workflow runner routing", () => {
       const workflow = readFileSync(workflowPath(fileName), "utf8");
 
       const localInstallJobs = getJobBlocks(workflow).filter((job) => {
-        if (fileName === "supabase-apply-migrations.yml") {
+        if (
+          fileName === "deploy.yml" ||
+          fileName === "supabase-apply-migrations.yml"
+        ) {
           return false;
         }
 
