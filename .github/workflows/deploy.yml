@@ -31,9 +31,6 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
-        run: node scripts/ci-install.mjs
-
       - name: Pull Vercel environment
         run: npx --yes vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
         env:

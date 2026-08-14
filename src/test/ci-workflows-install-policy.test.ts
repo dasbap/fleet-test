@@ -68,6 +68,14 @@ describe("GitHub workflow dependency install policy", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("lets Vercel own the production dependency install during deployment", () => {
+    const workflow = readFileSync(".github/workflows/deploy.yml", "utf8");
+
+    expect(workflow).not.toContain("Install dependencies");
+    expect(workflow).not.toContain("node scripts/ci-install.mjs");
+    expect(workflow).toContain("npx --yes vercel@latest build --prod");
+  });
+
   it("does not use setup-node npm cache on self-hosted runners", () => {
     const offenders = workflowFiles.flatMap((file) => {
       const workflow = readFileSync(file, "utf8");
