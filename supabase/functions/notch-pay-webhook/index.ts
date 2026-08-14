@@ -336,6 +336,32 @@ function addCalendarMonthsUtc(base: Date, months: number): Date {
   return d;
 }
 
+function assertVehicleCountWithinPlanLimit(
+  planCode: string,
+  requestedVehicleCount: number,
+  planMaxVehicles?: number | null,
+): void {
+  if (!Number.isInteger(requestedVehicleCount) || requestedVehicleCount < 1) {
+    throw new Error("Au moins un vehicule est requis.");
+  }
+  if (planMaxVehicles !== null && planMaxVehicles !== undefined && requestedVehicleCount > planMaxVehicles) {
+    throw new Error(`Le plan ${planCode} est limite a ${planMaxVehicles} vehicule(s).`);
+  }
+}
+
+function resolveRenewedVehicleSlots(
+  currentVehicleSlots: number | null | undefined,
+  requestedVehicleCount: number,
+  planMaxVehicles?: number | null,
+): number {
+  assertVehicleCountWithinPlanLimit("selectionne", requestedVehicleCount, planMaxVehicles);
+  const nextSlots = Math.max(currentVehicleSlots ?? 0, requestedVehicleCount);
+  if (planMaxVehicles !== null && planMaxVehicles !== undefined && nextSlots > planMaxVehicles) {
+    throw new Error(`Le plan selectionne est limite a ${planMaxVehicles} vehicule(s).`);
+  }
+  return Math.max(1, nextSlots);
+}
+
 type AdminClient = {
   from: (table: string) => unknown;
 };
@@ -375,7 +401,7 @@ async function activateSubscription(admin: AdminClient, payment: PaymentRecord):
   // Récupérer le plan
   const { data: plan } = await admin
     .from("plans")
-    .select("id")
+    .select("id, code, max_vehicles")
     .eq("code", planCode)
     .eq("is_active", true)
     .maybeSingle();
@@ -384,6 +410,7 @@ async function activateSubscription(admin: AdminClient, payment: PaymentRecord):
     console.error("[notch-webhook] plan introuvable :", planCode);
     return { activated: false, vehicleLicensesCreated: 0 };
   }
+  assertVehicleCountWithinPlanLimit(plan.code, vehicleCount, plan.max_vehicles);
 
   const now = new Date();
   const nowIso = now.toISOString();
@@ -392,7 +419,7 @@ async function activateSubscription(admin: AdminClient, payment: PaymentRecord):
   // Abonnement actif existant pour cette flotte ?
   const { data: activeSub } = await admin
     .from("abonnements")
-    .select("id, plan_id, starts_at, ends_at")
+    .select("id, plan_id, starts_at, ends_at, vehicle_slots")
     .eq("fleet_id", fleetId)
     .eq("status", "active")
     .lte("starts_at", nowIso)
@@ -413,7 +440,12 @@ async function activateSubscription(admin: AdminClient, payment: PaymentRecord):
     startsAtIso = activeSub.starts_at;
     await admin
       .from("abonnements")
-      .update({ ends_at: endsAtIso, payment_id: payment.id, status: "active" })
+      .update({
+        ends_at: endsAtIso,
+        payment_id: payment.id,
+        status: "active",
+        vehicle_slots: resolveRenewedVehicleSlots(activeSub.vehicle_slots, vehicleCount, plan.max_vehicles),
+      })
       .eq("id", activeSub.id);
     subscriptionId = activeSub.id;
   } else {
@@ -435,6 +467,7 @@ async function activateSubscription(admin: AdminClient, payment: PaymentRecord):
         starts_at: startsAtIso,
         ends_at: endsAtIso,
         status: "active",
+        vehicle_slots: Math.max(1, vehicleCount),
       })
       .select("id")
       .single();

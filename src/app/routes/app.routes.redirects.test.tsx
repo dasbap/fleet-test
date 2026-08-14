@@ -324,6 +324,11 @@ describe("app.routes redirections critiques", () => {
     renderRoutes("/tarifs");
     expect(await screen.findByTestId("pricing-page")).toBeInTheDocument();
   });
+
+  it("redirige /tarif vers /pricing", async () => {
+    renderRoutes("/tarif");
+    expect(await screen.findByTestId("pricing-page")).toBeInTheDocument();
+  });
 });
 
 describe("app.routes routes métier racine", () => {

@@ -8,7 +8,7 @@ vi.mock("@/repositories/billing.repository", () => ({
   },
 }));
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   BillingService,
   computeLapsedPaidFromLatestSubscription,
@@ -80,6 +80,11 @@ describe("computeLapsedPaidFromLatestSubscription", () => {
 });
 
 describe("BillingService", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it("mappe correctement le snapshot billing", async () => {
     const repository = new BillingRepository();
     repository.findActiveSubscriptionByFleetId.mockResolvedValue(activeProRow);
@@ -126,5 +131,27 @@ describe("BillingService", () => {
       subscription: null,
       recentPayments: [],
     });
+  });
+
+  it("signale clairement une route API protegee qui renvoie du HTML", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("<!DOCTYPE html><html><body>Vercel SSO</body></html>", {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        }),
+      ),
+    );
+
+    const service = new BillingService(new BillingRepository());
+
+    await expect(
+      service.getBillingSnapshot(
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000002",
+        { accessToken: "user-token" },
+      ),
+    ).rejects.toThrow("La route API facturation a renvoye du HTML");
   });
 });

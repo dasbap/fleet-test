@@ -1,8 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useNetworkOnline } from "@/features/account/hooks/useNetworkOnline";
-import { WifiOff } from "lucide-react";
+import {
+  AlertTriangle,
+  CarFront,
+  ClipboardList,
+  Gauge,
+  PartyPopper,
+  RefreshCw,
+  WifiOff,
+  Wrench,
+  X,
+} from "lucide-react";
 import { useCurrentRole } from "@/hooks/useCurrentRole";
 import { EmptyStateDashboard } from "@/components/dashboard/EmptyStateDashboard";
 import { ActivationChecklist } from "@/components/shared/ActivationChecklist";
@@ -26,11 +36,11 @@ import { useActionableDashboard } from "@/hooks/useActionableDashboard";
 import { useActivation } from "@/hooks/useActivation";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { X, PartyPopper, RefreshCw } from "lucide-react";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import { useDriverScores } from "@/hooks/useDriverScores";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import type { KpiSummary } from "@/types/dashboard";
 
 // ─── Welcome Banner ─────────────────────────────────────────────────────────
 
@@ -107,6 +117,149 @@ function KpiDegradedBanner({
   );
 }
 
+function pluralizeFr(count: number, singular: string, plural: string = `${singular}s`) {
+  return `${count} ${count > 1 ? plural : singular}`;
+}
+
+function DashboardCommandCenter({
+  userName,
+  isOnline,
+  kpis,
+  totalVehicles,
+}: {
+  userName?: string;
+  isOnline: boolean;
+  kpis: KpiSummary;
+  totalVehicles: number;
+}) {
+  const firstName = userName?.trim().split(/\s+/)[0];
+  const alertLabel = pluralizeFr(kpis.criticalAlerts, "alerte critique");
+  const maintenanceLabel = pluralizeFr(kpis.overdueServices, "entretien en retard", "entretiens en retard");
+
+  const healthTone =
+    kpis.criticalAlerts > 0
+      ? "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+      : kpis.overdueServices > 0
+        ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+        : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200";
+
+  return (
+    <section className="overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-5 p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-muted-foreground">
+                {firstName ? `Bonjour ${firstName}` : "Bonjour"}
+              </p>
+              <h1 className="mt-1 text-2xl font-heading font-semibold text-foreground">
+                Centre de controle flotte
+              </h1>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                Priorites du jour, incidents et capacite operationnelle reunis au meme endroit.
+              </p>
+            </div>
+            <div
+              className={cn(
+                "inline-flex w-fit items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium",
+                isOnline
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200"
+                  : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200",
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", isOnline ? "bg-emerald-500" : "bg-amber-500")} />
+              {isOnline ? "Synchronise" : "Cache local"}
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            <CommandMetric
+              icon={<CarFront className="h-4 w-4" />}
+              label="Vehicules actifs"
+              value={`${kpis.activeVehicles}/${Math.max(totalVehicles, kpis.activeVehicles)}`}
+            />
+            <CommandMetric
+              icon={<AlertTriangle className="h-4 w-4" />}
+              label="Alertes critiques"
+              value={String(kpis.criticalAlerts)}
+              tone={kpis.criticalAlerts > 0 ? "critical" : "normal"}
+            />
+            <CommandMetric
+              icon={<Wrench className="h-4 w-4" />}
+              label="Entretiens en retard"
+              value={String(kpis.overdueServices)}
+              tone={kpis.overdueServices > 0 ? "warning" : "normal"}
+            />
+          </div>
+        </div>
+
+        <div className="border-t bg-muted/20 p-4 sm:p-5 lg:border-l lg:border-t-0">
+          <div className={cn("mb-4 rounded-md border px-3 py-2 text-sm", healthTone)}>
+            <div className="flex items-center gap-2 font-medium">
+              <Gauge className="h-4 w-4" />
+              {kpis.criticalAlerts > 0 || kpis.overdueServices > 0
+                ? "Intervention requise"
+                : "Operation stable"}
+            </div>
+            <p className="mt-1 text-xs opacity-90">
+              {alertLabel} · {maintenanceLabel}
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            <Button asChild className="justify-start">
+              <Link to={ROUTE_PATHS.dashboardIncidentDeclare}>
+                <AlertTriangle className="h-4 w-4" />
+                Declarer un incident
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="justify-start">
+              <Link to={ROUTE_PATHS.dashboardVehicles}>
+                <CarFront className="h-4 w-4" />
+                Ajouter un vehicule
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="justify-start">
+              <Link to={ROUTE_PATHS.dashboardMaintenance}>
+                <ClipboardList className="h-4 w-4" />
+                Planifier entretien
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CommandMetric({
+  icon,
+  label,
+  value,
+  tone = "normal",
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  tone?: "normal" | "warning" | "critical";
+}) {
+  const toneClass = {
+    normal: "border-border bg-background text-foreground",
+    warning: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200",
+    critical: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200",
+  }[tone];
+
+  return (
+    <div className={cn("rounded-md border p-3", toneClass)}>
+      <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+        {icon}
+        <span className="text-xs font-medium">{label}</span>
+      </div>
+      <p className="text-xl font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, userFleetId: currentFleetId } = useAuth();
@@ -138,6 +291,8 @@ export default function DashboardPage() {
     limit: 5,
   });
   const isAllDone = completedCount >= steps.length;
+  const displayName =
+    (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? undefined;
 
   // Detect ?welcome=true, show banner, then clean URL
   useEffect(() => {
@@ -201,10 +356,12 @@ export default function DashboardPage() {
       )}
       <div className={cn("flex gap-6", !isAllDone ? "flex-col lg:flex-row" : "flex-col")}>
         <div className="flex-1 min-w-0 space-y-6">
-          <div>
-            <h1 className="text-xl font-heading font-semibold text-slate-800 dark:text-slate-100">Tableau de bord</h1>
-            <p className="text-sm text-slate-400 mt-0.5">Vue d'ensemble de votre flotte</p>
-          </div>
+          <DashboardCommandCenter
+            userName={displayName}
+            isOnline={isOnline}
+            kpis={kpis}
+            totalVehicles={totalVehicles}
+          />
 
           <PhoneAlertBanner count={missingCount} onAction={() => setShowPhoneModal(true)} />
           <PhoneCollectionModal

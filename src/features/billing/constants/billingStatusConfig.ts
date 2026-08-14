@@ -22,9 +22,6 @@ export const STATUS_CONFIG: Record<
     label: "Essai gratuit",
     badgeClass: "bg-blue-100 text-blue-700 border-blue-200",
     icon: Clock,
-    alertClass: "border-blue-200 bg-blue-50 text-blue-800",
-    alertTitle: "Essai gratuit en cours",
-    alertDesc: "Passez à un plan payant pour continuer sans interruption après la fin de l'essai.",
   },
   active: {
     label: "Actif",

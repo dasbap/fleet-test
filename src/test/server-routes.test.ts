@@ -29,6 +29,36 @@ describe("BFF routes (Hono)", () => {
     expect(body.service).toBe("smart-fleet-bff");
   });
 
+  it("GET /api/health atteint le BFF Hono via le prefixe Vercel", async () => {
+    const { createVercelApiApp } = await import("@/server/http/vercel");
+    const app = createVercelApiApp();
+
+    const res = await app.request("/api/health");
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; service: string };
+    expect(body.ok).toBe(true);
+    expect(body.service).toBe("smart-fleet-bff");
+  });
+
+  it("POST /api/billing/notch/initiate atteint le handler Notch Pay existant", async () => {
+    const { createVercelApiApp } = await import("@/server/http/vercel");
+    const app = createVercelApiApp();
+
+    const res = await app.request("/api/billing/notch/initiate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orgId: "00000000-0000-4000-8000-000000000001",
+        fleetId: "00000000-0000-4000-8000-000000000002",
+        planCode: "pro",
+        vehicleCount: 1,
+      }),
+    });
+
+    expect(res.status).toBe(401);
+  });
+
   it("GET /billing/subscriptions exige Bearer", async () => {
     const app = createServerApp();
     const org = "00000000-0000-4000-8000-000000000001";

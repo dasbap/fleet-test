@@ -16,9 +16,9 @@
  */
 
 import type { Context, MiddlewareHandler } from "hono";
-import { throwIfSupabaseInfrastructureError } from "@/lib/supabase-runtime-errors";
-import { getBearerToken } from "@/server/http/auth";
-import { createSupabaseServiceClient } from "@/server/infra/supabaseServiceClient";
+import { throwIfSupabaseInfrastructureError } from "../../../lib/supabase-runtime-errors.js";
+import { getBearerToken } from "../auth.js";
+import { createSupabaseServiceClient } from "../../infra/supabaseServiceClient.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

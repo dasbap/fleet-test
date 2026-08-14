@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseAnonKey, getSupabaseServiceRoleKey, getSupabaseUrl } from "@/server/env";
+import { getSupabaseAnonKey, getSupabaseServiceRoleKey, getSupabaseUrl } from "../env.js";
 
 /** Client service role (webhooks / jobs uniquement). */
 export function createSupabaseServiceClient(): SupabaseClient | null {

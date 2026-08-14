@@ -136,6 +136,14 @@ describe("donnees marketing publiques", () => {
   it("expose DASHBOARD_NAV pour tous les roles metier", () => {
     expect(DASHBOARD_NAV.organizer.length).toBeGreaterThan(10);
     expect(DASHBOARD_NAV.manager.some((item) => item.label === "Chauffeurs")).toBe(true);
+    expect(DASHBOARD_NAV.organizer).toContainEqual({
+      label: "Abonnements",
+      href: ROUTE_PATHS.dashboardSubscriptions,
+    });
+    expect(DASHBOARD_NAV.manager).toContainEqual({
+      label: "Abonnements",
+      href: ROUTE_PATHS.dashboardSubscriptions,
+    });
     expect(DASHBOARD_NAV.driver.every((item) => item.href.startsWith("/dashboard"))).toBe(true);
     expect(DASHBOARD_NAV.mechanic.some((item) => item.label === "Historique")).toBe(true);
   });

@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useAssignVehicle, useFleetDrivers } from "@/hooks/useAssignments";
+import { useActiveAssignments, useAssignVehicle, useFleetDrivers } from "@/hooks/useAssignments";
 import { useVehiclesSimple } from "@/hooks/useVehicles";
 import { Loader2, Car, User } from "lucide-react";
 
@@ -62,9 +62,12 @@ export function AssignmentFormDialog({
 }: AssignmentFormDialogProps) {
   const { data: vehicles = [], isLoading: loadingVehicles } = useVehiclesSimple(fleetId);
   const { data: drivers = [], isLoading: loadingDrivers } = useFleetDrivers(fleetId);
+  const { data: activeAssignments = [], isLoading: loadingAssignments } = useActiveAssignments(fleetId);
   const assignVehicle = useAssignVehicle();
 
   const availableVehicles = vehicles.filter((v) => v.status === "ok");
+  const assignedDriverIds = new Set(activeAssignments.map((assignment) => assignment.driver_user_id));
+  const availableDrivers = drivers.filter((driver) => !assignedDriverIds.has(driver.user_id));
 
   const form = useForm<AssignmentFormData>({
     resolver: zodResolver(assignmentSchema),
@@ -97,7 +100,7 @@ export function AssignmentFormDialog({
     }
   };
 
-  const isLoading = loadingVehicles || loadingDrivers;
+  const isLoading = loadingVehicles || loadingDrivers || loadingAssignments;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -168,10 +171,15 @@ export function AssignmentFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Chauffeur</FormLabel>
+                    {drivers.length > 0 && availableDrivers.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Aucun chauffeur disponible. Tous les chauffeurs actifs ont déjà un véhicule affecté.
+                      </p>
+                    ) : null}
                     <Select
                       onValueChange={field.onChange}
                       value={field.value ?? ""}
-                      disabled={drivers.length === 0}
+                      disabled={availableDrivers.length === 0}
                     >
                       <FormControl>
                         <SelectTrigger aria-label="Sélectionner un chauffeur">
@@ -195,8 +203,12 @@ export function AssignmentFormDialog({
                               .
                             </p>
                           </div>
+                        ) : availableDrivers.length === 0 ? (
+                          <div className="p-3 text-center text-sm text-muted-foreground">
+                            Aucun chauffeur disponible. Tous les chauffeurs actifs ont déjà un véhicule affecté.
+                          </div>
                         ) : (
-                          drivers.map((driver) => (
+                          availableDrivers.map((driver) => (
                             <SelectItem
                               key={driver.user_id}
                               value={driver.user_id}
@@ -223,7 +235,7 @@ export function AssignmentFormDialog({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={assignVehicle.isPending || drivers.length === 0}
+                  disabled={assignVehicle.isPending || availableDrivers.length === 0}
                 >
                   {assignVehicle.isPending && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

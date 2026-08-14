@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PaymentProviderId } from "@/server/env";
+import type { PaymentProviderId } from "../env.js";
+import { assertVehicleCountWithinPlanLimit } from "./billing/vehicleSlotLimits.js";
 
 export interface BillingCheckoutIntent {
   orgId: string;
@@ -23,6 +24,7 @@ interface PlanRow {
   id: string;
   code: string;
   price_per_vehicle: number;
+  max_vehicles: number | null;
   is_active: boolean;
 }
 
@@ -38,7 +40,7 @@ export async function createBillingCheckoutForUser(
 
   const { data: plan, error: planError } = await supabase
     .from("plans")
-    .select("id, code, price_per_vehicle, is_active")
+    .select("id, code, price_per_vehicle, max_vehicles, is_active")
     .eq("code", intent.planCode.trim())
     .maybeSingle<PlanRow>();
 
@@ -46,6 +48,11 @@ export async function createBillingCheckoutForUser(
   if (!plan || !plan.is_active) {
     throw new Error("Plan introuvable ou inactif.");
   }
+  assertVehicleCountWithinPlanLimit({
+    planCode: plan.code,
+    requestedVehicleCount: intent.vehicleCount,
+    planMaxVehicles: plan.max_vehicles,
+  });
 
   const amountXaf = plan.price_per_vehicle * intent.vehicleCount * durationMonths;
   if (amountXaf <= 0) {

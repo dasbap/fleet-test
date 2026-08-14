@@ -19,7 +19,7 @@ type PermissionMatrix = Record<PlatformRole, ReadonlySet<Permission>>;
 
 const ALL_PERMISSIONS = new Set<Permission>([
   "fleet.view", "fleet.create", "fleet.update", "fleet.delete",
-  "vehicle.view", "vehicle.create", "vehicle.update", "vehicle.delete", "vehicle.assign_driver",
+  "vehicle.view", "vehicle.read_by_subscription", "vehicle.create", "vehicle.update", "vehicle.delete", "vehicle.assign_driver",
   "member.view", "member.invite", "member.remove", "member.update_role",
   "maintenance.view", "maintenance.create", "maintenance.update", "maintenance.delete",
   "assignment.view_own", "assignment.view_all", "assignment.manage",
@@ -36,7 +36,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
 
   organizer: new Set<Permission>([
     "fleet.view", "fleet.create", "fleet.update", "fleet.delete",
-    "vehicle.view", "vehicle.create", "vehicle.update", "vehicle.delete", "vehicle.assign_driver",
+    "vehicle.view", "vehicle.read_by_subscription", "vehicle.create", "vehicle.update", "vehicle.delete", "vehicle.assign_driver",
     "member.view", "member.invite", "member.remove", "member.update_role",
     "maintenance.view", "maintenance.create", "maintenance.update", "maintenance.delete",
     "assignment.view_own", "assignment.view_all", "assignment.manage",
@@ -48,7 +48,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
 
   manager: new Set<Permission>([
     "fleet.view", "fleet.update",
-    "vehicle.view", "vehicle.create", "vehicle.update", "vehicle.assign_driver",
+    "vehicle.view", "vehicle.read_by_subscription", "vehicle.create", "vehicle.update", "vehicle.assign_driver",
     "member.view", "member.invite",
     "maintenance.view", "maintenance.create", "maintenance.update",
     "assignment.view_own", "assignment.view_all", "assignment.manage",
@@ -59,7 +59,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
 
   mechanic: new Set<Permission>([
     "fleet.view",
-    "vehicle.view", "vehicle.update",
+    "vehicle.view", "vehicle.read_by_subscription", "vehicle.update",
     "member.view",
     "maintenance.view", "maintenance.create", "maintenance.update",
     "assignment.view_own",

@@ -11,14 +11,24 @@ const user = {
 
 const fbPro: FleetBillingContext = {
   planCode: "pro",
+  planName: "Pro",
   isPaid: true,
   vehicleCount: 1,
+  activeVehicles: 1,
+  vehicleSlots: 999_999,
   maxVehicles: 999_999,
+  billingStatus: "active",
+  trialEndsAt: null,
+  subscriptionEndsAt: "2027-01-01",
+  graceUntil: null,
   financeEnabled: true,
   aiEnabled: true,
   reportsEnabled: true,
   driverScoringEnabled: true,
   anomalyInsightsEnabled: true,
+  geofencingEnabled: true,
+  scheduledReportsEnabled: true,
+  offlineDriverEnabled: true,
 };
 
 describe("buildAuthContext", () => {
@@ -48,5 +58,26 @@ describe("buildAuthContext", () => {
     expect(ctx.max_vehicles).toBeNull();
     expect(ctx.role).toBe("manager");
     expect(ctx.plan_expired).toBe(false);
+  });
+
+  it("expose la limite achetee quand le plan catalogue autorise plus de vehicules", () => {
+    const ctx = buildAuthContext({
+      user,
+      activeRole: "manager",
+      orgId: "o1",
+      fleetId: "f1",
+      fleetName: "Flotte A",
+      fleetBilling: {
+        ...fbPro,
+        vehicleCount: 2,
+        activeVehicles: 2,
+        vehicleSlots: 2,
+        maxVehicles: 100,
+      },
+      billing: null,
+    });
+
+    expect(ctx.plan_code).toBe("pro");
+    expect(ctx.max_vehicles).toBe(2);
   });
 });

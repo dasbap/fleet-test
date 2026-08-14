@@ -9,7 +9,7 @@ import {
   getSupabaseEnv,
   handlePreflight,
   requireAuthenticatedUser,
-} from "../_lib/vercel-api";
+} from "../_lib/vercel-api.js";
 
 function resolveFleetId(req: VercelRequest): string | null {
   const queryId = typeof req.query.fleet_id === "string" ? req.query.fleet_id.trim() : "";

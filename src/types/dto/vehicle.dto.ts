@@ -33,6 +33,7 @@ export interface VehicleDto {
 
 export interface VehicleInsertDto {
   fleet_id: string;
+  subscription_id?: string;
   registration: string;
   brand?: string;
   model?: string;

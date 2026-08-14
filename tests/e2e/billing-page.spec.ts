@@ -106,7 +106,7 @@ test.describe("BillingPage e2e", () => {
     await page.goto("/dashboard/billing", { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.waitForSelector("main", { state: "attached", timeout: 15_000 });
 
-    const heading = page.getByRole("heading", { name: /Abonnement & Facturation/i });
+    const heading = page.getByRole("heading", { name: /Abonnements? & Facturation/i });
     try {
       await expect(heading).toBeVisible({ timeout: 10_000 });
     } catch (error) {

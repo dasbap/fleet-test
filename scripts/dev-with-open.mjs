@@ -116,7 +116,6 @@ async function main() {
     env: {
       ...process.env,
       ESAMBA_MANAGED_OPEN: "1",
-      VITE_DEV_BFF_PROXY: "true",
     },
   });
 

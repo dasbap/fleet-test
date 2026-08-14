@@ -6,6 +6,8 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import {
   useFleetMembers,
   useAddFleetMember,
@@ -208,6 +210,34 @@ describe("useCreateFleetMemberAccount", () => {
     expect(rpcMock).not.toHaveBeenCalledWith("creer_invitation_esamba", expect.anything());
     expect(rpcMock).not.toHaveBeenCalledWith("ajouter_membre_par_email", expect.anything());
     expect(result.current.data?.temp_password).toBe("Samba1234!");
+  });
+
+  it("rafraichit les chauffeurs affectables apres creation d'un chauffeur", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => useCreateFleetMemberAccount(), { wrapper });
+
+    result.current.mutate({
+      fleetId: "fleet-1",
+      data: {
+        email: "driver@example.com",
+        fullName: "Driver Test",
+        role: "driver",
+      },
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["fleet-drivers", "fleet-1"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["active-assignments", "fleet-1"] });
   });
 });
 

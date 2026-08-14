@@ -18,7 +18,9 @@ export class FleetBillingService {
    * Vérifie qu’un véhicule supplémentaire est autorisé (UX avant insert ; le trigger SQL reste autoritaire).
    */
   assertCanAddVehicle(context: FleetBillingContext): void {
-    if (context.vehicleCount >= context.maxVehicles) {
+    const vehicleLimit = Math.min(context.vehicleSlots, context.maxVehicles);
+
+    if (context.vehicleCount >= vehicleLimit) {
       throw new Error(planValueMessages.vehicleLimit.short);
     }
   }

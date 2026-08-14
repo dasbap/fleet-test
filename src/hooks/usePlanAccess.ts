@@ -5,6 +5,7 @@
  */
 
 import { useFleetBillingContext } from "@/hooks/useFleetBillingContext";
+import { useFleetSubscriptions } from "@/hooks/useSubscriptionManagement";
 import {
   getAllPlanAccess,
   canCreateVehicle,
@@ -17,6 +18,7 @@ import {
   type PlanAccessSummary,
   type PlanAccessResult,
 } from "@/lib/billing/planGuards";
+import { getVehicleSubscriptionAccess } from "@/lib/billing/vehicleSubscriptionAccess";
 import type { FleetBillingContext } from "@/types/fleet-billing";
 
 export interface UsePlanAccessReturn {
@@ -85,6 +87,58 @@ export function usePlanAccess(fleetId?: string): UsePlanAccessReturn {
     financeAccess:       access.finance,
     multiFleetAccess:    access.multiFleet,
     billingCtx:          ctx,
+  };
+}
+
+export function useVehiclePlanAccess(
+  fleetId?: string,
+  vehicleId?: string,
+): UsePlanAccessReturn & { isCovered: boolean } {
+  const subscriptions = useFleetSubscriptions(vehicleId ? fleetId : undefined);
+
+  if (!vehicleId || subscriptions.isLoading) {
+    return {
+      isLoading: true,
+      isCovered: false,
+      access: undefined,
+      canCreateVehicle:   false,
+      canUsePulse:        false,
+      canUseQrPremium:    false,
+      canExportReports:   false,
+      canUseFinance:      false,
+      canAccessMultiFleet: false,
+      canUseDriverScoring: false,
+      createVehicleAccess: undefined,
+      pulseAccess:         undefined,
+      qrPremiumAccess:     undefined,
+      exportReportsAccess: undefined,
+      financeAccess:       undefined,
+      multiFleetAccess:    undefined,
+      billingCtx:          undefined,
+    };
+  }
+
+  const vehicleAccess = getVehicleSubscriptionAccess(subscriptions.data ?? [], vehicleId);
+  const access = vehicleAccess.access;
+
+  return {
+    isLoading: false,
+    isCovered: vehicleAccess.isCovered,
+    access,
+    canCreateVehicle:    access.createVehicle.allowed,
+    canUsePulse:         access.pulse.allowed,
+    canUseQrPremium:     access.qrPremium.allowed,
+    canExportReports:    access.exportReports.allowed,
+    canUseFinance:       access.finance.allowed,
+    canAccessMultiFleet: access.multiFleet.allowed,
+    canUseDriverScoring: access.driverScoring.allowed,
+    createVehicleAccess: access.createVehicle,
+    pulseAccess:         access.pulse,
+    qrPremiumAccess:     access.qrPremium,
+    exportReportsAccess: access.exportReports,
+    financeAccess:       access.finance,
+    multiFleetAccess:    access.multiFleet,
+    billingCtx:          vehicleAccess.billingCtx,
   };
 }
 

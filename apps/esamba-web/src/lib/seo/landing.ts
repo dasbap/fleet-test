@@ -5,7 +5,7 @@ const TITLE =
   "E-Samba.com — Logiciel de gestion de flotte en Afrique francophone";
 
 const DESCRIPTION =
-  "Gérez votre flotte de véhicules en Afrique avec E-Samba.com : suivi documents, alertes expiration, rapports, paiements MTN MoMo / Orange Money. Essai gratuit 14 jours.";
+  "Gérez votre flotte de véhicules en Afrique avec E-Samba.com : suivi documents, alertes expiration, rapports, paiements MTN MoMo / Orange Money. Offres Starter, Pro et Entreprise.";
 
 const KEYWORDS = [
   "gestion de flotte",
