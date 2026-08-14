@@ -83,6 +83,33 @@ describe("GitHub workflow dependency install policy", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("uses the package Node engine for workflows that install dependencies", () => {
+    const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+      engines?: { node?: string };
+    };
+    const expectedMajor = packageJson.engines?.node?.match(/\d+/)?.[0];
+
+    expect(expectedMajor).toBeDefined();
+
+    const offenders = workflowFiles.flatMap((file) => {
+      const workflow = readFileSync(file, "utf8");
+      const installJobs = getJobBlocks(workflow).filter((job) =>
+        job.includes("node scripts/ci-install.mjs")
+      );
+
+      return installJobs
+        .filter(
+          (job) =>
+            !new RegExp(
+              `node-version:\\s*["']?${expectedMajor}(?:\\.x)?["']?`
+            ).test(job)
+        )
+        .map((job) => `${file}:${job.split("\n")[0].trim()}`);
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
   it("runs the Supabase PR validation jobs automatically outside WSL", () => {
     const supabasePrJobs = [
       {
