@@ -66,6 +66,7 @@ export function buildAuthContext(input: BuildAuthContextInput): AuthContext {
   } = input;
 
   const fb = fleetBilling ?? DEFAULT_FLEET_BILLING_CONTEXT;
+  const effectiveMaxVehicles = Math.min(fb.vehicleSlots, fb.maxVehicles);
   const enables: PlanEnables = fleetBillingToPlanEnables(fb);
   const { planCode, plan_expired, plan_active } = computePlanGate(
     fleetBilling,
@@ -84,6 +85,6 @@ export function buildAuthContext(input: BuildAuthContextInput): AuthContext {
     plan_active,
     plan_expired,
     enables,
-    max_vehicles: fleetBillingMaxVehiclesOrNull(fb.maxVehicles),
+    max_vehicles: fleetBillingMaxVehiclesOrNull(effectiveMaxVehicles),
   };
 }

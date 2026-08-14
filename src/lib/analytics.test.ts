@@ -52,6 +52,34 @@ describe("analytics PostHog", () => {
     );
   });
 
+  it("utilise l'endpoint PostHog EU qui correspond aux assets chargés", async () => {
+    vi.stubEnv("VITE_POSTHOG_KEY", "ph_test_key");
+    const analyticsModule = await import("@/lib/analytics");
+
+    analyticsModule.initAnalytics();
+    await vi.waitFor(() => expect(initMock).toHaveBeenCalled());
+
+    expect(initMock).toHaveBeenCalledWith(
+      "ph_test_key",
+      expect.objectContaining({
+        api_host: "https://eu.i.posthog.com",
+        advanced_disable_feature_flags: true,
+        disable_surveys: true,
+        disable_session_recording: true,
+      })
+    );
+  });
+
+  it("ignore les clés PostHog masquées ou placeholders", async () => {
+    vi.stubEnv("VITE_POSTHOG_KEY", "phc_xxxxxxxxxxxxx");
+    const analyticsModule = await import("@/lib/analytics");
+
+    analyticsModule.initAnalytics();
+    await Promise.resolve();
+
+    expect(initMock).not.toHaveBeenCalled();
+  });
+
   it("conserve la langue dans le pageview", async () => {
     vi.stubEnv("VITE_POSTHOG_KEY", "ph_test_key");
     const analyticsModule = await import("@/lib/analytics");

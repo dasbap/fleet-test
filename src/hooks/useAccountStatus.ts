@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { sumActiveSubscriptionVehicleCapacity } from '@/lib/subscription-vehicle-capacity';
 import type { AccountStatus, AccountSubscription, FleetMetrics, AccountPlan } from '@/types/account-status';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -73,8 +74,8 @@ async function fetchAccountStatus(): Promise<{
   const { data: sub } = await supabase
     .from('abonnements')
     .select(`
-      id, statut, period_start, period_end,
-      trial_ends_at, grace_ends_at,
+      id, status, starts_at, ends_at, vehicle_slots,
+      trial_ends_at, grace_until,
       next_amount, payment_method, last_payment_at, next_billing_at,
       plans (
         id, name, max_vehicles,
@@ -86,6 +87,27 @@ async function fetchAccountStatus(): Promise<{
     .limit(1)
     .maybeSingle();
 
+  const { data: activeSubscriptions } = await supabase
+    .from('abonnements')
+    .select(`
+      status, vehicle_slots,
+      plans (
+        max_vehicles
+      )
+    `)
+    .eq('fleet_id', fleetId)
+    .in('status', ['trial', 'trialing', 'active', 'grace', 'grace_period']);
+
+  const subscriptionVehicleSlots = sumActiveSubscriptionVehicleCapacity(
+    (activeSubscriptions ?? []).map((subscription) => ({
+      status: subscription.status,
+      vehicleCapacity:
+        subscription.vehicle_slots ?? subscription.plans?.max_vehicles ?? null,
+    })),
+  );
+  const effectiveVehicleSlots =
+    subscriptionVehicleSlots ?? sub?.vehicle_slots ?? sub?.plans?.max_vehicles ?? null;
+
   // Métriques flotte
   const { count: totalVehicles } = await supabase
     .from('vehicules')
@@ -96,7 +118,7 @@ async function fetchAccountStatus(): Promise<{
     .from('vehicules')
     .select('*', { count: 'exact', head: true })
     .eq('fleet_id', fleetId)
-    .eq('statut', 'actif');
+    .eq('status', 'ok');
 
   const { count: totalDrivers } = await supabase
     .from('flotte_adhesions')
@@ -115,6 +137,7 @@ async function fetchAccountStatus(): Promise<{
     total_vehicles:  totalVehicles  ?? 0,
     active_vehicles: activeVehicles ?? 0,
     max_vehicles:    sub?.plans?.max_vehicles ?? null,
+    vehicle_slots:   effectiveVehicleSlots,
     total_drivers:   totalDrivers   ?? 0,
     active_drivers:  activeDrivers  ?? 0,
   };
@@ -125,6 +148,7 @@ async function fetchAccountStatus(): Promise<{
     id:           sub.plans?.id ?? '',
     name:         sub.plans?.name ?? 'Starter',
     max_vehicles: sub.plans?.max_vehicles ?? null,
+    vehicle_slots: effectiveVehicleSlots,
     features:     sub.plans?.features ?? {
       qr_premium: false, ai_pulse: false, dvir: true,
       transit_cemac: false, export_pdf: false,
@@ -133,12 +157,12 @@ async function fetchAccountStatus(): Promise<{
 
   const subscription: AccountSubscription = {
     id:              sub.id,
-    status:          sub.statut as AccountSubscription['status'],
+    status:          sub.status as AccountSubscription['status'],
     plan,
-    period_start:    sub.period_start,
-    period_end:      sub.period_end,
+    period_start:    sub.starts_at,
+    period_end:      sub.ends_at,
     trial_ends_at:   sub.trial_ends_at ?? null,
-    grace_ends_at:   sub.grace_ends_at ?? null,
+    grace_ends_at:   sub.grace_until ?? null,
     next_amount:     sub.next_amount ?? null,
     payment_method:  sub.payment_method ?? null,
     last_payment_at: sub.last_payment_at ?? null,

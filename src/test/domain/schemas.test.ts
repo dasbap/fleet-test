@@ -91,14 +91,36 @@ describe('vehicleInsertSchema', () => {
     });
     expect(parsed.registration).toBe('AB-123');
   });
+
+  it("accepte l'abonnement cible explicite", () => {
+    const parsed = parseSchemaOrThrow(vehicleInsertSchema, {
+      fleet_id: 'f1',
+      subscription_id: 'sub-1',
+      registration: ' AB-123 ',
+    });
+    expect(parsed.subscription_id).toBe('sub-1');
+  });
 });
 
 describe('vehicleCreateFormSchema', () => {
   it('exige marque et modèle', () => {
     const result = vehicleCreateFormSchema.safeParse({
       registration: 'X',
+      subscription_id: 'sub-1',
       brand: '',
       model: 'M',
+      year: 2020,
+      current_km: 0,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("exige un abonnement pour creer un vehicule", () => {
+    const result = vehicleCreateFormSchema.safeParse({
+      registration: 'X',
+      subscription_id: '',
+      brand: 'Toyota',
+      model: 'Verso',
       year: 2020,
       current_km: 0,
     });

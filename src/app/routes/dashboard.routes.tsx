@@ -94,6 +94,9 @@ const ScheduledReportsPage = lazy(
 const BillingPage = lazy(
   () => import("@/features/billing/screens/BillingPage")
 );
+const SubscriptionsPage = lazy(
+  () => import("@/features/billing/screens/SubscriptionsPage")
+);
 const CoachingPage = lazy(
   () => import("@/features/coaching/screens/CoachingPage")
 );
@@ -103,6 +106,7 @@ const DashcamPage = lazy(
 const Scan = lazy(() => import("@/pages/Scan"));
 const DemoAdminPage = lazy(() => import("@/pages/admin/DemoAdminPage"));
 const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
+const AdminSubscriptionsPage = lazy(() => import("@/pages/admin/AdminSubscriptionsPage"));
 const AdminFaqPage = lazy(() => import("@/pages/admin/AdminFaqPage"));
 const HelpAdminPage = lazy(() => import("@/features/help/screens/HelpAdminPage"));
 const AdminUsersPage = lazy(() => import("@/pages/admin/AdminUsersPage"));
@@ -273,6 +277,14 @@ export const dashboardRoutes = (
           </RoleGuard>
         }
       />
+      <Route
+        path="subscriptions"
+        element={
+          <RoleGuard allow={["organizer", "manager"]}>
+            <SubscriptionsPage />
+          </RoleGuard>
+        }
+      />
       <Route path="coaching" element={<CoachingPage />} />
       <Route
         path="dashcam"
@@ -303,6 +315,14 @@ export const dashboardRoutes = (
         element={
           <AdminGuard redirectIfDenied showLoadingState>
             <AdminUsersPage />
+          </AdminGuard>
+        }
+      />
+      <Route
+        path="admin/subscriptions"
+        element={
+          <AdminGuard redirectIfDenied showLoadingState>
+            <AdminSubscriptionsPage />
           </AdminGuard>
         }
       />

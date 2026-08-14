@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { Play, Pause, ArrowRight, Volume2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LANDING_CTA } from "@/config/navigation";
+import { usePublicEntryCta } from "@/hooks/usePublicEntryCta";
 
 const AUDIO_URL =
   import.meta.env.VITE_DEMO_AUDIO_URL ||
@@ -22,6 +22,7 @@ function formatTime(seconds: number): string {
 }
 
 export function DemoVideoSection() {
+  const primaryCta = usePublicEntryCta();
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -212,14 +213,16 @@ export function DemoVideoSection() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
             <Button size="lg" className="shadow-glow" asChild>
-              <Link to={LANDING_CTA.signupHref}>
-                {LANDING_CTA.signupLabel}
+              <Link to={primaryCta.href}>
+                {primaryCta.label}
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link to={LANDING_CTA.signupHref}>Demander une demo</Link>
-            </Button>
+            {!primaryCta.isAuthenticated ? (
+              <Button size="lg" variant="outline" asChild>
+                <Link to={primaryCta.href}>Demander une demo</Link>
+              </Button>
+            ) : null}
           </div>
         </div>
       </div>

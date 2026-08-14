@@ -27,6 +27,11 @@ describeIntegration("Fuel fraud scoring", () => {
       user: clients.user,
       role: "organizer",
     });
+    const { error: trialError } = await clients.admin.rpc("billing_start_trial", {
+      p_fleet_id: context.fleetId,
+      p_trial_days: 30,
+    });
+    expect(trialError).toBeNull();
     vehicleId = await createVehicleForFleet(
       clients.admin,
       context.fleetId,
@@ -36,6 +41,10 @@ describeIntegration("Fuel fraud scoring", () => {
 
   afterAll(async () => {
     if (clients) {
+      if (context?.fleetId) {
+        await clients.admin.from("billing_events").delete().eq("fleet_id", context.fleetId);
+        await clients.admin.from("abonnements").delete().eq("fleet_id", context.fleetId);
+      }
       await cleanupFleetContext(clients.admin, context ?? {});
     }
   });

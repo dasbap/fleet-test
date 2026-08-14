@@ -8,11 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PageLoader } from "@/components/dashboard/PageLoader";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import VehicleFormDialog from "@/components/vehicles/VehicleFormDialog";
 import { AssignmentFormDialog } from "@/components/vehicles/AssignmentFormDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useFleetSubscriptions, useTransferVehicleSubscription } from "@/hooks/useSubscriptionManagement";
+import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEndAssignment } from "@/hooks/useAssignments";
 import { useVehicleList, type VehicleStatusApi } from "@/hooks/useVehicles";
@@ -41,6 +44,7 @@ export default function FleetVehiclesListPage() {
   const { canWriteFleet } = usePermissions();
   const { can } = useRoleAccess();
   const canAssignDriver = can("vehicle.assign_driver");
+  const canManageBilling = can("billing.manage");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const endAssignment = useEndAssignment();
@@ -61,7 +65,7 @@ export default function FleetVehiclesListPage() {
 
   const handleEndAssignment = async (assignmentId: string, driverName?: string) => {
     const confirmed = window.confirm(
-      `Delier ${driverName || "ce chauffeur"} de ce vehicule ?`,
+      `Retirer ${driverName || "ce chauffeur"} de ce vehicule ?`,
     );
     if (!confirmed) return;
     try {
@@ -81,6 +85,56 @@ export default function FleetVehiclesListPage() {
   );
 
   const { data: vehicles = [], isLoading, error } = useVehicleList(listFilters);
+  const { data: subscriptions = [], isLoading: subscriptionsLoading } = useFleetSubscriptions(
+    userFleetId ?? undefined,
+  );
+  const transferVehicleSubscription = useTransferVehicleSubscription(userFleetId ?? undefined);
+
+  const activeSubscriptions = useMemo(
+    () =>
+      subscriptions.filter(
+        (subscription) => subscription.status === "active" || subscription.status === "trial",
+      ),
+    [subscriptions],
+  );
+
+  const subscriptionByVehicleId = useMemo(() => {
+    const map = new Map<string, string>();
+    subscriptions.forEach((subscription) => {
+      subscription.vehicles.forEach((vehicle) => {
+        if (vehicle.id) {
+          map.set(vehicle.id, subscription.id);
+        }
+      });
+    });
+    return map;
+  }, [subscriptions]);
+
+  const subscriptionById = useMemo(
+    () => new Map(subscriptions.map((subscription) => [subscription.id, subscription])),
+    [subscriptions],
+  );
+
+  const handleMoveVehicleSubscription = async (vehicleId: string, targetSubscriptionId: string) => {
+    if (subscriptionByVehicleId.get(vehicleId) === targetSubscriptionId) {
+      return;
+    }
+
+    try {
+      await transferVehicleSubscription.mutateAsync({ vehicleId, targetSubscriptionId });
+      toast({
+        title: "Abonnement mis a jour",
+        description: "Le vehicule a ete deplace vers l'abonnement choisi.",
+      });
+    } catch (moveError) {
+      toast({
+        title: "Deplacement impossible",
+        description:
+          moveError instanceof Error ? moveError.message : "Impossible de deplacer ce vehicule.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (authLoading) {
     return <PageLoader />;
@@ -214,7 +268,47 @@ export default function FleetVehiclesListPage() {
                           : "Non planifié"}
                       </p>
                     </div>
-                    {canAssignDriver && v.status === "ok" && v.active_assignment ? (
+                    {canManageBilling ? (
+                      <div className="space-y-1 text-sm">
+                        <p className="text-xs text-muted-foreground">Abonnement</p>
+                        <Select
+                          value={subscriptionByVehicleId.get(v.id) ?? ""}
+                          disabled={
+                            subscriptionsLoading ||
+                            transferVehicleSubscription.isPending ||
+                            activeSubscriptions.length === 0
+                          }
+                          onValueChange={(targetSubscriptionId) =>
+                            void handleMoveVehicleSubscription(v.id, targetSubscriptionId)
+                          }
+                        >
+                          <SelectTrigger aria-label={`Abonnement du vehicule ${v.registration}`}>
+                            <SelectValue placeholder="Choisir un abonnement" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {activeSubscriptions
+                              .filter((subscription) => {
+                                const currentSubscriptionId = subscriptionByVehicleId.get(v.id);
+                                const currentSubscription = currentSubscriptionId
+                                  ? subscriptionById.get(currentSubscriptionId)
+                                  : null;
+                                const isCurrent = currentSubscriptionId === subscription.id;
+                                const isSameType =
+                                  !currentSubscription ||
+                                  currentSubscription.planCode === subscription.planCode;
+                                return isSameType && (isCurrent || subscription.availableSlots > 0);
+                              })
+                              .map((subscription) => (
+                                <SelectItem key={subscription.id} value={subscription.id}>
+                                  {subscription.planName ?? subscription.planCode ?? "Abonnement"} -{" "}
+                                  {subscription.vehicleCount}/{subscription.vehicleCapacity ?? "illimite"} veh.
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
+                    {canAssignDriver && v.active_assignment ? (
                       <Button
                         type="button"
                         variant="outline"
@@ -226,7 +320,7 @@ export default function FleetVehiclesListPage() {
                         }
                       >
                         <UserMinus className="h-4 w-4" aria-hidden />
-                        Delier le chauffeur
+                        Retirer le chauffeur
                       </Button>
                     ) : canAssignDriver && v.status === "ok" ? (
                       <Button

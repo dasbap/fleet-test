@@ -20,10 +20,6 @@ interface ImportMetaEnv {
   readonly VITE_E2E_ONBOARDING?: string;
   /** UUID organisation mockée pour les scénarios E2E onboarding. */
   readonly VITE_MOCK_ORG_ID?: string;
-  /** Base URL du BFF (ex. `/api`). Voir src/lib/bff-config.ts */
-  readonly VITE_API_BASE_URL?: string;
-  /** `true` : proxy Vite vers le BFF en dev. */
-  readonly VITE_DEV_BFF_PROXY?: string;
   /** UUID de la flotte démo (Table Editor → flottes) pour auth mock + appels API. */
   readonly VITE_DEMO_FLEET_ID?: string;
   /** Données démo pour le module Opérations (snapshots). Valeur attendue : "true". */

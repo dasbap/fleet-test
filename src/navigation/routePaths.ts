@@ -99,6 +99,7 @@ export const ROUTE_PATHS = {
   /** Rapports programmés — envoi automatique PDF/Excel. */
   dashboardScheduledReports: "/dashboard/reports/scheduled",
   dashboardBilling: "/dashboard/billing",
+  dashboardSubscriptions: "/dashboard/subscriptions",
   /** Coaching vocal post-trajet — retours audio conducteur. */
   dashboardCoaching: "/dashboard/coaching",
   /** Dashcam AI — surveillance vidéo intelligente. */
@@ -149,6 +150,8 @@ export const ROUTE_PATHS = {
   dashboardAdminFaq: "/dashboard/admin/faq",
   /** Administration des comptes utilisateur. */
   dashboardAdminUsers: "/dashboard/admin/users",
+  /** Attribution manuelle des abonnements par super administrateur. */
+  dashboardAdminSubscriptions: "/dashboard/admin/subscriptions",
   /** Administration des comptes de demonstration. */
   dashboardAdminDemo: "/dashboard/admin/demo",
 } as const;

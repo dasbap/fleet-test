@@ -7,6 +7,7 @@ import { AssignmentFormDialog } from "@/components/vehicles/AssignmentFormDialog
 
 const mutateAsyncMock = vi.fn().mockResolvedValue(undefined);
 let driverPhone: string | null = "+237600000000";
+let activeAssignmentDriverId: string | null = null;
 
 vi.mock("@/hooks/useVehicles", () => ({
   useVehiclesSimple: () => ({
@@ -34,6 +35,24 @@ vi.mock("@/hooks/useAssignments", () => ({
         is_active: true,
       },
     ],
+    isLoading: false,
+  }),
+  useActiveAssignments: () => ({
+    data: activeAssignmentDriverId
+      ? [
+          {
+            id: "assignment-1",
+            fleet_id: "fleet-1",
+            vehicle_id: "vehicle-2",
+            driver_user_id: activeAssignmentDriverId,
+            starts_at: "2026-08-11T00:00:00.000Z",
+            ends_at: null,
+            is_active: true,
+            created_by: "manager-1",
+            created_at: "2026-08-11T00:00:00.000Z",
+          },
+        ]
+      : [],
     isLoading: false,
   }),
   useAssignVehicle: () => ({
@@ -67,6 +86,7 @@ describe("AssignmentFormDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     driverPhone = "+237600000000";
+    activeAssignmentDriverId = null;
   });
 
   it("garde les selects controles pendant l'affectation", () => {
@@ -110,5 +130,16 @@ describe("AssignmentFormDialog", () => {
         driver_user_id: "driver-1",
       });
     });
+  });
+
+  it("ne propose pas les chauffeurs qui ont deja un vehicule actif", () => {
+    activeAssignmentDriverId = "driver-1";
+
+    renderDialog();
+
+    fireEvent.click(screen.getByLabelText(/S.lectionner un chauffeur/i));
+
+    expect(screen.queryByText("Conducteur Test (+237600000000)")).not.toBeInTheDocument();
+    expect(screen.getByText(/Aucun chauffeur disponible/i)).toBeInTheDocument();
   });
 });

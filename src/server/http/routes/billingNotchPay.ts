@@ -1,10 +1,10 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
-import { initiateNotchPayPayment } from "@/server/domain/notchPayInitiate";
-import { getBearerToken } from "@/server/http/auth";
-import { jsonInternalServerError } from "@/server/http/errorResponse";
-import { createSupabaseUserClient } from "@/server/infra/supabaseUserClient";
-import { rateLimit } from "@/server/http/middleware/rateLimitMiddleware";
+import { initiateNotchPayPayment } from "../../domain/notchPayInitiate.js";
+import { getBearerToken } from "../auth.js";
+import { jsonInternalServerError } from "../errorResponse.js";
+import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
+import { rateLimit } from "../middleware/rateLimitMiddleware.js";
 
 const notchIntentSchema = z.object({
   orgId: z.string().uuid(),

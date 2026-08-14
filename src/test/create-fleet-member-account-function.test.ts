@@ -18,4 +18,16 @@ describe("create-fleet-member-account Edge Function", () => {
     expect(functionSource).toContain('.eq("role", "organizer")');
     expect(functionSource).toContain("count: \"exact\"");
   });
+
+  it("reattaches an existing auth user instead of failing on duplicate email", () => {
+    const duplicateBranchIndex = functionSource.indexOf("email_already_registered");
+    const listUsersIndex = functionSource.indexOf("auth.admin.listUsers");
+    const membershipUpsertIndex = functionSource.indexOf('{ onConflict: "fleet_id,user_id" }');
+
+    expect(duplicateBranchIndex).toBeGreaterThan(-1);
+    expect(listUsersIndex).toBeGreaterThan(-1);
+    expect(membershipUpsertIndex).toBeGreaterThan(-1);
+    expect(listUsersIndex).toBeLessThan(membershipUpsertIndex);
+    expect(functionSource).toContain("existing_auth_user_attached");
+  });
 });

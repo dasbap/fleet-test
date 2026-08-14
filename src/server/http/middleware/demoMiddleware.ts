@@ -13,7 +13,7 @@
 
 import type { Context, MiddlewareHandler } from "hono";
 import { createClient } from "@supabase/supabase-js";
-import { isDemoBffRouteBlocked } from "@/lib/demo/demoGuard";
+import { isDemoBffRouteBlocked } from "../../../lib/demo/demoGuard.js";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 

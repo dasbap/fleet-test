@@ -87,7 +87,7 @@ const VehiclesTable = ({ fleetId }: VehiclesTableProps) => {
 
   const handleEndAssignment = async (assignmentId: string, driverName?: string | null) => {
     const confirmed = window.confirm(
-      `Delier ${driverName?.trim() || "ce chauffeur"} de ce vehicule ?`,
+      `Retirer ${driverName?.trim() || "ce chauffeur"} de ce vehicule ?`,
     );
     if (!confirmed) return;
 
@@ -254,7 +254,7 @@ const VehiclesTable = ({ fleetId }: VehiclesTableProps) => {
                                 }
                               >
                                 <UserMinus className="w-4 h-4 mr-2" />
-                                Delier chauffeur
+                                Retirer chauffeur
                               </DropdownMenuItem>
                             )}
                           </>

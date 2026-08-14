@@ -4,14 +4,11 @@
 import { Link, Outlet } from "react-router-dom";
 import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuthOptional } from "@/hooks/useAuth";
-import { getAppEntryPath } from "@/navigation/appEntryPath";
+import { usePublicEntryCta } from "@/hooks/usePublicEntryCta";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 export function HelpPublicLayout() {
-  const auth = useAuthOptional();
-  const user = auth?.user;
-  const appEntry = getAppEntryPath(auth?.role);
+  const primaryCta = usePublicEntryCta();
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,8 +29,8 @@ export function HelpPublicLayout() {
               <Link to={ROUTE_PATHS.help}>Centre d&apos;aide</Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
-              {user ? (
-                <Link to={appEntry}>Mon espace</Link>
+              {primaryCta.isAuthenticated ? (
+                <Link to={primaryCta.href}>Dashboard</Link>
               ) : (
                 <Link to={ROUTE_PATHS.auth}>Connexion</Link>
               )}

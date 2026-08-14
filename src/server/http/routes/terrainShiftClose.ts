@@ -1,9 +1,9 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
-import { throwIfSupabaseInfrastructureError } from "@/lib/supabase-runtime-errors";
-import { getBearerToken } from "@/server/http/auth";
-import { jsonInternalServerError } from "@/server/http/errorResponse";
-import { createSupabaseUserClient } from "@/server/infra/supabaseUserClient";
+import { throwIfSupabaseInfrastructureError } from "../../../lib/supabase-runtime-errors.js";
+import { getBearerToken } from "../auth.js";
+import { jsonInternalServerError } from "../errorResponse.js";
+import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
 
 const shiftCloseBodySchema = z.object({
   shiftId: z.string().uuid(),

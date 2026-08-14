@@ -8,6 +8,8 @@ import {
   Globe,
   X,
 } from "lucide-react";
+import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +28,8 @@ const PRICE_STARTER_PER_VEHICLE = 15_000; // FCFA / véhicule / mois
 const PRICE_PRO_PER_VEHICLE     = 21_000; // FCFA / véhicule / mois
 
 const DEFAULT_VEHICLE_COUNT = 1;
+const MIN_VEHICLE_COUNT = 1;
+const MAX_PUBLIC_VEHICLE_COUNT = 100;
 const DEFAULT_DURATION_MONTHS = 1;
 const DEFAULT_DISCOUNT_PCT = 0;
 
@@ -111,10 +115,14 @@ const PLANS: PlanConfig[] = [
 
 export default function PricingPage() {
   usePageSeo("pricing");
-  const vehicleCount = DEFAULT_VEHICLE_COUNT;
+  const location = useLocation();
+  const renewalPlan = parseRenewalPlan(location.search);
+  const [vehicleCount, setVehicleCount] = useState(() =>
+    parseVehicleCountParam(location.search),
+  );
   const selectedDuration = DEFAULT_DURATION_MONTHS;
 
-  const { state, initiate, reset, isLoading, bffAvailable } = useBillingCheckout();
+  const { state, initiate, reset, isLoading } = useBillingCheckout();
 
   // ─── Calculateur mensuel ──────────────────────────────────────────────
 
@@ -124,6 +132,17 @@ export default function PricingPage() {
 
   function calcTotalXaf(pricePerVehicle: number): number {
     return calcMonthlyTotal(pricePerVehicle) * selectedDuration;
+  }
+
+  function handleVehicleCountChange(value: string) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) {
+      setVehicleCount(MIN_VEHICLE_COUNT);
+      return;
+    }
+    setVehicleCount(
+      Math.min(MAX_PUBLIC_VEHICLE_COUNT, Math.max(MIN_VEHICLE_COUNT, parsed)),
+    );
   }
 
   // ─── CTA checkout ─────────────────────────────────────────────────────
@@ -185,6 +204,27 @@ export default function PricingPage() {
 
         {/* ── Cartes plans ──────────────────────────────────────────────── */}
         <section>
+          <div className="mx-auto mb-6 flex max-w-5xl flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <label htmlFor="pricing-vehicle-count" className="text-sm font-medium">
+                Nombre de vÃ©hicules
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Le prix et les licences achetÃ©es suivent ce nombre.
+              </p>
+            </div>
+            <input
+              id="pricing-vehicle-count"
+              aria-label="Nombre de vehicules"
+              type="number"
+              min={MIN_VEHICLE_COUNT}
+              max={MAX_PUBLIC_VEHICLE_COUNT}
+              step={1}
+              value={vehicleCount}
+              onChange={(event) => handleVehicleCountChange(event.target.value)}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm tabular-nums outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-28"
+            />
+          </div>
           <div
             data-testid="pricing-plans-grid"
             className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3"
@@ -199,7 +239,7 @@ export default function PricingPage() {
                 calcMonthly={calcMonthlyTotal}
                 calcTotal={calcTotalXaf}
                 isLoading={isLoading}
-                bffAvailable={bffAvailable}
+                isRenewalTarget={renewalPlan === plan.code}
                 onPay={handlePay}
               />
             ))}
@@ -235,7 +275,7 @@ interface PlanCardProps {
   calcMonthly: (price: number) => number;
   calcTotal: (price: number) => number;
   isLoading: boolean;
-  bffAvailable: boolean;
+  isRenewalTarget: boolean;
   onPay: (plan: PlanConfig) => void;
 }
 
@@ -247,12 +287,12 @@ function PlanCard({
   calcMonthly,
   calcTotal,
   isLoading,
-  bffAvailable,
+  isRenewalTarget,
   onPay,
 }: PlanCardProps) {
   const isPaid = plan.pricePerVehicle !== null && plan.pricePerVehicle > 0;
   const isEnterprise = plan.code === "enterprise";
-  const showPayButton = !isEnterprise && bffAvailable;
+  const showPayButton = !isEnterprise;
 
   const monthlyTotal = isPaid ? calcMonthly(plan.pricePerVehicle!) : 0;
   const grandTotal   = isPaid ? calcTotal(plan.pricePerVehicle!) : 0;
@@ -271,6 +311,11 @@ function PlanCard({
           </Badge>
         </div>
       )}
+      {isRenewalTarget ? (
+        <Badge variant="secondary" className="absolute right-3 top-3">
+          Renouvellement
+        </Badge>
+      ) : null}
 
       <CardHeader className="pt-8 pb-4">
         <div className="flex items-center justify-between">
@@ -355,10 +400,6 @@ function PlanCard({
             )}
             {isLoading ? "Connexion Notch Pay…" : plan.ctaLabel}
           </Button>
-        ) : !bffAvailable ? (
-          <Button variant="outline" className="w-full" disabled>
-            Paiement indisponible
-          </Button>
         ) : null}
 
         {isPaid && !isEnterprise && (
@@ -369,4 +410,18 @@ function PlanCard({
       </CardFooter>
     </Card>
   );
+}
+
+function parseVehicleCountParam(search: string): number {
+  const raw = new URLSearchParams(search).get("vehicles");
+  const parsed = raw ? Number.parseInt(raw, 10) : DEFAULT_VEHICLE_COUNT;
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_VEHICLE_COUNT;
+  }
+  return Math.min(MAX_PUBLIC_VEHICLE_COUNT, Math.max(MIN_VEHICLE_COUNT, parsed));
+}
+
+function parseRenewalPlan(search: string): PlanKey | null {
+  const plan = new URLSearchParams(search).get("plan");
+  return plan === "starter" || plan === "pro" || plan === "enterprise" ? plan : null;
 }

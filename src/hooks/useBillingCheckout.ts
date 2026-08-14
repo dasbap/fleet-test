@@ -9,10 +9,11 @@
  */
 
 import { useCallback, useState } from "react";
-import { getBffBaseUrl, isBffConfigured } from "@/lib/bff-config";
 import { useAuthOptional } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import type { NotchPayInitiateResult } from "@/hooks/useNotchPayPayment";
+
+const NOTCH_PAY_INITIATE_URL = "/api/billing/notch/initiate";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -69,10 +70,9 @@ export interface NotchPayCheckoutRequest {
 export async function initiateNotchPayCheckout(
   req: NotchPayCheckoutRequest,
 ): Promise<NotchPayInitiateResult> {
-  const bff = getBffBaseUrl() ?? "";
   const { accessToken, ...body } = req;
 
-  const res = await fetch(`${bff}/billing/notch/initiate`, {
+  const res = await fetch(NOTCH_PAY_INITIATE_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -104,16 +104,12 @@ export function useBillingCheckout(): UseBillingCheckoutReturn {
   const orgId = auth?.orgId;
   const activeTenantContext = auth?.activeTenantContext;
   const session = auth?.session;
-  const bffAvailable = isBffConfigured();
+  const bffAvailable = true;
 
   const reset = useCallback(() => setState({ status: "idle" }), []);
 
   const initiate = useCallback(
     async (opts: BillingCheckoutOptions) => {
-      if (!bffAvailable) {
-        setState({ status: "failed", error: "Le paiement en ligne n'est pas disponible dans cette configuration." });
-        return;
-      }
       if (!auth) {
         setState({
           status: "failed",
@@ -172,7 +168,7 @@ export function useBillingCheckout(): UseBillingCheckoutReturn {
         toast({ title: "Erreur paiement", description: message, variant: "destructive" });
       }
     },
-    [auth, bffAvailable, orgId, activeTenantContext, session],
+    [auth, orgId, activeTenantContext, session],
   );
 
   return {

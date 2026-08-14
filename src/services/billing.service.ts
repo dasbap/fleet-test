@@ -1,4 +1,3 @@
-import { getBffBaseUrl, isBffConfigured } from "@/lib/bff-config";
 import { computeLapsedPaidFromLatestSubscription } from "@/lib/billing/computeLapsedPaidFromLatestSubscription";
 import { BillingRepository } from "@/repositories/billing.repository";
 import type { BillingSnapshot } from "@/types/billing-snapshot";
@@ -8,8 +7,30 @@ export type { BillingSnapshot } from "@/types/billing-snapshot";
 export { computeLapsedPaidFromLatestSubscription } from "@/lib/billing/computeLapsedPaidFromLatestSubscription";
 
 export interface BillingSnapshotRequestOptions {
-  /** Jeton Supabase utilisateur ; requis si `VITE_API_BASE_URL` pointe vers le BFF. */
+  /** Jeton Supabase utilisateur ; requis pour interroger le BFF same-origin. */
   accessToken?: string | null;
+}
+
+async function readBillingSnapshotJson(res: Response): Promise<BillingSnapshot> {
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    const text = await res.text().catch(() => "");
+    const trimmed = text.trimStart();
+    if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
+      throw new Error(
+        "La route API facturation a renvoye du HTML. Verifiez que le deploiement Vercel courant expose bien /api/billing/subscriptions et que Deployment Protection est contournee pour ce domaine.",
+      );
+    }
+    throw new Error(
+      `La route API facturation a renvoye une reponse non JSON (${res.status}).`,
+    );
+  }
+
+  try {
+    return (await res.json()) as BillingSnapshot;
+  } catch {
+    throw new Error("La route API facturation a renvoye un JSON invalide.");
+  }
 }
 
 export class BillingService {
@@ -27,9 +48,8 @@ export class BillingService {
       throw new Error("L'identifiant de la flotte est requis.");
     }
 
-    const bff = getBffBaseUrl();
-    if (isBffConfigured() && options?.accessToken) {
-      const url = `${bff ?? ""}/billing/subscriptions?org_id=${encodeURIComponent(orgId.trim())}&fleet_id=${encodeURIComponent(fleetId.trim())}`;
+    if (options?.accessToken) {
+      const url = `/api/billing/subscriptions?org_id=${encodeURIComponent(orgId.trim())}&fleet_id=${encodeURIComponent(fleetId.trim())}`;
       const res = await fetch(url, {
         method: "GET",
         headers: {
@@ -41,7 +61,7 @@ export class BillingService {
         const text = await res.text().catch(() => "");
         throw new Error(text || `Erreur API facturation (${res.status})`);
       }
-      return (await res.json()) as BillingSnapshot;
+      return readBillingSnapshotJson(res);
     }
 
     try {

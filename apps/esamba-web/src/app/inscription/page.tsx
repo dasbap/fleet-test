@@ -17,8 +17,8 @@ export default async function InscriptionPage() {
 
   return (
     <AuthShell
-      title="Créez votre compte gratuit"
-      description="14 jours d'essai · Sans carte bancaire"
+      title="Créez votre compte"
+      description="Choix d'offre - Paiement Mobile Money"
     >
       <InscriptionForm />
     </AuthShell>

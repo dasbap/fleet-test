@@ -90,6 +90,8 @@ BEGIN
   VALUES (v_org_id, 'Flotte test fermer_creneau')
   RETURNING id INTO v_fleet_id;
 
+  PERFORM public.billing_start_trial(v_fleet_id, 30);
+
   INSERT INTO vehicules (fleet_id, registration, brand, model, current_km, status)
   VALUES (v_fleet_id, 'TEST-FERM-01', 'Toyota', 'Corolla', v_km_before, 'ok')
   RETURNING id INTO v_vehicle_id;
@@ -205,7 +207,10 @@ BEGIN
   );
   DELETE FROM affectations_vehicules
   WHERE driver_user_id = v_user_id OR created_by = v_user_id;
+  DELETE FROM droits_vehicules WHERE vehicle_id = v_vehicle_id;
   DELETE FROM vehicules WHERE fleet_id = v_fleet_id;
+  DELETE FROM billing_events WHERE fleet_id = v_fleet_id;
+  DELETE FROM abonnements WHERE fleet_id = v_fleet_id;
   DELETE FROM flottes WHERE id = v_fleet_id;
   DELETE FROM organisations WHERE id = v_org_id;
   DELETE FROM profils WHERE user_id = v_user_id;

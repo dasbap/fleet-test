@@ -1,10 +1,10 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
-import { getAppUrl, getSupabaseUrl } from "@/server/env";
-import { getBearerToken } from "@/server/http/auth";
-import { jsonInternalServerError } from "@/server/http/errorResponse";
-import { createSupabaseServiceClient } from "@/server/infra/supabaseServiceClient";
-import { createSupabaseUserClient } from "@/server/infra/supabaseUserClient";
+import { getAppUrl, getSupabaseUrl } from "../../env.js";
+import { getBearerToken } from "../auth.js";
+import { jsonInternalServerError } from "../errorResponse.js";
+import { createSupabaseServiceClient } from "../../infra/supabaseServiceClient.js";
+import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
 
 const createProspectSchema = z.object({
   email: z.string().email(),

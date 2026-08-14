@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import { serializeServerError } from "@/lib/supabase-runtime-errors";
+import { serializeServerError } from "../../lib/supabase-runtime-errors.js";
 
 export function jsonInternalServerError(c: Context, error: unknown) {
   console.error("[BFF] request error:", error);

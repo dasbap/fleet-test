@@ -117,11 +117,12 @@ export function useCreateVehicle() {
 
   return useMutation({
     mutationFn: (vehicle: VehicleInsertApi) => vehicleService.createVehicle(vehicle),
-    onSuccess: () => {
+    onSuccess: (_createdVehicle, variables) => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles-simple'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles-list'] });
       queryClient.invalidateQueries({ queryKey: ['fleet-billing-context'] });
+      queryClient.invalidateQueries({ queryKey: ['fleet-subscriptions', variables.fleet_id] });
       toast({
         title: 'Véhicule ajouté',
         description: 'Le véhicule a été créé avec succès.',

@@ -1,9 +1,9 @@
 import type { Context, Hono } from "hono";
-import { runInboundPaymentWebhook } from "@/server/domain/billing/processInboundPaymentWebhook";
-import { getPaymentWebhookSecrets } from "@/server/env";
-import { jsonInternalServerError } from "@/server/http/errorResponse";
-import { createSupabaseServiceClient } from "@/server/infra/supabaseServiceClient";
-import { resolvePaymentWebhookProvider } from "@/server/payments/webhookProviders";
+import { runInboundPaymentWebhook } from "../../domain/billing/processInboundPaymentWebhook.js";
+import { getPaymentWebhookSecrets } from "../../env.js";
+import { jsonInternalServerError } from "../errorResponse.js";
+import { createSupabaseServiceClient } from "../../infra/supabaseServiceClient.js";
+import { resolvePaymentWebhookProvider } from "../../payments/webhookProviders.js";
 
 async function handleInboundPaymentWebhook(c: Context) {
   const rawBody = await c.req.text();

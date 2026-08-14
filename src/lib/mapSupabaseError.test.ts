@@ -99,6 +99,12 @@ describe('mapSupabaseErrorToFrench', () => {
     expect(mapSupabaseErrorToFrench('Impossible de créer la flotte.')).toBe('Impossible de créer la flotte.');
   });
 
+  it('passes through already-French chauffeur assignment messages', () => {
+    expect(mapSupabaseErrorToFrench('Ce chauffeur a déjà un véhicule affecté.')).toBe(
+      'Ce chauffeur a déjà un véhicule affecté.',
+    );
+  });
+
   it('traduit l\'erreur PostgREST single JSON object', () => {
     expect(
       mapSupabaseErrorToFrench('Cannot coerce the result to a single JSON object'),

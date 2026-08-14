@@ -89,6 +89,17 @@ function parseAccounts(data: unknown): AdminAccount[] {
       value !== null &&
       typeof (value as AdminAccount).user_id === "string" &&
       typeof (value as AdminAccount).email === "string"
+  ).filter((account) => !isIntegrationTestAccount(account));
+}
+
+function isIntegrationTestAccount(account: Pick<AdminAccount, "email" | "full_name">): boolean {
+  const email = account.email.trim().toLowerCase();
+  const fullName = account.full_name?.trim().toLowerCase() ?? "";
+
+  return (
+    email === "integration.tests@esamba.test" ||
+    /^integration-[a-z0-9-]+@esamba\.test$/.test(email) ||
+    fullName === "integration test user"
   );
 }
 

@@ -44,7 +44,6 @@ export interface UseAdminDemoAccountsReturn {
   updateAccountExpiration: (userId: string, expiresAt: string | null) => Promise<boolean>;
   deleteAccount: (userId: string) => Promise<boolean>;
   resetFleet: (fleetId: string) => Promise<boolean>;
-  setFleetPlan: (fleetId: string, planCode: string) => Promise<boolean>;
   generateMagicLink: (
     userId: string,
     email: string,
@@ -218,31 +217,6 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
     [load, toast],
   );
 
-  const setFleetPlan = useCallback(
-    async (fleetId: string, planCode: string): Promise<boolean> => {
-      if (!adminId) {
-        toast({ title: "Session expirée", variant: "destructive" });
-        return false;
-      }
-
-      try {
-        const result = await adminDemoService.setFleetPlan(fleetId, adminId, planCode);
-        if (!result.ok) {
-          toast({ title: "Erreur changement plan", variant: "destructive" });
-          return false;
-        }
-        toast({ title: `Plan ${planCode.toUpperCase()} applique` });
-        await load();
-        return true;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Erreur inconnue";
-        toast({ title: "Erreur changement plan", description: message, variant: "destructive" });
-        return false;
-      }
-    },
-    [load, toast, user?.id],
-  );
-
   const generateMagicLink = useCallback(
     async (
       userId: string,
@@ -275,7 +249,6 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
     updateAccountExpiration,
     deleteAccount,
     resetFleet,
-    setFleetPlan,
     generateMagicLink,
   };
 }

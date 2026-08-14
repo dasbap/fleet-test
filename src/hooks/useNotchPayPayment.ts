@@ -1,7 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { getBffBaseUrl, isBffConfigured } from "@/lib/bff-config";
 import { toast } from "@/hooks/use-toast";
+
+const NOTCH_PAY_INITIATE_URL = "/api/billing/notch/initiate";
 
 export interface NotchPayIntent {
   planCode: string;
@@ -26,8 +27,7 @@ async function callInitiate(
   fleetId: string,
   accessToken: string,
 ): Promise<NotchPayInitiateResult> {
-  const bff = getBffBaseUrl() ?? "";
-  const res = await fetch(`${bff}/billing/notch/initiate`, {
+  const res = await fetch(NOTCH_PAY_INITIATE_URL, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -74,8 +74,6 @@ export function useNotchPayPayment() {
       if (!orgId) throw new Error("Organisation introuvable.");
       if (!fleetId) throw new Error("Flotte introuvable.");
       if (!session?.access_token) throw new Error("Session expirée — reconnectez-vous.");
-      if (!isBffConfigured()) throw new Error("Paiement Notch Pay indisponible dans cette configuration.");
-
       return callInitiate(intent, orgId, fleetId, session.access_token);
     },
     onSuccess: ({ checkoutUrl, amountXaf, reference }) => {
