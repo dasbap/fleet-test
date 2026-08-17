@@ -7,36 +7,36 @@ export interface PublicFaqEntry {
 
 export const PUBLIC_FAQ_ENTRIES: readonly PublicFaqEntry[] = [
   {
-    q: "A qui s'adresse E-Samba ?",
-    a: "E-Samba s'adresse aux proprietaires, gestionnaires et equipes terrain qui veulent mieux suivre leurs vehicules, leurs conducteurs et leurs operations sans multiplier les fichiers, appels et messages disperses.",
+    q: "À qui s'adresse E-Samba ?",
+    a: "E-Samba s'adresse aux propriétaires, gestionnaires et équipes terrain qui veulent mieux suivre leurs véhicules, leurs conducteurs et leurs opérations sans multiplier les fichiers, appels et messages dispersés.",
   },
   {
     q: "Qu'est-ce que je peux suivre avec E-Samba ?",
-    a: "Vous gardez une vue claire sur les vehicules, les equipes, les alertes, le carburant, l'entretien et les principaux mouvements financiers. Le site reste volontairement general : la demo permet de voir ce qui correspond a votre organisation.",
+    a: "Vous gardez une vue claire sur les véhicules, les équipes, les alertes, le carburant, l'entretien et les principaux mouvements financiers. Le site reste volontairement général : la démo permet de voir ce qui correspond à votre organisation.",
   },
   {
-    q: "Est-ce adapte aux flottes en Afrique centrale ?",
-    a: "Oui. E-Samba est pense pour les usages de terrain en Afrique centrale : plusieurs pays, plusieurs equipes, connectivite variable et besoin de decisions rapides au quotidien.",
+    q: "Est-ce adapté aux flottes en Afrique centrale ?",
+    a: "Oui. E-Samba est pensé pour les usages de terrain en Afrique centrale : plusieurs pays, plusieurs équipes, connectivité variable et besoin de décisions rapides au quotidien.",
   },
   {
-    q: "Combien de temps faut-il pour demarrer ?",
-    a: "Le demarrage peut etre rapide sur une petite flotte. Pour une organisation plus large, l'equipe vous accompagne afin de cadrer les vehicules, les roles et les priorites avant la mise en route.",
+    q: "Combien de temps faut-il pour démarrer ?",
+    a: "Le démarrage peut être rapide sur une petite flotte. Pour une organisation plus large, l'équipe vous accompagne afin de cadrer les véhicules, les rôles et les priorités avant la mise en route.",
   },
   {
     q: "Puis-je commencer avec une petite flotte ?",
-    a: "Oui. Vous pouvez commencer avec quelques vehicules, valider l'interet pour votre equipe, puis elargir progressivement quand les usages sont clairs.",
+    a: "Oui. Vous pouvez commencer avec quelques véhicules, valider l'intérêt pour votre équipe, puis élargir progressivement quand les usages sont clairs.",
   },
   {
-    q: "Comment se deroule la mise en place ?",
-    a: "Apres votre demande, l'equipe prend contact pour comprendre votre flotte, votre zone d'activite, vos contraintes terrain et vos objectifs. La mise en place est adaptee a votre contexte plutot qu'a un parcours generique.",
+    q: "Comment se déroule la mise en place ?",
+    a: "Après votre demande, l'équipe prend contact pour comprendre votre flotte, votre zone d'activité, vos contraintes terrain et vos objectifs. La mise en place est adaptée à votre contexte plutôt qu'à un parcours générique.",
   },
   {
-    q: "Mes donnees restent-elles protegees ?",
-    a: "Oui. L'acces aux informations est encadre par role et par organisation. Les donnees de votre flotte ne sont pas exposees aux autres clients, et les informations sensibles restent limitees aux personnes autorisees.",
+    q: "Mes données restent-elles protégées ?",
+    a: "Oui. L'accès aux informations est encadré par rôle et par organisation. Les données de votre flotte ne sont pas exposées aux autres clients, et les informations sensibles restent limitées aux personnes autorisées.",
   },
   {
-    q: "Comment demander une demo ?",
-    a: "Utilisez la page contact et renseignez les informations demandees. L'equipe commerciale revient vers vous pour qualifier votre besoin et vous accorder un compte sous 48h.",
+    q: "Comment demander une démo ?",
+    a: "Utilisez la page contact et renseignez les informations demandées. L'équipe commerciale revient vers vous pour qualifier votre besoin et vous accorder un compte sous 48h.",
   },
 ] as const;
 

@@ -71,8 +71,8 @@ export default function FaqPage() {
       <FaqSchemaOrg items={schemaItems} />
       <PublicPageHero
         eyebrow="FAQ"
-        title="Questions frequentes"
-        description="Tout ce que vous devez savoir avant de demarrer avec E-Samba."
+        title="Questions fréquentes"
+        description="Tout ce que vous devez savoir avant de démarrer avec E-Samba."
       />
 
       <section className="py-20 md:py-32">
@@ -81,7 +81,7 @@ export default function FaqPage() {
 
           {filteredFaqs.length === 0 ? (
             <p className="text-center text-muted-foreground text-sm md:text-base py-8">
-              Aucun resultat pour "{query.trim()}". Posez votre question ci-dessous.
+              Aucun résultat pour "{query.trim()}". Posez votre question ci-dessous.
             </p>
           ) : (
             <div className="space-y-3 animate-fade-in-up">
