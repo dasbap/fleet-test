@@ -1,4 +1,4 @@
-export type TrackerProtocol = "tk103" | "concox";
+export type TrackerProtocol = "tk103" | "concox" | "teltonika";
 
 export type GeofenceType = "circle" | "polygon";
 
@@ -59,6 +59,8 @@ export interface GpsTrackerDevice {
   protocol: TrackerProtocol;
   is_active: boolean;
   label: string | null;
+  speed_limit_kmh: number;
+  speed_alert_tolerance_kmh: number;
   created_at: string;
   updated_at: string;
 }

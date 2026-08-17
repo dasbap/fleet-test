@@ -52,9 +52,9 @@ export default function DashboardLayout() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full min-w-0 bg-background">
         <DashboardSidebar userRole={userRole} />
-        <SidebarInset className="flex flex-col flex-1">
+        <SidebarInset className="flex min-w-0 flex-1 flex-col">
           <DashboardHeader
             userRole={userRole}
             displayName={fullName}
@@ -65,7 +65,7 @@ export default function DashboardLayout() {
           <OfflineBanner />
           <ActivationBanner />
           <DriverTerrainActivationModal />
-          <main className="flex-1 p-6 md:p-8 overflow-auto bg-gradient-to-br from-background via-background to-primary/[0.03]">
+          <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-6 md:p-8 bg-gradient-to-br from-background via-background to-primary/[0.03]">
             <Suspense fallback={null}>
               {!isAdmin ? <NotificationsPermissionGate /> : null}
             </Suspense>

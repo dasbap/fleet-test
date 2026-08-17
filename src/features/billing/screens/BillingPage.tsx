@@ -349,6 +349,7 @@ export default function BillingPage() {
             size="sm"
             onClick={() => paymentHistory.refetch()}
             disabled={paymentHistory.isLoading}
+            aria-label="Actualiser l'historique des paiements"
           >
             <RefreshCw className={cn("h-4 w-4", paymentHistory.isLoading && "animate-spin")} />
           </Button>

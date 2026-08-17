@@ -195,6 +195,7 @@
     "verify:dist": "node scripts/verify-dist.mjs",
     "smoke:spa": "node scripts/smoke-spa-preview.mjs",
     "gps:tcp-gateway": "node scripts/gps-tcp-gateway.mjs",
+    "gps:tcp-server": "node scripts/gps-tcp-gateway.mjs",
     "smoke:failure-prediction": "node scripts/smoke-failure-prediction.mjs",
     "test:e2e:roles": "node scripts/e2e-role-matrix.mjs",
     "test:smoke:roles-hub": "node scripts/smoke-roles-hub-organizer.mjs",

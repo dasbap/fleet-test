@@ -8,6 +8,13 @@ export const alertTypeLabels: Record<AlertType, string> = {
   recurring_gap: "Écart récurrent",
   risky_driver: "Chauffeur à risque",
   vehicle_blocked: "Véhicule bloqué",
+  maintenance_due: "Maintenance requise",
+  document_expired: "Document expire",
+  failure_risk: "Risque de panne",
+  speeding: "Exces de vitesse",
+  geofence_enter: "Entree de zone",
+  geofence_exit: "Sortie de zone",
+  faq_answer: "Reponse FAQ",
 };
 
 /** Libellés des sévérités. */

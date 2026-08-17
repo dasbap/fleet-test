@@ -207,9 +207,7 @@ describe("DashboardPage", () => {
       { wrapper: queryWrapper },
     );
 
-    expect(
-      screen.getAllByRole("heading", { name: "Centre de controle flotte" }).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Centre de controle flotte", level: 2 })).toBeInTheDocument();
     expect(screen.getByText("activation-checklist")).toBeInTheDocument();
   });
 
@@ -334,7 +332,7 @@ describe("DashboardPage", () => {
       { wrapper: queryWrapper },
     );
 
-    expect(screen.getByRole("heading", { name: "Centre de controle flotte" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Centre de controle flotte", level: 2 })).toBeInTheDocument();
     expect(screen.getByText("Bonjour Baptiste")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Declarer un incident/i })).toHaveAttribute(
       "href",

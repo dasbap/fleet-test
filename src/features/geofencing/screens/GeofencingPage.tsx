@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -110,16 +110,23 @@ function CreateGeofenceDialog({
   const [centerLat, setCenterLat] = useState("");
   const [centerLng, setCenterLng] = useState("");
   const [radiusM, setRadiusM] = useState("500");
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const create = useCreateGeofence();
 
   const handleSubmit = () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setValidationError("Le nom de la zone est requis.");
+      return;
+    }
     const lat = parseFloat(centerLat);
     const lng = parseFloat(centerLng);
     const radius = parseInt(radiusM, 10);
 
-    if (type === "circle" && (!isFinite(lat) || !isFinite(lng) || !isFinite(radius) || radius <= 0)) return;
+    if (type === "circle" && (!isFinite(lat) || !isFinite(lng) || !isFinite(radius) || radius <= 0)) {
+      setValidationError("Renseignez une latitude, une longitude et un rayon valide.");
+      return;
+    }
 
     create.mutate(
       {
@@ -130,24 +137,21 @@ function CreateGeofenceDialog({
       {
         onSuccess: () => {
           setName(""); setCenterLat(""); setCenterLng(""); setRadiusM("500");
+          setValidationError(null);
           onClose();
         },
       },
     );
   };
 
-  const canSubmit =
-    name.trim().length > 0 &&
-    (type !== "circle" ||
-      (isFinite(parseFloat(centerLat)) &&
-        isFinite(parseFloat(centerLng)) &&
-        parseInt(radiusM, 10) > 0));
-
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Nouvelle zone géofencing</DialogTitle>
+          <DialogDescription>
+            Définissez le type, le nom et les coordonnées de la zone à surveiller.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -157,7 +161,11 @@ function CreateGeofenceDialog({
               id="gf-name"
               placeholder="Ex. Dépôt central Yaoundé"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              aria-invalid={!!validationError && !name.trim()}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (validationError) setValidationError(null);
+              }}
             />
           </div>
 
@@ -181,7 +189,10 @@ function CreateGeofenceDialog({
                     id="gf-lat" type="number" step="any"
                     placeholder="3.8480"
                     value={centerLat}
-                    onChange={(e) => setCenterLat(e.target.value)}
+                    onChange={(e) => {
+                      setCenterLat(e.target.value);
+                      if (validationError) setValidationError(null);
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -190,7 +201,10 @@ function CreateGeofenceDialog({
                     id="gf-lng" type="number" step="any"
                     placeholder="11.5021"
                     value={centerLng}
-                    onChange={(e) => setCenterLng(e.target.value)}
+                    onChange={(e) => {
+                      setCenterLng(e.target.value);
+                      if (validationError) setValidationError(null);
+                    }}
                   />
                 </div>
               </div>
@@ -200,7 +214,10 @@ function CreateGeofenceDialog({
                   id="gf-radius" type="number" min="50" step="50"
                   placeholder="500"
                   value={radiusM}
-                  onChange={(e) => setRadiusM(e.target.value)}
+                  onChange={(e) => {
+                    setRadiusM(e.target.value);
+                    if (validationError) setValidationError(null);
+                  }}
                 />
               </div>
             </>
@@ -214,11 +231,16 @@ function CreateGeofenceDialog({
               </CardContent>
             </Card>
           )}
+          {validationError ? (
+            <p role="alert" className="text-xs text-destructive">
+              {validationError}
+            </p>
+          ) : null}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Annuler</Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit || create.isPending}>
+          <Button onClick={handleSubmit} disabled={create.isPending}>
             {create.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Créer la zone
           </Button>

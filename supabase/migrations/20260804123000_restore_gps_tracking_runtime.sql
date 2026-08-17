@@ -4,6 +4,16 @@
 
 DO $$
 BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public'
+      AND t.typname = 'alert_type'
+  ) THEN
+    ALTER TYPE public.alert_type ADD VALUE IF NOT EXISTS 'speeding';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
     FROM pg_type t
@@ -11,10 +21,12 @@ BEGIN
     WHERE n.nspname = 'public'
       AND t.typname = 'gps_tracker_protocol'
   ) THEN
-    CREATE TYPE public.gps_tracker_protocol AS ENUM ('tk103', 'concox');
+    CREATE TYPE public.gps_tracker_protocol AS ENUM ('tk103', 'concox', 'teltonika');
   END IF;
 END;
 $$;
+
+ALTER TYPE public.gps_tracker_protocol ADD VALUE IF NOT EXISTS 'teltonika';
 
 CREATE TABLE IF NOT EXISTS public.gps_devices (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -24,6 +36,8 @@ CREATE TABLE IF NOT EXISTS public.gps_devices (
   protocol public.gps_tracker_protocol NOT NULL,
   label text,
   is_active boolean NOT NULL DEFAULT true,
+  speed_limit_kmh integer NOT NULL DEFAULT 90,
+  speed_alert_tolerance_kmh integer NOT NULL DEFAULT 5,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT gps_devices_imei_unique UNIQUE (imei)
@@ -32,8 +46,22 @@ CREATE TABLE IF NOT EXISTS public.gps_devices (
 ALTER TABLE public.gps_devices
   ADD COLUMN IF NOT EXISTS label text,
   ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS speed_limit_kmh integer NOT NULL DEFAULT 90,
+  ADD COLUMN IF NOT EXISTS speed_alert_tolerance_kmh integer NOT NULL DEFAULT 5,
   ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now(),
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+CREATE TABLE IF NOT EXISTS public.vehicle_speed_states (
+  vehicle_id uuid PRIMARY KEY REFERENCES public.vehicules(id) ON DELETE CASCADE,
+  fleet_id uuid NOT NULL REFERENCES public.flottes(id) ON DELETE CASCADE,
+  tracker_imei text,
+  is_speeding boolean NOT NULL DEFAULT false,
+  speed_kmh double precision,
+  speed_limit_kmh integer NOT NULL,
+  threshold_kmh integer NOT NULL,
+  tracker_time timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS public.vehicle_positions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -95,6 +123,9 @@ CREATE INDEX IF NOT EXISTS idx_vehicle_positions_fleet_time
 CREATE INDEX IF NOT EXISTS idx_vehicle_positions_latest_fleet
   ON public.vehicle_positions_latest(fleet_id);
 
+CREATE INDEX IF NOT EXISTS idx_vehicle_speed_states_fleet
+  ON public.vehicle_speed_states(fleet_id);
+
 CREATE INDEX IF NOT EXISTS idx_gps_ingest_logs_created
   ON public.gps_ingest_logs(created_at DESC);
 
@@ -123,6 +154,7 @@ EXECUTE FUNCTION public.set_updated_at_tracking();
 ALTER TABLE public.gps_devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vehicle_positions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vehicle_positions_latest ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vehicle_speed_states ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gps_ingest_logs ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS gps_devices_select_policy ON public.gps_devices;
@@ -189,14 +221,30 @@ USING (
   )
 );
 
+DROP POLICY IF EXISTS vehicle_speed_states_select_policy ON public.vehicle_speed_states;
+CREATE POLICY vehicle_speed_states_select_policy
+ON public.vehicle_speed_states
+FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.flotte_adhesions fa
+    WHERE fa.fleet_id = vehicle_speed_states.fleet_id
+      AND fa.user_id = auth.uid()
+      AND fa.is_active = true
+  )
+);
+
 GRANT USAGE ON TYPE public.gps_tracker_protocol TO authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.gps_devices TO authenticated;
 GRANT SELECT ON public.vehicle_positions TO authenticated;
 GRANT SELECT ON public.vehicle_positions_latest TO authenticated;
+GRANT SELECT ON public.vehicle_speed_states TO authenticated;
 GRANT SELECT ON public.gps_ingest_logs TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.gps_devices TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.vehicle_positions TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.vehicle_positions_latest TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.vehicle_speed_states TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.gps_ingest_logs TO service_role;
 
 NOTIFY pgrst, 'reload schema';

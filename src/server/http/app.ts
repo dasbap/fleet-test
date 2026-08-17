@@ -19,6 +19,7 @@ import {
   registerLegacyWebhooksPaymentRoutes,
   registerWebhooksPaymentRoutes,
 } from "./routes/webhooksPayment.js";
+import { registerGpsIngestRoutes } from "./routes/gpsIngest.js";
 
 export function createServerApp() {
   const app = new Hono();
@@ -51,6 +52,7 @@ export function createServerApp() {
         "x-psp-provider",
         "x-notch-signature",
         "x-cinetpay-signature",
+        "x-gps-ingest-key",
       ],
       allowMethods: ["GET", "POST", "OPTIONS"],
     }),
@@ -64,6 +66,7 @@ export function createServerApp() {
   registerBillingNotchPayRoutes(app);
   registerWebhooksPaymentRoutes(app);
   registerAdminDemoRoutes(app);
+  registerGpsIngestRoutes(app);
 
   registerLegacyBillingSnapshotRoute(app);
   registerLegacyMobileMoneyRoute(app);

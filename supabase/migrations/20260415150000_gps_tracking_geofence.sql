@@ -3,6 +3,8 @@ BEGIN;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'alert_type') THEN
+    ALTER TYPE public.alert_type ADD VALUE IF NOT EXISTS 'speeding';
+    ALTER TYPE public.alert_type ADD VALUE IF NOT EXISTS 'geofence_enter';
     ALTER TYPE public.alert_type ADD VALUE IF NOT EXISTS 'geofence_exit';
   END IF;
 END $$;
@@ -10,7 +12,7 @@ END $$;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'gps_tracker_protocol') THEN
-    CREATE TYPE public.gps_tracker_protocol AS ENUM ('tk103', 'concox');
+    CREATE TYPE public.gps_tracker_protocol AS ENUM ('tk103', 'concox', 'teltonika');
   END IF;
 END $$;
 
@@ -36,10 +38,16 @@ CREATE TABLE IF NOT EXISTS public.gps_devices (
   protocol public.gps_tracker_protocol NOT NULL,
   label text NULL,
   is_active boolean NOT NULL DEFAULT true,
+  speed_limit_kmh integer NOT NULL DEFAULT 90,
+  speed_alert_tolerance_kmh integer NOT NULL DEFAULT 5,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT gps_devices_imei_unique UNIQUE (imei)
 );
+
+ALTER TABLE public.gps_devices
+  ADD COLUMN IF NOT EXISTS speed_limit_kmh integer NOT NULL DEFAULT 90,
+  ADD COLUMN IF NOT EXISTS speed_alert_tolerance_kmh integer NOT NULL DEFAULT 5;
 
 CREATE TABLE IF NOT EXISTS public.vehicle_positions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -79,10 +87,16 @@ CREATE TABLE IF NOT EXISTS public.geofences (
   center_lng double precision NULL,
   radius_m integer NULL,
   polygon_geojson jsonb NULL,
+  alert_on_enter boolean NOT NULL DEFAULT true,
+  alert_on_exit boolean NOT NULL DEFAULT true,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.geofences
+  ADD COLUMN IF NOT EXISTS alert_on_enter boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS alert_on_exit boolean NOT NULL DEFAULT true;
 
 CREATE TABLE IF NOT EXISTS public.geofence_vehicle_states (
   geofence_id uuid NOT NULL REFERENCES public.geofences(id) ON DELETE CASCADE,
