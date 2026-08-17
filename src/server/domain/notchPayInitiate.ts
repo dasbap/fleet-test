@@ -6,6 +6,7 @@ import type {
   NotchPayIntent,
   NotchPayInitiateResult,
 } from "../../types/notch-pay.js";
+import { assertCanManageBillingForFleet } from "./billing/billingAuthorization.js";
 import { assertVehicleCountWithinPlanLimit } from "./billing/vehicleSlotLimits.js";
 
 const NOTCH_PAY_API_URL = "https://api.notchpay.co";
@@ -31,6 +32,8 @@ export async function initiateNotchPayPayment(
   }
 
   const durationMonths = intent.durationMonths ?? 1;
+  await assertCanManageBillingForFleet(supabase, intent);
+
   if (intent.vehicleCount < 1) {
     throw new Error("Au moins un véhicule est requis.");
   }

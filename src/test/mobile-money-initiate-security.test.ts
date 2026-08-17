@@ -1,10 +1,17 @@
 /** @vitest-environment node */
 import { describe, expect, it, vi } from "vitest";
-import { createBillingCheckoutForUser } from "@/server/domain/billingCheckout";
+import { initiateMobileMoneyPaymentForUser } from "@/server/domain/mobileMoneyInitiate";
 
-describe("createBillingCheckoutForUser plan limits", () => {
-  it("rejects checkout vehicleCount above the plan max_vehicles", async () => {
-    const insert = vi.fn();
+describe("initiateMobileMoneyPaymentForUser security", () => {
+  it("recalcule le montant depuis le plan au lieu de faire confiance au client", async () => {
+    const insert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: { id: "pay-1" },
+          error: null,
+        }),
+      }),
+    });
     const supabase = {
       rpc: vi.fn().mockResolvedValue({ data: { allowed: true }, error: null }),
       from: vi.fn((table: string) => {
@@ -50,18 +57,29 @@ describe("createBillingCheckoutForUser plan limits", () => {
       }),
     };
 
-    await expect(
-      createBillingCheckoutForUser(
-        supabase as never,
-        {
-          orgId: "00000000-0000-4000-8000-000000000001",
-          fleetId: "00000000-0000-4000-8000-000000000002",
-          planCode: "starter",
-          vehicleCount: 26,
-        },
-        "manual",
-      ),
-    ).rejects.toThrow(/limite.*25/i);
-    expect(insert).not.toHaveBeenCalled();
+    const result = await initiateMobileMoneyPaymentForUser(
+      supabase as never,
+      {
+        orgId: "00000000-0000-4000-8000-000000000001",
+        fleetId: "00000000-0000-4000-8000-000000000002",
+        provider: "orange_money",
+        phoneNumber: "+237600000000",
+        amountXaf: 1,
+        planCode: "starter",
+        vehicleCount: 2,
+        durationMonths: 3,
+      },
+    );
+
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 90000,
+        raw_payload: expect.objectContaining({
+          vehicleCount: 2,
+          durationMonths: 3,
+        }),
+      }),
+    );
+    expect(result.instructions.amountXaf).toBe(90000);
   });
 });

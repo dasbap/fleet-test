@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PaymentProviderId } from "../env.js";
+import { assertCanManageBillingForFleet } from "./billing/billingAuthorization.js";
 import { assertVehicleCountWithinPlanLimit } from "./billing/vehicleSlotLimits.js";
 
 export interface BillingCheckoutIntent {
@@ -34,6 +35,8 @@ export async function createBillingCheckoutForUser(
   paymentProvider: PaymentProviderId,
 ): Promise<BillingCheckoutResult> {
   const durationMonths = intent.durationMonths ?? 1;
+  await assertCanManageBillingForFleet(supabase, intent);
+
   if (intent.vehicleCount < 1) {
     throw new Error("Au moins un véhicule est requis pour le checkout.");
   }

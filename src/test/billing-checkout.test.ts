@@ -13,7 +13,25 @@ describe("createBillingCheckoutForUser", () => {
       }),
     });
     const supabase = {
+      rpc: vi.fn().mockResolvedValue({ data: { allowed: true }, error: null }),
       from: vi.fn((table: string) => {
+        if (table === "flottes") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: {
+                      id: "00000000-0000-4000-8000-000000000002",
+                      org_id: "00000000-0000-4000-8000-000000000001",
+                    },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
         if (table === "plans") {
           return {
             select: vi.fn().mockReturnValue({
@@ -57,7 +75,29 @@ describe("createBillingCheckoutForUser", () => {
   });
 
   it("rejette vehicleCount < 1", async () => {
-    const supabase = { from: vi.fn() };
+    const supabase = {
+      rpc: vi.fn().mockResolvedValue({ data: { allowed: true }, error: null }),
+      from: vi.fn((table: string) => {
+        if (table === "flottes") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: {
+                      id: "00000000-0000-4000-8000-000000000002",
+                      org_id: "00000000-0000-4000-8000-000000000001",
+                    },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        throw new Error(`table inattendue: ${table}`);
+      }),
+    };
     await expect(
       createBillingCheckoutForUser(
         supabase as never,
@@ -70,5 +110,53 @@ describe("createBillingCheckoutForUser", () => {
         "manual",
       ),
     ).rejects.toThrow(/véhicule/i);
+  });
+
+  it("exige billing.manage avant de creer le paiement", async () => {
+    const insert = vi.fn();
+    const supabase = {
+      rpc: vi.fn().mockResolvedValue({ data: { allowed: false }, error: null }),
+      from: vi.fn((table: string) => {
+        if (table === "flottes") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: {
+                      id: "00000000-0000-4000-8000-000000000002",
+                      org_id: "00000000-0000-4000-8000-000000000001",
+                    },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "paiements") {
+          return { insert };
+        }
+        throw new Error(`table inattendue: ${table}`);
+      }),
+    };
+
+    await expect(
+      createBillingCheckoutForUser(
+        supabase as never,
+        {
+          orgId: "00000000-0000-4000-8000-000000000001",
+          fleetId: "00000000-0000-4000-8000-000000000002",
+          planCode: "pro",
+          vehicleCount: 1,
+        },
+        "manual",
+      ),
+    ).rejects.toThrow(/Permission insuffisante/i);
+    expect(insert).not.toHaveBeenCalled();
+    expect(supabase.rpc).toHaveBeenCalledWith("rbac_check_permission", {
+      p_action: "billing.manage",
+      p_fleet_id: "00000000-0000-4000-8000-000000000002",
+    });
   });
 });

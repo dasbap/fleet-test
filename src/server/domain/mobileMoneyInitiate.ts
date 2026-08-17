@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MoMoInstructions, MoMoPaymentIntent, MoMoPaymentResult, MoMoProvider } from "../../types/mobile-money.js";
+import { assertCanManageBillingForFleet } from "./billing/billingAuthorization.js";
+import { assertVehicleCountWithinPlanLimit } from "./billing/vehicleSlotLimits.js";
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "support@e-samba.com";
 const ESAMBA_ORANGE_MONEY_PHONE = "6XX XXX XXX";
@@ -52,13 +54,47 @@ export async function initiateMobileMoneyPaymentForUser(
   supabase: SupabaseClient,
   intent: MoMoPaymentIntent,
 ): Promise<MoMoPaymentResult> {
+  const durationMonths = intent.durationMonths ?? 1;
+  await assertCanManageBillingForFleet(supabase, intent);
+
+  if (intent.vehicleCount < 1) {
+    throw new Error("Au moins un vehicule est requis.");
+  }
+
+  const { data: plan, error: planError } = await supabase
+    .from("plans")
+    .select("id, code, price_per_vehicle, max_vehicles, is_active")
+    .eq("code", intent.planCode.trim())
+    .maybeSingle<{
+      id: string;
+      code: string;
+      price_per_vehicle: number;
+      max_vehicles: number | null;
+      is_active: boolean;
+    }>();
+
+  if (planError) throw new Error(planError.message);
+  if (!plan || !plan.is_active) {
+    throw new Error("Plan introuvable ou inactif.");
+  }
+  assertVehicleCountWithinPlanLimit({
+    planCode: plan.code,
+    requestedVehicleCount: intent.vehicleCount,
+    planMaxVehicles: plan.max_vehicles,
+  });
+
+  const amountXaf = plan.price_per_vehicle * intent.vehicleCount * durationMonths;
+  if (amountXaf <= 0) {
+    throw new Error("Montant invalide.");
+  }
+
   const reference = `ESAMBA-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   const idempotencyKey = crypto.randomUUID();
 
   const rawPayload = {
     planCode: intent.planCode,
     vehicleCount: intent.vehicleCount,
-    durationMonths: intent.durationMonths ?? 1,
+    durationMonths,
     phoneNumber: intent.phoneNumber,
     fleetId: intent.fleetId,
     ...(intent.vehicleIds?.length ? { vehicleIds: intent.vehicleIds } : {}),
@@ -69,7 +105,7 @@ export async function initiateMobileMoneyPaymentForUser(
     .insert({
       org_id: intent.orgId,
       provider: intent.provider,
-      amount: intent.amountXaf,
+      amount: amountXaf,
       currency: "XAF",
       status: "pending",
       external_ref: reference,
@@ -84,6 +120,6 @@ export async function initiateMobileMoneyPaymentForUser(
   return {
     paymentId: data.id,
     reference,
-    instructions: buildInstructions(intent.provider, intent.amountXaf, reference),
+    instructions: buildInstructions(intent.provider, amountXaf, reference),
   };
 }
