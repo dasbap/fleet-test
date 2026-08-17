@@ -64,11 +64,37 @@ export default async function handler(
       return;
     }
 
+    const appMetadata = currentUserData.user.app_metadata ?? {};
+    const temporaryPasswordActive =
+      appMetadata.temporary_password_active === true;
+    const temporaryPasswordIssuedAt =
+      typeof appMetadata.temporary_password_issued_at === "string"
+        ? Date.parse(appMetadata.temporary_password_issued_at)
+        : Number.NaN;
+    const userUpdatedAt = currentUserData.user.updated_at
+      ? Date.parse(currentUserData.user.updated_at)
+      : Number.NaN;
+
+    if (
+      temporaryPasswordActive &&
+      (!Number.isFinite(temporaryPasswordIssuedAt) ||
+        !Number.isFinite(userUpdatedAt) ||
+        userUpdatedAt <= temporaryPasswordIssuedAt)
+    ) {
+      res.status(409).json({
+        ok: false,
+        error: "password_change_required",
+      });
+
+      return;
+    }
+
     const { data: updatedUserData, error: updateError } =
       await admin.auth.admin.updateUserById(auth.user.id, {
         app_metadata: {
-          ...currentUserData.user.app_metadata,
+          ...appMetadata,
           must_set_password: false,
+          temporary_password_active: false,
         },
       });
 

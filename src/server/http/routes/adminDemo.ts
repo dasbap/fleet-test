@@ -1,4 +1,5 @@
 import type { Context, Hono } from "hono";
+import { randomInt } from "node:crypto";
 import { z } from "zod";
 import { getAppUrl, getSupabaseUrl } from "../../env.js";
 import { getBearerToken } from "../auth.js";
@@ -32,9 +33,13 @@ function getAdminSecret(): string | undefined {
   return process.env.ADMIN_SECRET?.trim() || undefined;
 }
 
-function generateTempPassword(): string {
-  const suffix = Math.floor(1000 + Math.random() * 9000);
-  return `Samba${suffix}!`;
+export function generateSecureTempPassword(): string {
+  const words = ["Samba", "Route", "Flotte", "Camion", "Cargo", "Africa"];
+  const symbols = ["!", "@", "#", "$", "%"];
+  const word = words[randomInt(words.length)];
+  const suffix = randomInt(100_000_000, 1_000_000_000);
+  const symbol = symbols[randomInt(symbols.length)];
+  return `${word}${suffix}${symbol}`;
 }
 
 function hasSupabaseAuthConfig(): boolean {
@@ -143,7 +148,8 @@ async function createProspectLocally(
   }
 
   const email = body.email.trim().toLowerCase();
-  const tempPassword = generateTempPassword();
+  const tempPassword = generateSecureTempPassword();
+  const temporaryPasswordIssuedAt = new Date().toISOString();
 
   const { data: authData, error: authError } =
     await admin.auth.admin.createUser({
@@ -152,6 +158,8 @@ async function createProspectLocally(
       email_confirm: true,
       app_metadata: {
         must_set_password: true,
+        temporary_password_active: true,
+        temporary_password_issued_at: temporaryPasswordIssuedAt,
       },
       user_metadata: {
         account_type: body.account_type ?? "prospect",
@@ -179,6 +187,8 @@ async function createProspectLocally(
       app_metadata: {
         ...authData.user.app_metadata,
         must_set_password: true,
+        temporary_password_active: true,
+        temporary_password_issued_at: temporaryPasswordIssuedAt,
       },
     });
 
@@ -539,11 +549,38 @@ async function handleClearPasswordMarker(c: Context) {
       );
     }
 
+    const appMetadata = currentUserData.user.app_metadata ?? {};
+    const temporaryPasswordActive =
+      appMetadata.temporary_password_active === true;
+    const temporaryPasswordIssuedAt =
+      typeof appMetadata.temporary_password_issued_at === "string"
+        ? Date.parse(appMetadata.temporary_password_issued_at)
+        : Number.NaN;
+    const userUpdatedAt = currentUserData.user.updated_at
+      ? Date.parse(currentUserData.user.updated_at)
+      : Number.NaN;
+
+    if (
+      temporaryPasswordActive &&
+      (!Number.isFinite(temporaryPasswordIssuedAt) ||
+        !Number.isFinite(userUpdatedAt) ||
+        userUpdatedAt <= temporaryPasswordIssuedAt)
+    ) {
+      return c.json(
+        {
+          ok: false,
+          error: "password_change_required",
+        },
+        409
+      );
+    }
+
     const { data: updatedUserData, error: updateError } =
       await admin.auth.admin.updateUserById(user.id, {
         app_metadata: {
-          ...currentUserData.user.app_metadata,
+          ...appMetadata,
           must_set_password: false,
+          temporary_password_active: false,
         },
       });
 

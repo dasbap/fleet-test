@@ -328,12 +328,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     const tempPassword = generateTempPassword();
+    const temporaryPasswordIssuedAt = new Date().toISOString();
 
     const { data: authData, error: authError } =
       await admin.auth.admin.createUser({
         email,
         password: tempPassword,
         email_confirm: true,
+        app_metadata: {
+          must_set_password: true,
+          temporary_password_active: true,
+          temporary_password_issued_at: temporaryPasswordIssuedAt,
+        },
         user_metadata: {
           account_type: accountType,
           company_name: companyName,
@@ -402,6 +408,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         app_metadata: {
           ...currentUserData.user.app_metadata,
           must_set_password: true,
+          temporary_password_active: true,
+          temporary_password_issued_at: temporaryPasswordIssuedAt,
         },
       });
 

@@ -28,9 +28,31 @@ export function getSupabaseEnv(): SupabaseEnv {
 }
 
 export function applyCors(res: VercelResponse, origin = "*"): void {
-  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Access-Control-Allow-Origin", resolveAllowedCorsOrigin(origin));
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Vary", "Origin");
+}
+
+function resolveAllowedCorsOrigin(origin: string): string {
+  const configuredAppUrl =
+    process.env.VITE_APP_URL ?? process.env.APP_URL ?? "https://www.e-samba.com";
+  const fallbackOrigin = configuredAppUrl.replace(/\/$/, "");
+  const requestOrigin = origin.replace(/\/$/, "");
+  const allowedOrigins = new Set([
+    fallbackOrigin,
+    "https://www.e-samba.com",
+    "https://app.e-samba.com",
+  ]);
+
+  if (
+    requestOrigin.startsWith("http://localhost:") ||
+    requestOrigin.startsWith("http://127.0.0.1:")
+  ) {
+    return requestOrigin;
+  }
+
+  return allowedOrigins.has(requestOrigin) ? requestOrigin : fallbackOrigin;
 }
 
 export function handlePreflight(

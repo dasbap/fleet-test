@@ -20,6 +20,7 @@ import type { Context, MiddlewareHandler } from "hono";
 import { throwIfSupabaseInfrastructureError } from "../../../lib/supabase-runtime-errors.js";
 import { getBearerToken } from "../auth.js";
 import { createSupabaseServiceClient } from "../../infra/supabaseServiceClient.js";
+import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
 import type { Permission, PlatformRole } from "../../../types/rbac.js";
 
 // ─── Constantes ────────────────────────────────────────────────────────────────
@@ -88,13 +89,12 @@ async function checkPermissionRpc(
   permission: Permission,
   fleetId?: string,
 ): Promise<{ allowed: boolean; role: string | null } | null> {
-  const admin = createSupabaseServiceClient();
-  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY missing for RBAC");
+  const userClient = createSupabaseUserClient(token);
 
   // Utiliser un client avec le JWT utilisateur pour que RLS s'applique correctement
   // La fonction est SECURITY DEFINER → elle voit toutes les données
-  const { data, error } = await admin.rpc("rbac_check_permission", {
-    p_permission: permission,
+  const { data, error } = await userClient.rpc("rbac_check_permission", {
+    p_action: permission,
     p_fleet_id: fleetId ?? null,
   });
 
