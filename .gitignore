@@ -89,3 +89,6 @@ releases/
 android/keystore.properties
 android/keystores/
 .vercel
+
+.vercel
+.env*

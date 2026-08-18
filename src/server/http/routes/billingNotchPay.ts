@@ -1,6 +1,7 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { initiateNotchPayPayment } from "../../domain/notchPayInitiate.js";
+import type { NotchPayIntent } from "../../../types/notch-pay.js";
 import { getBearerToken } from "../auth.js";
 import { jsonInternalServerError } from "../errorResponse.js";
 import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
@@ -34,7 +35,8 @@ async function handleNotchPayInitiate(c: Context) {
   }
   try {
     const supabase = createSupabaseUserClient(token);
-    const result = await initiateNotchPayPayment(supabase, parsed.data);
+    const intent = parsed.data as NotchPayIntent;
+    const result = await initiateNotchPayPayment(supabase, intent);
     return c.json(result, 201);
   } catch (e) {
     return jsonInternalServerError(c, e);
