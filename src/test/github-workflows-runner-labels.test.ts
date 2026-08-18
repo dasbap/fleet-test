@@ -123,4 +123,15 @@ describe("GitHub Supabase workflow runner routing", () => {
       }
     }
   });
+
+  it("verrouille le deploiement production sur main sans credentials git persistants", () => {
+    const workflow = readFileSync(workflowPath("deploy.yml"), "utf8");
+
+    expect(workflow).toContain("runs-on: ubuntu-latest");
+    expect(workflow).toContain("environment: production");
+    expect(workflow).toContain("ref: main");
+    expect(workflow).toContain("persist-credentials: false");
+    expect(workflow).not.toMatch(/workflow_dispatch:\s*\r?\n\s+inputs:/);
+    expect(workflow).not.toContain("github.event.inputs.branch");
+  });
 });
