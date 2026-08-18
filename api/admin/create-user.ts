@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { randomInt } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
   applyCors,
@@ -10,10 +10,7 @@ import {
 const VALID_FLEET_ROLES = new Set(["organizer", "manager", "driver", "mechanic"]);
 
 function generateTempPassword(): string {
-  const words = ["Samba", "Flotte", "Route", "Cargo"];
-  const word = words[randomInt(words.length)];
-  const digits = randomInt(100000, 1000000);
-  return `${word}${digits}!`;
+  return randomBytes(18).toString("base64url");
 }
 
 function asString(value: unknown): string {
@@ -121,7 +118,11 @@ export default async function handler(
     }
   }
 
+  const generatedTemporaryPassword = providedPassword.length === 0;
   const password = providedPassword || generateTempPassword();
+  const temporaryPasswordIssuedAt = generatedTemporaryPassword
+    ? new Date().toISOString()
+    : null;
   const admin = createClient(auth.env.url, auth.env.serviceRoleKey, {
     auth: { persistSession: false },
   });
@@ -130,6 +131,13 @@ export default async function handler(
     email,
     password,
     email_confirm: true,
+    app_metadata: generatedTemporaryPassword
+      ? {
+          must_set_password: true,
+          temporary_password_active: true,
+          temporary_password_issued_at: temporaryPasswordIssuedAt,
+        }
+      : undefined,
     user_metadata: {
       full_name: fullName || null,
       phone: phone || null,
@@ -205,6 +213,7 @@ export default async function handler(
     ok: true,
     user_id: userId,
     email,
-    temporary_password: providedPassword ? undefined : password,
+    temporary_password: generatedTemporaryPassword ? password : undefined,
+    must_set_password: generatedTemporaryPassword,
   });
 }
