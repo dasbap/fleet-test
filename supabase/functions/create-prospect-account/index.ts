@@ -5,7 +5,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const APP_URL = Deno.env.get("APP_URL") ?? "https://app.e-samba.com";
 
-const FUNCTION_VERSION = "set-password-v5";
+const FUNCTION_VERSION = "set-password-v6";
 
 interface CreateProspectBody {
   email: string;
@@ -51,15 +51,11 @@ const ALLOWED_ORIGINS = [
 function generateTempPassword(): string {
   const bytes = new Uint8Array(18);
   crypto.getRandomValues(bytes);
-  const alphabet =
-    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_-+=";
-  let password = "";
-
-  for (const byte of bytes) {
-    password += alphabet[byte % alphabet.length];
-  }
-
-  return password;
+  const encoded = btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+  return `Aa1!${encoded}`;
 }
 
 function corsHeaders(req: Request): Record<string, string> {
