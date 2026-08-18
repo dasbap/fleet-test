@@ -5,7 +5,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const APP_URL = Deno.env.get("APP_URL") ?? "https://app.e-samba.com";
 
-const FUNCTION_VERSION = "set-password-v4";
+const FUNCTION_VERSION = "set-password-v5";
 
 interface CreateProspectBody {
   email: string;
@@ -49,17 +49,17 @@ const ALLOWED_ORIGINS = [
 ];
 
 function generateTempPassword(): string {
-  const words = ["Samba", "Route", "Flotte", "Camion", "Cargo", "Africa"];
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  const alphabet =
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_-+=";
+  let password = "";
 
-  const random = new Uint32Array(2);
-  crypto.getRandomValues(random);
+  for (const byte of bytes) {
+    password += alphabet[byte % alphabet.length];
+  }
 
-  const word = words[random[0] % words.length];
-  const digits = 1000 + (random[1] % 9000);
-  const symbols = ["!", "@", "#", "$"];
-  const symbol = symbols[random[1] % symbols.length];
-
-  return `${word}${digits}${symbol}`;
+  return password;
 }
 
 function corsHeaders(req: Request): Record<string, string> {
@@ -169,7 +169,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     },
   });
 
-  const tokenHash = token.slice(0, 8);
+  const encoder = new TextEncoder();
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(token));
+  const tokenHash = Array.from(new Uint8Array(digest).slice(0, 8))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 
   const { data: rateLimitData, error: rateLimitError } = await admin.rpc(
     "demo_check_rate_limit",
