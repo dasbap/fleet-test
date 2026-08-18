@@ -44,10 +44,12 @@ function resolveAllowedCorsOrigin(origin: string): string {
     "https://www.e-samba.com",
     "https://app.e-samba.com",
   ]);
+  const allowLocalDevelopmentOrigins = process.env.NODE_ENV !== "production";
 
   if (
-    requestOrigin.startsWith("http://localhost:") ||
-    requestOrigin.startsWith("http://127.0.0.1:")
+    allowLocalDevelopmentOrigins &&
+    (requestOrigin.startsWith("http://localhost:") ||
+      requestOrigin.startsWith("http://127.0.0.1:"))
   ) {
     return requestOrigin;
   }
