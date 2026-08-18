@@ -8,6 +8,18 @@ import {
   requireAuthenticatedUser,
 } from "../_lib/vercel-api.js";
 
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 256;
+
+function readPassword(body: unknown): string {
+  if (!body || typeof body !== "object") {
+    return "";
+  }
+
+  const value = (body as Record<string, unknown>).password;
+  return typeof value === "string" ? value : "";
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -44,6 +56,17 @@ export default async function handler(
     return;
   }
 
+  const password = readPassword(req.body);
+
+  if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
+    res.status(400).json({
+      ok: false,
+      error: "invalid_password_length",
+    });
+
+    return;
+  }
+
   try {
     const admin = createAdminClient(auth.env);
 
@@ -65,36 +88,43 @@ export default async function handler(
     }
 
     const appMetadata = currentUserData.user.app_metadata ?? {};
-    const temporaryPasswordActive =
-      appMetadata.temporary_password_active === true;
-    const temporaryPasswordIssuedAt =
-      typeof appMetadata.temporary_password_issued_at === "string"
-        ? Date.parse(appMetadata.temporary_password_issued_at)
-        : Number.NaN;
-    const userUpdatedAt = currentUserData.user.updated_at
-      ? Date.parse(currentUserData.user.updated_at)
-      : Number.NaN;
+    const mustSetPassword = appMetadata.must_set_password === true;
+    const temporaryPasswordActive = appMetadata.temporary_password_active === true;
 
-    if (
-      temporaryPasswordActive &&
-      (!Number.isFinite(temporaryPasswordIssuedAt) ||
-        !Number.isFinite(userUpdatedAt) ||
-        userUpdatedAt <= temporaryPasswordIssuedAt)
-    ) {
-      res.status(409).json({
-        ok: false,
-        error: "password_change_required",
+    if (!mustSetPassword && !temporaryPasswordActive) {
+      res.status(200).json({
+        ok: true,
+        must_set_password: false,
       });
 
       return;
     }
 
+    const { error: passwordUpdateError } = await auth.client.auth.updateUser({
+      password,
+    });
+
+    if (passwordUpdateError) {
+      const code = passwordUpdateError.code ?? "password_update_failed";
+      const status = code === "same_password" || code === "weak_password" ? 400 : 409;
+
+      res.status(status).json({
+        ok: false,
+        error: code,
+        details: passwordUpdateError.message,
+      });
+
+      return;
+    }
+
+    const passwordSetAt = new Date().toISOString();
     const { data: updatedUserData, error: updateError } =
       await admin.auth.admin.updateUserById(auth.user.id, {
         app_metadata: {
           ...appMetadata,
           must_set_password: false,
           temporary_password_active: false,
+          password_set_at: passwordSetAt,
         },
       });
 
@@ -107,7 +137,6 @@ export default async function handler(
       res.status(500).json({
         ok: false,
         error: "password_marker_update_failed",
-        details: updateError?.message,
       });
 
       return;
@@ -130,15 +159,7 @@ export default async function handler(
       return;
     }
 
-    const mustSetPassword =
-      verifiedUserData.user.app_metadata?.must_set_password;
-
-    if (mustSetPassword !== false) {
-      console.error(
-        "[bff/auth/clear-password-marker] marker still present:",
-        mustSetPassword
-      );
-
+    if (verifiedUserData.user.app_metadata?.must_set_password !== false) {
       res.status(500).json({
         ok: false,
         error: "password_marker_not_cleared",
@@ -150,6 +171,7 @@ export default async function handler(
     res.status(200).json({
       ok: true,
       must_set_password: false,
+      password_set_at: passwordSetAt,
     });
   } catch (error) {
     console.error("[bff/auth/clear-password-marker] unexpected error:", error);
