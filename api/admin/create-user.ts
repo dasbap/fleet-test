@@ -209,11 +209,32 @@ export default async function handler(
     }
   }
 
+  if (generatedTemporaryPassword) {
+    const publicAuth = createClient(auth.env.url, auth.env.anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/set-password`;
+    const { error: resetError } = await publicAuth.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+
+    if (resetError) {
+      console.error("[admin/create-user] reset password delivery failed:", resetError.message);
+      res.status(502).json({
+        ok: false,
+        error: "password_setup_email_failed",
+        user_id: userId,
+        email,
+      });
+      return;
+    }
+  }
+
   res.status(201).json({
     ok: true,
     user_id: userId,
     email,
-    temporary_password: generatedTemporaryPassword ? password : undefined,
     must_set_password: generatedTemporaryPassword,
+    password_delivery: generatedTemporaryPassword ? "reset_email" : "provided",
   });
 }
