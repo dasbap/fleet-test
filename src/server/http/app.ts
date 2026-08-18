@@ -15,6 +15,7 @@ import { registerTerrainShiftCloseRoutes } from "./routes/terrainShiftClose.js";
 import { registerBillingNotchPayRoutes } from "./routes/billingNotchPay.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerAdminDemoRoutes } from "./routes/adminDemo.js";
+import { registerPasswordChangeRoutes } from "./routes/passwordChange.js";
 import {
   registerLegacyWebhooksPaymentRoutes,
   registerWebhooksPaymentRoutes,
@@ -24,6 +25,7 @@ import { registerGpsIngestRoutes } from "./routes/gpsIngest.js";
 export function createServerApp() {
   const app = new Hono();
   const appOrigin = getAppUrl();
+  const allowLocalDevelopmentOrigins = process.env.NODE_ENV !== "production";
 
   app.onError((error, c) => {
     console.error("[BFF] unhandled error:", error);
@@ -36,10 +38,11 @@ export function createServerApp() {
     cors({
       origin: (origin) => {
         if (!origin) return null;
+        if (origin === appOrigin) return origin;
         if (
-          origin === appOrigin ||
-          origin.startsWith("http://localhost:") ||
-          origin.startsWith("http://127.0.0.1:")
+          allowLocalDevelopmentOrigins &&
+          (origin.startsWith("http://localhost:") ||
+            origin.startsWith("http://127.0.0.1:"))
         ) {
           return origin;
         }
@@ -65,6 +68,7 @@ export function createServerApp() {
   registerBillingMobileMoneyRoutes(app);
   registerBillingNotchPayRoutes(app);
   registerWebhooksPaymentRoutes(app);
+  registerPasswordChangeRoutes(app);
   registerAdminDemoRoutes(app);
   registerGpsIngestRoutes(app);
 
