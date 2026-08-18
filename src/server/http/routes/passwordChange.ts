@@ -8,6 +8,8 @@ const passwordChangeSchema = z.object({
   password: z.string().min(8).max(256),
 });
 
+const MARKER_UPDATE_ATTEMPTS = 3;
+
 async function handlePasswordChange(c: Context) {
   const token = getBearerToken(c.req.header("Authorization"));
 
@@ -75,17 +77,26 @@ async function handlePasswordChange(c: Context) {
   }
 
   const passwordSetAt = new Date().toISOString();
-  const { data: updatedUserData, error: updateError } =
-    await admin.auth.admin.updateUserById(user.id, {
-      app_metadata: {
-        ...appMetadata,
-        must_set_password: false,
-        temporary_password_active: false,
-        password_set_at: passwordSetAt,
-      },
-    });
+  let markerUpdated = false;
 
-  if (updateError || !updatedUserData.user) {
+  for (let attempt = 0; attempt < MARKER_UPDATE_ATTEMPTS; attempt += 1) {
+    const { data: updatedUserData, error: updateError } =
+      await admin.auth.admin.updateUserById(user.id, {
+        app_metadata: {
+          ...appMetadata,
+          must_set_password: false,
+          temporary_password_active: false,
+          password_set_at: passwordSetAt,
+        },
+      });
+
+    if (!updateError && updatedUserData.user) {
+      markerUpdated = true;
+      break;
+    }
+  }
+
+  if (!markerUpdated) {
     return c.json({ ok: false, error: "password_marker_update_failed" }, 500);
   }
 
@@ -95,7 +106,8 @@ async function handlePasswordChange(c: Context) {
   if (
     verificationError ||
     !verifiedUserData.user ||
-    verifiedUserData.user.app_metadata?.must_set_password !== false
+    verifiedUserData.user.app_metadata?.must_set_password !== false ||
+    verifiedUserData.user.app_metadata?.temporary_password_active !== false
   ) {
     return c.json({ ok: false, error: "password_marker_not_cleared" }, 500);
   }
