@@ -12,11 +12,29 @@ import {
 
 const rawPayloadSchema = z.object({
   planCode: z.string().min(1),
-  vehicleCount: z.number().int().nonnegative(),
-  durationMonths: z.number().int().positive().optional(),
+  vehicleCount: z.number().int().positive(),
+  durationMonths: z.number().int().positive().max(36).optional(),
   fleetId: z.string().uuid(),
   phoneNumber: z.string().optional(),
   vehicleIds: z.array(z.string().uuid()).optional(),
+}).superRefine((payload, ctx) => {
+  if (!payload.vehicleIds?.length) return;
+
+  const uniqueVehicleIds = new Set(payload.vehicleIds);
+  if (uniqueVehicleIds.size !== payload.vehicleIds.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["vehicleIds"],
+      message: "duplicate_vehicle_ids",
+    });
+  }
+  if (payload.vehicleIds.length !== payload.vehicleCount) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["vehicleIds"],
+      message: "vehicle_count_mismatch",
+    });
+  }
 });
 
 /** Ajoute des mois calendaires en UTC (facturation). */
@@ -43,10 +61,6 @@ interface PaymentRow {
   raw_payload: unknown;
 }
 
-/**
- * Met à jour le statut du paiement puis, si `succeeded`, active ou prolonge l’abonnement
- * et matérialise les droits véhicules (idempotent via `abonnements.payment_id`).
- */
 export async function runInboundPaymentWebhook(
   admin: SupabaseClient,
   externalRef: string,
@@ -79,7 +93,6 @@ export async function runInboundPaymentWebhook(
   if (updErr) throw new Error(updErr.message);
 
   if (normalized !== "succeeded") {
-    // Billing event pour statuts non-terminaux (failed, processing…)
     const rawPayload = payment.raw_payload as Record<string, unknown> | null;
     const fleetId = rawPayload?.fleetId as string | undefined;
     if (fleetId) {
@@ -99,7 +112,6 @@ export async function runInboundPaymentWebhook(
 
   const activation = await activateSubscriptionForSucceededPayment(admin, payment);
 
-  // Billing event paiement réussi
   const rawPayload2 = payment.raw_payload as Record<string, unknown> | null;
   const fleetId2 = rawPayload2?.fleetId as string | undefined;
   if (fleetId2) {
@@ -169,6 +181,19 @@ async function activateSubscriptionForSucceededPayment(
     planMaxVehicles: planRow.max_vehicles,
   });
 
+  if (vehicleIds?.length) {
+    const { data: selectedVehicles, error: selectedVehiclesError } = await admin
+      .from("vehicules")
+      .select("id")
+      .eq("fleet_id", fleetId)
+      .in("id", vehicleIds)
+      .returns<{ id: string }[]>();
+    if (selectedVehiclesError) throw new Error(selectedVehiclesError.message);
+    if ((selectedVehicles ?? []).length !== vehicleCount) {
+      throw new Error("La sélection de véhicules payée ne correspond plus aux véhicules de la flotte.");
+    }
+  }
+
   const now = new Date();
   const nowIso = now.toISOString();
   const months = durationMonths ?? 1;
@@ -229,7 +254,7 @@ async function activateSubscriptionForSucceededPayment(
         starts_at: startsAtIso,
         ends_at: endsAtIso,
         status: "active",
-        vehicle_slots: Math.max(1, vehicleCount),
+        vehicle_slots: vehicleCount,
       })
       .select("id")
       .single<{ id: string }>();
@@ -272,6 +297,9 @@ async function syncVehicleRights(
       .returns<{ id: string }[]>();
     if (vfErr) throw new Error(vfErr.message);
     ids = (inFleet ?? []).map((r) => r.id);
+    if (ids.length !== vehicleCount) {
+      throw new Error("Impossible d’attribuer plus ou moins de droits véhicules que le nombre payé.");
+    }
   } else if (vehicleCount > 0) {
     const { data: rows, error } = await admin
       .from("vehicules")
