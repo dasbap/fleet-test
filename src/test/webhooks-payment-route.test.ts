@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 
 const verifyMock = vi.fn();
@@ -35,6 +35,12 @@ vi.mock("@/server/domain/billing/processInboundPaymentWebhook", () => ({
 }));
 
 describe("route /webhooks/payment", () => {
+  beforeEach(() => {
+    verifyMock.mockClear();
+    parseMock.mockClear();
+    runInboundMock.mockClear();
+  });
+
   it("accepte le replay idempotent et lie le webhook generic aux paiements manual", async () => {
     const { registerWebhooksPaymentRoutes } = await import("@/server/http/routes/webhooksPayment");
     const app = new Hono();
@@ -66,5 +72,26 @@ describe("route /webhooks/payment", () => {
       "succeeded",
       "manual",
     );
+  });
+
+  it("rejette un corps surdimensionne avant verification de signature", async () => {
+    const { registerWebhooksPaymentRoutes } = await import("@/server/http/routes/webhooksPayment");
+    const app = new Hono();
+    registerWebhooksPaymentRoutes(app);
+
+    const body = "x".repeat(64 * 1024 + 1);
+    const res = await app.request("/webhooks/payment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-payments-webhook-secret": "secret-test",
+      },
+      body,
+    });
+
+    expect(res.status).toBe(413);
+    expect(verifyMock).not.toHaveBeenCalled();
+    expect(parseMock).not.toHaveBeenCalled();
+    expect(runInboundMock).not.toHaveBeenCalled();
   });
 });
