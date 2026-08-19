@@ -127,6 +127,17 @@ export async function createFleetContextForUser(
 
     auxiliaryUserIds.push(anchor.user.id);
 
+    const { error: anchorProfileError } = await admin.from("profils").insert({
+      user_id: anchor.user.id,
+      full_name: `IT Organizer ${runId}`,
+    });
+
+    if (anchorProfileError) {
+      throw new Error(
+        `[integration setup] Creation profil organizer ancre impossible: ${anchorProfileError.message}`
+      );
+    }
+
     const { error: anchorMembershipError } = await admin
       .from("flotte_adhesions")
       .insert({
