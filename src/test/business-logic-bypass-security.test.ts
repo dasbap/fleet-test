@@ -9,6 +9,21 @@ const hardeningMigration = read(
 const selectedSubscriptionMigration = read(
   "supabase/migrations/20260819114500_preserve_selected_subscription_assignment.sql",
 );
+const sensitiveRpcMigration = read(
+  "supabase/migrations/20260819115000_scope_sensitive_runtime_rpcs.sql",
+);
+const magicLinkMigration = read(
+  "supabase/migrations/20260819115500_consume_demo_magic_links_once.sql",
+);
+const accessCodeMigration = read(
+  "supabase/migrations/20260819120000_harden_access_code_identity_binding.sql",
+);
+const internalRoleMigration = read(
+  "supabase/migrations/20260819120500_fix_internal_role_privilege_boundaries.sql",
+);
+const internalRlsMigration = read(
+  "supabase/migrations/20260819121000_align_internal_role_permissions.sql",
+);
 
 describe("business logic bypass hardening", () => {
   it("keeps demo account provisioning service-role only", () => {
@@ -54,6 +69,9 @@ describe("business logic bypass hardening", () => {
     expect(hardeningMigration).toContain(
       "v_check := public.rbac_check_permission('member.remove', p_fleet_id)",
     );
+    expect(internalRoleMigration).toContain(
+      "v_check := public.rbac_check_permission('member.remove', v_fleet_id)",
+    );
   });
 
   it("restricts legacy tenant-bypassing seed helpers", () => {
@@ -84,7 +102,15 @@ describe("business logic bypass hardening", () => {
     expect(webhook).toContain("(selectedVehicles ?? []).length !== vehicleCount");
   });
 
-  it("uses cryptographic entropy for checkout and invitation references", () => {
+  it("binds a signed webhook to the provider recorded on the payment", () => {
+    const route = read("src/server/http/routes/webhooksPayment.ts");
+    const webhook = read("src/server/domain/billing/processInboundPaymentWebhook.ts");
+
+    expect(route).toContain("expectedPaymentProvider");
+    expect(webhook).toContain("payment.provider !== expectedProvider");
+  });
+
+  it("uses cryptographic entropy for checkout, invitation and access codes", () => {
     const checkout = read("src/server/domain/billingCheckout.ts");
     const invitationCode = read("src/lib/invitation-code.ts");
 
@@ -92,5 +118,58 @@ describe("business logic bypass hardening", () => {
     expect(checkout).not.toContain("Math.random");
     expect(invitationCode).toContain("crypto.getRandomValues");
     expect(invitationCode).not.toContain("Math.random");
+    expect(accessCodeMigration).toContain("gen_random_bytes(8)");
+    expect(accessCodeMigration).not.toContain("md5(random()::text)");
+  });
+
+  it("keeps global maintenance jobs service-role only", () => {
+    expect(sensitiveRpcMigration).toContain(
+      "REVOKE EXECUTE ON FUNCTION public.nettoyer_base_donnees(boolean) FROM PUBLIC, anon, authenticated",
+    );
+    expect(sensitiveRpcMigration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.nettoyer_base_donnees(boolean) TO service_role",
+    );
+  });
+
+  it("scopes billing capacity and refund RPCs to the actual target fleet", () => {
+    expect(sensitiveRpcMigration).toContain("permission_refusee_abonnement");
+    expect(sensitiveRpcMigration).toContain("rbac_check_permission('vehicle.create', p_fleet_id)");
+    expect(sensitiveRpcMigration).toContain("rbac_check_permission('fleet.view', p_fleet_id)");
+    expect(sensitiveRpcMigration).toContain("v_payload_fleet_id");
+    expect(sensitiveRpcMigration).toContain("v_abo.fleet_id IS DISTINCT FROM v_payload_fleet_id");
+  });
+
+  it("consumes demo authentication links atomically once", () => {
+    expect(magicLinkMigration).toContain("FOR UPDATE");
+    expect(magicLinkMigration).toContain("is_active = false");
+    expect(magicLinkMigration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.demo_validate_magic_link(uuid) TO service_role",
+    );
+  });
+
+  it("binds access-code create, consume and revoke identities to auth.uid", () => {
+    expect(accessCodeMigration).toContain("p_user_id IS DISTINCT FROM auth.uid()");
+    expect(accessCodeMigration).toContain("p_creator_id IS DISTINCT FROM auth.uid()");
+    expect(accessCodeMigration).toContain("p_revoker IS DISTINCT FROM auth.uid()");
+  });
+
+  it("does not treat commercial or dev staff as platform admins", () => {
+    expect(internalRoleMigration).toContain(
+      "ap.internal_role IN ('super_admin', 'admin')",
+    );
+    expect(internalRoleMigration).toContain("RETURN public.is_platform_admin()");
+  });
+
+  it("keeps commercial fleet visibility limited to demo fleets", () => {
+    expect(internalRlsMigration).toContain("ap.internal_role = 'commercial'");
+    expect(internalRlsMigration).toContain("THEN is_demo = true");
+    expect(internalRlsMigration).toContain("ap.internal_role IN ('super_admin', 'admin', 'dev')");
+  });
+
+  it("requires platform admin for creation of internal access codes", () => {
+    expect(internalRlsMigration).toContain(
+      "v_creator_role NOT IN ('super_admin', 'admin')",
+    );
+    expect(internalRlsMigration).toContain("internal_code_admin_required");
   });
 });
