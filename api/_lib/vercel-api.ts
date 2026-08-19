@@ -32,6 +32,23 @@ export function applyCors(res: VercelResponse, origin = "*"): void {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Vary", "Origin");
+  res.setHeader("Cache-Control", "no-store, private");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+}
+
+function isAllowedLocalOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+      url.username === "" &&
+      url.password === ""
+    );
+  } catch {
+    return false;
+  }
 }
 
 function resolveAllowedCorsOrigin(origin: string): string {
@@ -44,11 +61,9 @@ function resolveAllowedCorsOrigin(origin: string): string {
     "https://www.e-samba.com",
     "https://app.e-samba.com",
   ]);
+  const allowLocalDevelopmentOrigins = process.env.NODE_ENV !== "production";
 
-  if (
-    requestOrigin.startsWith("http://localhost:") ||
-    requestOrigin.startsWith("http://127.0.0.1:")
-  ) {
+  if (allowLocalDevelopmentOrigins && isAllowedLocalOrigin(requestOrigin)) {
     return requestOrigin;
   }
 

@@ -1,4 +1,5 @@
 /** @vitest-environment node */
+import { createHash, createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createVercelApiApp } from "@/server/http/vercel";
 
@@ -13,6 +14,23 @@ const validPayload = {
   rawPayload: "000000000000004a8e...",
 };
 
+function signedHeaders(body: string, nonce = "0123456789abcdef0123456789abcdef") {
+  const gatewayId = "gateway-test";
+  const secret = "g".repeat(32);
+  const timestamp = Date.now().toString();
+  const payloadHash = createHash("sha256").update(body).digest("hex");
+  const signature = createHmac("sha256", secret)
+    .update(`${gatewayId}.${timestamp}.${nonce}.${payloadHash}`)
+    .digest("hex");
+  return {
+    "Content-Type": "application/json",
+    "x-gps-gateway-id": gatewayId,
+    "x-gps-timestamp": timestamp,
+    "x-gps-nonce": nonce,
+    "x-gps-signature": signature,
+  };
+}
+
 describe("GPS ingest Vercel route", () => {
   const originalEnv = { ...process.env };
   const originalFetch = globalThis.fetch;
@@ -20,6 +38,7 @@ describe("GPS ingest Vercel route", () => {
   beforeEach(() => {
     process.env.SUPABASE_URL = "https://project.supabase.co";
     process.env.GPS_INGEST_KEY = "gps-secret";
+    process.env.GPS_GATEWAY_SECRETS = JSON.stringify({ "gateway-test": "g".repeat(32) });
     delete process.env.GPS_INGEST_URL;
   });
 
@@ -29,34 +48,48 @@ describe("GPS ingest Vercel route", () => {
     vi.restoreAllMocks();
   });
 
-  it("exige la cle d'ingestion cote Vercel", async () => {
+  it("exige une signature gateway valide cote Vercel", async () => {
     const app = createVercelApiApp();
-
     const response = await app.request("/api/gps/ingest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(validPayload),
     });
-
     expect(response.status).toBe(401);
-    expect(response.headers.get("content-type")).toContain("application/json");
-    expect(await response.json()).toEqual({ error: "Cle d'ingestion GPS invalide." });
+    expect(await response.json()).toEqual({ error: "Authentification gateway GPS invalide." });
   });
 
-  it("relaie un payload Teltonika normalise vers l'Edge Function Supabase", async () => {
+  it("rejette une signature alteree", async () => {
+    const app = createVercelApiApp();
+    const body = JSON.stringify(validPayload);
+    const headers = signedHeaders(body, "1123456789abcdef0123456789abcdef");
+    headers["x-gps-signature"] = "0".repeat(64);
+    const response = await app.request("/api/gps/ingest", { method: "POST", headers, body });
+    expect(response.status).toBe(401);
+  });
+
+  it("rejette le rejeu d'un meme nonce", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
     globalThis.fetch = fetchMock as typeof fetch;
     const app = createVercelApiApp();
+    const body = JSON.stringify(validPayload);
+    const headers = signedHeaders(body, "2123456789abcdef0123456789abcdef");
+    const first = await app.request("/api/gps/ingest", { method: "POST", headers, body });
+    const second = await app.request("/api/gps/ingest", { method: "POST", headers, body });
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(401);
+  });
 
+  it("relaie un payload signe vers l'Edge Function Supabase", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    globalThis.fetch = fetchMock as typeof fetch;
+    const app = createVercelApiApp();
+    const body = JSON.stringify(validPayload);
     const response = await app.request("/api/gps/ingest", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-gps-ingest-key": "gps-secret",
-      },
-      body: JSON.stringify(validPayload),
+      headers: signedHeaders(body, "3123456789abcdef0123456789abcdef"),
+      body,
     });
-
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
     expect(fetchMock).toHaveBeenCalledWith("https://project.supabase.co/functions/v1/gps-ingest", {
@@ -66,14 +99,13 @@ describe("GPS ingest Vercel route", () => {
         Authorization: "Bearer gps-secret",
         "x-gps-ingest-key": "gps-secret",
       },
-      body: JSON.stringify(validPayload),
+      body,
     });
   });
 
   it("dispose d'une fonction Vercel dediee pour eviter le fallback SPA", async () => {
     const { readFileSync } = await import("node:fs");
     const source = readFileSync("api/gps/ingest.ts", "utf8");
-
     expect(source).toContain('from "@hono/node-server/vercel"');
     expect(source).toContain("createVercelApiApp");
   });
