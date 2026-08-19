@@ -37,7 +37,7 @@ function isPlatformAdminInternalRole(value: unknown): boolean {
 
 async function resolveUserKind(userId: string): Promise<UserKind> {
   const cached = USER_KIND_CACHE.get(userId);
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+  if (cached && cached.kind !== "admin" && Date.now() - cached.ts < CACHE_TTL_MS) {
     return cached.kind;
   }
 
@@ -56,7 +56,6 @@ async function resolveUserKind(userId: string): Promise<UserKind> {
   }
 
   if (adminRow && isPlatformAdminInternalRole(adminRow.internal_role)) {
-    USER_KIND_CACHE.set(userId, { kind: "admin", ts: Date.now() });
     return "admin";
   }
 
