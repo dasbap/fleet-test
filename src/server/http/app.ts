@@ -15,6 +15,7 @@ import { registerTerrainShiftCloseRoutes } from "./routes/terrainShiftClose.js";
 import { registerBillingNotchPayRoutes } from "./routes/billingNotchPay.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerAdminDemoRoutes } from "./routes/adminDemo.js";
+import { registerAdminProspectSecurityRoutes } from "./routes/adminProspectSecurity.js";
 import { registerPasswordChangeRoutes } from "./routes/passwordChange.js";
 import {
   registerLegacyWebhooksPaymentRoutes,
@@ -69,6 +70,7 @@ export function createServerApp() {
   registerBillingNotchPayRoutes(app);
   registerWebhooksPaymentRoutes(app);
   registerPasswordChangeRoutes(app);
+  registerAdminProspectSecurityRoutes(app);
   registerAdminDemoRoutes(app);
   registerGpsIngestRoutes(app);
 
