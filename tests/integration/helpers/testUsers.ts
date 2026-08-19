@@ -6,6 +6,7 @@ export type TestFleetContext = {
   fleetId: string;
   userId: string;
   runId: string;
+  auxiliaryUserIds?: string[];
 };
 
 export async function createFleetContextForUser(
@@ -21,6 +22,7 @@ export async function createFleetContextForUser(
   const runId = options?.runId ?? createTestRunId("fleet");
   const role = options?.role ?? "organizer";
   const countryCode = options?.countryCode ?? "CM";
+  const auxiliaryUserIds: string[] = [];
 
   let orgId: string;
   let fleetId: string;
@@ -109,6 +111,37 @@ export async function createFleetContextForUser(
   }
 
   if (options?.user && role !== "organizer") {
+    const anchorEmail = `it-organizer-${runId}@example.invalid`;
+    const { data: anchor, error: anchorError } = await admin.auth.admin.createUser({
+      email: anchorEmail,
+      email_confirm: true,
+    });
+
+    if (anchorError || !anchor.user) {
+      throw new Error(
+        `[integration setup] Creation organizer ancre impossible: ${
+          anchorError?.message ?? "inconnu"
+        }`
+      );
+    }
+
+    auxiliaryUserIds.push(anchor.user.id);
+
+    const { error: anchorMembershipError } = await admin
+      .from("flotte_adhesions")
+      .insert({
+        fleet_id: fleetId,
+        user_id: anchor.user.id,
+        role: "organizer",
+        is_active: true,
+      });
+
+    if (anchorMembershipError) {
+      throw new Error(
+        `[integration setup] Creation adhesion organizer ancre impossible: ${anchorMembershipError.message}`
+      );
+    }
+
     const { error: roleError } = await options.user.rpc(
       "creer_ou_mettre_a_jour_adhesion_flotte",
       {
@@ -131,6 +164,7 @@ export async function createFleetContextForUser(
     fleetId,
     userId,
     runId,
+    auxiliaryUserIds,
   };
 }
 
@@ -184,6 +218,11 @@ export async function cleanupFleetContext(
 
   if (orgId) {
     await admin.from("organisations").delete().eq("id", orgId);
+  }
+
+  for (const auxiliaryUserId of context.auxiliaryUserIds ?? []) {
+    await admin.from("profils").delete().eq("user_id", auxiliaryUserId);
+    await admin.auth.admin.deleteUser(auxiliaryUserId);
   }
 
   if (context.userId) {
