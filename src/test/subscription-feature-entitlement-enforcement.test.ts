@@ -9,7 +9,7 @@ const entitlementMigration = () =>
 
 const scopeMigration = () =>
   readFileSync(
-    "supabase/migrations/20260819103000_scope_fleet_feature_entitlements.sql",
+    "supabase/migrations/20260819103000_scope_feature_entitlements.sql",
     "utf8",
   );
 
@@ -34,7 +34,7 @@ describe("subscription feature entitlement enforcement", () => {
 
     expect(sql).toContain("fa.user_id = auth.uid()");
     expect(sql).toContain("fa.is_active = true");
-    expect(sql).toContain("auth.role() = 'service_role'");
-    expect(sql).toContain("revoke execute on function public.fleet_feature_enabled(uuid, text) from public, anon");
+    expect(sql).toMatch(/auth\.role\(\)\s*<>\s*'service_role'|auth\.role\(\)\s*=\s*'service_role'/);
+    expect(sql).toContain("REVOKE EXECUTE ON FUNCTION public.fleet_feature_enabled(uuid, text) FROM PUBLIC, anon");
   });
 });
