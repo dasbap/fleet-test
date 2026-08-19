@@ -44,15 +44,14 @@ describeIntegration("RLS flotte - controle des acces", () => {
   });
 
   it("refuse la lecture quand l'adhesion est desactivee", async () => {
-    const { error: deactivationError } = await clients.user.rpc(
-      "creer_ou_mettre_a_jour_adhesion_flotte",
-      {
-        p_fleet_id: context.fleetId,
-        p_user_id: clients.userId,
-        p_role: "manager",
-        p_is_active: false,
-      }
-    );
+    // This suite verifies the SELECT RLS behavior after a membership becomes
+    // inactive. Membership deactivation authorization is covered separately;
+    // use service_role here so this test does not require member.remove.
+    const { error: deactivationError } = await clients.admin
+      .from("flotte_adhesions")
+      .update({ is_active: false })
+      .eq("fleet_id", context.fleetId)
+      .eq("user_id", clients.userId);
     expect(deactivationError).toBeNull();
 
     const { data, error } = await clients.user
