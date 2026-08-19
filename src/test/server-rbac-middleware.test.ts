@@ -73,4 +73,54 @@ describe("BFF RBAC middleware", () => {
       expect.anything(),
     );
   });
+
+  it("identifie les admins plateforme via admin_profiles.user_id", async () => {
+    const eqCalls: Array<[string, unknown]> = [];
+
+    const makeQuery = (table: string) => ({
+      select: () => {
+        const query = {
+          eq(column: string, value: unknown) {
+            eqCalls.push([`${table}.${column}`, value]);
+            return query;
+          },
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: table === "admin_profiles" ? { id: "profile-1", is_active: true } : null,
+            error: null,
+          }),
+        };
+        return query;
+      },
+    });
+
+    vi.doMock("@/server/infra/supabaseServiceClient", () => ({
+      createSupabaseServiceClient: () => ({
+        auth: {
+          getUser: vi.fn().mockResolvedValue({
+            data: { user: { id: "admin-user-1" } },
+            error: null,
+          }),
+        },
+        from: (table: string) => makeQuery(table),
+      }),
+    }));
+
+    vi.doMock("@/server/infra/supabaseUserClient", () => ({
+      createSupabaseUserClient: () => ({ rpc: vi.fn() }),
+    }));
+
+    const { requireAdmin } = await import(
+      "@/server/http/middleware/rbacMiddleware"
+    );
+    const app = new Hono();
+    app.get("/admin", requireAdmin(), (c) => c.json({ ok: true }));
+
+    const res = await app.request("/admin", {
+      headers: { Authorization: "Bearer user-token" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(eqCalls).toContainEqual(["admin_profiles.user_id", "admin-user-1"]);
+    expect(eqCalls).not.toContainEqual(["admin_profiles.id", "admin-user-1"]);
+  });
 });
