@@ -22,61 +22,94 @@ export async function createFleetContextForUser(
   const role = options?.role ?? "organizer";
   const countryCode = options?.countryCode ?? "CM";
 
-  const { data: org, error: orgError } = await admin
-    .from("organisations")
-    .insert({
-      name: `IT Org ${runId}`,
-      country_code: countryCode,
-    })
-    .select("id")
-    .single();
+  let orgId: string;
+  let fleetId: string;
 
-  if (orgError || !org) {
-    throw new Error(
-      `[integration setup] Creation organisation impossible: ${
-        orgError?.message ?? "inconnu"
-      }`
+  if (options?.user) {
+    const { data: onboarding, error: onboardingError } = await options.user.rpc(
+      "creer_onboarding_organisation_flotte_et_adhesion",
+      {
+        p_org_name: `IT Org ${runId}`,
+        p_country_code: countryCode,
+        p_fleet_name: `IT Fleet ${runId}`,
+        p_collection_policy: "mix",
+      }
     );
-  }
 
-  const { data: fleetId, error: fleetError } = await admin.rpc(
-    "creer_flotte_esamba",
-    {
-      p_org_id: org.id,
-      p_name: `IT Fleet ${runId}`,
-      p_collection_policy: "mix",
+    const onboardingResult = onboarding as
+      | { org_id?: string; fleet_id?: string }
+      | null;
+
+    if (
+      onboardingError ||
+      !onboardingResult?.org_id ||
+      !onboardingResult?.fleet_id
+    ) {
+      throw new Error(
+        `[integration setup] Onboarding flotte impossible: ${
+          onboardingError?.message ?? "reponse invalide"
+        }`
+      );
     }
-  );
 
-  if (fleetError || !fleetId) {
-    throw new Error(
-      `[integration setup] Creation flotte impossible: ${
-        fleetError?.message ?? "inconnu"
-      }`
-    );
-  }
+    orgId = onboardingResult.org_id;
+    fleetId = onboardingResult.fleet_id;
+  } else {
+    const { data: org, error: orgError } = await admin
+      .from("organisations")
+      .insert({
+        name: `IT Org ${runId}`,
+        country_code: countryCode,
+      })
+      .select("id")
+      .single();
 
-  const membershipClient = options?.user ?? admin;
-  const bootstrapRole = role === "organizer" ? role : "organizer";
-
-  const { error: bootstrapError } = await membershipClient.rpc(
-    "creer_ou_mettre_a_jour_adhesion_flotte",
-    {
-      p_fleet_id: fleetId,
-      p_user_id: userId,
-      p_role: bootstrapRole,
-      p_is_active: true,
+    if (orgError || !org) {
+      throw new Error(
+        `[integration setup] Creation organisation impossible: ${
+          orgError?.message ?? "inconnu"
+        }`
+      );
     }
-  );
 
-  if (bootstrapError) {
-    throw new Error(
-      `[integration setup] Creation adhesion impossible (${bootstrapRole}): ${bootstrapError.message}`
+    const { data: createdFleetId, error: fleetError } = await admin.rpc(
+      "creer_flotte_esamba",
+      {
+        p_org_id: org.id,
+        p_name: `IT Fleet ${runId}`,
+        p_collection_policy: "mix",
+      }
     );
+
+    if (fleetError || !createdFleetId) {
+      throw new Error(
+        `[integration setup] Creation flotte impossible: ${
+          fleetError?.message ?? "inconnu"
+        }`
+      );
+    }
+
+    orgId = org.id;
+    fleetId = createdFleetId;
+
+    const { error: membershipError } = await admin
+      .from("flotte_adhesions")
+      .insert({
+        fleet_id: fleetId,
+        user_id: userId,
+        role,
+        is_active: true,
+      });
+
+    if (membershipError) {
+      throw new Error(
+        `[integration setup] Creation adhesion service impossible (${role}): ${membershipError.message}`
+      );
+    }
   }
 
-  if (role !== bootstrapRole) {
-    const { error: roleError } = await membershipClient.rpc(
+  if (options?.user && role !== "organizer") {
+    const { error: roleError } = await options.user.rpc(
       "creer_ou_mettre_a_jour_adhesion_flotte",
       {
         p_fleet_id: fleetId,
@@ -94,7 +127,7 @@ export async function createFleetContextForUser(
   }
 
   return {
-    orgId: org.id,
+    orgId,
     fleetId,
     userId,
     runId,
