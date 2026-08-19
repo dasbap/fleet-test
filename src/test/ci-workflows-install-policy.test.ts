@@ -73,7 +73,8 @@ describe("GitHub workflow dependency install policy", () => {
 
     expect(workflow).not.toContain("Install dependencies");
     expect(workflow).not.toContain("node scripts/ci-install.mjs");
-    expect(workflow).toContain("npx --yes vercel@latest build --prod");
+    expect(workflow).toContain("npx --yes vercel@58.4.0 build --prod");
+    expect(workflow).not.toContain("vercel@latest");
   });
 
   it("does not use setup-node npm cache on self-hosted runners", () => {
