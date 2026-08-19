@@ -74,7 +74,7 @@ describe("BFF RBAC middleware", () => {
     );
   });
 
-  it("identifie les admins plateforme via admin_profiles.user_id", async () => {
+  it("identifie les admins plateforme via admin_profiles.user_id et internal_role", async () => {
     const eqCalls: Array<[string, unknown]> = [];
 
     const makeQuery = (table: string) => ({
@@ -85,7 +85,10 @@ describe("BFF RBAC middleware", () => {
             return query;
           },
           maybeSingle: vi.fn().mockResolvedValue({
-            data: table === "admin_profiles" ? { id: "profile-1", is_active: true } : null,
+            data:
+              table === "admin_profiles"
+                ? { id: "profile-1", is_active: true, internal_role: "admin" }
+                : null,
             error: null,
           }),
         };
@@ -122,5 +125,54 @@ describe("BFF RBAC middleware", () => {
     expect(res.status).toBe(200);
     expect(eqCalls).toContainEqual(["admin_profiles.user_id", "admin-user-1"]);
     expect(eqCalls).not.toContainEqual(["admin_profiles.id", "admin-user-1"]);
+  });
+
+  it("refuse un profil commercial actif comme admin plateforme", async () => {
+    const makeQuery = (table: string) => ({
+      select: () => {
+        const query = {
+          eq() {
+            return query;
+          },
+          maybeSingle: vi.fn().mockResolvedValue({
+            data:
+              table === "admin_profiles"
+                ? { id: "profile-2", is_active: true, internal_role: "commercial" }
+                : null,
+            error: null,
+          }),
+        };
+        return query;
+      },
+    });
+
+    vi.doMock("@/server/infra/supabaseServiceClient", () => ({
+      createSupabaseServiceClient: () => ({
+        auth: {
+          getUser: vi.fn().mockResolvedValue({
+            data: { user: { id: "commercial-user-1" } },
+            error: null,
+          }),
+        },
+        from: (table: string) => makeQuery(table),
+      }),
+    }));
+
+    vi.doMock("@/server/infra/supabaseUserClient", () => ({
+      createSupabaseUserClient: () => ({ rpc: vi.fn() }),
+    }));
+
+    const { requireAdmin } = await import(
+      "@/server/http/middleware/rbacMiddleware"
+    );
+    const app = new Hono();
+    app.get("/admin", requireAdmin(), (c) => c.json({ ok: true }));
+
+    const res = await app.request("/admin", {
+      headers: { Authorization: "Bearer user-token" },
+    });
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({ code: "NOT_PLATFORM_ADMIN" });
   });
 });
