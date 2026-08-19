@@ -121,7 +121,7 @@ async function resolvePlatformRole(
   const { data: adminProfile, error: adminProfileError } = await admin
     .from("admin_profiles")
     .select("id, is_active")
-    .eq("id", userId)
+    .eq("user_id", userId)
     .eq("is_active", true)
     .maybeSingle();
 
@@ -340,7 +340,7 @@ export function requireAdmin(): MiddlewareHandler {
     const { data: adminProfile, error: adminProfileError } = await admin
       .from("admin_profiles")
       .select("id, is_active")
-      .eq("id", userId)
+      .eq("user_id", userId)
       .eq("is_active", true)
       .maybeSingle();
 
