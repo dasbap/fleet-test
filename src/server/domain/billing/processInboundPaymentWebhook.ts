@@ -262,7 +262,7 @@ async function activateSubscriptionForSucceededPayment(
         starts_at: startsAtIso,
         ends_at: endsAtIso,
         status: "active",
-        vehicle_slots: vehicleCount,
+        vehicle_slots: Math.max(1, vehicleCount),
       })
       .select("id")
       .single<{ id: string }>();
