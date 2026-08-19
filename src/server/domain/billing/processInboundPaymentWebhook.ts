@@ -54,9 +54,12 @@ export interface InboundPaymentWebhookResult {
   skippedReason?: "no_transition";
 }
 
+type ExpectedPaymentProvider = "manual" | "notch" | "cinetpay";
+
 interface PaymentRow {
   id: string;
   org_id: string;
+  provider: string;
   status: string;
   raw_payload: unknown;
 }
@@ -65,6 +68,7 @@ export async function runInboundPaymentWebhook(
   admin: SupabaseClient,
   externalRef: string,
   rawStatus: string,
+  expectedProvider?: ExpectedPaymentProvider,
 ): Promise<InboundPaymentWebhookResult> {
   const normalized = normalizeInboundPaymentStatus(rawStatus);
   if (!normalized) {
@@ -73,12 +77,16 @@ export async function runInboundPaymentWebhook(
 
   const { data: payment, error: payErr } = await admin
     .from("paiements")
-    .select("id, org_id, status, raw_payload")
+    .select("id, org_id, provider, status, raw_payload")
     .eq("external_ref", externalRef)
     .maybeSingle<PaymentRow>();
 
   if (payErr) throw new Error(payErr.message);
   if (!payment) throw new Error("Paiement introuvable pour cette référence externe");
+
+  if (expectedProvider && payment.provider !== expectedProvider) {
+    throw new Error("Le fournisseur du webhook ne correspond pas au fournisseur du paiement.");
+  }
 
   if (!canTransitionPaymentStatus(payment.status, normalized)) {
     return {
