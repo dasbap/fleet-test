@@ -27,7 +27,13 @@ async function requirePlatformAdmin(c: Context) {
     return { response: c.json({ ok: false, error: "missing_auth_token" }, 401) };
   }
 
-  const client = createSupabaseUserClient(token);
+  let client;
+  try {
+    client = createSupabaseUserClient(token);
+  } catch {
+    return { response: c.json({ ok: false, error: "server_configuration_error" }, 503) };
+  }
+
   const {
     data: { user },
     error: authError,
