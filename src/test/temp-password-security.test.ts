@@ -16,4 +16,13 @@ describe("Temporary password security", () => {
 
     expect(adminSource).toContain('randomBytes(18).toString("base64url")');
   });
+
+  it("interdit au provisionneur de choisir le mot de passe du nouveau compte", () => {
+    const adminSource = readFileSync("api/admin/create-user.ts", "utf8");
+
+    expect(adminSource).toContain('error: "password_must_not_be_provided"');
+    expect(adminSource).toContain("must_set_password: true");
+    expect(adminSource).toContain('password_delivery: "reset_email"');
+    expect(adminSource).not.toContain("providedPassword || generateTempPassword()");
+  });
 });
