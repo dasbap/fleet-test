@@ -12,6 +12,7 @@ const runInboundMock = vi.fn(async () => ({
 
 vi.mock("@/server/payments/webhookProviders", () => ({
   resolvePaymentWebhookProvider: () => ({
+    id: "generic",
     verify: verifyMock,
     parse: parseMock,
   }),
@@ -34,7 +35,7 @@ vi.mock("@/server/domain/billing/processInboundPaymentWebhook", () => ({
 }));
 
 describe("route /webhooks/payment", () => {
-  it("accepte le replay idempotent et renvoie 204", async () => {
+  it("accepte le replay idempotent et lie le webhook generic aux paiements manual", async () => {
     const { registerWebhooksPaymentRoutes } = await import("@/server/http/routes/webhooksPayment");
     const app = new Hono();
     registerWebhooksPaymentRoutes(app);
@@ -51,7 +52,19 @@ describe("route /webhooks/payment", () => {
     expect(first.status).toBe(204);
     expect(second.status).toBe(204);
     expect(runInboundMock).toHaveBeenCalledTimes(2);
-    expect(runInboundMock).toHaveBeenNthCalledWith(1, expect.any(Object), "ref-replay-1", "succeeded");
-    expect(runInboundMock).toHaveBeenNthCalledWith(2, expect.any(Object), "ref-replay-1", "succeeded");
+    expect(runInboundMock).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Object),
+      "ref-replay-1",
+      "succeeded",
+      "manual",
+    );
+    expect(runInboundMock).toHaveBeenNthCalledWith(
+      2,
+      expect.any(Object),
+      "ref-replay-1",
+      "succeeded",
+      "manual",
+    );
   });
 });

@@ -7,6 +7,18 @@ const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "support@e-samba.com";
 const ESAMBA_ORANGE_MONEY_PHONE = "6XX XXX XXX";
 const ESAMBA_MTN_MOMO_PHONE = "6XX XXX XXX";
 
+function assertSelectedVehiclesMatchChargedCount(vehicleIds: string[] | undefined, vehicleCount: number): void {
+  if (!vehicleIds?.length) return;
+
+  const uniqueVehicleIds = new Set(vehicleIds);
+  if (uniqueVehicleIds.size !== vehicleIds.length) {
+    throw new Error("La sélection de véhicules contient des doublons.");
+  }
+  if (vehicleIds.length !== vehicleCount) {
+    throw new Error("Le nombre de véhicules sélectionnés doit correspondre au nombre de véhicules facturés.");
+  }
+}
+
 function buildInstructions(
   provider: MoMoProvider,
   amountXaf: number,
@@ -60,6 +72,7 @@ export async function initiateMobileMoneyPaymentForUser(
   if (intent.vehicleCount < 1) {
     throw new Error("Au moins un vehicule est requis.");
   }
+  assertSelectedVehiclesMatchChargedCount(intent.vehicleIds, intent.vehicleCount);
 
   const { data: plan, error: planError } = await supabase
     .from("plans")
@@ -88,7 +101,8 @@ export async function initiateMobileMoneyPaymentForUser(
     throw new Error("Montant invalide.");
   }
 
-  const reference = `ESAMBA-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  const referenceEntropy = crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase();
+  const reference = `ESAMBA-${Date.now().toString(36).toUpperCase()}-${referenceEntropy}`;
   const idempotencyKey = crypto.randomUUID();
 
   const rawPayload = {

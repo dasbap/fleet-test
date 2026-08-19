@@ -1,15 +1,21 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const migration = () =>
+const entitlementMigration = () =>
   readFileSync(
     "supabase/migrations/20260817120000_enforce_subscription_feature_entitlements.sql",
     "utf8",
   );
 
+const scopeMigration = () =>
+  readFileSync(
+    "supabase/migrations/20260819103000_scope_fleet_feature_entitlements.sql",
+    "utf8",
+  );
+
 describe("subscription feature entitlement enforcement", () => {
   it("enforces premium features at database boundaries", () => {
-    const sql = migration();
+    const sql = entitlementMigration();
 
     expect(sql).toContain("create or replace function public.fleet_feature_enabled");
     expect(sql).toContain("create or replace function public.trg_require_fleet_feature()");
@@ -21,5 +27,14 @@ describe("subscription feature entitlement enforcement", () => {
     expect(sql).toContain("trg_gps_devices_require_feature");
     expect(sql).toContain("as restrictive");
     expect(sql).toContain("notify pgrst, 'reload schema'");
+  });
+
+  it("ne divulgue pas les entitlements d'une flotte a un non-membre", () => {
+    const sql = scopeMigration();
+
+    expect(sql).toContain("fa.user_id = auth.uid()");
+    expect(sql).toContain("fa.is_active = true");
+    expect(sql).toContain("auth.role() = 'service_role'");
+    expect(sql).toContain("revoke execute on function public.fleet_feature_enabled(uuid, text) from public, anon");
   });
 });

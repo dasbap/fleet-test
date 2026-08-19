@@ -31,12 +31,31 @@ function signedHeaders(body: string, nonce = "0123456789abcdef0123456789abcdef")
   };
 }
 
+function installSuccessfulFetchMock() {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/rest/v1/rpc/gps_claim_gateway_nonce")) {
+      return new Response("true", {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  });
+  globalThis.fetch = fetchMock as typeof fetch;
+  return fetchMock;
+}
+
 describe("GPS ingest Vercel route", () => {
   const originalEnv = { ...process.env };
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
     process.env.SUPABASE_URL = "https://project.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-test";
     process.env.GPS_INGEST_KEY = "gps-secret";
     process.env.GPS_GATEWAY_SECRETS = JSON.stringify({ "gateway-test": "g".repeat(32) });
     delete process.env.GPS_INGEST_URL;
@@ -68,21 +87,49 @@ describe("GPS ingest Vercel route", () => {
     expect(response.status).toBe(401);
   });
 
-  it("rejette le rejeu d'un meme nonce", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+  it("rejette le rejeu d'un meme nonce via le stockage persistant", async () => {
+    let nonceClaims = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/rest/v1/rpc/gps_claim_gateway_nonce")) {
+        nonceClaims += 1;
+        return new Response(nonceClaims === 1 ? "true" : "false", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
     globalThis.fetch = fetchMock as typeof fetch;
+
     const app = createVercelApiApp();
     const body = JSON.stringify(validPayload);
     const headers = signedHeaders(body, "2123456789abcdef0123456789abcdef");
     const first = await app.request("/api/gps/ingest", { method: "POST", headers, body });
     const second = await app.request("/api/gps/ingest", { method: "POST", headers, body });
     expect(first.status).toBe(200);
-    expect(second.status).toBe(401);
+    expect(second.status).toBe(409);
+    expect(await second.json()).toEqual({ error: "Rejeu gateway GPS detecte." });
+  });
+
+  it("rejette un payload trop volumineux avant authentification", async () => {
+    const app = createVercelApiApp();
+    const response = await app.request("/api/gps/ingest", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": String(16 * 1024 + 1),
+      },
+      body: "{}",
+    });
+    expect(response.status).toBe(413);
   });
 
   it("relaie un payload signe vers l'Edge Function Supabase", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
-    globalThis.fetch = fetchMock as typeof fetch;
+    const fetchMock = installSuccessfulFetchMock();
     const app = createVercelApiApp();
     const body = JSON.stringify(validPayload);
     const response = await app.request("/api/gps/ingest", {
@@ -92,6 +139,11 @@ describe("GPS ingest Vercel route", () => {
     });
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://project.supabase.co/rest/v1/rpc/gps_claim_gateway_nonce",
+      expect.objectContaining({ method: "POST" }),
+    );
     expect(fetchMock).toHaveBeenCalledWith("https://project.supabase.co/functions/v1/gps-ingest", {
       method: "POST",
       headers: {
