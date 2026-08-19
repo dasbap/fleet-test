@@ -88,7 +88,8 @@ export async function initiateMobileMoneyPaymentForUser(
     throw new Error("Montant invalide.");
   }
 
-  const reference = `ESAMBA-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  const referenceEntropy = crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase();
+  const reference = `ESAMBA-${Date.now().toString(36).toUpperCase()}-${referenceEntropy}`;
   const idempotencyKey = crypto.randomUUID();
 
   const rawPayload = {
