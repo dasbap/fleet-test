@@ -13,7 +13,6 @@ interface InitiateBody {
   vehicleCount?: number;
   durationMonths?: number;
   billing?: string;
-  amount?: number;
   email?: string;
 }
 
@@ -44,10 +43,7 @@ export async function POST(request: Request) {
 
   const { supabase, context, user } = auth;
   const vehicleCount = Math.max(body.vehicleCount ?? 1, 1);
-  const durationMonths = resolveDurationMonths(
-    body.billing,
-    body.durationMonths,
-  );
+  const durationMonths = resolveDurationMonths(body.billing, body.durationMonths);
 
   const { data: subscription, error: subError } = await supabase
     .from("abonnements")
@@ -73,15 +69,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Plan introuvable" }, { status: 400 });
   }
 
-  const amountXaf =
-    body.amount && body.amount > 0
-      ? body.amount
-      : plan.price_per_vehicle * vehicleCount * durationMonths;
+  const amountXaf = plan.price_per_vehicle * vehicleCount * durationMonths;
+  if (!Number.isFinite(amountXaf) || amountXaf <= 0) {
+    return NextResponse.json({ error: "Montant invalide" }, { status: 400 });
+  }
 
   const merchantRef = buildMerchantReference("FAPSHI");
   const returnUrl = `${getAppUrl()}/dashboard/abonnement/success?ref=${encodeURIComponent(merchantRef)}`;
   const payerEmail = body.email ?? user.email ?? undefined;
-
   const useLiveApi = fapshiCreds.endpoint.includes("live.fapshi.com");
 
   const fapshiRes = await fetch(fapshiCreds.endpoint, {
@@ -151,27 +146,28 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error: paymentError } = await supabase.from("paiements").insert({
-    org_id: context.orgId,
-    provider: "fapshi",
-    amount: amountXaf,
-    currency: "XAF",
-    status: "initiated",
-    external_ref: body.subscriptionId,
-    provider_reference: merchantRef,
-    idempotency_key: merchantRef,
-    raw_payload: {
-      subscriptionId: body.subscriptionId,
-      planCode: body.planCode,
-      vehicleCount,
-      durationMonths,
-      fleetId: context.fleetId,
-      fapshiExternalId: body.subscriptionId,
+  const { data: payment, error: paymentError } = await supabase.rpc(
+    "create_payment_intent",
+    {
+      p_org_id: context.orgId,
+      p_fleet_id: context.fleetId,
+      p_plan_code: body.planCode.trim(),
+      p_vehicle_count: vehicleCount,
+      p_duration_months: durationMonths,
+      p_provider: "fapshi",
+      p_external_ref: body.subscriptionId,
+      p_idempotency_key: merchantRef,
+      p_expected_amount: amountXaf,
+      p_vehicle_ids: null,
+      p_phone_number: null,
+      p_checkout: false,
+      p_subscription_id: body.subscriptionId,
+      p_provider_reference: merchantRef,
     },
-  });
+  );
 
-  if (paymentError) {
-    return NextResponse.json({ error: paymentError.message }, { status: 500 });
+  if (paymentError || !payment) {
+    return NextResponse.json({ error: "Création du paiement impossible" }, { status: 500 });
   }
 
   return NextResponse.json({
