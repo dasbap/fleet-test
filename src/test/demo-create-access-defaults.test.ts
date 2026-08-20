@@ -12,7 +12,7 @@ describe("demo access creation defaults", () => {
   it("requests a one-month demo by default from the admin prospect BFF", () => {
     const source = readFileSync("api/admin/create-prospect.ts", "utf8");
 
-    expect(source).toContain("trial_days:   body.trial_days ?? 31");
+    expect(source).toMatch(/trial_days:\s*body\.trial_days \?\? 31/);
   });
 
   it("defaults the edge function to one month when called directly", () => {
