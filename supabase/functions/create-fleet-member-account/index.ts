@@ -248,18 +248,43 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
   };
 
-  const { error: profileErr } = await admin.from("profils").upsert(
-    {
-      user_id: userId,
-      full_name: fullName,
-      phone,
-    },
-    { onConflict: "user_id" }
-  );
+  if (existingAuthUserAttached) {
+    const { data: existingMembership, error: existingMembershipError } = await admin
+      .from("flotte_adhesions")
+      .select("id, role, is_active")
+      .eq("fleet_id", fleetId)
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  if (profileErr) {
-    await cleanupUser();
-    return json(req, { ok: false, error: "profile_create_failed" }, 500);
+    if (existingMembershipError) {
+      return json(req, { ok: false, error: "target_membership_check_failed" }, 500);
+    }
+
+    if (existingMembership?.is_active) {
+      return json(req, { ok: false, error: "already_fleet_member" }, 409);
+    }
+
+    if (
+      existingMembership &&
+      existingMembership.role !== role &&
+      callerRole !== "organizer"
+    ) {
+      return json(req, { ok: false, error: "forbidden_role_assignment" }, 403);
+    }
+  } else {
+    const { error: profileErr } = await admin.from("profils").upsert(
+      {
+        user_id: userId,
+        full_name: fullName,
+        phone,
+      },
+      { onConflict: "user_id" }
+    );
+
+    if (profileErr) {
+      await cleanupUser();
+      return json(req, { ok: false, error: "profile_create_failed" }, 500);
+    }
   }
 
   const { data: membershipData, error: createMembershipErr } = await admin
