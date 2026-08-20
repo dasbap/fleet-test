@@ -53,9 +53,11 @@ describe("core security invariants", () => {
     expect(gpsIngest).toContain("IMEI non autorise pour ce gateway GPS.");
   });
 
-  it("requires explicit IMEI bindings when multiple gateway secrets are configured", () => {
-    expect(gpsIngest).toContain("gatewayIds.length === 1");
-    expect(gpsIngest).toContain("bindingIds.length === 0");
-    expect(gpsIngest).toContain("bindings[gatewayId]?.includes(imei) === true");
+  it("requires an explicit IMEI binding for every gateway", () => {
+    expect(gpsIngest).toContain(
+      "return getGatewayDeviceBindings()[gatewayId]?.includes(imei) === true;",
+    );
+    expect(gpsIngest).not.toContain("gatewayIds.length === 1");
+    expect(gpsIngest).not.toContain("bindingIds.length === 0");
   });
 });
