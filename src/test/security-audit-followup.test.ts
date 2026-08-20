@@ -37,6 +37,7 @@ describe("security audit follow-up", () => {
     const checkout = read("src/server/domain/billingCheckout.ts");
     const mobileMoney = read("src/server/domain/mobileMoneyInitiate.ts");
     const notch = read("src/server/domain/notchPayInitiate.ts");
+    const nextBillingEnv = read("apps/esamba-web/src/lib/api/billing-env.ts");
     const clientMobileMoney = read("src/services/mobile-money.service.ts");
     const nextNotch = read("apps/esamba-web/src/app/api/payments/notchpay/initiate/route.ts");
     const nextFapshi = read("apps/esamba-web/src/app/api/payments/fapshi/initiate/route.ts");
@@ -49,6 +50,8 @@ describe("security audit follow-up", () => {
     expect(nextFapshi).toContain('supabase.rpc(\n    "create_payment_intent"');
     expect(nextNotch).not.toContain("body.amount");
     expect(nextFapshi).not.toContain("body.amount");
+    expect(nextBillingEnv).toContain("randomUUID()");
+    expect(nextBillingEnv).not.toContain("Math.random");
   });
 
   it("keeps GPS nonces alive through the signed timestamp validity window", () => {
@@ -64,6 +67,16 @@ describe("security audit follow-up", () => {
     expect(prospect).toContain("resetPasswordForEmail");
     expect(prospect).toContain('password_delivery: "reset_email"');
     expect(prospect).not.toContain("temp_password:");
+  });
+
+  it("compares admin edge secrets with timing-safe helpers", () => {
+    const prospect = read("supabase/functions/create-prospect-account/index.ts");
+    const magicLink = read("supabase/functions/demo-magic-link/index.ts");
+
+    for (const source of [prospect, magicLink]) {
+      expect(source).toContain("timingSafeEqual");
+      expect(source).not.toContain("token !== ADMIN_SECRET");
+    }
   });
 
   it("pins production GitHub Actions by immutable SHA", () => {
