@@ -8,9 +8,12 @@ const notchWebhook = read("supabase/functions/notch-pay-webhook/index.ts");
 const paymentWebhook = read("src/server/domain/billing/processInboundPaymentWebhook.ts");
 
 describe("final security audit bypass closure", () => {
-  it("removes implicit PUBLIC execution from privileged subscription helpers", () => {
+  it("removes implicit PUBLIC execution from privileged backend helpers", () => {
     expect(migration).toContain("assign_vehicle_to_subscription(uuid, uuid, uuid)");
     expect(migration).toContain("find_available_subscription_for_vehicle(uuid)");
+    expect(migration).toContain("demo_create_magic_link(uuid, uuid, text, text, timestamptz, uuid)");
+    expect(migration).toContain("demo_validate_magic_link(uuid)");
+    expect(migration).toContain("demo_check_rate_limit(text, integer)");
     expect(migration).toContain("FROM PUBLIC, anon, authenticated");
     expect(migration).toContain("TO service_role");
   });
