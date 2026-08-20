@@ -5,7 +5,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const APP_URL = Deno.env.get("APP_URL") ?? "https://app.e-samba.com";
 
-const FUNCTION_VERSION = "set-password-v6";
+const FUNCTION_VERSION = "set-password-v7";
 
 interface CreateProspectBody {
   email: string;
@@ -25,12 +25,11 @@ interface ProspectResult {
   fleet_id?: string;
   trial_end?: string;
   login_url?: string;
-  temp_password?: string;
   permanent_access?: boolean;
   must_set_password?: boolean;
+  password_delivery?: "reset_email";
   function_version?: string;
   error?: string;
-  details?: string;
 }
 
 interface RegistrationResult {
@@ -60,7 +59,6 @@ function generateTempPassword(): string {
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
-
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin)
     ? origin
     : ALLOWED_ORIGINS[0];
@@ -89,7 +87,7 @@ function normalizeEmail(value: unknown): string {
 }
 
 function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) && email.length <= 320;
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -101,61 +99,29 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   if (req.method !== "POST") {
-    return jsonResponse(
-      req,
-      {
-        ok: false,
-        error: "method_not_allowed",
-      },
-      405
-    );
+    return jsonResponse(req, { ok: false, error: "method_not_allowed" }, 405);
   }
 
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !ADMIN_SECRET) {
     console.error("[create-prospect-account] Missing server configuration");
-
-    return jsonResponse(
-      req,
-      {
-        ok: false,
-        error: "missing_server_configuration",
-      },
-      500
-    );
+    return jsonResponse(req, { ok: false, error: "missing_server_configuration" }, 500);
   }
 
   let body: CreateProspectBody;
-
   try {
     body = (await req.json()) as CreateProspectBody;
   } catch {
-    return jsonResponse(
-      req,
-      {
-        ok: false,
-        error: "invalid_json",
-      },
-      400
-    );
+    return jsonResponse(req, { ok: false, error: "invalid_json" }, 400);
   }
 
   const authorization = req.headers.get("Authorization") ?? "";
-
   const token = authorization.startsWith("Bearer ")
     ? authorization.slice(7).trim()
     : "";
 
   if (token !== ADMIN_SECRET) {
     console.warn("[create-prospect-account] Unauthorized attempt");
-
-    return jsonResponse(
-      req,
-      {
-        ok: false,
-        error: "unauthorized",
-      },
-      401
-    );
+    return jsonResponse(req, { ok: false, error: "unauthorized" }, 401);
   }
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -180,19 +146,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   );
 
   if (rateLimitError) {
-    console.error(
-      "[create-prospect-account] Rate limit check failed:",
-      rateLimitError.message
-    );
-
-    return jsonResponse(
-      req,
-      {
-        ok: false,
-        error: "rate_limit_check_failed",
-      },
-      500
-    );
+    console.error("[create-prospect-account] Rate limit check failed:", rateLimitError.message);
+    return jsonResponse(req, { ok: false, error: "rate_limit_check_failed" }, 500);
   }
 
   const rateLimit = rateLimitData as {
@@ -216,58 +171,28 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const email = normalizeEmail(body.email);
   const companyName =
     typeof body.company_name === "string"
-      ? body.company_name.trim() || null
+      ? body.company_name.trim().slice(0, 200) || null
       : null;
-
   const accountType = body.account_type ?? "prospect";
   const invitedBy = body.invited_by ?? null;
   const fleetId = body.fleet_id ?? null;
   const trialDays = Number(body.trial_days ?? 31);
-  const sendEmail = body.send_email === true;
   const permanentAccess = body.permanent_access === true;
 
   if (!isValidEmail(email)) {
-    return jsonResponse(
-      req,
-      {
-        ok: false,
-        error: "invalid_email",
-      },
-      400
-    );
+    return jsonResponse(req, { ok: false, error: "invalid_email" }, 400);
   }
 
   if (!["prospect", "investor", "internal", "dev"].includes(accountType)) {
-    return jsonResponse(
-      req,
-      {
-        ok: false,
-        error: "invalid_account_type",
-      },
-      400
-    );
+    return jsonResponse(req, { ok: false, error: "invalid_account_type" }, 400);
   }
 
   if (!Number.isInteger(trialDays) || trialDays < 1 || trialDays > 90) {
-    return jsonResponse(
-      req,
-      {
-        ok: false,
-        error: "trial_days_must_be_1_to_90",
-      },
-      400
-    );
+    return jsonResponse(req, { ok: false, error: "trial_days_must_be_1_to_90" }, 400);
   }
 
   if (permanentAccess && !invitedBy) {
-    return jsonResponse(
-      req,
-      {
-        ok: false,
-        error: "forbidden_super_admin_required",
-      },
-      403
-    );
+    return jsonResponse(req, { ok: false, error: "forbidden_super_admin_required" }, 403);
   }
 
   if (permanentAccess && invitedBy) {
@@ -280,19 +205,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (superAdminError || !superAdminProfile) {
-      return jsonResponse(
-        req,
-        {
-          ok: false,
-          error: "forbidden_super_admin_required",
-        },
-        403
-      );
+      return jsonResponse(req, { ok: false, error: "forbidden_super_admin_required" }, 403);
     }
   }
 
   const runId = crypto.randomUUID();
-
   console.log(
     `[create-prospect-account] Run ${runId} — version: ${FUNCTION_VERSION} — email: ${email}`
   );
@@ -308,7 +225,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       });
 
     if (listUsersError) {
-      throw new Error(`list_users_failed:${listUsersError.message}`);
+      throw new Error("list_users_failed");
     }
 
     const alreadyExists = existingUsers.users.some(
@@ -317,14 +234,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
 
     if (alreadyExists) {
-      return jsonResponse(
-        req,
-        {
-          ok: false,
-          error: "email_already_registered",
-        },
-        409
-      );
+      return jsonResponse(req, { ok: false, error: "email_already_registered" }, 409);
     }
 
     const tempPassword = generateTempPassword();
@@ -350,19 +260,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       });
 
     if (authError || !authData.user) {
-      console.error(
-        "[create-prospect-account] createUser failed:",
-        authError?.message
-      );
-
-      return jsonResponse(
-        req,
-        {
-          ok: false,
-          error: authError?.message ?? "auth_create_failed",
-        },
-        500
-      );
+      console.error("[create-prospect-account] createUser failed:", authError?.message);
+      return jsonResponse(req, { ok: false, error: "auth_create_failed" }, 500);
     }
 
     const userId = authData.user.id;
@@ -381,13 +280,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
       });
 
     if (registrationError) {
-      throw new Error(
-        `prospect_registration_failed:${registrationError.message}`
-      );
+      throw new Error("prospect_registration_failed");
     }
 
     const registration = registrationData as RegistrationResult;
-
     if (!registration?.ok) {
       throw new Error(registration?.error ?? "registration_failed");
     }
@@ -398,9 +294,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       await admin.auth.admin.getUserById(userId);
 
     if (currentUserError || !currentUserData.user) {
-      throw new Error(
-        currentUserError?.message ?? "user_reload_before_marker_failed"
-      );
+      throw new Error("user_reload_before_marker_failed");
     }
 
     const { data: markerData, error: markerError } =
@@ -414,51 +308,31 @@ Deno.serve(async (req: Request): Promise<Response> => {
       });
 
     if (markerError || !markerData.user) {
-      throw new Error(
-        markerError?.message ?? "must_set_password_update_failed"
-      );
+      throw new Error("must_set_password_update_failed");
     }
 
     const { data: verifiedUserData, error: verificationError } =
       await admin.auth.admin.getUserById(userId);
 
     if (verificationError || !verifiedUserData.user) {
-      throw new Error(
-        verificationError?.message ?? "must_set_password_verification_failed"
-      );
+      throw new Error("must_set_password_verification_failed");
     }
 
     const mustSetPassword =
-      verifiedUserData.user.app_metadata?.must_set_password === true;
+      verifiedUserData.user.app_metadata?.must_set_password === true &&
+      verifiedUserData.user.app_metadata?.temporary_password_active === true;
 
     if (!mustSetPassword) {
       throw new Error("must_set_password_not_persisted");
     }
 
-    if (sendEmail) {
-      const { error: notificationError } = await admin
-        .from("notification_queue")
-        .insert({
-          to_email: email,
-          template_id: "prospect_welcome",
-          metadata: {
-            company_name: companyName ?? email,
-            trial_days: trialDays,
-            trial_end: registration.trial_end,
-            permanent_access: permanentAccess,
-            login_url: APP_URL,
-            temp_password: tempPassword,
-          },
-          status: "pending",
-          created_at: new Date().toISOString(),
-        });
+    const { error: resetError } = await admin.auth.resetPasswordForEmail(email, {
+      redirectTo: `${APP_URL.replace(/\/$/, "")}/set-password`,
+    });
 
-      if (notificationError) {
-        console.error(
-          "[create-prospect-account] Notification queue failed:",
-          notificationError.message
-        );
-      }
+    if (resetError) {
+      console.error("[create-prospect-account] reset password delivery failed:", resetError.message);
+      throw new Error("password_setup_email_failed");
     }
 
     const loginUrl =
@@ -472,13 +346,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       trial_end: registration.trial_end,
       login_url: loginUrl,
       permanent_access: permanentAccess,
-      must_set_password: mustSetPassword,
+      must_set_password: true,
+      password_delivery: "reset_email",
       function_version: FUNCTION_VERSION,
-      ...(sendEmail
-        ? {}
-        : {
-            temp_password: tempPassword,
-          }),
     };
 
     console.log(
@@ -488,19 +358,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return jsonResponse(req, response, 201);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-
     console.error(`[create-prospect-account] Run ${runId} failed:`, message);
 
     if (createdUserId) {
-      const { error: deleteError } = await admin.auth.admin.deleteUser(
-        createdUserId
-      );
-
+      const { error: deleteError } = await admin.auth.admin.deleteUser(createdUserId);
       if (deleteError) {
-        console.error(
-          "[create-prospect-account] User cleanup failed:",
-          deleteError.message
-        );
+        console.error("[create-prospect-account] User cleanup failed:", deleteError.message);
       }
     }
 
@@ -511,7 +374,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
         error: registrationCompleted
           ? "account_finalization_failed"
           : "account_creation_failed",
-        details: message,
         function_version: FUNCTION_VERSION,
       },
       500
