@@ -42,12 +42,11 @@ export async function POST(request: Request) {
   }
 
   const { supabase, context, user } = auth;
-  const vehicleCount = Math.max(body.vehicleCount ?? 1, 1);
   const durationMonths = resolveDurationMonths(body.billing, body.durationMonths);
 
   const { data: subscription, error: subError } = await supabase
     .from("abonnements")
-    .select("id, fleet_id")
+    .select("id, fleet_id, vehicle_slots")
     .eq("id", body.subscriptionId)
     .eq("fleet_id", context.fleetId)
     .maybeSingle();
@@ -59,14 +58,43 @@ export async function POST(request: Request) {
     );
   }
 
+  if (
+    body.vehicleCount != null &&
+    (!Number.isInteger(body.vehicleCount) || body.vehicleCount < 1)
+  ) {
+    return NextResponse.json({ error: "vehicleCount invalide" }, { status: 400 });
+  }
+
+  const vehicleCount = subscription.vehicle_slots;
+  if (!Number.isInteger(vehicleCount) || vehicleCount < 1) {
+    return NextResponse.json(
+      { error: "Nombre de vehicules de l'abonnement invalide." },
+      { status: 400 },
+    );
+  }
+
+  if (body.vehicleCount != null && body.vehicleCount !== subscription.vehicle_slots) {
+    return NextResponse.json(
+      { error: "Le nombre de vehicules ne correspond pas a l'abonnement." },
+      { status: 400 },
+    );
+  }
+
   const { data: plan, error: planError } = await supabase
     .from("plans")
-    .select("price_per_vehicle, is_active")
+    .select("price_per_vehicle, is_active, max_vehicles")
     .eq("code", body.planCode.trim())
     .maybeSingle();
 
   if (planError || !plan?.is_active) {
     return NextResponse.json({ error: "Plan introuvable" }, { status: 400 });
+  }
+
+  if (plan.max_vehicles != null && vehicleCount > plan.max_vehicles) {
+    return NextResponse.json(
+      { error: "Limite de vehicules du plan depassee" },
+      { status: 400 },
+    );
   }
 
   const amountXaf = plan.price_per_vehicle * vehicleCount * durationMonths;

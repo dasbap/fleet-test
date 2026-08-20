@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { resolveDurationMonths } from "@/lib/api/billing-env";
 import { requireBillingAccess } from "@/lib/api/require-billing-access";
-//todo
+
 interface CreateBody {
   planId?: string;
   vehicleCount?: number;
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   const { data: plan, error: planError } = await supabase
     .from("plans")
-    .select("id, code, is_active, price_per_vehicle")
+    .select("id, code, is_active, price_per_vehicle, max_vehicles")
     .eq("id", body.planId)
     .maybeSingle();
 
@@ -36,7 +36,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Plan invalide" }, { status: 400 });
   }
 
-  const vehicleCount = Math.max(body.vehicleCount ?? 1, 1);
+  if (body.vehicleCount == null || !Number.isInteger(body.vehicleCount) || body.vehicleCount < 1) {
+    return NextResponse.json({ error: "vehicleCount invalide" }, { status: 400 });
+  }
+
+  const vehicleCount = body.vehicleCount;
+  if (plan.max_vehicles != null && vehicleCount > plan.max_vehicles) {
+    return NextResponse.json(
+      { error: "Limite de vehicules du plan depassee" },
+      { status: 400 },
+    );
+  }
+
   const amountXaf = plan.price_per_vehicle * vehicleCount * durationMonths;
   if (amountXaf <= 0) {
     return NextResponse.json({ error: "Montant invalide" }, { status: 400 });
