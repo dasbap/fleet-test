@@ -178,21 +178,34 @@ Deno.serve(async (req) => {
       throw new Error(positionError.message);
     }
 
-    const { data: latest } = await supabase
-      .from("vehicle_positions_latest")
-      .select("tracker_time")
-      .eq("vehicle_id", device.vehicle_id)
-      .maybeSingle();
+    const { data: latestAccepted, error: latestError } = await supabase.rpc(
+      "gps_upsert_latest_position",
+      {
+        p_fleet_id: device.fleet_id,
+        p_vehicle_id: device.vehicle_id,
+        p_tracker_imei: payload.imei,
+        p_latitude: payload.latitude,
+        p_longitude: payload.longitude,
+        p_speed_kmh: payload.speedKmh ?? null,
+        p_heading: payload.heading ?? null,
+        p_altitude_m: payload.altitudeM ?? null,
+        p_tracker_time: trackerTime,
+      },
+    );
 
-    if (!latest || new Date(trackerTime).getTime() >= new Date(latest.tracker_time).getTime()) {
-      await supabase.from("vehicle_positions_latest").upsert(
-        {
-          ...positionInsert,
-          vehicle_id: device.vehicle_id,
-          fleet_id: device.fleet_id,
-        },
-        { onConflict: "vehicle_id" },
-      );
+    if (latestError) {
+      throw new Error(latestError.message);
+    }
+
+    if (latestAccepted !== true) {
+      await supabase.from("gps_ingest_logs").insert({
+        fleet_id: device.fleet_id,
+        imei: payload.imei,
+        status: "accepted",
+        reason: "stale_tracker_time",
+        payload,
+      });
+      return jsonResponse({ ok: true, stale: true });
     }
 
     if (payload.speedKmh != null) {
