@@ -43,7 +43,7 @@ describe("core security invariants", () => {
 
   it("does not consume a GPS nonce before payload validation and gateway-device authorization", () => {
     const parseIndex = gpsIngest.indexOf("gpsPayloadSchema.safeParse(body)");
-    const bindingIndex = gpsIngest.indexOf("isGatewayAuthorizedForImei(");
+    const bindingIndex = gpsIngest.indexOf("if (!isGatewayAuthorizedForImei(");
     const claimIndex = gpsIngest.indexOf("claimGatewayNonce(verifiedGateway)");
 
     expect(parseIndex).toBeGreaterThan(-1);
