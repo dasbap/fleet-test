@@ -62,27 +62,37 @@ interface PaymentRow {
   raw_payload: unknown;
 }
 
-async function claimPaymentEffects(admin: SupabaseClient, paymentId: string): Promise<boolean> {
+async function claimPaymentEffects(admin: SupabaseClient, paymentId: string): Promise<string | null> {
   const { data, error } = await admin.rpc("claim_payment_webhook_effects", {
     p_payment_id: paymentId,
-    p_lease_seconds: 300,
+    p_lease_seconds: 900,
   });
   if (error) throw new Error(error.message);
-  return data === true;
+  return typeof data === "string" && data.length > 0 ? data : null;
 }
 
-async function completePaymentEffects(admin: SupabaseClient, paymentId: string): Promise<void> {
+async function completePaymentEffects(
+  admin: SupabaseClient,
+  paymentId: string,
+  claimToken: string,
+): Promise<void> {
   const { data, error } = await admin.rpc("complete_payment_webhook_effects", {
     p_payment_id: paymentId,
+    p_claim_token: claimToken,
   });
   if (error || data !== true) {
     throw new Error(error?.message ?? "Impossible de finaliser les effets du webhook.");
   }
 }
 
-async function releasePaymentEffects(admin: SupabaseClient, paymentId: string): Promise<void> {
+async function releasePaymentEffects(
+  admin: SupabaseClient,
+  paymentId: string,
+  claimToken: string,
+): Promise<void> {
   const { error } = await admin.rpc("release_payment_webhook_effects", {
     p_payment_id: paymentId,
+    p_claim_token: claimToken,
   });
   if (error) {
     console.error("[billing webhook] payment effect release failed:", error.message);
@@ -159,7 +169,8 @@ export async function runInboundPaymentWebhook(
     };
   }
 
-  if (!(await claimPaymentEffects(admin, payment.id))) {
+  const claimToken = await claimPaymentEffects(admin, payment.id);
+  if (!claimToken) {
     return {
       paymentId: payment.id,
       normalizedStatus: normalized,
@@ -187,7 +198,7 @@ export async function runInboundPaymentWebhook(
       }).then(() => void 0);
     }
 
-    await completePaymentEffects(admin, payment.id);
+    await completePaymentEffects(admin, payment.id, claimToken);
 
     return {
       paymentId: payment.id,
@@ -196,7 +207,7 @@ export async function runInboundPaymentWebhook(
       subscriptionId: activation.subscriptionId,
     };
   } catch (error) {
-    await releasePaymentEffects(admin, payment.id);
+    await releasePaymentEffects(admin, payment.id, claimToken);
     throw error;
   }
 }
