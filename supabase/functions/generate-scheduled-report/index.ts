@@ -1,15 +1,3 @@
-/**
- * Edge Function : generate-scheduled-report
- *
- * Déclenchée par pg_cron (via HTTP CRON) toutes les heures ou à la demande.
- * Récupère les rapports planifiés arrivés à échéance, génère un CSV/JSON
- * et enregistre le résultat dans scheduled_report_runs.
- *
- * Pour l'instant : génération d'un résumé JSON (le rendu PDF/Excel est géré
- * côté client avec jspdf / xlsx). L'Edge Function sert de déclencheur fiable
- * indépendamment du client.
- */
-
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -19,7 +7,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-/** Calcule la prochaine date d'exécution selon la fréquence. */
 function computeNextRun(
   frequency: "daily" | "weekly" | "monthly",
   dayOfWeek: number | null,
@@ -36,14 +23,13 @@ function computeNextRun(
   }
 
   if (frequency === "weekly") {
-    const targetDay = dayOfWeek ?? 1; // lundi par défaut
+    const targetDay = dayOfWeek ?? 1;
     let daysUntil = (targetDay - from.getUTCDay() + 7) % 7;
     if (daysUntil === 0 && next <= from) daysUntil = 7;
     next.setUTCDate(from.getUTCDate() + daysUntil);
     return next;
   }
 
-  // monthly
   const targetDay = dayOfMonth ?? 1;
   next.setUTCDate(targetDay);
   if (next <= from) {
@@ -66,35 +52,56 @@ function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
-    "Access-Control-Allow-Origin":  allowedOrigin,
+    "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "authorization, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin",
+    "Cache-Control": "no-store",
   };
+}
+
+function isAuthorized(req: Request): boolean {
+  const authorization = req.headers.get("authorization") ?? "";
+  if (!authorization.startsWith("Bearer ")) return false;
+  const token = authorization.slice(7).trim();
+  return Boolean(SUPABASE_SERVICE_ROLE_KEY) && token === SUPABASE_SERVICE_ROLE_KEY;
+}
+
+function json(req: Request, body: unknown, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders(req),
+      "Content-Type": "application/json",
+    },
+  });
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders(req) });
+    return new Response(null, { status: 204, headers: corsHeaders(req) });
+  }
+
+  if (req.method !== "POST") {
+    return json(req, { error: "method_not_allowed" }, 405);
+  }
+
+  if (!isAuthorized(req)) {
+    return json(req, { error: "unauthorized" }, 401);
   }
 
   const now = new Date();
-
-  // Récupère les rapports planifiés arrivés à échéance
   const { data: dueReports, error: fetchErr } = await supabase
     .rpc("get_due_scheduled_reports", { p_now: now.toISOString() });
 
   if (fetchErr) {
-    return new Response(JSON.stringify({ error: fetchErr.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    console.error("[generate-scheduled-report] get_due_scheduled_reports failed:", fetchErr.message);
+    return json(req, { error: "scheduled_reports_fetch_failed" }, 500);
   }
 
   const results: Array<{ id: string; status: string }> = [];
 
   for (const report of dueReports ?? []) {
-    // Crée un enregistrement d'exécution
     const { data: run, error: runErr } = await supabase
       .from("scheduled_report_runs")
       .insert({
@@ -111,10 +118,7 @@ Deno.serve(async (req) => {
     }
 
     try {
-      // Collecte les données brutes selon le type de rapport
       const payload = await collectReportData(report);
-
-      // Stocke dans Supabase Storage (bucket reports — à créer si besoin)
       const storagePath = `reports/${report.fleet_id}/${report.id}/${run.id}.json`;
       await supabase.storage
         .from("reports")
@@ -123,7 +127,6 @@ Deno.serve(async (req) => {
           upsert: true,
         });
 
-      // Marque le run comme réussi et met à jour next_run_at
       const nextRun = computeNextRun(
         report.frequency,
         report.day_of_week,
@@ -144,23 +147,20 @@ Deno.serve(async (req) => {
       ]);
 
       results.push({ id: report.id, status: "succeeded" });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown_error";
+      console.error("[generate-scheduled-report] report generation failed:", message);
       await supabase
         .from("scheduled_report_runs")
-        .update({ status: "failed", error_message: msg, finished_at: new Date().toISOString() })
+        .update({ status: "failed", error_message: "report_generation_failed", finished_at: new Date().toISOString() })
         .eq("id", run.id);
       results.push({ id: report.id, status: "failed" });
     }
   }
 
-  return new Response(JSON.stringify({ processed: results.length, results }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  return json(req, { processed: results.length, results }, 200);
 });
 
-/** Collecte les données brutes pour chaque type de rapport. */
 async function collectReportData(report: {
   fleet_id: string;
   report_type: string;
