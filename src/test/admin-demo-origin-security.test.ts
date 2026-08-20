@@ -1,5 +1,11 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { resolveAppUrlFromOrigin } from "@/server/http/routes/adminDemo";
+
+const demoMagicLinkFunction = readFileSync(
+  "supabase/functions/demo-magic-link/index.ts",
+  "utf8",
+);
 
 describe("admin demo origin security", () => {
   const originalNodeEnv = process.env.NODE_ENV;
@@ -28,5 +34,15 @@ describe("admin demo origin security", () => {
     process.env.NODE_ENV = "production";
     const result = resolveAppUrlFromOrigin("http://localhost:5173");
     expect(result).not.toBe("http://localhost:5173");
+  });
+
+  it("does not log full demo magic-link bearer tokens", () => {
+    expect(demoMagicLinkFunction).not.toContain("Created for ${email} → ${link.token}");
+    expect(demoMagicLinkFunction).toContain("Created for ${email} -> ${link.token.slice(0, 8)}");
+  });
+
+  it("does not persist full demo magic-link tokens in rate-limit keys", () => {
+    expect(demoMagicLinkFunction).not.toContain("`validate_token:${token}`");
+    expect(demoMagicLinkFunction).toContain("hashSensitiveValue(token)");
   });
 });
