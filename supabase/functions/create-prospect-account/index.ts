@@ -90,6 +90,16 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) && email.length <= 320;
 }
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ba = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ba.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ba.length; i++) diff |= ba[i]! ^ bb[i]!;
+  return diff === 0;
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -119,7 +129,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     ? authorization.slice(7).trim()
     : "";
 
-  if (token !== ADMIN_SECRET) {
+  if (!timingSafeEqual(token, ADMIN_SECRET)) {
     console.warn("[create-prospect-account] Unauthorized attempt");
     return jsonResponse(req, { ok: false, error: "unauthorized" }, 401);
   }
