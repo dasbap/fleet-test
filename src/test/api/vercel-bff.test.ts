@@ -104,3 +104,16 @@ describe("Vercel Hobby function budget", () => {
     expect(functionFiles).toHaveLength(12);
   });
 });
+
+describe("direct Vercel admin routes", () => {
+  it("reuse the shared CORS and platform-admin guard", () => {
+    const createProspect = readFileSync("api/admin/create-prospect.ts", "utf8");
+    const generateMagicLink = readFileSync("api/admin/generate-magic-link.ts", "utf8");
+
+    for (const source of [createProspect, generateMagicLink]) {
+      expect(source).toContain("applyCors");
+      expect(source).toContain("requirePlatformAdmin");
+      expect(source).not.toContain('Access-Control-Allow-Origin", process.env.VITE_APP_URL ?? "*"');
+    }
+  });
+});

@@ -1,71 +1,39 @@
 /**
- * BFF Vercel : /api/admin/generate-magic-link
+ * Vercel BFF: /api/admin/generate-magic-link
  *
- * Génère un nouveau magic link pour un compte démo existant.
- * ADMIN_SECRET n'est jamais transmis au navigateur.
- *
- * Sécurité :
- *   1. Vérifie JWT Supabase + is_platform_admin()
- *   2. Transmet à demo-magic-link Edge Function avec ADMIN_SECRET serveur
- *
- * Variables Vercel :
- *   - ADMIN_SECRET
- *   - SUPABASE_URL
- *   - SUPABASE_ANON_KEY
+ * Generates a new magic link for an existing demo account. ADMIN_SECRET stays
+ * server-side.
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createClient } from "@supabase/supabase-js";
-
-const ADMIN_SECRET = process.env.ADMIN_SECRET ?? "";
-const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
-const ANON_KEY     = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? "";
+import {
+  applyCors,
+  getSupabaseEnv,
+  handlePreflight,
+  requirePlatformAdmin,
+} from "../_lib/vercel-api.js";
 
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
-  res.setHeader("Access-Control-Allow-Origin", process.env.VITE_APP_URL ?? "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  const env = getSupabaseEnv();
+  applyCors(res, env.appUrl);
+  if (handlePreflight(req, res)) return;
 
-  if (req.method === "OPTIONS") { res.status(204).end(); return; }
   if (req.method !== "POST") {
     res.status(405).json({ ok: false, error: "method_not_allowed" });
     return;
   }
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  const userToken = (req.headers.authorization ?? "").replace(/^Bearer /, "").trim();
+  const auth = await requirePlatformAdmin(req, res);
+  if (!auth) return;
 
-  if (!userToken || !SUPABASE_URL || !ANON_KEY) {
-    res.status(401).json({ ok: false, error: "missing_auth" });
-    return;
-  }
-
-  const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${userToken}` } },
-    auth:   { persistSession: false },
-  });
-
-  const { data: { user }, error: authErr } = await userClient.auth.getUser(userToken);
-  if (authErr || !user) {
-    res.status(401).json({ ok: false, error: "invalid_token" });
-    return;
-  }
-
-  const { data: isAdminUser } = await userClient.rpc("is_platform_admin");
-  if (!isAdminUser) {
-    res.status(403).json({ ok: false, error: "forbidden_not_platform_admin" });
-    return;
-  }
-
-  // ── Validation body ───────────────────────────────────────────────────────
   const body = req.body as {
-    user_id?:  string;
+    user_id?: string;
     fleet_id?: string;
-    email?:    string;
-    label?:    string;
+    email?: string;
+    label?: string;
   };
 
   if (!body?.user_id || !body?.email) {
@@ -73,36 +41,41 @@ export default async function handler(
     return;
   }
 
-  if (!ADMIN_SECRET) {
+  if (!auth.env.adminSecret || !auth.env.url) {
     res.status(500).json({ ok: false, error: "server_configuration_error" });
     return;
   }
 
-  // ── Forward vers Edge Function ────────────────────────────────────────────
   try {
-    const upstream = await fetch(`${SUPABASE_URL}/functions/v1/demo-magic-link`, {
-      method:  "POST",
+    const upstream = await fetch(`${auth.env.url}/functions/v1/demo-magic-link`, {
+      method: "POST",
       headers: {
-        "Content-Type":  "application/json",
-        "Authorization": `Bearer ${ADMIN_SECRET}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${auth.env.adminSecret}`,
       },
       body: JSON.stringify({
-        action:   "create",
-        user_id:  body.user_id,
+        action: "create",
+        user_id: body.user_id,
         fleet_id: body.fleet_id ?? null,
-        email:    body.email,
-        label:    body.label,
+        email: body.email,
+        label: body.label,
       }),
     });
 
-    const data = await upstream.json() as Record<string, unknown>;
+    const data = (await upstream.json()) as Record<string, unknown>;
 
-    if (upstream.status === 429) { res.status(429).json(data); return; }
-    if (!upstream.ok) { res.status(upstream.status).json(data); return; }
+    if (upstream.status === 429) {
+      res.status(429).json(data);
+      return;
+    }
 
-    console.log(`[bff/generate-magic-link] Succès — admin: ${user.id}`);
+    if (!upstream.ok) {
+      res.status(upstream.status).json(data);
+      return;
+    }
+
+    console.log(`[bff/generate-magic-link] Success - admin: ${auth.user.id}`);
     res.status(200).json(data);
-
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ ok: false, error: message });
