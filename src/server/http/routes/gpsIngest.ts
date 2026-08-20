@@ -9,6 +9,8 @@ import {
 } from "../../env.js";
 
 const MAX_GATEWAY_CLOCK_SKEW_MS = 2 * 60 * 1000;
+const MAX_GATEWAY_FUTURE_SKEW_MS = 30 * 1000;
+const MIN_NONCE_RETENTION_MS = 30 * 1000;
 const MAX_GPS_INGEST_BODY_BYTES = 16 * 1024;
 
 const gpsPayloadSchema = z.object({
@@ -65,7 +67,8 @@ function verifyGatewayRequest(c: Context, rawBody: string): VerifiedGatewayReque
   const now = Date.now();
 
   if (!secret || !Number.isSafeInteger(timestamp)) return null;
-  if (Math.abs(now - timestamp) > MAX_GATEWAY_CLOCK_SKEW_MS) return null;
+  if (now - timestamp > MAX_GATEWAY_CLOCK_SKEW_MS) return null;
+  if (timestamp - now > MAX_GATEWAY_FUTURE_SKEW_MS) return null;
   if (!/^[0-9a-f]{32}$/i.test(nonce)) return null;
 
   const payloadHash = createHash("sha256").update(rawBody).digest("hex");
@@ -75,10 +78,13 @@ function verifyGatewayRequest(c: Context, rawBody: string): VerifiedGatewayReque
 
   if (!safeHexEqual(signature, expected)) return null;
 
+  const replayWindowEnd = timestamp + MAX_GATEWAY_CLOCK_SKEW_MS;
+  const minimumRetentionEnd = now + MIN_NONCE_RETENTION_MS;
+
   return {
     gatewayId,
     nonce: nonce.toLowerCase(),
-    expiresAt: new Date(now + MAX_GATEWAY_CLOCK_SKEW_MS).toISOString(),
+    expiresAt: new Date(Math.max(replayWindowEnd, minimumRetentionEnd)).toISOString(),
   };
 }
 
