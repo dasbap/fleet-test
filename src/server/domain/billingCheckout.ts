@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PaymentProviderId } from "../env.js";
 import { assertCanManageBillingForFleet } from "./billing/billingAuthorization.js";
+import { createServerOwnedPaymentIntent } from "./billing/paymentIntent.js";
 import { assertVehicleCountWithinPlanLimit } from "./billing/vehicleSlotLimits.js";
 
 export interface BillingCheckoutIntent {
@@ -79,38 +80,26 @@ export async function createBillingCheckoutForUser(
   const reference = `ESAMBA-${Date.now().toString(36).toUpperCase()}-${referenceEntropy}`;
   const idempotencyKey = crypto.randomUUID();
 
-  const rawPayload = {
-    planCode: intent.planCode,
+  const payment = await createServerOwnedPaymentIntent(supabase, {
+    orgId: intent.orgId,
+    fleetId: intent.fleetId,
+    planCode: plan.code,
     vehicleCount: intent.vehicleCount,
     durationMonths,
-    fleetId: intent.fleetId,
+    provider: paymentProvider,
+    externalRef: reference,
+    idempotencyKey,
+    expectedAmountXaf: amountXaf,
+    vehicleIds: intent.vehicleIds,
     checkout: true,
-    ...(intent.vehicleIds?.length ? { vehicleIds: intent.vehicleIds } : {}),
-  };
-
-  const { data, error } = await supabase
-    .from("paiements")
-    .insert({
-      org_id: intent.orgId,
-      provider: paymentProvider,
-      amount: amountXaf,
-      currency: "XAF",
-      status: "pending",
-      external_ref: reference,
-      idempotency_key: idempotencyKey,
-      raw_payload: rawPayload,
-    })
-    .select("id, status")
-    .single();
-
-  if (error) throw new Error(error.message);
+  });
 
   return {
-    paymentId: data.id,
+    paymentId: payment.paymentId,
     externalRef: reference,
-    amountXaf,
-    currency: "XAF",
-    status: data.status,
+    amountXaf: payment.amountXaf,
+    currency: payment.currency,
+    status: payment.status,
     provider: paymentProvider,
   };
 }
