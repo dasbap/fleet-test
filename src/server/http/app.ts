@@ -23,15 +23,49 @@ import {
 } from "./routes/webhooksPayment.js";
 import { registerGpsIngestRoutes } from "./routes/gpsIngest.js";
 
+function isAllowedLocalOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+      url.username === "" &&
+      url.password === ""
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function createServerApp() {
   const app = new Hono();
   const appOrigin = getAppUrl();
   const allowLocalDevelopmentOrigins = process.env.NODE_ENV !== "production";
 
+  const isAllowedOrigin = (origin: string | undefined): boolean => {
+    if (!origin) return true;
+    if (origin === appOrigin) return true;
+    return allowLocalDevelopmentOrigins && isAllowedLocalOrigin(origin);
+  };
+
   app.onError((error, c) => {
     console.error("[BFF] unhandled error:", error);
     const response = serializeServerError(error);
     return c.json(response.body, response.statusCode);
+  });
+
+  app.use("/api/admin/*", async (c, next) => {
+    if (!isAllowedOrigin(c.req.header("Origin"))) {
+      return c.json({ ok: false, error: "origin_not_allowed" }, 403);
+    }
+    await next();
+  });
+
+  app.use("/api/demo/*", async (c, next) => {
+    if (!isAllowedOrigin(c.req.header("Origin"))) {
+      return c.json({ ok: false, error: "origin_not_allowed" }, 403);
+    }
+    await next();
   });
 
   app.use(
@@ -40,11 +74,7 @@ export function createServerApp() {
       origin: (origin) => {
         if (!origin) return null;
         if (origin === appOrigin) return origin;
-        if (
-          allowLocalDevelopmentOrigins &&
-          (origin.startsWith("http://localhost:") ||
-            origin.startsWith("http://127.0.0.1:"))
-        ) {
+        if (allowLocalDevelopmentOrigins && isAllowedLocalOrigin(origin)) {
           return origin;
         }
         return null;
