@@ -37,7 +37,6 @@ const rawPayloadSchema = z.object({
   }
 });
 
-/** Ajoute des mois calendaires en UTC (facturation). */
 export function addCalendarMonthsUtc(base: Date, months: number): Date {
   const capped = Math.min(Math.max(months, 1), 36);
   const d = new Date(base.getTime());
@@ -50,8 +49,7 @@ export interface InboundPaymentWebhookResult {
   normalizedStatus: PaymentStatus;
   subscriptionActivated: boolean;
   subscriptionId?: string;
-  /** Transition refusée (ex. terminal → autre) : aucune écriture. */
-  skippedReason?: "no_transition";
+  skippedReason?: "no_transition" | "effects_in_progress_or_done";
 }
 
 type ExpectedPaymentProvider = "manual" | "notch" | "cinetpay";
@@ -62,6 +60,33 @@ interface PaymentRow {
   provider: string;
   status: string;
   raw_payload: unknown;
+}
+
+async function claimPaymentEffects(admin: SupabaseClient, paymentId: string): Promise<boolean> {
+  const { data, error } = await admin.rpc("claim_payment_webhook_effects", {
+    p_payment_id: paymentId,
+    p_lease_seconds: 300,
+  });
+  if (error) throw new Error(error.message);
+  return data === true;
+}
+
+async function completePaymentEffects(admin: SupabaseClient, paymentId: string): Promise<void> {
+  const { data, error } = await admin.rpc("complete_payment_webhook_effects", {
+    p_payment_id: paymentId,
+  });
+  if (error || data !== true) {
+    throw new Error(error?.message ?? "Impossible de finaliser les effets du webhook.");
+  }
+}
+
+async function releasePaymentEffects(admin: SupabaseClient, paymentId: string): Promise<void> {
+  const { error } = await admin.rpc("release_payment_webhook_effects", {
+    p_payment_id: paymentId,
+  });
+  if (error) {
+    console.error("[billing webhook] payment effect release failed:", error.message);
+  }
 }
 
 export async function runInboundPaymentWebhook(
@@ -97,8 +122,24 @@ export async function runInboundPaymentWebhook(
     };
   }
 
-  const { error: updErr } = await admin.from("paiements").update({ status: normalized }).eq("id", payment.id);
-  if (updErr) throw new Error(updErr.message);
+  if (payment.status !== normalized) {
+    const { data: transitioned, error: updErr } = await admin
+      .from("paiements")
+      .update({ status: normalized })
+      .eq("id", payment.id)
+      .eq("status", payment.status)
+      .select("id")
+      .maybeSingle<{ id: string }>();
+    if (updErr) throw new Error(updErr.message);
+    if (!transitioned) {
+      return {
+        paymentId: payment.id,
+        normalizedStatus: normalized,
+        subscriptionActivated: false,
+        skippedReason: "no_transition",
+      };
+    }
+  }
 
   if (normalized !== "succeeded") {
     const rawPayload = payment.raw_payload as Record<string, unknown> | null;
@@ -118,47 +159,77 @@ export async function runInboundPaymentWebhook(
     };
   }
 
-  const activation = await activateSubscriptionForSucceededPayment(admin, payment);
-
-  const rawPayload2 = payment.raw_payload as Record<string, unknown> | null;
-  const fleetId2 = rawPayload2?.fleetId as string | undefined;
-  if (fleetId2) {
-    await admin.from("billing_events").insert({
-      fleet_id: fleetId2,
-      payment_id: payment.id,
-      subscription_id: activation.subscriptionId ?? null,
-      event_type: activation.activated ? "subscription.activated" : "payment.successful",
-      payload: {
-        external_ref: externalRef,
-        subscription_activated: activation.activated,
-        subscription_id: activation.subscriptionId,
-      },
-    }).then(() => void 0);
+  if (!(await claimPaymentEffects(admin, payment.id))) {
+    return {
+      paymentId: payment.id,
+      normalizedStatus: normalized,
+      subscriptionActivated: false,
+      skippedReason: "effects_in_progress_or_done",
+    };
   }
 
-  return {
-    paymentId: payment.id,
-    normalizedStatus: normalized,
-    subscriptionActivated: activation.activated,
-    subscriptionId: activation.subscriptionId,
-  };
+  try {
+    const activation = await activateSubscriptionForSucceededPayment(admin, payment);
+
+    const rawPayload2 = payment.raw_payload as Record<string, unknown> | null;
+    const fleetId2 = rawPayload2?.fleetId as string | undefined;
+    if (fleetId2) {
+      await admin.from("billing_events").insert({
+        fleet_id: fleetId2,
+        payment_id: payment.id,
+        subscription_id: activation.subscriptionId ?? null,
+        event_type: activation.activated ? "subscription.activated" : "payment.successful",
+        payload: {
+          external_ref: externalRef,
+          subscription_activated: activation.activated,
+          subscription_id: activation.subscriptionId,
+        },
+      }).then(() => void 0);
+    }
+
+    await completePaymentEffects(admin, payment.id);
+
+    return {
+      paymentId: payment.id,
+      normalizedStatus: normalized,
+      subscriptionActivated: activation.activated,
+      subscriptionId: activation.subscriptionId,
+    };
+  } catch (error) {
+    await releasePaymentEffects(admin, payment.id);
+    throw error;
+  }
 }
 
 async function activateSubscriptionForSucceededPayment(
   admin: SupabaseClient,
   payment: PaymentRow,
 ): Promise<{ activated: boolean; subscriptionId?: string }> {
-  const { data: already } = await admin.from("abonnements").select("id").eq("payment_id", payment.id).maybeSingle();
-  if (already?.id) {
-    return { activated: false, subscriptionId: already.id };
-  }
-
   const parsedPayload = rawPayloadSchema.safeParse(payment.raw_payload);
   if (!parsedPayload.success) {
     throw new Error("Impossible d’activer l’abonnement : raw_payload du paiement invalide ou incomplet.");
   }
 
   const { fleetId, planCode, vehicleCount, durationMonths, vehicleIds } = parsedPayload.data;
+
+  const { data: already, error: alreadyError } = await admin
+    .from("abonnements")
+    .select("id, starts_at, ends_at")
+    .eq("payment_id", payment.id)
+    .maybeSingle<{ id: string; starts_at: string; ends_at: string }>();
+  if (alreadyError) throw new Error(alreadyError.message);
+
+  if (already?.id) {
+    await syncVehicleRights(admin, {
+      fleetId,
+      subscriptionId: already.id,
+      vehicleCount,
+      vehicleIds,
+      startsAtIso: already.starts_at,
+      endsAtIso: already.ends_at,
+    });
+    return { activated: false, subscriptionId: already.id };
+  }
 
   const { data: flotte, error: flotteErr } = await admin
     .from("flottes")
