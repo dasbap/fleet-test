@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MoMoInstructions, MoMoPaymentIntent, MoMoPaymentResult, MoMoProvider } from "../../types/mobile-money.js";
 import { assertCanManageBillingForFleet } from "./billing/billingAuthorization.js";
+import { createServerOwnedPaymentIntent } from "./billing/paymentIntent.js";
 import { assertVehicleCountWithinPlanLimit } from "./billing/vehicleSlotLimits.js";
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "support@e-samba.com";
@@ -105,35 +106,23 @@ export async function initiateMobileMoneyPaymentForUser(
   const reference = `ESAMBA-${Date.now().toString(36).toUpperCase()}-${referenceEntropy}`;
   const idempotencyKey = crypto.randomUUID();
 
-  const rawPayload = {
-    planCode: intent.planCode,
+  const payment = await createServerOwnedPaymentIntent(supabase, {
+    orgId: intent.orgId,
+    fleetId: intent.fleetId,
+    planCode: plan.code,
     vehicleCount: intent.vehicleCount,
     durationMonths,
+    provider: intent.provider,
+    externalRef: reference,
+    idempotencyKey,
+    expectedAmountXaf: amountXaf,
+    vehicleIds: intent.vehicleIds,
     phoneNumber: intent.phoneNumber,
-    fleetId: intent.fleetId,
-    ...(intent.vehicleIds?.length ? { vehicleIds: intent.vehicleIds } : {}),
-  };
-
-  const { data, error } = await supabase
-    .from("paiements")
-    .insert({
-      org_id: intent.orgId,
-      provider: intent.provider,
-      amount: amountXaf,
-      currency: "XAF",
-      status: "pending",
-      external_ref: reference,
-      idempotency_key: idempotencyKey,
-      raw_payload: rawPayload,
-    })
-    .select("id")
-    .single();
-
-  if (error) throw new Error(error.message);
+  });
 
   return {
-    paymentId: data.id,
+    paymentId: payment.paymentId,
     reference,
-    instructions: buildInstructions(intent.provider, amountXaf, reference),
+    instructions: buildInstructions(intent.provider, payment.amountXaf, reference),
   };
 }
