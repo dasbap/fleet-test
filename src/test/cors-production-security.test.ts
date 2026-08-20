@@ -31,4 +31,41 @@ describe("Production CORS security", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
   });
+
+  it("rejette les origins localhost ambigus sur les routes admin et demo", async () => {
+    process.env.NODE_ENV = "development";
+    process.env.APP_URL = "https://www.e-samba.com";
+    process.env.VITE_APP_URL = "https://www.e-samba.com";
+
+    const app = createServerApp();
+    const ambiguousOrigin = "http://localhost:5173@evil.example";
+
+    const adminResponse = await app.request("/api/admin/create-prospect", {
+      method: "POST",
+      headers: {
+        Origin: ambiguousOrigin,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    });
+    expect(adminResponse.status).toBe(403);
+    expect(await adminResponse.json()).toEqual({
+      ok: false,
+      error: "origin_not_allowed",
+    });
+
+    const demoResponse = await app.request("/api/demo/magic-link", {
+      method: "POST",
+      headers: {
+        Origin: ambiguousOrigin,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    });
+    expect(demoResponse.status).toBe(403);
+    expect(await demoResponse.json()).toEqual({
+      ok: false,
+      error: "origin_not_allowed",
+    });
+  });
 });
