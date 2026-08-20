@@ -51,6 +51,41 @@ function getGatewaySecrets(): Record<string, string> {
   }
 }
 
+function getGatewayDeviceBindings(): Record<string, string[]> {
+  const raw = process.env.GPS_GATEWAY_DEVICE_BINDINGS;
+  if (!raw) return {};
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+
+    const bindings: Record<string, string[]> = {};
+    for (const [gatewayId, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!gatewayId || gatewayId.length > 128 || !Array.isArray(value)) continue;
+      const imeis = value.filter(
+        (imei): imei is string => typeof imei === "string" && /^\d{14,17}$/.test(imei),
+      );
+      if (imeis.length > 0) bindings[gatewayId] = [...new Set(imeis)];
+    }
+    return bindings;
+  } catch {
+    return {};
+  }
+}
+
+function isGatewayAuthorizedForImei(gatewayId: string, imei: string): boolean {
+  const secrets = getGatewaySecrets();
+  const bindings = getGatewayDeviceBindings();
+  const gatewayIds = Object.keys(secrets);
+  const bindingIds = Object.keys(bindings);
+
+  if (gatewayIds.length === 1 && gatewayIds[0] === gatewayId && bindingIds.length === 0) {
+    return true;
+  }
+
+  return bindings[gatewayId]?.includes(imei) === true;
+}
+
 function safeHexEqual(actualHex: string, expected: Buffer): boolean {
   if (!/^[0-9a-f]{64}$/i.test(actualHex)) return false;
   const actual = Buffer.from(actualHex, "hex");
@@ -143,15 +178,6 @@ async function handleGpsIngest(c: Context) {
     return c.json({ error: "Authentification gateway GPS invalide." }, 401);
   }
 
-  try {
-    if (!(await claimGatewayNonce(verifiedGateway))) {
-      return c.json({ error: "Rejeu gateway GPS detecte." }, 409);
-    }
-  } catch (error) {
-    console.error("[gps/ingest] replay protection unavailable:", error);
-    return c.json({ error: "Protection anti-rejeu indisponible." }, 503);
-  }
-
   let body: unknown;
   try {
     body = JSON.parse(rawBody);
@@ -162,6 +188,19 @@ async function handleGpsIngest(c: Context) {
   const parsed = gpsPayloadSchema.safeParse(body);
   if (!parsed.success) {
     return c.json({ error: "Donnees GPS invalides", details: parsed.error.flatten() }, 400);
+  }
+
+  if (!isGatewayAuthorizedForImei(verifiedGateway.gatewayId, parsed.data.imei)) {
+    return c.json({ error: "IMEI non autorise pour ce gateway GPS." }, 403);
+  }
+
+  try {
+    if (!(await claimGatewayNonce(verifiedGateway))) {
+      return c.json({ error: "Rejeu gateway GPS detecte." }, 409);
+    }
+  } catch (error) {
+    console.error("[gps/ingest] replay protection unavailable:", error);
+    return c.json({ error: "Protection anti-rejeu indisponible." }, 503);
   }
 
   const ingestKey = getGpsIngestKey();
