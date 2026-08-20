@@ -74,16 +74,7 @@ function getGatewayDeviceBindings(): Record<string, string[]> {
 }
 
 function isGatewayAuthorizedForImei(gatewayId: string, imei: string): boolean {
-  const secrets = getGatewaySecrets();
-  const bindings = getGatewayDeviceBindings();
-  const gatewayIds = Object.keys(secrets);
-  const bindingIds = Object.keys(bindings);
-
-  if (gatewayIds.length === 1 && gatewayIds[0] === gatewayId && bindingIds.length === 0) {
-    return true;
-  }
-
-  return bindings[gatewayId]?.includes(imei) === true;
+  return getGatewayDeviceBindings()[gatewayId]?.includes(imei) === true;
 }
 
 function safeHexEqual(actualHex: string, expected: Buffer): boolean {
