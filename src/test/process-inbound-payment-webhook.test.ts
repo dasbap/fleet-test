@@ -8,6 +8,7 @@ const FLEET = "a0000000-0000-4000-8000-000000000002";
 const PLAN = "a0000000-0000-4000-8000-000000000003";
 const PAY = "a0000000-0000-4000-8000-000000000004";
 const SUB = "a0000000-0000-4000-8000-000000000005";
+const CLAIM_TOKEN = "a0000000-0000-4000-8000-000000000006";
 
 function createMockAdmin(): SupabaseClient {
   let paiementsFrom = 0;
@@ -29,7 +30,7 @@ function createMockAdmin(): SupabaseClient {
 
   return {
     rpc: vi.fn(async (fn: string) => {
-      if (fn === "claim_payment_webhook_effects") return { data: true, error: null };
+      if (fn === "claim_payment_webhook_effects") return { data: CLAIM_TOKEN, error: null };
       if (fn === "complete_payment_webhook_effects") return { data: true, error: null };
       if (fn === "release_payment_webhook_effects") return { data: true, error: null };
       throw new Error(`rpc inattendue: ${fn}`);
@@ -151,10 +152,11 @@ describe("runInboundPaymentWebhook", () => {
     expect(res.subscriptionId).toBe(SUB);
     expect(admin.rpc).toHaveBeenCalledWith("claim_payment_webhook_effects", {
       p_payment_id: PAY,
-      p_lease_seconds: 300,
+      p_lease_seconds: 900,
     });
     expect(admin.rpc).toHaveBeenCalledWith("complete_payment_webhook_effects", {
       p_payment_id: PAY,
+      p_claim_token: CLAIM_TOKEN,
     });
   });
 
@@ -230,7 +232,7 @@ describe("runInboundPaymentWebhook", () => {
   it("n'applique pas deux fois les effets si le paiement est déjà claimé", async () => {
     const admin = createMockAdmin();
     (admin.rpc as ReturnType<typeof vi.fn>).mockImplementation(async (fn: string) => {
-      if (fn === "claim_payment_webhook_effects") return { data: false, error: null };
+      if (fn === "claim_payment_webhook_effects") return { data: null, error: null };
       return { data: true, error: null };
     });
 
