@@ -161,7 +161,6 @@ BEGIN
   DELETE FROM vehicules WHERE fleet_id = v_fleet_id;
   DELETE FROM billing_events WHERE fleet_id = v_fleet_id;
   DELETE FROM abonnements WHERE fleet_id = v_fleet_id;
-  DELETE FROM public.flotte_adhesions WHERE fleet_id = v_fleet_id AND user_id = v_user_id;
   DELETE FROM flottes WHERE id = v_fleet_id;
   DELETE FROM organisations WHERE id = v_org_id;
   DELETE FROM public.audit_logs WHERE actor_id = v_user_id;
