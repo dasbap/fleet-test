@@ -5,6 +5,10 @@ const migration = readFileSync(
   "supabase/migrations/20260820131000_harden_fleet_invitation_entropy.sql",
   "utf8",
 );
+const nextOnboardingActions = readFileSync(
+  "apps/esamba-web/src/lib/onboarding/actions.ts",
+  "utf8",
+);
 
 describe("fleet invitation entropy security", () => {
   it("generates invitation secrets on the server with cryptographic randomness", () => {
@@ -15,6 +19,11 @@ describe("fleet invitation entropy security", () => {
   it("does not derive the persisted invitation code from the client supplied value", () => {
     expect(migration).not.toContain("upper(trim(p_code))");
     expect(migration).not.toContain("VALUES (p_fleet_id, p_code");
+  });
+
+  it("does not keep a weak client-side invitation-code fallback", () => {
+    expect(nextOnboardingActions).toContain("randomUUID()");
+    expect(nextOnboardingActions).not.toContain("Math.random");
   });
 
   it("keeps invitation creation authenticated and permission scoped", () => {
