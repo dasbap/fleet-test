@@ -19,6 +19,18 @@ interface PlanRow {
   is_active: boolean;
 }
 
+function assertSelectedVehiclesMatchChargedCount(vehicleIds: string[] | undefined, vehicleCount: number): void {
+  if (!vehicleIds?.length) return;
+
+  const uniqueVehicleIds = new Set(vehicleIds);
+  if (uniqueVehicleIds.size !== vehicleIds.length) {
+    throw new Error("La selection de vehicules contient des doublons.");
+  }
+  if (vehicleIds.length !== vehicleCount) {
+    throw new Error("Le nombre de vehicules selectionnes doit correspondre au nombre de vehicules factures.");
+  }
+}
+
 export async function initiateNotchPayPayment(
   supabase: SupabaseClient,
   intent: NotchPayIntent,
@@ -34,6 +46,8 @@ export async function initiateNotchPayPayment(
   if (intent.vehicleCount < 1) {
     throw new Error("Au moins un véhicule est requis.");
   }
+
+  assertSelectedVehiclesMatchChargedCount(intent.vehicleIds, intent.vehicleCount);
 
   const { data: plan, error: planError } = await supabase
     .from("plans")
