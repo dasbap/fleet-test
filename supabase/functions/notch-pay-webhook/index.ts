@@ -281,9 +281,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
   let vehicleLicensesCreated = 0;
 
   if (normalizedStatus === "successful") {
-    const { data: claimed, error: claimError } = await admin.rpc("claim_payment_webhook_effects", {
+    const { data: claimToken, error: claimError } = await admin.rpc("claim_payment_webhook_effects", {
       p_payment_id: payment.id,
-      p_lease_seconds: 300,
+      p_lease_seconds: 900,
     });
 
     if (claimError) {
@@ -294,7 +294,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    if (claimed !== true) {
+    if (typeof claimToken !== "string" || claimToken.length === 0) {
       return new Response(
         JSON.stringify({ received: true, skipped: true, reason: "effects_in_progress_or_done" }),
         { status: 200, headers: { "Content-Type": "application/json" } },
@@ -309,7 +309,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       const { data: completed, error: completeError } = await admin.rpc(
         "complete_payment_webhook_effects",
-        { p_payment_id: payment.id },
+        { p_payment_id: payment.id, p_claim_token: claimToken },
       );
       if (completeError || completed !== true) {
         throw new Error(completeError?.message ?? "payment_effect_completion_failed");
@@ -317,6 +317,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     } catch (error) {
       const { error: releaseError } = await admin.rpc("release_payment_webhook_effects", {
         p_payment_id: payment.id,
+        p_claim_token: claimToken,
       });
       if (releaseError) {
         console.error("[notch-webhook] release effets impossible :", releaseError.message);
