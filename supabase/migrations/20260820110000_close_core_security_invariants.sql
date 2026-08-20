@@ -129,7 +129,10 @@ DECLARE
   v_removes_organizer boolean;
 BEGIN
   IF OLD.role IS DISTINCT FROM 'organizer'::public.role_type OR OLD.is_active IS DISTINCT FROM true THEN
-    RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+    IF TG_OP = 'DELETE' THEN
+      RETURN OLD;
+    END IF;
+    RETURN NEW;
   END IF;
 
   v_removes_organizer := TG_OP = 'DELETE';
@@ -142,6 +145,12 @@ BEGIN
 
   IF NOT v_removes_organizer THEN
     RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'DELETE' AND NOT EXISTS (
+    SELECT 1 FROM public.flottes f WHERE f.id = OLD.fleet_id
+  ) THEN
+    RETURN OLD;
   END IF;
 
   PERFORM pg_advisory_xact_lock(hashtextextended(OLD.fleet_id::text, 0));
@@ -157,7 +166,10 @@ BEGIN
     RAISE EXCEPTION 'last_active_organizer_required';
   END IF;
 
-  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
 END;
 $$;
 
