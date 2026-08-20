@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
   applyCors,
@@ -10,6 +10,7 @@ import {
 const VALID_FLEET_ROLES = new Set(["organizer", "manager", "driver", "mechanic"]);
 const MAX_NAME_LENGTH = 200;
 const MAX_PHONE_LENGTH = 64;
+const MAX_PROVISIONING_REQUESTS = 20;
 
 function generateTempPassword(): string {
   return randomBytes(18).toString("base64url");
@@ -141,11 +142,42 @@ export default async function handler(
     }
   }
 
-  const password = generateTempPassword();
-  const temporaryPasswordIssuedAt = new Date().toISOString();
   const admin = createClient(auth.env.url, auth.env.serviceRoleKey, {
     auth: { persistSession: false },
   });
+  const provisionerKey = createHash("sha256")
+    .update(auth.user.id)
+    .digest("hex")
+    .slice(0, 32);
+  const { data: rateLimitData, error: rateLimitError } = await admin.rpc(
+    "demo_check_rate_limit",
+    {
+      p_key: `admin_create_user:${provisionerKey}`,
+      p_max_count: MAX_PROVISIONING_REQUESTS,
+    },
+  );
+  const rateLimit = rateLimitData as {
+    ok?: boolean;
+    reset_at?: string;
+  } | null;
+
+  if (rateLimitError) {
+    console.error("[admin/create-user] rate limit check failed:", rateLimitError.message);
+    res.status(503).json({ ok: false, error: "rate_limit_check_failed" });
+    return;
+  }
+
+  if (rateLimit?.ok !== true) {
+    res.status(429).json({
+      ok: false,
+      error: "rate_limit_exceeded",
+      reset_at: rateLimit?.reset_at,
+    });
+    return;
+  }
+
+  const password = generateTempPassword();
+  const temporaryPasswordIssuedAt = new Date().toISOString();
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
