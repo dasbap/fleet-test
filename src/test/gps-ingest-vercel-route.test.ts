@@ -58,6 +58,9 @@ describe("GPS ingest Vercel route", () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-test";
     process.env.GPS_INGEST_KEY = "gps-secret";
     process.env.GPS_GATEWAY_SECRETS = JSON.stringify({ "gateway-test": "g".repeat(32) });
+    process.env.GPS_GATEWAY_DEVICE_BINDINGS = JSON.stringify({
+      "gateway-test": [validPayload.imei],
+    });
     delete process.env.GPS_INGEST_URL;
   });
 
@@ -85,6 +88,33 @@ describe("GPS ingest Vercel route", () => {
     headers["x-gps-signature"] = "0".repeat(64);
     const response = await app.request("/api/gps/ingest", { method: "POST", headers, body });
     expect(response.status).toBe(401);
+  });
+
+  it("refuse un gateway signe sans binding IMEI explicite", async () => {
+    delete process.env.GPS_GATEWAY_DEVICE_BINDINGS;
+    const app = createVercelApiApp();
+    const body = JSON.stringify(validPayload);
+    const response = await app.request("/api/gps/ingest", {
+      method: "POST",
+      headers: signedHeaders(body, "1823456789abcdef0123456789abcdef"),
+      body,
+    });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "IMEI non autorise pour ce gateway GPS." });
+  });
+
+  it("refuse un IMEI absent du binding du gateway", async () => {
+    process.env.GPS_GATEWAY_DEVICE_BINDINGS = JSON.stringify({
+      "gateway-test": ["356307042441014"],
+    });
+    const app = createVercelApiApp();
+    const body = JSON.stringify(validPayload);
+    const response = await app.request("/api/gps/ingest", {
+      method: "POST",
+      headers: signedHeaders(body, "1923456789abcdef0123456789abcdef"),
+      body,
+    });
+    expect(response.status).toBe(403);
   });
 
   it("rejette le rejeu d'un meme nonce via le stockage persistant", async () => {
