@@ -4,16 +4,25 @@ import { initiateMobileMoneyPaymentForUser } from "@/server/domain/mobileMoneyIn
 
 describe("initiateMobileMoneyPaymentForUser security", () => {
   it("recalcule le montant depuis le plan au lieu de faire confiance au client", async () => {
-    const insert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: { id: "pay-1" },
+    const rpc = vi.fn(async (fn: string) => {
+      if (fn === "rbac_check_permission") {
+        return { data: { allowed: true }, error: null };
+      }
+      if (fn === "create_payment_intent") {
+        return {
+          data: {
+            payment_id: "pay-1",
+            status: "pending",
+            amount_xaf: 90000,
+            currency: "XAF",
+          },
           error: null,
-        }),
-      }),
+        };
+      }
+      throw new Error(`rpc inattendue: ${fn}`);
     });
     const supabase = {
-      rpc: vi.fn().mockResolvedValue({ data: { allowed: true }, error: null }),
+      rpc,
       from: vi.fn((table: string) => {
         if (table === "flottes") {
           return {
@@ -50,9 +59,6 @@ describe("initiateMobileMoneyPaymentForUser security", () => {
             }),
           };
         }
-        if (table === "paiements") {
-          return { insert };
-        }
         throw new Error(`table inattendue: ${table}`);
       }),
     };
@@ -71,13 +77,18 @@ describe("initiateMobileMoneyPaymentForUser security", () => {
       },
     );
 
-    expect(insert).toHaveBeenCalledWith(
+    expect(rpc).toHaveBeenCalledWith(
+      "create_payment_intent",
       expect.objectContaining({
-        amount: 90000,
-        raw_payload: expect.objectContaining({
-          vehicleCount: 2,
-          durationMonths: 3,
-        }),
+        p_org_id: "00000000-0000-4000-8000-000000000001",
+        p_fleet_id: "00000000-0000-4000-8000-000000000002",
+        p_plan_code: "starter",
+        p_vehicle_count: 2,
+        p_duration_months: 3,
+        p_provider: "orange_money",
+        p_expected_amount: 90000,
+        p_phone_number: "+237600000000",
+        p_checkout: false,
       }),
     );
     expect(result.instructions.amountXaf).toBe(90000);
