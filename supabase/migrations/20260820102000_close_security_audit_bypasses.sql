@@ -15,6 +15,27 @@ BEGIN
     GRANT EXECUTE ON FUNCTION public.find_available_subscription_for_vehicle(uuid)
       TO service_role;
   END IF;
+
+  IF to_regprocedure('public.demo_create_magic_link(uuid,uuid,text,text,timestamptz,uuid)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.demo_create_magic_link(uuid, uuid, text, text, timestamptz, uuid)
+      FROM PUBLIC, anon, authenticated;
+    GRANT EXECUTE ON FUNCTION public.demo_create_magic_link(uuid, uuid, text, text, timestamptz, uuid)
+      TO service_role;
+  END IF;
+
+  IF to_regprocedure('public.demo_validate_magic_link(uuid)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.demo_validate_magic_link(uuid)
+      FROM PUBLIC, anon, authenticated;
+    GRANT EXECUTE ON FUNCTION public.demo_validate_magic_link(uuid)
+      TO service_role;
+  END IF;
+
+  IF to_regprocedure('public.demo_check_rate_limit(text,integer)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.demo_check_rate_limit(text, integer)
+      FROM PUBLIC, anon, authenticated;
+    GRANT EXECUTE ON FUNCTION public.demo_check_rate_limit(text, integer)
+      TO service_role;
+  END IF;
 END $$;
 
 CREATE TABLE IF NOT EXISTS public.payment_webhook_effect_claims (
