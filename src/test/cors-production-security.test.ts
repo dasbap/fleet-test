@@ -32,6 +32,18 @@ describe("Production CORS security", () => {
     expect(corsOrigin("https://evil.example")).toBe("https://www.e-samba.com");
   });
 
+  it("autorise les deux origins de production sur Hono", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.APP_URL = "https://www.e-samba.com";
+
+    const app = createServerApp();
+    for (const origin of ["https://www.e-samba.com", "https://app.e-samba.com"]) {
+      const response = await app.request("/health", { headers: { Origin: origin } });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBe(origin);
+    }
+  });
+
   it("ne reflete jamais localhost en production sur les BFF Vercel et Hono", async () => {
     process.env.NODE_ENV = "production";
     process.env.APP_URL = "https://www.e-samba.com";
