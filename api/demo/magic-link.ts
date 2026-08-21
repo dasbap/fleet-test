@@ -4,7 +4,7 @@ import { applyCors, getSupabaseEnv, handlePreflight } from "../_lib/vercel-api.j
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function resolveAppUrl(req: VercelRequest, configuredAppUrl: string): string {
+export function resolveAppUrl(req: VercelRequest, configuredAppUrl: string): string {
   const fallback = configuredAppUrl.replace(/\/$/, "");
   if (process.env.NODE_ENV === "production") return fallback;
 
