@@ -1,32 +1,9 @@
-# Identifiants démo E-Samba
+# Accès démo E-Samba
 
-Comptes créés par le script `supabase/scripts/setup/create-demo-organization-complete.sql` pour la démonstration.
+Les adresses de comptes de démonstration sont définies dans `src/features/auth/data/demoCredentials.ts`.
 
-## Mot de passe commun
+Les secrets de connexion ne sont pas versionnés. Les scripts de démonstration lisent `DEMO_PASSWORD` depuis l'environnement local ou le gestionnaire de secrets de CI.
 
-**Mot de passe (tous les comptes) :** `Demo2025!`
+Les opérations de provisioning ou de réinitialisation sur une instance distante nécessitent une activation explicite avec `ALLOW_REMOTE_DEMO_PROVISIONING=true` après vérification de la cible.
 
-## Comptes
-
-| Rôle       | Email                     |
-| ---------- | ------------------------- |
-| Organizer  | demo.organizer@esamba.test |
-| Manager 1  | demo.manager1@esamba.test  |
-| Manager 2  | demo.manager2@esamba.test  |
-| Driver 1   | demo.driver1@esamba.test   |
-| Driver 2   | demo.driver2@esamba.test   |
-| Mechanic 1 | demo.mechanic1@esamba.test |
-
-## Connexion
-
-1. Lancer l’application (ex. `npm run dev`).
-2. Aller sur la page de connexion.
-3. Saisir l’email du compte (ex. `demo.organizer@esamba.test`) et le mot de passe `Demo2025!`.
-4. Option rapide : sur les écrans de connexion, cliquer un compte démo pour préremplir automatiquement email + mot de passe.
-
-## Sécurité
-
-- À utiliser **uniquement** en environnement de démo/test.
-- Ne pas utiliser ce mot de passe en production.
-- Les comptes `@esamba.test` sont destinés aux jeux de données de démonstration (voir aussi `NETTOYAGE-BASE-DONNEES.md`).
-- **Gouvernance des secrets** : ne jamais committer de clés API ni la `SUPABASE_SERVICE_ROLE_KEY`. Cette clé sert uniquement en local ou en CI avec des secrets chiffrés ; jamais dans le navigateur, jamais dans le bundle client, jamais dans un dépôt public. Pour réinitialiser les mots de passe démo via l’API Admin, voir `npm run reset:demo-passwords` et `scripts/reset-demo-passwords.mjs`.
+Tout ancien identifiant d'accès déjà publié dans l'historique Git doit être considéré compromis et remplacé sur les environnements distants avant utilisation.
