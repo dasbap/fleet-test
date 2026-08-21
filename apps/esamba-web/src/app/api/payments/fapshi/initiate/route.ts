@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
   const { data: subscription, error: subError } = await supabase
     .from("abonnements")
-    .select("id, fleet_id, vehicle_slots")
+    .select("id, fleet_id, vehicle_slots, plan_id")
     .eq("id", body.subscriptionId)
     .eq("fleet_id", context.fleetId)
     .maybeSingle();
@@ -82,12 +82,19 @@ export async function POST(request: Request) {
 
   const { data: plan, error: planError } = await supabase
     .from("plans")
-    .select("price_per_vehicle, is_active, max_vehicles")
-    .eq("code", body.planCode.trim())
+    .select("id, code, price_per_vehicle, is_active, max_vehicles")
+    .eq("id", subscription.plan_id)
     .maybeSingle();
 
   if (planError || !plan?.is_active) {
     return NextResponse.json({ error: "Plan introuvable" }, { status: 400 });
+  }
+
+  if (plan.code !== body.planCode.trim()) {
+    return NextResponse.json(
+      { error: "Le plan ne correspond pas a l'abonnement." },
+      { status: 400 },
+    );
   }
 
   if (plan.max_vehicles != null && vehicleCount > plan.max_vehicles) {
@@ -133,7 +140,7 @@ export async function POST(request: Request) {
             currency: "XAF",
             externalId: body.subscriptionId,
             redirectUrl: returnUrl,
-            description: `E-Samba ${body.planCode}`,
+            description: `E-Samba ${plan.code}`,
           },
     ),
   }).catch(() => null);
@@ -179,7 +186,7 @@ export async function POST(request: Request) {
     {
       p_org_id: context.orgId,
       p_fleet_id: context.fleetId,
-      p_plan_code: body.planCode.trim(),
+      p_plan_code: plan.code,
       p_vehicle_count: vehicleCount,
       p_duration_months: durationMonths,
       p_provider: "fapshi",

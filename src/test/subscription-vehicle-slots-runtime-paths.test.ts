@@ -72,4 +72,14 @@ describe("subscription vehicle slots runtime paths", () => {
       expect(source).not.toContain("Math.max(body.vehicleCount ?? 1, 1)");
     }
   });
+
+  it("binds legacy Next payment initiation to the persisted subscription plan", () => {
+    for (const source of [esambaWebNotchInitiateSource(), esambaWebFapshiInitiateSource()]) {
+      expect(source).toContain("plan_id");
+      expect(source).toContain(".eq(\"id\", subscription.plan_id)");
+      expect(source).toContain("plan.code !== body.planCode.trim()");
+      expect(source).toContain("p_plan_code: plan.code");
+      expect(source).not.toContain(".eq(\"code\", body.planCode.trim())");
+    }
+  });
 });

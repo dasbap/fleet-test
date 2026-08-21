@@ -1,10 +1,14 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(path, "utf8");
+const readIfExists = (path: string) => existsSync(path) ? read(path) : "";
 
 const migration = read("supabase/migrations/20260820100000_security_audit_followup.sql");
-const paymentMigration = read("supabase/migrations/20260820101000_extend_secure_payment_intent.sql");
+const paymentMigration = [
+  read("supabase/migrations/20260820101000_extend_secure_payment_intent.sql"),
+  readIfExists("supabase/migrations/20260821100000_bind_payment_intent_subscription_plan.sql"),
+].join("\n");
 
 describe("security audit follow-up", () => {
   it("limits platform RBAC override to real platform admins", () => {
@@ -31,6 +35,8 @@ describe("security audit follow-up", () => {
     expect(migration).toContain("REVOKE INSERT, UPDATE, DELETE ON TABLE public.paiements FROM PUBLIC, anon, authenticated");
     expect(paymentMigration).toContain("p_expected_amount IS DISTINCT FROM v_amount");
     expect(paymentMigration).toContain("p_provider NOT IN ('manual', 'cinetpay', 'notch', 'orange_money', 'mtn_momo', 'fapshi')");
+    expect(paymentMigration).toContain("v_subscription_plan_id IS DISTINCT FROM v_plan.id");
+    expect(paymentMigration).toContain("abonnement_plan_incompatible");
   });
 
   it("uses secured payment creation in every active initiation path", () => {
