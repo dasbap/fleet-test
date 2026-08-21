@@ -52,8 +52,13 @@ async function handlePasswordChange(c: Context) {
   }
 
   const appMetadata = currentUserData.user.app_metadata ?? {};
-  const mustSetPassword = appMetadata.must_set_password === true;
-  const temporaryPasswordActive = appMetadata.temporary_password_active === true;
+  const userMetadata = currentUserData.user.user_metadata ?? {};
+  const mustSetPassword =
+    appMetadata.must_set_password === true ||
+    userMetadata.must_set_password === true;
+  const temporaryPasswordActive =
+    appMetadata.temporary_password_active === true ||
+    userMetadata.temporary_password_active === true;
 
   if (!mustSetPassword && !temporaryPasswordActive) {
     return c.json({ ok: true, must_set_password: false });
@@ -88,6 +93,11 @@ async function handlePasswordChange(c: Context) {
           temporary_password_active: false,
           password_set_at: passwordSetAt,
         },
+        user_metadata: {
+          ...userMetadata,
+          must_set_password: false,
+          temporary_password_active: false,
+        },
       });
 
     if (!updateError && updatedUserData.user) {
@@ -106,8 +116,10 @@ async function handlePasswordChange(c: Context) {
   if (
     verificationError ||
     !verifiedUserData.user ||
-    verifiedUserData.user.app_metadata?.must_set_password !== false ||
-    verifiedUserData.user.app_metadata?.temporary_password_active !== false
+    verifiedUserData.user.app_metadata?.must_set_password === true ||
+    verifiedUserData.user.app_metadata?.temporary_password_active === true ||
+    verifiedUserData.user.user_metadata?.must_set_password === true ||
+    verifiedUserData.user.user_metadata?.temporary_password_active === true
   ) {
     return c.json({ ok: false, error: "password_marker_not_cleared" }, 500);
   }
