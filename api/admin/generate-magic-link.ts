@@ -8,7 +8,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   applyCors,
-  getSupabaseEnv,
   handlePreflight,
   requirePlatformAdmin,
 } from "../_lib/vercel-api.js";
@@ -17,8 +16,7 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
-  const env = getSupabaseEnv();
-  applyCors(res, env.appUrl);
+  applyCors(req, res);
   if (handlePreflight(req, res)) return;
 
   if (req.method !== "POST") {
