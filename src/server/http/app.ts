@@ -40,11 +40,16 @@ function isAllowedLocalOrigin(origin: string): boolean {
 export function createServerApp() {
   const app = new Hono();
   const appOrigin = getAppUrl();
+  const productionOrigins = new Set([
+    appOrigin,
+    "https://www.e-samba.com",
+    "https://app.e-samba.com",
+  ]);
   const allowLocalDevelopmentOrigins = process.env.NODE_ENV !== "production";
 
   const isAllowedOrigin = (origin: string | undefined): boolean => {
     if (!origin) return true;
-    if (origin === appOrigin) return true;
+    if (productionOrigins.has(origin)) return true;
     return allowLocalDevelopmentOrigins && isAllowedLocalOrigin(origin);
   };
 
@@ -73,7 +78,7 @@ export function createServerApp() {
     cors({
       origin: (origin) => {
         if (!origin) return null;
-        if (origin === appOrigin) return origin;
+        if (productionOrigins.has(origin)) return origin;
         if (allowLocalDevelopmentOrigins && isAllowedLocalOrigin(origin)) {
           return origin;
         }
