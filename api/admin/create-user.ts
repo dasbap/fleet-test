@@ -69,7 +69,7 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
-  applyCors(res, process.env.VITE_APP_URL ?? "*");
+  applyCors(req, res);
   if (handlePreflight(req, res)) return;
 
   if (req.method !== "POST") {
