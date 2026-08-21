@@ -1,15 +1,4 @@
 #!/usr/bin/env node
-/**
- * Provisionne les comptes démo E-Samba manquants (Auth + profils + adhésions + demo_profiles).
- *
- * Idempotent : crée uniquement ce qui manque, réinitialise les mots de passe connus.
- *
- * Requis : VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (.env.local)
- *
- * Usage : npm run setup:demo-accounts
- *         node --env-file=.env.local scripts/setup-demo-accounts.mjs
- */
-
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,9 +7,6 @@ import { createClient } from "@supabase/supabase-js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 
-const DEMO_PASSWORD = "Demo2025!";
-
-/** Même mapping que create-demo-organization-complete.sql (flottes réelles du projet). */
 const DEMO_ACCOUNTS = [
   {
     email: "demo.organizer@esamba.test",
@@ -98,7 +84,32 @@ function log(msg, kind = "") {
   console.log(prefix + msg);
 }
 
-/** Recherche un utilisateur par email via l’API Admin REST (contournement si listUsers échoue). */
+function isLocalSupabaseUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.hostname === "127.0.0.1" || url.hostname === "localhost";
+  } catch {
+    return false;
+  }
+}
+
+function requireDemoPassword() {
+  const password = process.env.DEMO_PASSWORD?.trim() ?? "";
+  if (password.length < 16) {
+    throw new Error("DEMO_PASSWORD est requis et doit contenir au moins 16 caractères.");
+  }
+  return password;
+}
+
+function assertSafeTarget(url) {
+  if (isLocalSupabaseUrl(url)) return;
+  if (process.env.ALLOW_REMOTE_DEMO_PROVISIONING !== "true") {
+    throw new Error(
+      "Provisioning démo distant refusé. Définissez explicitement ALLOW_REMOTE_DEMO_PROVISIONING=true après avoir vérifié la cible.",
+    );
+  }
+}
+
 async function findUserByEmail(url, serviceRoleKey, email) {
   const endpoint = new URL("/auth/v1/admin/users", url);
   endpoint.searchParams.set("page", "1");
@@ -125,7 +136,7 @@ async function findUserByEmail(url, serviceRoleKey, email) {
   return null;
 }
 
-async function ensureAuthUser(supabase, url, serviceRoleKey, email) {
+async function ensureAuthUser(supabase, url, serviceRoleKey, email, password) {
   let user = null;
   try {
     user = await findUserByEmail(url, serviceRoleKey, email);
@@ -134,19 +145,17 @@ async function ensureAuthUser(supabase, url, serviceRoleKey, email) {
   }
 
   if (user) {
-    // Ne pas forcer updateUser(password) si le compte existe déjà : Supabase peut
-    // rejeter Demo2025! comme « mot de passe faible » alors que la connexion fonctionne.
     const anon = process.env.VITE_SUPABASE_ANON_KEY;
     if (anon) {
       const probe = createClient(url, anon);
-      const { error: signErr } = await probe.auth.signInWithPassword({ email, password: DEMO_PASSWORD });
+      const { error: signErr } = await probe.auth.signInWithPassword({ email, password });
       if (!signErr) {
         log(`Compte existant — connexion OK : ${email}`, "ok");
         return user.id;
       }
     }
     const { error } = await supabase.auth.admin.updateUserById(user.id, {
-      password: DEMO_PASSWORD,
+      password,
       email_confirm: true,
     });
     if (error) throw new Error(`${email} updateUser : ${error.message}`);
@@ -156,7 +165,7 @@ async function ensureAuthUser(supabase, url, serviceRoleKey, email) {
 
   const { data, error } = await supabase.auth.admin.createUser({
     email,
-    password: DEMO_PASSWORD,
+    password,
     email_confirm: true,
     user_metadata: { full_name: email.split(".")[1]?.split("@")[0] ?? email },
   });
@@ -230,6 +239,9 @@ async function main() {
     process.exit(1);
   }
 
+  assertSafeTarget(url);
+  const demoPassword = requireDemoPassword();
+
   const supabase = createClient(url, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -238,7 +250,7 @@ async function main() {
   log(`Flottes démo résolues : ${Object.keys(fleetIds).join(", ")}`, "ok");
 
   for (const acc of DEMO_ACCOUNTS) {
-    const userId = await ensureAuthUser(supabase, url, serviceRoleKey, acc.email);
+    const userId = await ensureAuthUser(supabase, url, serviceRoleKey, acc.email, demoPassword);
     await upsertProfil(supabase, userId, acc.fullName);
 
     for (const adh of acc.adhesions) {
