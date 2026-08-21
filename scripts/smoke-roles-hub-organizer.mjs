@@ -1,15 +1,3 @@
-/**
- * Smoke E2E — hub /dashboard/roles en tant qu'organisateur (Supabase réel + Playwright).
- *
- * Prérequis :
- *   - Migrations RBAC appliquées sur le projet lié
- *   - Compte démo : demo.organizer@esamba.test / Demo2025!
- *   - Serveur Vite : npm run dev (port 5173 par défaut)
- *
- * Usage :
- *   E2E_BASE_URL=http://127.0.0.1:5173 node scripts/smoke-roles-hub-organizer.mjs
- */
-
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import process from "node:process";
@@ -18,7 +6,6 @@ import { resolve } from "node:path";
 
 const DEFAULT_BASE = "http://127.0.0.1:8080";
 const DEMO_EMAIL = "demo.organizer@esamba.test";
-const DEMO_PASSWORD = "Demo2025!";
 
 function loadEnvLocal() {
   const path = resolve(process.cwd(), ".env.local");
@@ -29,7 +16,7 @@ function loadEnvLocal() {
     const i = t.indexOf("=");
     if (i === -1) continue;
     const key = t.slice(0, i).trim();
-    const val = t.slice(i + 1).trim();
+    const val = t.slice(i + 1).trim().replace(/^["']|["']$/g, "");
     if (!process.env[key]) process.env[key] = val;
   }
 }
@@ -38,7 +25,12 @@ loadEnvLocal();
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = process.env.VITE_SUPABASE_ANON_KEY;
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD?.trim() ?? "";
 const base = process.env.E2E_BASE_URL?.trim() || DEFAULT_BASE;
+
+if (DEMO_PASSWORD.length < 16) {
+  throw new Error("DEMO_PASSWORD est requis et doit contenir au moins 16 caractères.");
+}
 
 function fail(msg) {
   console.error(`[FAIL] ${msg}`);
@@ -140,21 +132,16 @@ async function uiSmoke() {
 
   try {
     await page.goto(`${base}/auth`, { waitUntil: "networkidle", timeout: 90_000 });
-
     const emailInput = page.locator('input[type="email"]').first();
     await emailInput.waitFor({ state: "visible", timeout: 15_000 });
     await emailInput.fill(DEMO_EMAIL);
-
     const passwordInput = page.locator('input[type="password"]').first();
     await passwordInput.fill(DEMO_PASSWORD);
-
     await page.getByRole("button", { name: /connexion|se connecter|continuer/i }).first().click();
-
     await page.waitForURL(/\/dashboard/, { timeout: 45_000 });
     ok("UI : connexion organisateur réussie");
 
     await page.goto(`${base}/dashboard/roles`, { waitUntil: "networkidle", timeout: 60_000 });
-
     const pathname = new URL(page.url()).pathname;
     if (!pathname.includes("/dashboard/roles")) {
       fail(`UI : redirection inattendue vers ${page.url()}`);
@@ -178,10 +165,6 @@ async function uiSmoke() {
         ok(`UI : onglet ${tab} accessible`);
       }
       ok("UI : hub rôles interactif (onglets visibles)");
-    } else {
-      console.warn(
-        "[WARN] UI : onglets non détectés en headless (Clerk/localhost) — validation fonctionnelle assurée par les RPC API.",
-      );
     }
 
     if (errors.length) {
@@ -197,21 +180,11 @@ async function uiSmoke() {
 
 async function main() {
   console.log("=== Smoke hub rôles (organisateur) ===\n");
-
   const apiResult = await apiSmoke();
-  if (!apiResult) {
-    process.exit(process.exitCode ?? 1);
-  }
-
+  if (!apiResult) process.exit(process.exitCode ?? 1);
   const uiOk = await uiSmoke();
-  if (!uiOk && process.exitCode !== 1) {
-    process.exitCode = 1;
-  }
-
-  if (process.exitCode === 1) {
-    console.log("\n=== Échec smoke ===");
-    process.exit(1);
-  }
+  if (!uiOk && process.exitCode !== 1) process.exitCode = 1;
+  if (process.exitCode === 1) process.exit(1);
   console.log("\n=== Smoke hub rôles : succès ===");
 }
 
