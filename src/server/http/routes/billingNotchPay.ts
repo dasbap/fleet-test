@@ -10,12 +10,12 @@ import { rateLimit } from "../middleware/rateLimitMiddleware.js";
 const notchIntentSchema = z.object({
   orgId: z.string().uuid(),
   fleetId: z.string().uuid(),
-  planCode: z.string().min(1),
+  planCode: z.string().trim().min(1).max(100),
   vehicleCount: z.number().int().positive(),
-  durationMonths: z.number().int().positive().optional(),
+  durationMonths: z.number().int().positive().max(36).optional(),
   vehicleIds: z.array(z.string().uuid()).optional(),
-  email: z.string().email().optional(),
-  phone: z.string().min(6).optional(),
+  email: z.string().email().max(320).optional(),
+  phone: z.string().min(6).max(64).optional(),
 });
 
 async function handleNotchPayInitiate(c: Context) {
@@ -43,7 +43,6 @@ async function handleNotchPayInitiate(c: Context) {
   }
 }
 
-// Rate limit : 5 initiations/minute/IP — protection anti-spam Notch Pay
 const billingRateLimit = rateLimit({ maxRequests: 5, windowMs: 60_000 });
 
 export function registerBillingNotchPayRoutes(app: Hono) {
