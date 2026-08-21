@@ -6,7 +6,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   applyCors,
-  getSupabaseEnv,
   handlePreflight,
   requireAuthenticatedUser,
 } from "../_lib/vercel-api.js";
@@ -21,7 +20,6 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
-  const env = getSupabaseEnv();
   applyCors(req, res);
   if (handlePreflight(req, res)) return;
 
