@@ -1,7 +1,11 @@
 import { chromium } from "playwright";
 
 const BASE_URL = process.env.E2E_BASE_URL?.trim() || "http://localhost:8080";
-const PASSWORD = "Demo2025!";
+const PASSWORD = process.env.DEMO_PASSWORD?.trim() ?? "";
+
+if (PASSWORD.length < 16) {
+  throw new Error("DEMO_PASSWORD est requis et doit contenir au moins 16 caractères.");
+}
 
 const accounts = [
   { role: "Organizer", email: "demo.organizer@esamba.test" },
