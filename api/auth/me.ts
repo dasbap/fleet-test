@@ -22,7 +22,7 @@ export default async function handler(
   res: VercelResponse,
 ): Promise<void> {
   const env = getSupabaseEnv();
-  applyCors(res, env.appUrl);
+  applyCors(req, res);
   if (handlePreflight(req, res)) return;
 
   if (req.method !== "GET") {
