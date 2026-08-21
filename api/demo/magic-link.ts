@@ -5,15 +5,33 @@ import { applyCors, getSupabaseEnv, handlePreflight } from "../_lib/vercel-api.j
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function resolveAppUrl(req: VercelRequest, configuredAppUrl: string): string {
-  const origin = typeof req.headers.origin === "string" ? req.headers.origin.replace(/\/$/, "") : "";
-  if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
-    return origin;
+  const fallback = configuredAppUrl.replace(/\/$/, "");
+  if (process.env.NODE_ENV === "production") return fallback;
+
+  const rawOrigin = Array.isArray(req.headers.origin)
+    ? req.headers.origin[0]
+    : req.headers.origin;
+  const origin = typeof rawOrigin === "string" ? rawOrigin.trim().replace(/\/$/, "") : "";
+
+  try {
+    const url = new URL(origin);
+    if (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+      url.username === "" &&
+      url.password === ""
+    ) {
+      return origin;
+    }
+  } catch {
+    return fallback;
   }
-  return configuredAppUrl.replace(/\/$/, "");
+
+  return fallback;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
-  applyCors(res, req.headers.origin as string | undefined);
+  applyCors(req, res);
   if (handlePreflight(req, res)) return;
 
   if (req.method !== "POST") {
