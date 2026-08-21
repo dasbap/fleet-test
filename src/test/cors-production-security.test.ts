@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { afterEach, describe, expect, it } from "vitest";
 import { applyCors } from "../../api/_lib/vercel-api";
+import { resolveAppUrl } from "../../api/demo/magic-link";
 import { createServerApp } from "@/server/http/app";
 
 describe("Production CORS security", () => {
@@ -10,18 +11,33 @@ describe("Production CORS security", () => {
     process.env = { ...originalEnv };
   });
 
+  function corsOrigin(origin: string): string | undefined {
+    const headers = new Map<string, string>();
+    const req = { headers: { origin } };
+    const res = {
+      setHeader: (name: string, value: string) => headers.set(name, value),
+    };
+
+    applyCors(req as never, res as never);
+    return headers.get("Access-Control-Allow-Origin");
+  }
+
+  it("utilise l'origine réelle de la requête pour les BFF Vercel", () => {
+    process.env.NODE_ENV = "production";
+    process.env.APP_URL = "https://www.e-samba.com";
+    process.env.VITE_APP_URL = "https://www.e-samba.com";
+
+    expect(corsOrigin("https://www.e-samba.com")).toBe("https://www.e-samba.com");
+    expect(corsOrigin("https://app.e-samba.com")).toBe("https://app.e-samba.com");
+    expect(corsOrigin("https://evil.example")).toBe("https://www.e-samba.com");
+  });
+
   it("ne reflete jamais localhost en production sur les BFF Vercel et Hono", async () => {
     process.env.NODE_ENV = "production";
     process.env.APP_URL = "https://www.e-samba.com";
     process.env.VITE_APP_URL = "https://www.e-samba.com";
 
-    const headers = new Map<string, string>();
-    const res = {
-      setHeader: (name: string, value: string) => headers.set(name, value),
-    };
-
-    applyCors(res as never, "http://localhost:5173");
-    expect(headers.get("Access-Control-Allow-Origin")).toBe("https://www.e-samba.com");
+    expect(corsOrigin("http://localhost:5173")).toBe("https://www.e-samba.com");
 
     const app = createServerApp();
     const response = await app.request("/health", {
@@ -37,9 +53,20 @@ describe("Production CORS security", () => {
     process.env.APP_URL = "https://www.e-samba.com";
     process.env.VITE_APP_URL = "https://www.e-samba.com";
 
-    const app = createServerApp();
     const ambiguousOrigin = "http://localhost:5173@evil.example";
+    const resolved = resolveAppUrl(
+      { headers: { origin: ambiguousOrigin } } as never,
+      "https://www.e-samba.com",
+    );
+    expect(resolved).toBe("https://www.e-samba.com");
 
+    const localResolved = resolveAppUrl(
+      { headers: { origin: "http://localhost:5173" } } as never,
+      "https://www.e-samba.com",
+    );
+    expect(localResolved).toBe("http://localhost:5173");
+
+    const app = createServerApp();
     const adminResponse = await app.request("/api/admin/create-prospect", {
       method: "POST",
       headers: {
