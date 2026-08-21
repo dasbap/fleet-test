@@ -9,6 +9,7 @@ import {
 
 const MIN_PASSWORD_LENGTH = 8;
 const MAX_PASSWORD_LENGTH = 256;
+const MARKER_UPDATE_ATTEMPTS = 3;
 
 function readPassword(body: unknown): string {
   if (!body || typeof body !== "object") {
@@ -85,8 +86,13 @@ export default async function handler(
     }
 
     const appMetadata = currentUserData.user.app_metadata ?? {};
-    const mustSetPassword = appMetadata.must_set_password === true;
-    const temporaryPasswordActive = appMetadata.temporary_password_active === true;
+    const userMetadata = currentUserData.user.user_metadata ?? {};
+    const mustSetPassword =
+      appMetadata.must_set_password === true ||
+      userMetadata.must_set_password === true;
+    const temporaryPasswordActive =
+      appMetadata.temporary_password_active === true ||
+      userMetadata.temporary_password_active === true;
 
     if (!mustSetPassword && !temporaryPasswordActive) {
       res.status(200).json({
@@ -115,22 +121,31 @@ export default async function handler(
     }
 
     const passwordSetAt = new Date().toISOString();
-    const { data: updatedUserData, error: updateError } =
-      await admin.auth.admin.updateUserById(auth.user.id, {
-        app_metadata: {
-          ...appMetadata,
-          must_set_password: false,
-          temporary_password_active: false,
-          password_set_at: passwordSetAt,
-        },
-      });
+    let markerUpdated = false;
 
-    if (updateError || !updatedUserData.user) {
-      console.error(
-        "[bff/auth/clear-password-marker] update failed:",
-        updateError?.message
-      );
+    for (let attempt = 0; attempt < MARKER_UPDATE_ATTEMPTS; attempt += 1) {
+      const { data: updatedUserData, error: updateError } =
+        await admin.auth.admin.updateUserById(auth.user.id, {
+          app_metadata: {
+            ...appMetadata,
+            must_set_password: false,
+            temporary_password_active: false,
+            password_set_at: passwordSetAt,
+          },
+          user_metadata: {
+            ...userMetadata,
+            must_set_password: false,
+            temporary_password_active: false,
+          },
+        });
 
+      if (!updateError && updatedUserData.user) {
+        markerUpdated = true;
+        break;
+      }
+    }
+
+    if (!markerUpdated) {
       res.status(500).json({
         ok: false,
         error: "password_marker_update_failed",
@@ -156,7 +171,12 @@ export default async function handler(
       return;
     }
 
-    if (verifiedUserData.user.app_metadata?.must_set_password !== false) {
+    if (
+      verifiedUserData.user.app_metadata?.must_set_password === true ||
+      verifiedUserData.user.app_metadata?.temporary_password_active === true ||
+      verifiedUserData.user.user_metadata?.must_set_password === true ||
+      verifiedUserData.user.user_metadata?.temporary_password_active === true
+    ) {
       res.status(500).json({
         ok: false,
         error: "password_marker_not_cleared",
