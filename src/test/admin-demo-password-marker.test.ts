@@ -145,6 +145,10 @@ describe("Admin demo password marker", () => {
           temporary_password_active: false,
           password_set_at: expect.any(String),
         }),
+        user_metadata: expect.objectContaining({
+          must_set_password: false,
+          temporary_password_active: false,
+        }),
       }),
     );
     expect(await res.json()).toEqual(
@@ -152,6 +156,89 @@ describe("Admin demo password marker", () => {
         ok: true,
         must_set_password: false,
         password_set_at: expect.any(String),
+      }),
+    );
+  });
+
+  it("nettoie un marqueur legacy conserve uniquement dans user_metadata", async () => {
+    const updateUser = vi.fn().mockResolvedValue({ data: { user: { id: "user-legacy" } }, error: null });
+    const updateUserById = vi.fn().mockResolvedValue({
+      data: { user: { id: "user-legacy" } },
+      error: null,
+    });
+    const getUserById = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          user: {
+            id: "user-legacy",
+            app_metadata: {},
+            user_metadata: {
+              full_name: "Legacy User",
+              must_set_password: true,
+              temporary_password_active: true,
+            },
+          },
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          user: {
+            id: "user-legacy",
+            app_metadata: {
+              must_set_password: false,
+              temporary_password_active: false,
+            },
+            user_metadata: {
+              full_name: "Legacy User",
+              must_set_password: false,
+              temporary_password_active: false,
+            },
+          },
+        },
+        error: null,
+      });
+
+    vi.doMock("@/server/infra/supabaseUserClient", () => ({
+      createSupabaseUserClient: () => ({
+        auth: {
+          getUser: vi.fn().mockResolvedValue({
+            data: { user: { id: "user-legacy" } },
+            error: null,
+          }),
+          updateUser,
+        },
+      }),
+    }));
+
+    vi.doMock("@/server/infra/supabaseServiceClient", () => ({
+      createSupabaseServiceClient: () => ({
+        auth: { admin: { getUserById, updateUserById } },
+      }),
+    }));
+
+    const { createServerApp } = await import("@/server/http/app");
+    const app = createServerApp();
+    const res = await app.request("/api/auth/clear-password-marker", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer user-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ password: "NewStrongPassword123!" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(updateUser).toHaveBeenCalledTimes(1);
+    expect(updateUserById).toHaveBeenCalledWith(
+      "user-legacy",
+      expect.objectContaining({
+        user_metadata: expect.objectContaining({
+          full_name: "Legacy User",
+          must_set_password: false,
+          temporary_password_active: false,
+        }),
       }),
     );
   });
