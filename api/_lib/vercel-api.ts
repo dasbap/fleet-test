@@ -4,7 +4,7 @@ import {
   type SupabaseClient,
   type User,
 } from "@supabase/supabase-js";
-// todo
+
 export interface SupabaseEnv {
   url: string;
   anonKey: string;
@@ -27,8 +27,14 @@ export function getSupabaseEnv(): SupabaseEnv {
   };
 }
 
-export function applyCors(res: VercelResponse, origin = "*"): void {
-  res.setHeader("Access-Control-Allow-Origin", resolveAllowedCorsOrigin(origin));
+function getRequestOrigin(req: VercelRequest): string {
+  const origin = req.headers.origin;
+  if (Array.isArray(origin)) return origin[0]?.trim() ?? "";
+  return typeof origin === "string" ? origin.trim() : "";
+}
+
+export function applyCors(req: VercelRequest, res: VercelResponse): void {
+  res.setHeader("Access-Control-Allow-Origin", resolveAllowedCorsOrigin(getRequestOrigin(req)));
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Vary", "Origin");
