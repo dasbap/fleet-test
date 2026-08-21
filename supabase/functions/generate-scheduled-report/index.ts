@@ -60,11 +60,25 @@ function corsHeaders(req: Request): Record<string, string> {
   };
 }
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const left = encoder.encode(a);
+  const right = encoder.encode(b);
+  const length = Math.max(left.length, right.length);
+  let diff = left.length ^ right.length;
+
+  for (let index = 0; index < length; index += 1) {
+    diff |= (left[index] ?? 0) ^ (right[index] ?? 0);
+  }
+
+  return diff === 0;
+}
+
 function isAuthorized(req: Request): boolean {
   const authorization = req.headers.get("authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) return false;
   const token = authorization.slice(7).trim();
-  return Boolean(SUPABASE_SERVICE_ROLE_KEY) && token === SUPABASE_SERVICE_ROLE_KEY;
+  return Boolean(SUPABASE_SERVICE_ROLE_KEY) && timingSafeEqual(token, SUPABASE_SERVICE_ROLE_KEY);
 }
 
 function json(req: Request, body: unknown, status: number): Response {
