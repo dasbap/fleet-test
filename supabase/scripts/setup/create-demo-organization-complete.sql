@@ -12,7 +12,7 @@
 -- - Jetons QR démo (si utilisateur demo.organizer@esamba.test existe)
 -- - Profils + adhésions flotte pour les emails @esamba.test déjà présents dans auth.users
 --
--- Mots de passe : voir docs/DEMO-CREDENTIALS.md (Demo2025!)
+-- Mots de passe : fournis uniquement via un environnement non versionné ; voir docs/DEMO-CREDENTIALS.md
 -- Vérification : supabase/scripts/verify/verify-demo-organization.sql
 -- =====================================================
 
