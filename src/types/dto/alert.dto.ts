@@ -13,6 +13,8 @@ export type OperationalAlertTypeDto =
   | "maintenance_due"
   | "document_expired"
   | "failure_risk"
+  | "speeding"
+  | "geofence_enter"
   | "geofence_exit"
   | "faq_answer";
 

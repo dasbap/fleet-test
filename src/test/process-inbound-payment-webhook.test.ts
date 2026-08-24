@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { runInboundPaymentWebhook } from "@/server/domain/billing/processInboundPaymentWebhook";
 
 const ORG = "a0000000-0000-4000-8000-000000000001";
@@ -8,8 +8,8 @@ const FLEET = "a0000000-0000-4000-8000-000000000002";
 const PLAN = "a0000000-0000-4000-8000-000000000003";
 const PAY = "a0000000-0000-4000-8000-000000000004";
 const SUB = "a0000000-0000-4000-8000-000000000005";
+const CLAIM_TOKEN = "a0000000-0000-4000-8000-000000000006";
 
-/** Chaîne PostgREST minimale pour le scénario « premier paiement réussi » sans véhicules. */
 function createMockAdmin(): SupabaseClient {
   let paiementsFrom = 0;
   let abonnementsFrom = 0;
@@ -17,6 +17,7 @@ function createMockAdmin(): SupabaseClient {
   const payment = {
     id: PAY,
     org_id: ORG,
+    provider: "notch",
     status: "pending",
     raw_payload: {
       planCode: "starter",
@@ -28,6 +29,12 @@ function createMockAdmin(): SupabaseClient {
   };
 
   return {
+    rpc: vi.fn(async (fn: string) => {
+      if (fn === "claim_payment_webhook_effects") return { data: CLAIM_TOKEN, error: null };
+      if (fn === "complete_payment_webhook_effects") return { data: true, error: null };
+      if (fn === "release_payment_webhook_effects") return { data: true, error: null };
+      throw new Error(`rpc inattendue: ${fn}`);
+    }),
     from(table: string) {
       if (table === "paiements") {
         paiementsFrom += 1;
@@ -40,10 +47,14 @@ function createMockAdmin(): SupabaseClient {
             }),
           };
         }
-        return {
-          update: () => ({
-            eq: async () => ({ error: null }),
+        const transitionChain = {
+          eq: () => transitionChain,
+          select: () => ({
+            maybeSingle: async () => ({ data: { id: PAY }, error: null }),
           }),
+        };
+        return {
+          update: () => transitionChain,
         };
       }
       if (table === "abonnements") {
@@ -98,7 +109,7 @@ function createMockAdmin(): SupabaseClient {
           select: () => ({
             eq: () => ({
               eq: () => ({
-                maybeSingle: async () => ({ data: { id: PLAN }, error: null }),
+                maybeSingle: async () => ({ data: { id: PLAN, code: "starter", max_vehicles: 1 }, error: null }),
               }),
             }),
           }),
@@ -139,6 +150,14 @@ describe("runInboundPaymentWebhook", () => {
     expect(res.normalizedStatus).toBe("succeeded");
     expect(res.subscriptionActivated).toBe(true);
     expect(res.subscriptionId).toBe(SUB);
+    expect(admin.rpc).toHaveBeenCalledWith("claim_payment_webhook_effects", {
+      p_payment_id: PAY,
+      p_lease_seconds: 900,
+    });
+    expect(admin.rpc).toHaveBeenCalledWith("complete_payment_webhook_effects", {
+      p_payment_id: PAY,
+      p_claim_token: CLAIM_TOKEN,
+    });
   });
 
   it("retourne sans activation si transition impossible", async () => {
@@ -152,6 +171,7 @@ describe("runInboundPaymentWebhook", () => {
                 data: {
                   id: PAY,
                   org_id: ORG,
+                  provider: "notch",
                   status: "failed",
                   raw_payload: {},
                 },
@@ -164,6 +184,60 @@ describe("runInboundPaymentWebhook", () => {
     } as unknown as SupabaseClient;
     const res = await runInboundPaymentWebhook(admin, "EXT-REF-2", "succeeded");
     expect(res.skippedReason).toBe("no_transition");
+    expect(res.subscriptionActivated).toBe(false);
+  });
+
+  it("perd proprement une course compare-and-swap et n'applique aucun effet", async () => {
+    let paiementsFrom = 0;
+    const rpc = vi.fn();
+    const admin = {
+      rpc,
+      from(table: string) {
+        if (table !== "paiements") throw new Error("unexpected");
+        paiementsFrom += 1;
+        if (paiementsFrom === 1) {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: {
+                    id: PAY,
+                    org_id: ORG,
+                    provider: "notch",
+                    status: "pending",
+                    raw_payload: {},
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        const chain = {
+          eq: () => chain,
+          select: () => ({
+            maybeSingle: async () => ({ data: null, error: null }),
+          }),
+        };
+        return { update: () => chain };
+      },
+    } as unknown as SupabaseClient;
+
+    const res = await runInboundPaymentWebhook(admin, "EXT-RACE", "succeeded");
+    expect(res.skippedReason).toBe("no_transition");
+    expect(res.subscriptionActivated).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("n'applique pas deux fois les effets si le paiement est déjà claimé", async () => {
+    const admin = createMockAdmin();
+    (admin.rpc as ReturnType<typeof vi.fn>).mockImplementation(async (fn: string) => {
+      if (fn === "claim_payment_webhook_effects") return { data: null, error: null };
+      return { data: true, error: null };
+    });
+
+    const res = await runInboundPaymentWebhook(admin, "EXT-REF-3", "succeeded");
+    expect(res.skippedReason).toBe("effects_in_progress_or_done");
     expect(res.subscriptionActivated).toBe(false);
   });
 });

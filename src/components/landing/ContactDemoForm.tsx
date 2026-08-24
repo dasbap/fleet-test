@@ -18,7 +18,7 @@ const CENTRAL_AFRICA_COUNTRIES = [
   { code: "TD", label: "Tchad" },
   { code: "CG", label: "Congo" },
   { code: "GA", label: "Gabon" },
-  { code: "GQ", label: "Guinee equatoriale" },
+  { code: "GQ", label: "Guinée équatoriale" },
 ] as const;
 
 interface ContactDemoFormProps {
@@ -42,7 +42,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     event.preventDefault();
     setFormError(null);
     if (!form.country_code) {
-      setFormError("Selectionnez un pays d'Afrique centrale.");
+      setFormError("Sélectionnez un pays d'Afrique centrale.");
       return;
     }
 
@@ -66,10 +66,10 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       <div className={className}>
         <div className="py-8 text-center">
           <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-primary" />
-          <h3 className="mb-2 text-xl font-heading font-bold">Demande envoyee !</h3>
+          <h3 className="mb-2 text-xl font-heading font-bold">Demande envoyée !</h3>
           <p className="text-sm text-muted-foreground">
-            Votre demande est transmise aux admins. Vous recevrez un email quand votre acces
-            sera accepte ou refuse.
+            Votre demande est transmise aux admins. Vous recevrez un email quand votre accès
+            sera accepté ou refusé.
           </p>
         </div>
       </div>
@@ -78,7 +78,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)} className={className}>
-      <h3 className="mb-6 text-xl font-heading font-bold">Planifier ma demo gratuite</h3>
+      <h3 className="mb-6 text-xl font-heading font-bold">Planifier ma démo gratuite</h3>
       <div className="space-y-4">
         <div>
           <Label htmlFor="demo-name">Nom complet *</Label>
@@ -115,7 +115,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="demo-phone">Telephone *</Label>
+          <Label htmlFor="demo-phone">Téléphone *</Label>
           <Input
             id="demo-phone"
             required
@@ -127,7 +127,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="demo-company-identifier">Numero d'identifiant entreprise *</Label>
+          <Label htmlFor="demo-company-identifier">Numéro d'identifiant entreprise *</Label>
           <Input
             id="demo-company-identifier"
             required
@@ -146,7 +146,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
             onValueChange={(value) => setForm({ ...form, country_code: value })}
           >
             <SelectTrigger id="demo-country" className="mt-1">
-              <SelectValue placeholder="Selectionner un pays" />
+              <SelectValue placeholder="Sélectionner un pays" />
             </SelectTrigger>
             <SelectContent>
               {CENTRAL_AFRICA_COUNTRIES.map((country) => (
@@ -159,7 +159,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
         </div>
         {formError ? <p className="text-xs text-destructive">{formError}</p> : null}
         <Button type="submit" className="w-full gap-2" disabled={submitDemoRequest.isPending}>
-          {submitDemoRequest.isPending ? "Envoi..." : "Demander ma demo"}
+          {submitDemoRequest.isPending ? "Envoi..." : "Demander ma démo"}
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>

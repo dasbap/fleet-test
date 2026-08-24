@@ -152,9 +152,9 @@ function DashboardCommandCenter({
               <p className="text-sm font-medium text-muted-foreground">
                 {firstName ? `Bonjour ${firstName}` : "Bonjour"}
               </p>
-              <h1 className="mt-1 text-2xl font-heading font-semibold text-foreground">
+              <h2 className="mt-1 text-2xl font-heading font-semibold text-foreground">
                 Centre de controle flotte
-              </h1>
+              </h2>
               <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
                 Priorites du jour, incidents et capacite operationnelle reunis au meme endroit.
               </p>

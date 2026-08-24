@@ -2,7 +2,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createServerApp } from "@/server/http/app";
 import { toSupabaseInfrastructureError } from "@/lib/supabase-runtime-errors";
-import { resolveAppUrlFromOrigin } from "@/server/http/routes/adminDemo";
+import {
+  generateSecureTempPassword,
+  resolveAppUrlFromOrigin,
+} from "@/server/http/routes/adminDemo";
 
 describe("BFF routes (Hono)", () => {
   const originalEnv = { ...process.env };
@@ -168,6 +171,17 @@ describe("BFF routes (Hono)", () => {
   it("genere les liens admin demo sur l'origine locale quand le panel tourne en local", () => {
     expect(resolveAppUrlFromOrigin("http://localhost:8080")).toBe("http://localhost:8080");
     expect(resolveAppUrlFromOrigin("http://127.0.0.1:8085/")).toBe("http://127.0.0.1:8085");
+  });
+
+  it("genere des mots de passe temporaires non limites a 4 chiffres", () => {
+    const samples = Array.from({ length: 20 }, () => generateSecureTempPassword());
+
+    expect(samples.every((password) => password.length >= 14)).toBe(true);
+    expect(samples.some((password) => !/^Samba\d{4}!$/.test(password))).toBe(true);
+    expect(samples.every((password) => /[A-Z]/.test(password))).toBe(true);
+    expect(samples.every((password) => /[a-z]/.test(password))).toBe(true);
+    expect(samples.every((password) => /\d/.test(password))).toBe(true);
+    expect(samples.every((password) => /[!@#$%]/.test(password))).toBe(true);
   });
 
   it("POST /webhooks/payment refuse sans secret", async () => {

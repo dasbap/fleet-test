@@ -10,15 +10,15 @@ export default function FonctionnalitesPage() {
   const benefits = [
     {
       title: "Voir plus clair",
-      text: "Une lecture simple de la flotte, des equipes et des priorites du jour.",
+      text: "Une lecture simple de la flotte, des équipes et des priorités du jour.",
     },
     {
       title: "Agir plus vite",
-      text: "Des signaux utiles pour prendre les bonnes decisions sans multiplier les appels.",
+      text: "Des signaux utiles pour prendre les bonnes décisions sans multiplier les appels.",
     },
     {
       title: "Garder le cap",
-      text: "Une direction mieux informee, sans exposer les regles internes du produit.",
+      text: "Une direction mieux informée, sans exposer les règles internes du produit.",
     },
   ];
 
@@ -28,10 +28,10 @@ export default function FonctionnalitesPage() {
         eyebrow="Fonctionnalites"
         title={
           <>
-            Une flotte plus <span className="text-gradient">lisible</span>, sans tout devoiler
+            Une flotte plus <span className="text-gradient">lisible</span>, sans tout dévoiler
           </>
         }
-        description="E-Samba presente la valeur de votre pilotage de flotte de facon claire, rassurante et volontairement generale."
+        description="E-Samba présente la valeur de votre pilotage de flotte de façon claire, rassurante et volontairement générale."
       />
 
       <section className="py-10 md:py-14">

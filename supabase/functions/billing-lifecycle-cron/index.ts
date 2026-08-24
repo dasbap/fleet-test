@@ -23,6 +23,16 @@ const CRON_SECRET      = Deno.env.get("CRON_SECRET") ?? "";
 const SUPABASE_URL     = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ba = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ba.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ba.length; i++) diff |= ba[i]! ^ bb[i]!;
+  return diff === 0;
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 interface LifecycleResult {
@@ -60,7 +70,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   } catch { /* body vide ou non-JSON → token vide → 401 */ }
 
   const token = (body.secret as string | undefined)?.trim() ?? "";
-  if (!CRON_SECRET || token !== CRON_SECRET) {
+  if (!CRON_SECRET || !timingSafeEqual(token, CRON_SECRET)) {
     console.error("[billing-lifecycle-cron] Unauthorized — bad CRON_SECRET");
     return new Response("Unauthorized", { status: 401 });
   }

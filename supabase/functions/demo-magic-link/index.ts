@@ -89,6 +89,23 @@ function json(data: unknown, status = 200, req?: Request): Response {
   });
 }
 
+async function hashSensitiveValue(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest).slice(0, 8))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ba = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ba.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ba.length; i++) diff |= ba[i]! ^ bb[i]!;
+  return diff === 0;
+}
+
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -122,7 +139,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const authHeader = req.headers.get("Authorization") ?? "";
     const token      = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
 
-    if (!ADMIN_SECRET || token !== ADMIN_SECRET) {
+    if (!ADMIN_SECRET || !timingSafeEqual(token, ADMIN_SECRET)) {
       return json({ ok: false, error: "unauthorized" }, 401);
     }
 
@@ -133,7 +150,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     // Rate-limit : 10 créations/heure pour ce token admin (hash du token pour la clé)
-    const tokenHash = token.slice(0, 8); // Préfixe non-sensible pour la clé
+    const tokenHash = await hashSensitiveValue(token);
     const { data: rlData } = await admin.rpc("demo_check_rate_limit", {
       p_key:       `create_magic_link:${tokenHash}`,
       p_max_count: 10,
@@ -161,7 +178,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const link = linkData as { ok: boolean; token: string };
     const magicUrl = `${APP_URL}/demo/access?token=${link.token}`;
 
-    console.log(`[demo-magic-link] Created for ${email} → ${link.token}`);
+    console.log(`[demo-magic-link] Created for ${email} -> ${link.token.slice(0, 8)}...`);
     return json({ ok: true, magic_url: magicUrl });
   }
 
@@ -183,7 +200,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     // Rate-limit : 20 tentatives/heure par token (protection brute-force)
     const { data: rlData } = await admin.rpc("demo_check_rate_limit", {
-      p_key:       `validate_token:${token}`,
+      p_key:       `validate_token:${await hashSensitiveValue(token)}`,
       p_max_count: 20,
     });
 

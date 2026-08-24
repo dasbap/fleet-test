@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 /** URL publique de l'app (callbacks et redirects paiement). */
 export function getAppUrl(): string {
   // Preview Vercel : URL dynamique par déploiement (évite localhost ou www en preview)
@@ -71,6 +73,6 @@ export function resolveDurationMonths(
 
 export function buildMerchantReference(prefix: string): string {
   const suffix = Date.now().toString(36).toUpperCase();
-  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const rand = randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
   return `${prefix}-${suffix}-${rand}`;
 }

@@ -1,4 +1,5 @@
 import type { Context, Hono } from "hono";
+import { randomInt } from "node:crypto";
 import { z } from "zod";
 import { getAppUrl, getSupabaseUrl } from "../../env.js";
 import { getBearerToken } from "../auth.js";
@@ -32,9 +33,13 @@ function getAdminSecret(): string | undefined {
   return process.env.ADMIN_SECRET?.trim() || undefined;
 }
 
-function generateTempPassword(): string {
-  const suffix = Math.floor(1000 + Math.random() * 9000);
-  return `Samba${suffix}!`;
+export function generateSecureTempPassword(): string {
+  const words = ["Samba", "Route", "Flotte", "Camion", "Cargo", "Africa"];
+  const symbols = ["!", "@", "#", "$", "%"];
+  const word = words[randomInt(words.length)];
+  const suffix = randomInt(100_000_000, 1_000_000_000);
+  const symbol = symbols[randomInt(symbols.length)];
+  return `${word}${suffix}${symbol}`;
 }
 
 function hasSupabaseAuthConfig(): boolean {
@@ -51,15 +56,25 @@ function jsonServerConfigurationError(c: Context) {
 }
 
 export function resolveAppUrlFromOrigin(
-  origin: string | undefined | null
+  origin: string | undefined | null,
 ): string {
   const trimmed = origin?.trim().replace(/\/$/, "") ?? "";
-  if (
-    trimmed.startsWith("http://localhost:") ||
-    trimmed.startsWith("http://127.0.0.1:")
-  ) {
-    return trimmed;
+  if (process.env.NODE_ENV === "production") return getAppUrl();
+
+  try {
+    const url = new URL(trimmed);
+    if (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+      url.username === "" &&
+      url.password === ""
+    ) {
+      return trimmed;
+    }
+  } catch {
+    return getAppUrl();
   }
+
   return getAppUrl();
 }
 
@@ -100,7 +115,7 @@ async function requireLocalPlatformAdmin(c: Context) {
     return {
       response: c.json(
         { ok: false, error: "forbidden_not_platform_admin" },
-        403
+        403,
       ),
     };
   }
@@ -111,7 +126,7 @@ async function requireLocalPlatformAdmin(c: Context) {
 async function forwardJson(
   c: Context,
   endpoint: "create-prospect-account" | "demo-magic-link",
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ) {
   const adminSecret = getAdminSecret();
   if (!adminSecret) {
@@ -127,14 +142,19 @@ async function forwardJson(
     body: JSON.stringify(body),
   });
 
-  const data = (await upstream.json()) as Record<string, unknown>;
+  let data: Record<string, unknown>;
+  try {
+    data = (await upstream.json()) as Record<string, unknown>;
+  } catch {
+    return c.json({ ok: false, error: "upstream_invalid_response" }, 502);
+  }
   return c.json(data, upstream.status as Parameters<typeof c.json>[1]);
 }
 
 async function createProspectLocally(
   c: Context,
   body: z.infer<typeof createProspectSchema>,
-  invitedBy: string
+  invitedBy: string,
 ) {
   const admin = createSupabaseServiceClient();
 
@@ -143,7 +163,8 @@ async function createProspectLocally(
   }
 
   const email = body.email.trim().toLowerCase();
-  const tempPassword = generateTempPassword();
+  const tempPassword = generateSecureTempPassword();
+  const temporaryPasswordIssuedAt = new Date().toISOString();
 
   const { data: authData, error: authError } =
     await admin.auth.admin.createUser({
@@ -152,6 +173,8 @@ async function createProspectLocally(
       email_confirm: true,
       app_metadata: {
         must_set_password: true,
+        temporary_password_active: true,
+        temporary_password_issued_at: temporaryPasswordIssuedAt,
       },
       user_metadata: {
         account_type: body.account_type ?? "prospect",
@@ -163,13 +186,8 @@ async function createProspectLocally(
     });
 
   if (authError || !authData.user) {
-    return c.json(
-      {
-        ok: false,
-        error: authError?.message ?? "auth_create_failed",
-      },
-      500
-    );
+    console.error("[admin-demo] auth user creation failed:", authError?.message);
+    return c.json({ ok: false, error: "auth_create_failed" }, 500);
   }
 
   const userId = authData.user.id;
@@ -179,19 +197,15 @@ async function createProspectLocally(
       app_metadata: {
         ...authData.user.app_metadata,
         must_set_password: true,
+        temporary_password_active: true,
+        temporary_password_issued_at: temporaryPasswordIssuedAt,
       },
     });
 
   if (markerError || markerData.user.app_metadata?.must_set_password !== true) {
+    console.error("[admin-demo] password marker update failed:", markerError?.message);
     await admin.auth.admin.deleteUser(userId);
-
-    return c.json(
-      {
-        ok: false,
-        error: markerError?.message ?? "must_set_password_not_persisted",
-      },
-      500
-    );
+    return c.json({ ok: false, error: "must_set_password_not_persisted" }, 500);
   }
 
   const { data: registrationData, error: registrationError } = await admin.rpc(
@@ -205,19 +219,13 @@ async function createProspectLocally(
       p_trial_days: body.trial_days ?? 7,
       p_account_type: body.account_type ?? "prospect",
       p_permanent_access: body.permanent_access === true,
-    }
+    },
   );
 
   if (registrationError) {
+    console.error("[admin-demo] prospect registration failed:", registrationError.message);
     await admin.auth.admin.deleteUser(userId);
-
-    return c.json(
-      {
-        ok: false,
-        error: registrationError.message,
-      },
-      500
-    );
+    return c.json({ ok: false, error: "registration_failed" }, 500);
   }
 
   const registration = registrationData as {
@@ -229,14 +237,7 @@ async function createProspectLocally(
 
   if (!registration?.ok) {
     await admin.auth.admin.deleteUser(userId);
-
-    return c.json(
-      {
-        ok: false,
-        error: registration?.error ?? "registration_failed",
-      },
-      500
-    );
+    return c.json({ ok: false, error: "registration_failed" }, 500);
   }
 
   const { data: verifiedUser, error: verificationError } =
@@ -247,13 +248,9 @@ async function createProspectLocally(
     verifiedUser.user.app_metadata?.must_set_password !== true
   ) {
     await admin.auth.admin.deleteUser(userId);
-
     return c.json(
-      {
-        ok: false,
-        error: "must_set_password_verification_failed",
-      },
-      500
+      { ok: false, error: "must_set_password_verification_failed" },
+      500,
     );
   }
 
@@ -280,7 +277,7 @@ async function createProspectLocally(
     if (notificationError) {
       console.error(
         "[admin-demo] notification queue failed:",
-        notificationError.message
+        notificationError.message,
       );
     }
   }
@@ -293,23 +290,19 @@ async function createProspectLocally(
       fleet_id: registration.fleet_id ?? null,
       trial_end: registration.trial_end,
       permanent_access: body.permanent_access === true,
-      login_url:
-        `${appUrl}/auth?email=${encodeURIComponent(email)}` + "&prospect=1",
+      login_url: `${appUrl}/auth?email=${encodeURIComponent(email)}&prospect=1`,
       must_set_password: true,
       function_version: "admin-demo-local-v2",
-      ...(body.send_email
-        ? {}
-        : {
-            temp_password: tempPassword,
-          }),
+      ...(body.send_email ? {} : { temp_password: tempPassword }),
     },
-    201
+    201,
   );
 }
+
 async function createMagicLinkLocally(
   c: Context,
   body: z.infer<typeof generateMagicLinkSchema>,
-  createdBy: string
+  createdBy: string,
 ) {
   const admin = createSupabaseServiceClient();
   if (!admin) {
@@ -331,10 +324,8 @@ async function createMagicLinkLocally(
     error?: string;
   } | null;
   if (error || !result?.ok || !result.token) {
-    return c.json(
-      { ok: false, error: error?.message ?? result?.error ?? "create_failed" },
-      500
-    );
+    console.error("[admin-demo] demo magic link creation failed:", error?.message);
+    return c.json({ ok: false, error: "create_failed" }, 500);
   }
 
   const appUrl = resolveAppUrlFromOrigin(c.req.header("Origin"));
@@ -359,13 +350,13 @@ async function handleCreateProspect(c: Context) {
           error: "invalid_payload",
           details: parsed.error.flatten(),
         },
-        400
+        400,
       );
     }
     if (parsed.data.permanent_access && !auth.isSuperAdmin) {
       return c.json(
         { ok: false, error: "forbidden_super_admin_required" },
-        403
+        403,
       );
     }
 
@@ -405,7 +396,7 @@ async function handleGenerateMagicLink(c: Context) {
           error: "invalid_payload",
           details: parsed.error.flatten(),
         },
-        400
+        400,
       );
     }
 
@@ -457,10 +448,7 @@ async function handleValidateMagicLink(c: Context) {
     } | null;
 
     if (!result?.ok || !result.email) {
-      return c.json(
-        { ok: false, error: result?.error ?? "token_not_found" },
-        404
-      );
+      return c.json({ ok: false, error: "token_not_found" }, 404);
     }
 
     const appUrl = resolveAppUrlFromOrigin(c.req.header("Origin"));
@@ -490,13 +478,7 @@ async function handleClearPasswordMarker(c: Context) {
     const token = getBearerToken(c.req.header("Authorization"));
 
     if (!token) {
-      return c.json(
-        {
-          ok: false,
-          error: "missing_auth_token",
-        },
-        401
-      );
+      return c.json({ ok: false, error: "missing_auth_token" }, 401);
     }
 
     if (!hasSupabaseAuthConfig()) {
@@ -511,13 +493,7 @@ async function handleClearPasswordMarker(c: Context) {
     } = await userClient.auth.getUser(token);
 
     if (authError || !user) {
-      return c.json(
-        {
-          ok: false,
-          error: "invalid_token",
-        },
-        401
-      );
+      return c.json({ ok: false, error: "invalid_token" }, 401);
     }
 
     const admin = createSupabaseServiceClient();
@@ -530,32 +506,41 @@ async function handleClearPasswordMarker(c: Context) {
       await admin.auth.admin.getUserById(user.id);
 
     if (currentUserError || !currentUserData.user) {
-      return c.json(
-        {
-          ok: false,
-          error: "user_not_found",
-        },
-        404
-      );
+      return c.json({ ok: false, error: "user_not_found" }, 404);
+    }
+
+    const appMetadata = currentUserData.user.app_metadata ?? {};
+    const temporaryPasswordActive =
+      appMetadata.temporary_password_active === true;
+    const temporaryPasswordIssuedAt =
+      typeof appMetadata.temporary_password_issued_at === "string"
+        ? Date.parse(appMetadata.temporary_password_issued_at)
+        : Number.NaN;
+    const userUpdatedAt = currentUserData.user.updated_at
+      ? Date.parse(currentUserData.user.updated_at)
+      : Number.NaN;
+
+    if (
+      temporaryPasswordActive &&
+      (!Number.isFinite(temporaryPasswordIssuedAt) ||
+        !Number.isFinite(userUpdatedAt) ||
+        userUpdatedAt <= temporaryPasswordIssuedAt)
+    ) {
+      return c.json({ ok: false, error: "password_change_required" }, 409);
     }
 
     const { data: updatedUserData, error: updateError } =
       await admin.auth.admin.updateUserById(user.id, {
         app_metadata: {
-          ...currentUserData.user.app_metadata,
+          ...appMetadata,
           must_set_password: false,
+          temporary_password_active: false,
         },
       });
 
     if (updateError || !updatedUserData.user) {
-      return c.json(
-        {
-          ok: false,
-          error: "password_marker_update_failed",
-          details: updateError?.message,
-        },
-        500
-      );
+      console.error("[admin-demo] password marker update failed:", updateError?.message);
+      return c.json({ ok: false, error: "password_marker_update_failed" }, 500);
     }
 
     const { data: verifiedUserData, error: verificationError } =
@@ -566,13 +551,7 @@ async function handleClearPasswordMarker(c: Context) {
       !verifiedUserData.user ||
       verifiedUserData.user.app_metadata?.must_set_password !== false
     ) {
-      return c.json(
-        {
-          ok: false,
-          error: "password_marker_not_cleared",
-        },
-        500
-      );
+      return c.json({ ok: false, error: "password_marker_not_cleared" }, 500);
     }
 
     return c.json({
@@ -584,29 +563,9 @@ async function handleClearPasswordMarker(c: Context) {
   }
 }
 
-interface AdminAccountRow {
-  user_id: string;
-  email: string;
-  full_name: string | null;
-  account_type: string | null;
-  role: string | null;
-  fleet_id: string | null;
-  fleet_name: string | null;
-  is_active: boolean;
-  created_at: string;
-  expires_at: string | null;
-  expiration_source: "demo" | "subscription" | null;
-  must_set_password: boolean;
-  is_platform_admin: boolean;
-  is_super_admin: boolean;
-}
-
 export function registerAdminDemoRoutes(app: Hono) {
   app.post("/api/admin/create-prospect", handleCreateProspect);
-
   app.post("/api/admin/generate-magic-link", handleGenerateMagicLink);
-
   app.post("/api/demo/magic-link", handleValidateMagicLink);
-
   app.post("/api/auth/clear-password-marker", handleClearPasswordMarker);
 }

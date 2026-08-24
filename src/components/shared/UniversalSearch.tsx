@@ -552,7 +552,7 @@ export function UniversalSearch({ fleetId, onNavigate, className }: UniversalSea
   }
 
   return (
-    <div className={cn("hidden md:block", className)}>
+    <div className={className ? cn(className) : "hidden md:block"}>
       <SearchTrigger onClick={openDialog} buttonRef={triggerRef} />
       <SearchDialog open={isOpen} fleetId={fleetId} onClose={closeDialog} onNavigate={onNavigate} />
     </div>

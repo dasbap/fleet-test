@@ -24,12 +24,22 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ba = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ba.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ba.length; i++) diff |= ba[i]! ^ bb[i]!;
+  return diff === 0;
+}
+
 Deno.serve(async (req: Request) => {
   // Vérification sécurité cron
   const authHeader = req.headers.get("Authorization") ?? "";
   const secret = authHeader.replace("Bearer ", "").trim();
 
-  if (!CRON_SECRET || secret !== CRON_SECRET) {
+  if (!CRON_SECRET || !timingSafeEqual(secret, CRON_SECRET)) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },

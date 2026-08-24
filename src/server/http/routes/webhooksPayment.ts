@@ -5,8 +5,25 @@ import { jsonInternalServerError } from "../errorResponse.js";
 import { createSupabaseServiceClient } from "../../infra/supabaseServiceClient.js";
 import { resolvePaymentWebhookProvider } from "../../payments/webhookProviders.js";
 
+const MAX_PAYMENT_WEBHOOK_BODY_BYTES = 64 * 1024;
+
 async function handleInboundPaymentWebhook(c: Context) {
+  const contentLengthRaw = c.req.header("content-length");
+  if (contentLengthRaw) {
+    const contentLength = Number(contentLengthRaw);
+    if (!Number.isSafeInteger(contentLength) || contentLength < 0) {
+      return c.json({ error: "Content-Length invalide" }, 400);
+    }
+    if (contentLength > MAX_PAYMENT_WEBHOOK_BODY_BYTES) {
+      return c.json({ error: "Payload webhook trop volumineux" }, 413);
+    }
+  }
+
   const rawBody = await c.req.text();
+  if (Buffer.byteLength(rawBody, "utf8") > MAX_PAYMENT_WEBHOOK_BODY_BYTES) {
+    return c.json({ error: "Payload webhook trop volumineux" }, 413);
+  }
+
   const provider = resolvePaymentWebhookProvider(c.req.header("x-psp-provider"));
   const secrets = getPaymentWebhookSecrets();
   try {
@@ -29,11 +46,15 @@ async function handleInboundPaymentWebhook(c: Context) {
     return c.json({ error: "Service role non configuré (SUPABASE_SERVICE_ROLE_KEY)" }, 503);
   }
   try {
-    await runInboundPaymentWebhook(admin, externalRef, rawStatus);
+    const expectedPaymentProvider = provider.id === "generic" ? "manual" : provider.id;
+    await runInboundPaymentWebhook(admin, externalRef, rawStatus, expectedPaymentProvider);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erreur serveur";
     if (msg.includes("introuvable pour cette référence")) {
       return c.json({ error: msg }, 404);
+    }
+    if (msg.includes("fournisseur du webhook")) {
+      return c.json({ error: "Webhook incompatible avec ce paiement" }, 409);
     }
     return jsonInternalServerError(c, e);
   }

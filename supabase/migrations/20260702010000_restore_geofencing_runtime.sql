@@ -11,6 +11,7 @@ BEGIN
     WHERE n.nspname = 'public'
       AND t.typname = 'alert_type'
   ) THEN
+    ALTER TYPE public.alert_type ADD VALUE IF NOT EXISTS 'geofence_enter';
     ALTER TYPE public.alert_type ADD VALUE IF NOT EXISTS 'geofence_exit';
   END IF;
 

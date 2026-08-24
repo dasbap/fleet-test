@@ -17,9 +17,16 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { timingSafeEqual } from "node:crypto";
 
 const CRON_SECRET   = process.env.CRON_SECRET ?? "";
 const SUPABASE_URL  = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
+
+function timingSafeEqualStrings(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
+}
 
 export default async function handler(
   req: VercelRequest,
@@ -29,7 +36,7 @@ export default async function handler(
   const auth  = req.headers.authorization ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
 
-  if (!CRON_SECRET || token !== CRON_SECRET) {
+  if (!CRON_SECRET || !timingSafeEqualStrings(token, CRON_SECRET)) {
     console.error("[cron/expire-demo-accounts] Unauthorized");
     res.status(401).json({ ok: false, error: "unauthorized" });
     return;

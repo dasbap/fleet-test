@@ -209,7 +209,7 @@ function MembersTab() {
               <Label htmlFor="show-inactive" className="text-sm cursor-pointer">Afficher inactifs</Label>
             </div>
           )}
-          <Button variant="ghost" size="sm" onClick={() => void refetch()}>
+          <Button variant="ghost" size="sm" onClick={() => void refetch()} aria-label="Actualiser les membres">
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -260,7 +260,13 @@ function MembersTab() {
               {(canSuspendMembers || canOffboardMembers) && !isSelf && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" disabled={isPending}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      disabled={isPending}
+                      aria-label={`Actions pour ${member.full_name ?? "membre sans nom"}`}
+                    >
                       <MoreVertical className="h-3.5 w-3.5" />
                     </Button>
                   </DropdownMenuTrigger>

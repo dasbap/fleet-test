@@ -32,6 +32,37 @@ describeIntegration("Fuel fraud scoring", () => {
       p_trial_days: 30,
     });
     expect(trialError).toBeNull();
+
+    const { data: proPlan, error: proPlanError } = await clients.admin
+      .from("plans")
+      .select("id")
+      .eq("code", "pro")
+      .eq("is_active", true)
+      .maybeSingle<{ id: string }>();
+    expect(proPlanError).toBeNull();
+    expect(proPlan?.id).toBeTruthy();
+
+    const { error: cancelTrialError } = await clients.admin
+      .from("abonnements")
+      .update({ status: "cancelled", ends_at: new Date().toISOString() })
+      .eq("fleet_id", context.fleetId)
+      .in("status", ["trial", "active"]);
+    expect(cancelTrialError).toBeNull();
+
+    const { error: proSubscriptionError } = await clients.admin
+      .from("abonnements")
+      .insert({
+        fleet_id: context.fleetId,
+        plan_id: proPlan!.id,
+        payment_id: null,
+        starts_at: new Date().toISOString(),
+        ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        status: "trial",
+        trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        vehicle_slots: 1,
+      });
+    expect(proSubscriptionError).toBeNull();
+
     vehicleId = await createVehicleForFleet(
       clients.admin,
       context.fleetId,

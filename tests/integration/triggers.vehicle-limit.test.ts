@@ -42,7 +42,9 @@ describeIntegration("Trigger limite vehicules", () => {
   });
 
   it("bloque le 2e vehicule sur le seul slot free", async () => {
-    const { data, error } = await clients.user.rpc("creer_vehicule_esamba", {
+    // creer_vehicule_esamba is intentionally service-owned. This test targets
+    // the database vehicle-limit trigger, so use service_role for both inserts.
+    const { data, error } = await clients.admin.rpc("creer_vehicule_esamba", {
       p_fleet_id: context.fleetId,
       p_registration: `LIM-${Date.now()}-1`,
       p_brand: "Toyota",
@@ -54,7 +56,7 @@ describeIntegration("Trigger limite vehicules", () => {
     expect(error).toBeNull();
     expect(data).toBeDefined();
 
-    const { error: limitError } = await clients.user.rpc(
+    const { error: limitError } = await clients.admin.rpc(
       "creer_vehicule_esamba",
       {
         p_fleet_id: context.fleetId,

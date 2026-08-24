@@ -45,6 +45,8 @@ const TYPE_LABELS: Record<Alert["type"], string> = {
   maintenance_due: "Entretien dû",
   document_expired: "Document expiré",
   failure_risk: "Risque de panne",
+  speeding: "Excès vitesse",
+  geofence_enter: "Entrée zone",
   geofence_exit: "Sortie zone",
   faq_answer: "Reponse FAQ",
 };
@@ -182,6 +184,7 @@ export default function MobileAlertsPage() {
             <div className="flex-1">
               <p className={mobileFormLabelOverline}>Recherche</p>
               <Input
+                aria-label="Rechercher une alerte"
                 placeholder="Rechercher par titre ou message…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -246,6 +249,8 @@ export default function MobileAlertsPage() {
                   <SelectItem value="maintenance_due">{TYPE_LABELS.maintenance_due}</SelectItem>
                   <SelectItem value="document_expired">{TYPE_LABELS.document_expired}</SelectItem>
                   <SelectItem value="failure_risk">{TYPE_LABELS.failure_risk}</SelectItem>
+                  <SelectItem value="speeding">{TYPE_LABELS.speeding}</SelectItem>
+                  <SelectItem value="geofence_enter">{TYPE_LABELS.geofence_enter}</SelectItem>
                   <SelectItem value="geofence_exit">{TYPE_LABELS.geofence_exit}</SelectItem>
                   <SelectItem value="faq_answer">{TYPE_LABELS.faq_answer}</SelectItem>
                 </SelectContent>

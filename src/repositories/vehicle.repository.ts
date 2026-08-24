@@ -404,41 +404,22 @@ export class VehicleRepository implements IRepository<VehicleDto, VehicleInsertD
    * Crée un nouveau véhicule
    */
   async create(vehicle: VehicleInsertDto): Promise<VehicleDto> {
-    if (vehicle.subscription_id) {
-      const { data, error } = await supabase.rpc('create_vehicle_with_subscription', {
-        p_fleet_id: vehicle.fleet_id,
-        p_subscription_id: vehicle.subscription_id,
-        p_registration: vehicle.registration,
-        p_brand: vehicle.brand ?? null,
-        p_model: vehicle.model ?? null,
-        p_year: vehicle.year ?? null,
-        p_current_km: vehicle.current_km ?? 0,
-      });
-
-      if (error) {
-        console.error('Error creating vehicle with subscription:', error);
-        throw new Error(error.message);
-      }
-
-      return data as VehicleDto;
+    if (!vehicle.subscription_id) {
+      throw new Error('subscription_id_required');
     }
 
-    const { data, error } = await supabase
-      .from('vehicules')
-      .insert({
-        fleet_id: vehicle.fleet_id,
-        registration: vehicle.registration,
-        brand: vehicle.brand,
-        model: vehicle.model,
-        year: vehicle.year,
-        current_km: vehicle.current_km || 0,
-        status: 'ok',
-      })
-      .select()
-      .single();
+    const { data, error } = await supabase.rpc('create_vehicle_with_subscription', {
+      p_fleet_id: vehicle.fleet_id,
+      p_subscription_id: vehicle.subscription_id,
+      p_registration: vehicle.registration,
+      p_brand: vehicle.brand ?? null,
+      p_model: vehicle.model ?? null,
+      p_year: vehicle.year ?? null,
+      p_current_km: vehicle.current_km ?? 0,
+    });
 
     if (error) {
-      console.error('Error creating vehicle:', error);
+      console.error('Error creating vehicle with subscription:', error);
       throw new Error(error.message);
     }
 

@@ -62,6 +62,20 @@ describe("support and demo workflow source contract", () => {
     expect(migration).toContain("created_at < now() - interval '48 hours'");
   });
 
+  it("repairs demo admin RPC return types and boolean settings audit ids", () => {
+    const migration = readFileSync(
+      "supabase/migrations/20260818144500_fix_demo_admin_rpc_runtime.sql",
+      "utf8",
+    );
+
+    expect(migration).toContain("v_target_id_text");
+    expect(migration).toContain("v_target_id_text ~*");
+    expect(migration).toContain("dr.status::text::public.demo_request_status");
+    expect(migration).toContain("s.auto_decision::text::public.demo_request_auto_decision");
+    expect(migration).toContain("create or replace function public.admin_update_demo_request_auto_mode");
+    expect(migration).not.toContain("v_target_id := nullif(v_row->>'id', '')::uuid");
+  });
+
   it("exposes demo requests in admin UI and FAQ answers in alerts", () => {
     const demoPage = readFileSync("src/pages/admin/DemoAdminPage.tsx", "utf8");
     const alertTypes = readFileSync("src/types/alert.ts", "utf8");

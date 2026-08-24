@@ -207,10 +207,10 @@ export default function PricingPage() {
           <div className="mx-auto mb-6 flex max-w-5xl flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <label htmlFor="pricing-vehicle-count" className="text-sm font-medium">
-                Nombre de vÃ©hicules
+                Nombre de véhicules
               </label>
               <p className="text-xs text-muted-foreground">
-                Le prix et les licences achetÃ©es suivent ce nombre.
+                Le prix et les licences achetées suivent ce nombre.
               </p>
             </div>
             <input

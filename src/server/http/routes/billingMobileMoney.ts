@@ -1,6 +1,7 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { initiateMobileMoneyPaymentForUser } from "../../domain/mobileMoneyInitiate.js";
+import type { MoMoPaymentIntent } from "../../../types/mobile-money.js";
 import { getBearerToken } from "../auth.js";
 import { jsonInternalServerError } from "../errorResponse.js";
 import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
@@ -34,7 +35,8 @@ async function handleMobileMoneyInitiate(c: Context) {
   }
   try {
     const supabase = createSupabaseUserClient(token);
-    const result = await initiateMobileMoneyPaymentForUser(supabase, parsed.data);
+    const intent = parsed.data as MoMoPaymentIntent;
+    const result = await initiateMobileMoneyPaymentForUser(supabase, intent);
     return c.json(result);
   } catch (e) {
     return jsonInternalServerError(c, e);

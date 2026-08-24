@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   cinetpayWebhookProvider,
@@ -19,7 +20,7 @@ describe("webhookProviders", () => {
     expect(resolvePaymentWebhookProvider(undefined).id).toBe("generic");
   });
 
-  it("generic : exige le secret partagé", () => {
+  it("generic : exige le secret partagé avec comparaison timing-safe", () => {
     const body = JSON.stringify({ external_ref: "r1", status: "succeeded" });
     genericSharedSecretWebhookProvider.verify(body, (n) => (n === "x-payments-webhook-secret" ? "abc" : undefined), {
       paymentsWebhookSecret: "abc",
@@ -27,6 +28,17 @@ describe("webhookProviders", () => {
     expect(() =>
       genericSharedSecretWebhookProvider.verify(body, () => undefined, { paymentsWebhookSecret: "abc" }),
     ).toThrow();
+    expect(() =>
+      genericSharedSecretWebhookProvider.verify(
+        body,
+        (n) => (n === "x-payments-webhook-secret" ? "abd" : undefined),
+        { paymentsWebhookSecret: "abc" },
+      ),
+    ).toThrow();
+
+    const source = readFileSync("src/server/payments/webhookProviders.ts", "utf8");
+    expect(source).toContain("safeEqualUtf8(got, expected)");
+    expect(source).not.toContain("got !== expected");
   });
 
   it("notch : vérifie la signature HMAC", () => {

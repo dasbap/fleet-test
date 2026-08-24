@@ -1,13 +1,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
-// Format générique (usage interne / tests)
 const inboundBodySchema = z.object({
   external_ref: z.string().min(1),
   status: z.string().min(1),
 });
 
-// Format webhook Notch Pay : { event, data: { reference, status, ... } }
 const notchWebhookBodySchema = z.object({
   event: z.string().optional(),
   data: z.object({
@@ -18,15 +16,9 @@ const notchWebhookBodySchema = z.object({
 
 export type PspWebhookProviderId = "generic" | "notch" | "cinetpay";
 
-/**
- * Contrat commun pour vérifier l’authenticité d’un webhook PSP puis extraire ref + statut brut.
- * Les implémentations ne font pas d’effet de bord sur la base.
- */
 export interface PaymentWebhookProvider {
   readonly id: PspWebhookProviderId;
-  /** Vérifie les en-têtes / secret ; lève une erreur si refusé. */
   verify(rawBody: string, getHeader: (name: string) => string | undefined, getSecret: PaymentWebhookSecrets): void;
-  /** Extrait les champs normalisés du corps (JSON). */
   parse(rawBody: string): { externalRef: string; rawStatus: string };
 }
 
@@ -50,35 +42,36 @@ function parseInboundJson(rawBody: string): { externalRef: string; rawStatus: st
   return { externalRef: r.data.external_ref, rawStatus: r.data.status };
 }
 
-function safeEqualHex(a: string, b: string): boolean {
+function safeEqualUtf8(a: string, b: string): boolean {
   const ba = Buffer.from(a, "utf8");
   const bb = Buffer.from(b, "utf8");
   if (ba.length !== bb.length) return false;
   return timingSafeEqual(ba, bb);
 }
 
+function safeEqualHex(a: string, b: string): boolean {
+  if (!/^[0-9a-f]{64}$/i.test(a) || !/^[0-9a-f]{64}$/i.test(b)) return false;
+  const ba = Buffer.from(a, "hex");
+  const bb = Buffer.from(b, "hex");
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
+}
+
 function hmacSha256Hex(secret: string, payload: string): string {
   return createHmac("sha256", secret).update(payload, "utf8").digest("hex");
 }
 
-/** Webhook historique : secret partagé dans l’en-tête `x-payments-webhook-secret`. */
 export const genericSharedSecretWebhookProvider: PaymentWebhookProvider = {
   id: "generic",
   verify(_rawBody, getHeader, secrets) {
     const expected = secrets.paymentsWebhookSecret?.trim();
     const got = getHeader("x-payments-webhook-secret")?.trim();
-    if (!expected || got !== expected) {
+    if (!expected || !got || !safeEqualUtf8(got, expected)) {
       throw new Error("Non autorisé");
     }
   },
   parse: parseInboundJson,
 };
 
-/**
- * Notch Pay : signature HMAC-SHA256 hex du corps brut dans `x-notch-signature`.
- * Le webhook Notch Pay envoie : { event: "payment.complete", data: { reference, status, ... } }
- * On normalise vers { externalRef, rawStatus } pour le pipeline commun.
- */
 export const notchPayWebhookProvider: PaymentWebhookProvider = {
   id: "notch",
   verify(rawBody, getHeader, secrets) {
@@ -87,7 +80,7 @@ export const notchPayWebhookProvider: PaymentWebhookProvider = {
     const sig = getHeader("x-notch-signature")?.trim();
     if (!sig) throw new Error("Signature Notch manquante (x-notch-signature)");
     const expected = hmacSha256Hex(secret, rawBody);
-    if (!safeEqualHex(sig.toLowerCase(), expected.toLowerCase())) {
+    if (!safeEqualHex(sig, expected)) {
       throw new Error("Signature Notch invalide");
     }
   },
@@ -98,7 +91,6 @@ export const notchPayWebhookProvider: PaymentWebhookProvider = {
     } catch {
       throw new Error("Corps JSON invalide");
     }
-    // Tente d’abord le format natif Notch Pay
     const notch = notchWebhookBodySchema.safeParse(parsed);
     if (notch.success) {
       return {
@@ -106,7 +98,6 @@ export const notchPayWebhookProvider: PaymentWebhookProvider = {
         rawStatus: notch.data.data.status,
       };
     }
-    // Fallback : format générique (tests / retro-compat)
     const generic = inboundBodySchema.safeParse(parsed);
     if (generic.success) {
       return { externalRef: generic.data.external_ref, rawStatus: generic.data.status };
@@ -115,9 +106,6 @@ export const notchPayWebhookProvider: PaymentWebhookProvider = {
   },
 };
 
-/**
- * CinetPay (stub d’intégration) : même principe que Notch avec `x-cinetpay-signature`.
- */
 export const cinetpayWebhookProvider: PaymentWebhookProvider = {
   id: "cinetpay",
   verify(rawBody, getHeader, secrets) {
@@ -126,7 +114,7 @@ export const cinetpayWebhookProvider: PaymentWebhookProvider = {
     const sig = getHeader("x-cinetpay-signature")?.trim();
     if (!sig) throw new Error("Signature CinetPay manquante (x-cinetpay-signature)");
     const expected = hmacSha256Hex(secret, rawBody);
-    if (!safeEqualHex(sig.toLowerCase(), expected.toLowerCase())) {
+    if (!safeEqualHex(sig, expected)) {
       throw new Error("Signature CinetPay invalide");
     }
   },
