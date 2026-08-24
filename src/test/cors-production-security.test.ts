@@ -1,7 +1,7 @@
 /** @vitest-environment node */
 import { afterEach, describe, expect, it } from "vitest";
 import { applyCors } from "../../api/_lib/vercel-api";
-import { resolveAppUrl } from "../../api/demo/magic-link";
+import { resolveAppUrlFromOrigin } from "@/server/http/routes/adminDemo";
 import { createServerApp } from "@/server/http/app";
 
 describe("Production CORS security", () => {
@@ -66,16 +66,10 @@ describe("Production CORS security", () => {
     process.env.VITE_APP_URL = "https://www.e-samba.com";
 
     const ambiguousOrigin = "http://localhost:5173@evil.example";
-    const resolved = resolveAppUrl(
-      { headers: { origin: ambiguousOrigin } } as never,
-      "https://www.e-samba.com",
-    );
+    const resolved = resolveAppUrlFromOrigin(ambiguousOrigin);
     expect(resolved).toBe("https://www.e-samba.com");
 
-    const localResolved = resolveAppUrl(
-      { headers: { origin: "http://localhost:5173" } } as never,
-      "https://www.e-samba.com",
-    );
+    const localResolved = resolveAppUrlFromOrigin("http://localhost:5173");
     expect(localResolved).toBe("http://localhost:5173");
 
     const app = createServerApp();
