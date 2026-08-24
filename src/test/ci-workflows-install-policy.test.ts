@@ -77,6 +77,19 @@ describe("GitHub workflow dependency install policy", () => {
     expect(workflow).not.toContain("vercel@latest");
   });
 
+  it("does not expose remote deployment or database secrets to pull_request code", () => {
+    const secretBackedPrWorkflows = [
+      ".github/workflows/verify-migration.yml",
+      ".github/workflows/supabase-integration.yml",
+      ".github/workflows/lighthouse.yml",
+    ].filter((file) => {
+      const workflow = readFileSync(file, "utf8");
+      return workflow.includes("pull_request:") && /\$\{\{\s*secrets\./.test(workflow);
+    });
+
+    expect(secretBackedPrWorkflows).toEqual([]);
+  });
+
   it("does not use setup-node npm cache on self-hosted runners", () => {
     const offenders = workflowFiles.flatMap((file) => {
       const workflow = readFileSync(file, "utf8");
