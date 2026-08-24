@@ -185,10 +185,18 @@ describe("GPS ingest Vercel route", () => {
     });
   });
 
-  it("dispose d'une fonction Vercel dediee pour eviter le fallback SPA", async () => {
+  it("route explicitement l'ingest GPS vers la fonction Vercel catch-all", async () => {
     const { readFileSync } = await import("node:fs");
-    const source = readFileSync("api/gps/ingest.ts", "utf8");
+    const source = readFileSync("api/[...path].ts", "utf8");
+    const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as {
+      rewrites?: Array<{ source?: string; destination?: string }>;
+    };
+
     expect(source).toContain('from "@hono/node-server/vercel"');
     expect(source).toContain("createVercelApiApp");
+    expect(vercel.rewrites).toContainEqual({
+      source: "/api/gps/ingest",
+      destination: "/api/[...path]",
+    });
   });
 });
