@@ -49,8 +49,11 @@ describe("Vercel API CORS", () => {
     );
   });
 
-  it("conserve le nettoyage des marqueurs legacy sur la route Vercel", () => {
-    const source = readFileSync("api/auth/clear-password-marker.ts", "utf8");
+  it("conserve le nettoyage des marqueurs legacy sur la route Hono", () => {
+    const source = readFileSync(
+      "src/server/http/routes/passwordChange.ts",
+      "utf8",
+    );
 
     expect(source).toContain("const userMetadata = currentUserData.user.user_metadata ?? {}");
     expect(source).toContain("userMetadata.must_set_password === true");
