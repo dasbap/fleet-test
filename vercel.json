@@ -70,6 +70,14 @@
       "destination": "/ressources/index.html"
     },
     {
+      "source": "/api/billing/subscriptions",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/billing/notch/initiate",
+      "destination": "/api/[...path]"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/:path*"
     },

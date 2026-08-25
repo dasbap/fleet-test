@@ -13,9 +13,9 @@ export const FONCTIONNALITE_SECTIONS: readonly FonctionnaliteSection[] = [
     slug: "piloter-flotte",
     title: "Piloter votre flotte",
     intro:
-      "Une lecture claire des vehicules, des equipes et des priorites, sans exposer les methodes internes d'E-Samba.",
+      "Une lecture claire des véhicules, des équipes et des priorités, sans exposer les méthodes internes d'E-Samba.",
     promise:
-      "Le client comprend la valeur en un seul ecran : moins de zones floues, des decisions plus rapides et une exploitation mieux tenue.",
+      "Le client comprend la valeur en un seul écran : moins de zones floues, des décisions plus rapides et une exploitation mieux tenue.",
     items: [
       "Samba-Fleet",
       "Samba-Fuel",

@@ -263,6 +263,7 @@ export function IncidentDeclarationForm({
                   checked={field.value}
                   onCheckedChange={(v) => field.onChange(v === true)}
                   disabled={busy}
+                  aria-label="Joindre la position au signalement"
                 />
               </FormControl>
               <div className="space-y-1 leading-none">

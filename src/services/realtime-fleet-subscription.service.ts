@@ -102,6 +102,26 @@ export class RealtimeFleetSubscriptionService {
           return;
         }
 
+        if (row.alert_type === "speeding") {
+          queueMicrotask(() =>
+            handlers.onToast({
+              title: "Excès de vitesse",
+              description: row.message ?? "Un véhicule dépasse sa vitesse autorisée.",
+              variant: "destructive",
+            }),
+          );
+        }
+
+        if (row.alert_type === "geofence_enter") {
+          queueMicrotask(() =>
+            handlers.onToast({
+              title: "Alerte geofence",
+              description: row.message ?? "Un véhicule est entre dans une zone surveillee.",
+              variant: "default",
+            }),
+          );
+        }
+
         if (row.alert_type === "geofence_exit") {
           queueMicrotask(() =>
             handlers.onToast({
@@ -143,6 +163,16 @@ export class RealtimeFleetSubscriptionService {
         const row = payload.new as { fleet_id?: string; event_type?: string; vehicle_id?: string };
         if (!row.fleet_id || row.fleet_id !== fleetId) {
           return;
+        }
+
+        if (row.event_type === "enter") {
+          queueMicrotask(() =>
+            handlers.onToast({
+              title: "Entree de zone detectee",
+              description: `Le vehicule ${row.vehicle_id ?? "inconnu"} est entre dans une zone.`,
+              variant: "default",
+            }),
+          );
         }
 
         if (row.event_type === "exit") {

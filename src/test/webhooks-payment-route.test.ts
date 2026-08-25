@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 
 const verifyMock = vi.fn();
@@ -12,6 +12,7 @@ const runInboundMock = vi.fn(async () => ({
 
 vi.mock("@/server/payments/webhookProviders", () => ({
   resolvePaymentWebhookProvider: () => ({
+    id: "generic",
     verify: verifyMock,
     parse: parseMock,
   }),
@@ -34,7 +35,13 @@ vi.mock("@/server/domain/billing/processInboundPaymentWebhook", () => ({
 }));
 
 describe("route /webhooks/payment", () => {
-  it("accepte le replay idempotent et renvoie 204", async () => {
+  beforeEach(() => {
+    verifyMock.mockClear();
+    parseMock.mockClear();
+    runInboundMock.mockClear();
+  });
+
+  it("accepte le replay idempotent et lie le webhook generic aux paiements manual", async () => {
     const { registerWebhooksPaymentRoutes } = await import("@/server/http/routes/webhooksPayment");
     const app = new Hono();
     registerWebhooksPaymentRoutes(app);
@@ -51,7 +58,40 @@ describe("route /webhooks/payment", () => {
     expect(first.status).toBe(204);
     expect(second.status).toBe(204);
     expect(runInboundMock).toHaveBeenCalledTimes(2);
-    expect(runInboundMock).toHaveBeenNthCalledWith(1, expect.any(Object), "ref-replay-1", "succeeded");
-    expect(runInboundMock).toHaveBeenNthCalledWith(2, expect.any(Object), "ref-replay-1", "succeeded");
+    expect(runInboundMock).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Object),
+      "ref-replay-1",
+      "succeeded",
+      "manual",
+    );
+    expect(runInboundMock).toHaveBeenNthCalledWith(
+      2,
+      expect.any(Object),
+      "ref-replay-1",
+      "succeeded",
+      "manual",
+    );
+  });
+
+  it("rejette un corps surdimensionne avant verification de signature", async () => {
+    const { registerWebhooksPaymentRoutes } = await import("@/server/http/routes/webhooksPayment");
+    const app = new Hono();
+    registerWebhooksPaymentRoutes(app);
+
+    const body = "x".repeat(64 * 1024 + 1);
+    const res = await app.request("/webhooks/payment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-payments-webhook-secret": "secret-test",
+      },
+      body,
+    });
+
+    expect(res.status).toBe(413);
+    expect(verifyMock).not.toHaveBeenCalled();
+    expect(parseMock).not.toHaveBeenCalled();
+    expect(runInboundMock).not.toHaveBeenCalled();
   });
 });

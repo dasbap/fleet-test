@@ -55,6 +55,19 @@ describe("PricingPage", () => {
     expect(starterCard).toHaveTextContent("15 000 FCFA × 3");
   });
 
+  it("affiche des libelles francais lisibles dans le calculateur", () => {
+    render(
+      <MemoryRouter>
+        <PricingPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Nombre de véhicules")).toBeInTheDocument();
+    expect(screen.getByText("Le prix et les licences achetées suivent ce nombre.")).toBeInTheDocument();
+    expect(screen.queryByText(/vÃ/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/achetÃ/)).not.toBeInTheDocument();
+  });
+
   it("prefill le renouvellement depuis les parametres d'URL", () => {
     render(
       <MemoryRouter initialEntries={["/pricing?plan=starter&vehicles=3&renew=sub-cancelled"]}>

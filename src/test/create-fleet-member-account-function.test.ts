@@ -30,4 +30,22 @@ describe("create-fleet-member-account Edge Function", () => {
     expect(listUsersIndex).toBeLessThan(membershipUpsertIndex);
     expect(functionSource).toContain("existing_auth_user_attached");
   });
+
+  it("does not overwrite a global profile when attaching an existing account", () => {
+    const existingBranch = functionSource.indexOf("if (existingAuthUserAttached) {");
+    const newUserProfileBranch = functionSource.indexOf("} else {\n    const { error: profileErr }");
+    const profileUpsert = functionSource.indexOf('admin.from("profils").upsert');
+
+    expect(existingBranch).toBeGreaterThan(-1);
+    expect(newUserProfileBranch).toBeGreaterThan(existingBranch);
+    expect(profileUpsert).toBeGreaterThan(newUserProfileBranch);
+    expect(functionSource).toContain("already_fleet_member");
+    expect(functionSource).toContain("target_membership_check_failed");
+  });
+
+  it("prevents managers from changing the role of an inactive existing membership", () => {
+    expect(functionSource).toContain("existingMembership.role !== role");
+    expect(functionSource).toContain('callerRole !== "organizer"');
+    expect(functionSource).toContain('error: "forbidden_role_assignment"');
+  });
 });

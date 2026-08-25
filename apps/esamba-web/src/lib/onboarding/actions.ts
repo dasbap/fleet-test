@@ -51,7 +51,7 @@ function normalizeRpcResult(data: unknown): AcceptInvitationResult | null {
 }
 
 function generateInvitationCode(): string {
-  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+  const suffix = globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase();
   return `ESAMBA-${suffix}`;
 }
 

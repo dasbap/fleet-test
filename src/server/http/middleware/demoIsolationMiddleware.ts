@@ -20,8 +20,6 @@ import { throwIfSupabaseInfrastructureError } from "../../../lib/supabase-runtim
 import { getBearerToken } from "../auth.js";
 import { createSupabaseServiceClient } from "../../infra/supabaseServiceClient.js";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type UserKind = "real" | "demo" | "prospect" | "admin" | "unknown";
 
 interface IsolationContext {
@@ -30,25 +28,25 @@ interface IsolationContext {
   isDemo:   boolean;
 }
 
-// ─── Cache in-memory (court terme, évite N requêtes par request) ──────────────
-// TTL 60s — le statut démo/prospect ne change pas fréquemment.
-
 const USER_KIND_CACHE = new Map<string, { kind: UserKind; ts: number }>();
 const CACHE_TTL_MS = 60_000;
 
+function isPlatformAdminInternalRole(value: unknown): boolean {
+  return value === "super_admin" || value === "admin";
+}
+
 async function resolveUserKind(userId: string): Promise<UserKind> {
   const cached = USER_KIND_CACHE.get(userId);
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+  if (cached && cached.kind !== "admin" && Date.now() - cached.ts < CACHE_TTL_MS) {
     return cached.kind;
   }
 
   const admin = createSupabaseServiceClient();
   if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY missing for demo isolation");
 
-  // Vérifier admin plateforme
   const { data: adminRow, error: adminError } = await admin
     .from("admin_profiles")
-    .select("user_id")
+    .select("user_id, internal_role")
     .eq("user_id", userId)
     .eq("is_active", true)
     .maybeSingle();
@@ -57,12 +55,10 @@ async function resolveUserKind(userId: string): Promise<UserKind> {
     throwIfSupabaseInfrastructureError(adminError, "demo isolation admin lookup");
   }
 
-  if (adminRow) {
-    USER_KIND_CACHE.set(userId, { kind: "admin", ts: Date.now() });
+  if (adminRow && isPlatformAdminInternalRole(adminRow.internal_role)) {
     return "admin";
   }
 
-  // Vérifier démo/prospect
   const { data: demoRow, error: demoError } = await admin
     .from("demo_profiles")
     .select("user_id, account_type, is_active")
@@ -83,7 +79,6 @@ async function resolveUserKind(userId: string): Promise<UserKind> {
     return kind;
   }
 
-  // Utilisateur réel
   USER_KIND_CACHE.set(userId, { kind: "real", ts: Date.now() });
   return "real";
 }
@@ -123,49 +118,30 @@ async function resolveUserId(c: Context): Promise<string | null> {
   return user.id;
 }
 
-// ─── Middleware principal : demoIsolationMiddleware ───────────────────────────
-
-/**
- * Vérifie que l'utilisateur n'accède qu'aux données correspondant à son type.
- * Utilise le `fleet_id` extrait par `fleetIdFn`.
- *
- * Si aucun fleet_id n'est détecté, laisse passer (la route n'est pas fleet-scoped).
- *
- * @example
- * app.get("/vehicles",
- *   demoIsolationMiddleware((c) => c.req.query("fleet_id")),
- *   handler,
- * );
- */
 export function demoIsolationMiddleware(
   fleetIdFn?: (c: Context) => string | undefined,
 ): MiddlewareHandler {
   return async (c: Context, next): Promise<Response | void> => {
     const userId = await resolveUserId(c);
-    if (!userId) return next(); // Pas authentifié → l'auth middleware gère
+    if (!userId) return next();
 
     const userKind = await resolveUserKind(userId);
 
-    // Attacher pour les handlers en aval
     c.set("isolationUserKind", userKind);
     c.set("isolationUserId",   userId);
 
-    // Admin : audit seulement — peut lire mais ne devrait pas écrire sur démo via BFF
     if (userKind === "admin") return next();
 
-    // Extraire le fleet_id de la requête
     const fleetId = fleetIdFn ? fleetIdFn(c) : undefined;
-    if (!fleetId) return next(); // Pas de fleet_id → pas d'isolation applicable ici
+    if (!fleetId) return next();
 
     const fleetIsDemo = await isFleetDemo(fleetId);
     if (fleetIsDemo === null) {
-      // Flotte introuvable → laisser passer (la route gèrera le 404)
       return next();
     }
 
     const userIsDemo = userKind === "demo" || userKind === "prospect";
 
-    // Isolation : démo ↔ réel ne peuvent pas se croiser
     if (userIsDemo && !fleetIsDemo) {
       return c.json(
         {
@@ -192,15 +168,6 @@ export function demoIsolationMiddleware(
   };
 }
 
-// ─── requireRealUser ─────────────────────────────────────────────────────────
-
-/**
- * Bloque toute requête provenant d'un compte démo ou prospect.
- * Pour les routes de facturation, export massif, administration.
- *
- * @example
- * app.post("/billing/subscribe", requireRealUser(), handler);
- */
 export function requireRealUser(): MiddlewareHandler {
   return async (c: Context, next): Promise<Response | void> => {
     const userId = await resolveUserId(c);
@@ -227,15 +194,6 @@ export function requireRealUser(): MiddlewareHandler {
   };
 }
 
-// ─── requireDemoUser ─────────────────────────────────────────────────────────
-
-/**
- * Réservé aux comptes démo/prospect (ex: fleet reset, session démo).
- * Bloque les comptes réels.
- *
- * @example
- * app.post("/demo/reset-fleet", requireDemoUser(), handler);
- */
 export function requireDemoUser(): MiddlewareHandler {
   return async (c: Context, next): Promise<Response | void> => {
     const userId = await resolveUserId(c);
@@ -258,16 +216,6 @@ export function requireDemoUser(): MiddlewareHandler {
   };
 }
 
-// ─── verifyFleetIsolation (helper dans un handler) ────────────────────────────
-
-/**
- * Vérification ponctuelle dans un handler Hono (pas un middleware).
- * Retourne null si OK, ou une Response 403 si violation.
- *
- * @example
- * const violation = await verifyFleetIsolation(c, vehicle.fleet_id);
- * if (violation) return violation;
- */
 export async function verifyFleetIsolation(
   c: Context,
   fleetId: string,
@@ -275,7 +223,6 @@ export async function verifyFleetIsolation(
   const userKind = c.get("isolationUserKind") as UserKind | undefined;
   const userId   = c.get("isolationUserId")   as string    | undefined;
 
-  // Si le middleware n'a pas encore été exécuté, résoudre maintenant
   const kind = userKind ?? (userId ? await resolveUserKind(userId) : "unknown");
 
   if (kind === "admin") return null;
@@ -302,9 +249,6 @@ export async function verifyFleetIsolation(
   return null;
 }
 
-// ─── Invalidation cache (utile après changement de statut) ───────────────────
-
-/** Force la revalidation du kind pour un user (ex: après conversion prospect → réel). */
 export function invalidateIsolationCache(userId: string): void {
   USER_KIND_CACHE.delete(userId);
 }

@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 
 const gpsPayloadSchema = z.object({
-  protocol: z.enum(["tk103", "concox"]),
+  protocol: z.enum(["tk103", "concox", "teltonika"]),
   imei: z.string().min(14).max(17),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
 
     const { data: device, error: deviceError } = await supabase
       .from("gps_devices")
-      .select("fleet_id, vehicle_id, imei, is_active")
+      .select("fleet_id, vehicle_id, imei, is_active, speed_limit_kmh, speed_alert_tolerance_kmh")
       .eq("imei", payload.imei)
       .eq("is_active", true)
       .maybeSingle();
@@ -178,21 +178,86 @@ Deno.serve(async (req) => {
       throw new Error(positionError.message);
     }
 
-    const { data: latest } = await supabase
-      .from("vehicle_positions_latest")
-      .select("tracker_time")
-      .eq("vehicle_id", device.vehicle_id)
-      .maybeSingle();
+    const { data: latestAccepted, error: latestError } = await supabase.rpc(
+      "gps_upsert_latest_position",
+      {
+        p_fleet_id: device.fleet_id,
+        p_vehicle_id: device.vehicle_id,
+        p_tracker_imei: payload.imei,
+        p_latitude: payload.latitude,
+        p_longitude: payload.longitude,
+        p_speed_kmh: payload.speedKmh ?? null,
+        p_heading: payload.heading ?? null,
+        p_altitude_m: payload.altitudeM ?? null,
+        p_tracker_time: trackerTime,
+      },
+    );
 
-    if (!latest || new Date(trackerTime).getTime() >= new Date(latest.tracker_time).getTime()) {
-      await supabase.from("vehicle_positions_latest").upsert(
+    if (latestError) {
+      throw new Error(latestError.message);
+    }
+
+    if (latestAccepted !== true) {
+      await supabase.from("gps_ingest_logs").insert({
+        fleet_id: device.fleet_id,
+        imei: payload.imei,
+        status: "accepted",
+        reason: "stale_tracker_time",
+        payload,
+      });
+      return jsonResponse({ ok: true, stale: true });
+    }
+
+    if (payload.speedKmh != null) {
+      const speedLimitKmh = Number(device.speed_limit_kmh ?? 90);
+      const speedToleranceKmh = Number(device.speed_alert_tolerance_kmh ?? 5);
+      const speedThresholdKmh = speedLimitKmh + speedToleranceKmh;
+      const isSpeeding = payload.speedKmh > speedThresholdKmh;
+
+      const { data: previousSpeedState, error: previousSpeedError } = await supabase
+        .from("vehicle_speed_states")
+        .select("is_speeding")
+        .eq("vehicle_id", device.vehicle_id)
+        .maybeSingle();
+
+      if (previousSpeedError) {
+        throw new Error(previousSpeedError.message);
+      }
+
+      const { error: speedStateError } = await supabase.from("vehicle_speed_states").upsert(
         {
-          ...positionInsert,
           vehicle_id: device.vehicle_id,
           fleet_id: device.fleet_id,
+          tracker_imei: payload.imei,
+          is_speeding: isSpeeding,
+          speed_kmh: payload.speedKmh,
+          speed_limit_kmh: speedLimitKmh,
+          threshold_kmh: speedThresholdKmh,
+          tracker_time: trackerTime,
+          updated_at: new Date().toISOString(),
         },
         { onConflict: "vehicle_id" },
       );
+
+      if (speedStateError) {
+        throw new Error(speedStateError.message);
+      }
+
+      if (isSpeeding && previousSpeedState?.is_speeding !== true) {
+        const { error: speedingAlertError } = await supabase.from("alertes_automatiques").insert({
+          fleet_id: device.fleet_id,
+          alert_type: "speeding",
+          vehicle_id: device.vehicle_id,
+          severity: "high",
+          message: `Exces de vitesse: ${Math.round(payload.speedKmh)} km/h pour une limite de ${speedLimitKmh} km/h`,
+          resolved: false,
+          created_at: new Date().toISOString(),
+        });
+
+        if (speedingAlertError) {
+          throw new Error(speedingAlertError.message);
+        }
+      }
     }
 
     const { data: geofences } = await supabase

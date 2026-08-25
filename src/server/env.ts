@@ -99,3 +99,16 @@ export function getBackendUrl(): string {
 export function getPaymentWebhookPublicUrl(): string {
   return `${getBackendUrl()}/webhooks/payment`;
 }
+
+export function getGpsIngestKey(): string | undefined {
+  const v = process.env.GPS_INGEST_KEY?.trim();
+  return v || undefined;
+}
+
+export function getGpsIngestUrl(): string {
+  const configured = process.env.GPS_INGEST_URL?.trim();
+  if (configured) {
+    return configured;
+  }
+  return `${getSupabaseUrl()}/functions/v1/gps-ingest`;
+}

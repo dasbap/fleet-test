@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -60,6 +60,7 @@ function CreateReportDialog({ open, onClose }: { open: boolean; onClose: () => v
   const [sendHour, setSendHour] = useState("6");
   const [emailInput, setEmailInput] = useState("");
   const [emails, setEmails] = useState<string[]>([]);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const create = useCreateScheduledReport();
 
@@ -68,10 +69,18 @@ function CreateReportDialog({ open, onClose }: { open: boolean; onClose: () => v
     if (e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && !emails.includes(e)) {
       setEmails([...emails, e]);
       setEmailInput("");
+      setValidationError(null);
+    } else if (emailInput.trim()) {
+      setValidationError("Saisissez une adresse e-mail valide.");
     }
   };
 
   const handleSubmit = () => {
+    if (emails.length === 0) {
+      setValidationError("Ajoutez au moins un destinataire avant de crÃ©er le rapport.");
+      return;
+    }
+
     create.mutate(
       {
         report_type: reportType,
@@ -86,13 +95,14 @@ function CreateReportDialog({ open, onClose }: { open: boolean; onClose: () => v
     );
   };
 
-  const canSubmit = emails.length > 0 && !create.isPending;
-
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Nouveau rapport programmé</DialogTitle>
+          <DialogDescription>
+            Configurez le format, la fréquence et les destinataires du rapport automatique.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 text-sm">
@@ -183,13 +193,22 @@ function CreateReportDialog({ open, onClose }: { open: boolean; onClose: () => v
               <Input
                 placeholder="email@exemple.com"
                 value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
+                aria-invalid={!!validationError}
+                onChange={(e) => {
+                  setEmailInput(e.target.value);
+                  if (validationError) setValidationError(null);
+                }}
                 onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addEmail())}
               />
               <Button type="button" variant="outline" size="sm" onClick={addEmail}>
                 Ajouter
               </Button>
             </div>
+            {validationError ? (
+              <p role="alert" className="text-xs text-destructive">
+                {validationError}
+              </p>
+            ) : null}
             {emails.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {emails.map((e) => (
@@ -205,7 +224,7 @@ function CreateReportDialog({ open, onClose }: { open: boolean; onClose: () => v
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Annuler</Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit}>
+          <Button onClick={handleSubmit} disabled={create.isPending}>
             {create.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Créer le rapport
           </Button>

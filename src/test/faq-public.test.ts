@@ -5,14 +5,14 @@ describe("PUBLIC_FAQ_ENTRIES", () => {
   it("presente une FAQ commerciale a jour et sans details internes", () => {
     expect(PUBLIC_FAQ_ENTRIES).toHaveLength(8);
     expect(PUBLIC_FAQ_ENTRIES.map((entry) => entry.q)).toEqual([
-      "A qui s'adresse E-Samba ?",
+      "À qui s'adresse E-Samba ?",
       "Qu'est-ce que je peux suivre avec E-Samba ?",
-      "Est-ce adapte aux flottes en Afrique centrale ?",
-      "Combien de temps faut-il pour demarrer ?",
+      "Est-ce adapté aux flottes en Afrique centrale ?",
+      "Combien de temps faut-il pour démarrer ?",
       "Puis-je commencer avec une petite flotte ?",
-      "Comment se deroule la mise en place ?",
-      "Mes donnees restent-elles protegees ?",
-      "Comment demander une demo ?",
+      "Comment se déroule la mise en place ?",
+      "Mes données restent-elles protégées ?",
+      "Comment demander une démo ?",
     ]);
 
     const faqCopy = PUBLIC_FAQ_ENTRIES
@@ -24,14 +24,14 @@ describe("PUBLIC_FAQ_ENTRIES", () => {
     expect(faqCopy).not.toMatch(/\/statut|\/incident|\/km/i);
     expect(faqCopy).not.toMatch(/votre pays/i);
     expect(faqCopy).not.toMatch(/presentation adaptee/i);
-    expect(faqCopy).toMatch(/votre zone d'activite/i);
+    expect(faqCopy).toMatch(/votre zone d'activité/i);
     expect(faqCopy).toMatch(/compte sous 48h/i);
   });
 
   it("convertit la FAQ publique au format schema", () => {
     expect(toPublicFaqItems()[0]).toEqual({
       id: "public-faq-1",
-      question: "A qui s'adresse E-Samba ?",
+      question: "À qui s'adresse E-Samba ?",
       answer: PUBLIC_FAQ_ENTRIES[0].a,
     });
   });

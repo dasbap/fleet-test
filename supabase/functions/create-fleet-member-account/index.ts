@@ -31,7 +31,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
-
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin)
     ? origin
     : ALLOWED_ORIGINS[0];
@@ -51,14 +50,13 @@ function json(req: Request, body: unknown, status = 200): Response {
 }
 
 function generateTempPassword(): string {
-  const words = ["Samba", "Route", "Flotte", "Camion", "Cargo", "Africa"];
-  const random = new Uint32Array(2);
-  crypto.getRandomValues(random);
-  const word = words[random[0] % words.length];
-  const digits = 1000 + (random[1] % 9000);
-  const syms = ["!", "@", "#", "$"];
-  const sym = syms[random[1] % syms.length];
-  return `${word}${digits}${sym}`;
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  const encoded = btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+  return `Aa1!${encoded}`;
 }
 
 function canCreateRole(callerRole: RoleType, targetRole: RoleType): boolean {
@@ -79,21 +77,14 @@ async function findAuthUserIdByEmail(
       perPage: 100,
     });
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     const user = data.users.find(
       (candidate) => candidate.email?.trim().toLowerCase() === normalizedEmail
     );
 
-    if (user) {
-      return user.id;
-    }
-
-    if (data.users.length < 100) {
-      return null;
-    }
+    if (user) return user.id;
+    if (data.users.length < 100) return null;
   }
 
   return null;
@@ -101,10 +92,7 @@ async function findAuthUserIdByEmail(
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: corsHeaders(req),
-    });
+    return new Response(null, { status: 204, headers: corsHeaders(req) });
   }
 
   if (req.method !== "POST") {
@@ -139,11 +127,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!UUID_RE.test(fleetId)) {
     return json(req, { ok: false, error: "invalid_fleet_id" }, 400);
   }
-  if (!EMAIL_RE.test(email)) {
+  if (!EMAIL_RE.test(email) || email.length > 320) {
     return json(req, { ok: false, error: "invalid_email" }, 400);
   }
   if (fullName.length < 2 || fullName.length > 120) {
     return json(req, { ok: false, error: "invalid_full_name" }, 400);
+  }
+  if (phone && phone.length > 64) {
+    return json(req, { ok: false, error: "invalid_phone" }, 400);
   }
   if (!role || !VALID_ROLES.includes(role)) {
     return json(req, { ok: false, error: "invalid_role" }, 400);
@@ -153,9 +144,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     auth: { persistSession: false },
   });
 
-  const { data: callerData, error: callerErr } = await admin.auth.getUser(
-    token
-  );
+  const { data: callerData, error: callerErr } = await admin.auth.getUser(token);
   const caller = callerData?.user;
   if (callerErr || !caller) {
     return json(req, { ok: false, error: "unauthorized" }, 401);
@@ -174,11 +163,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json(req, { ok: false, error: "membership_check_failed" }, 500);
   }
   if (!callerMembership) {
-    return json(
-      req,
-      { ok: false, error: "forbidden_fleet_access_required" },
-      403
-    );
+    return json(req, { ok: false, error: "forbidden_fleet_access_required" }, 403);
   }
 
   const callerRole = callerMembership.role as RoleType;
@@ -187,39 +172,34 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   if (role === "organizer") {
-    const { count: activeOrganizerCount, error: organizerCountErr } =
-      await admin
-        .from("flotte_adhesions")
-        .select("id", { count: "exact", head: true })
-        .eq("fleet_id", fleetId)
-        .eq("role", "organizer")
-        .eq("is_active", true);
+    const { count: activeOrganizerCount, error: organizerCountErr } = await admin
+      .from("flotte_adhesions")
+      .select("id", { count: "exact", head: true })
+      .eq("fleet_id", fleetId)
+      .eq("role", "organizer")
+      .eq("is_active", true);
 
     if (organizerCountErr) {
-      return json(
-        req,
-        { ok: false, error: "organizer_count_check_failed" },
-        500
-      );
+      return json(req, { ok: false, error: "organizer_count_check_failed" }, 500);
     }
     if ((activeOrganizerCount ?? 0) >= 1) {
-      return json(
-        req,
-        { ok: false, error: "active_organizer_limit_reached" },
-        409
-      );
+      return json(req, { ok: false, error: "active_organizer_limit_reached" }, 409);
     }
   }
 
-  let tempPassword: string | undefined = generateTempPassword();
+  const temporaryPassword = generateTempPassword();
+  const temporaryPasswordIssuedAt = new Date().toISOString();
   let existingAuthUserAttached = false;
   let userId: string | null = null;
+
   const { data: authData, error: authErr } = await admin.auth.admin.createUser({
     email,
-    password: tempPassword,
+    password: temporaryPassword,
     email_confirm: true,
     app_metadata: {
       must_set_password: true,
+      temporary_password_active: true,
+      temporary_password_issued_at: temporaryPasswordIssuedAt,
     },
     user_metadata: {
       full_name: fullName,
@@ -234,7 +214,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (authData?.user) {
     userId = authData.user.id;
   } else if (authErr) {
-    const message = authErr?.message?.toLowerCase() ?? "";
+    const message = authErr.message?.toLowerCase() ?? "";
     if (
       message.includes("already") ||
       message.includes("registered") ||
@@ -250,51 +230,61 @@ Deno.serve(async (req: Request): Promise<Response> => {
         return json(req, { ok: false, error: "email_already_registered" }, 409);
       }
 
-      tempPassword = undefined;
       existingAuthUserAttached = true;
     } else {
-      return json(
-        req,
-        { ok: false, error: authErr?.message ?? "auth_create_failed" },
-        500
-      );
+      return json(req, { ok: false, error: "auth_create_failed" }, 500);
     }
   }
 
   if (!userId) {
-    return json(
-      req,
-      { ok: false, error: "auth_create_failed" },
-      500
-    );
+    return json(req, { ok: false, error: "auth_create_failed" }, 500);
   }
 
   const cleanupUser = async () => {
-    if (existingAuthUserAttached) {
-      return;
-    }
-
+    if (existingAuthUserAttached || !userId) return;
     const { error } = await admin.auth.admin.deleteUser(userId);
     if (error) {
-      console.error(
-        "[create-fleet-member-account] cleanup failed:",
-        error.message
-      );
+      console.error("[create-fleet-member-account] cleanup failed:", error.message);
     }
   };
 
-  const { error: profileErr } = await admin.from("profils").upsert(
-    {
-      user_id: userId,
-      full_name: fullName,
-      phone,
-    },
-    { onConflict: "user_id" }
-  );
+  if (existingAuthUserAttached) {
+    const { data: existingMembership, error: existingMembershipError } = await admin
+      .from("flotte_adhesions")
+      .select("id, role, is_active")
+      .eq("fleet_id", fleetId)
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  if (profileErr) {
-    await cleanupUser();
-    return json(req, { ok: false, error: "profile_create_failed" }, 500);
+    if (existingMembershipError) {
+      return json(req, { ok: false, error: "target_membership_check_failed" }, 500);
+    }
+
+    if (existingMembership?.is_active) {
+      return json(req, { ok: false, error: "already_fleet_member" }, 409);
+    }
+
+    if (
+      existingMembership &&
+      existingMembership.role !== role &&
+      callerRole !== "organizer"
+    ) {
+      return json(req, { ok: false, error: "forbidden_role_assignment" }, 403);
+    }
+  } else {
+    const { error: profileErr } = await admin.from("profils").upsert(
+      {
+        user_id: userId,
+        full_name: fullName,
+        phone,
+      },
+      { onConflict: "user_id" }
+    );
+
+    if (profileErr) {
+      await cleanupUser();
+      return json(req, { ok: false, error: "profile_create_failed" }, 500);
+    }
   }
 
   const { data: membershipData, error: createMembershipErr } = await admin
@@ -316,6 +306,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json(req, { ok: false, error: "membership_create_failed" }, 500);
   }
 
+  if (!existingAuthUserAttached) {
+    const { error: resetError } = await admin.auth.resetPasswordForEmail(email, {
+      redirectTo: `${APP_URL.replace(/\/$/, "")}/set-password`,
+    });
+
+    if (resetError) {
+      await admin
+        .from("flotte_adhesions")
+        .delete()
+        .eq("id", membershipData.id);
+      await cleanupUser();
+      return json(req, { ok: false, error: "password_setup_email_failed" }, 502);
+    }
+  }
+
   return json(req, {
     ok: true,
     user_id: userId,
@@ -323,8 +328,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     email,
     fleet_id: fleetId,
     role,
-    login_url: `${APP_URL}/login`,
-    temp_password: tempPassword,
+    login_url: `${APP_URL.replace(/\/$/, "")}/login`,
+    password_delivery: existingAuthUserAttached ? "existing_account" : "reset_email",
+    must_set_password: !existingAuthUserAttached,
     existing_auth_user_attached: existingAuthUserAttached,
   });
 });

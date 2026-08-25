@@ -14,7 +14,6 @@ import {
   DEMO_FEATURE_ENABLED,
   DEMO_MAGIC_LINK_ENABLED,
 } from "@/lib/demo/demoFeatureFlag";
-// todo
 
 const Index = lazy(() => import("@/pages/Index"));
 const NotFound = lazy(() => import("@/pages/NotFound"));

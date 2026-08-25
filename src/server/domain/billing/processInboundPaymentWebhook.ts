@@ -12,14 +12,31 @@ import {
 
 const rawPayloadSchema = z.object({
   planCode: z.string().min(1),
-  vehicleCount: z.number().int().nonnegative(),
-  durationMonths: z.number().int().positive().optional(),
+  vehicleCount: z.number().int().positive(),
+  durationMonths: z.number().int().positive().max(36).optional(),
   fleetId: z.string().uuid(),
   phoneNumber: z.string().optional(),
   vehicleIds: z.array(z.string().uuid()).optional(),
+}).superRefine((payload, ctx) => {
+  if (!payload.vehicleIds?.length) return;
+
+  const uniqueVehicleIds = new Set(payload.vehicleIds);
+  if (uniqueVehicleIds.size !== payload.vehicleIds.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["vehicleIds"],
+      message: "duplicate_vehicle_ids",
+    });
+  }
+  if (payload.vehicleIds.length !== payload.vehicleCount) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["vehicleIds"],
+      message: "vehicle_count_mismatch",
+    });
+  }
 });
 
-/** Ajoute des mois calendaires en UTC (facturation). */
 export function addCalendarMonthsUtc(base: Date, months: number): Date {
   const capped = Math.min(Math.max(months, 1), 36);
   const d = new Date(base.getTime());
@@ -32,25 +49,61 @@ export interface InboundPaymentWebhookResult {
   normalizedStatus: PaymentStatus;
   subscriptionActivated: boolean;
   subscriptionId?: string;
-  /** Transition refusée (ex. terminal → autre) : aucune écriture. */
-  skippedReason?: "no_transition";
+  skippedReason?: "no_transition" | "effects_in_progress_or_done";
 }
+
+type ExpectedPaymentProvider = "manual" | "notch" | "cinetpay";
 
 interface PaymentRow {
   id: string;
   org_id: string;
+  provider: string;
   status: string;
   raw_payload: unknown;
 }
 
-/**
- * Met à jour le statut du paiement puis, si `succeeded`, active ou prolonge l’abonnement
- * et matérialise les droits véhicules (idempotent via `abonnements.payment_id`).
- */
+async function claimPaymentEffects(admin: SupabaseClient, paymentId: string): Promise<string | null> {
+  const { data, error } = await admin.rpc("claim_payment_webhook_effects", {
+    p_payment_id: paymentId,
+    p_lease_seconds: 900,
+  });
+  if (error) throw new Error(error.message);
+  return typeof data === "string" && data.length > 0 ? data : null;
+}
+
+async function completePaymentEffects(
+  admin: SupabaseClient,
+  paymentId: string,
+  claimToken: string,
+): Promise<void> {
+  const { data, error } = await admin.rpc("complete_payment_webhook_effects", {
+    p_payment_id: paymentId,
+    p_claim_token: claimToken,
+  });
+  if (error || data !== true) {
+    throw new Error(error?.message ?? "Impossible de finaliser les effets du webhook.");
+  }
+}
+
+async function releasePaymentEffects(
+  admin: SupabaseClient,
+  paymentId: string,
+  claimToken: string,
+): Promise<void> {
+  const { error } = await admin.rpc("release_payment_webhook_effects", {
+    p_payment_id: paymentId,
+    p_claim_token: claimToken,
+  });
+  if (error) {
+    console.error("[billing webhook] payment effect release failed:", error.message);
+  }
+}
+
 export async function runInboundPaymentWebhook(
   admin: SupabaseClient,
   externalRef: string,
   rawStatus: string,
+  expectedProvider?: ExpectedPaymentProvider,
 ): Promise<InboundPaymentWebhookResult> {
   const normalized = normalizeInboundPaymentStatus(rawStatus);
   if (!normalized) {
@@ -59,12 +112,16 @@ export async function runInboundPaymentWebhook(
 
   const { data: payment, error: payErr } = await admin
     .from("paiements")
-    .select("id, org_id, status, raw_payload")
+    .select("id, org_id, provider, status, raw_payload")
     .eq("external_ref", externalRef)
     .maybeSingle<PaymentRow>();
 
   if (payErr) throw new Error(payErr.message);
   if (!payment) throw new Error("Paiement introuvable pour cette référence externe");
+
+  if (expectedProvider && payment.provider !== expectedProvider) {
+    throw new Error("Le fournisseur du webhook ne correspond pas au fournisseur du paiement.");
+  }
 
   if (!canTransitionPaymentStatus(payment.status, normalized)) {
     return {
@@ -75,11 +132,26 @@ export async function runInboundPaymentWebhook(
     };
   }
 
-  const { error: updErr } = await admin.from("paiements").update({ status: normalized }).eq("id", payment.id);
-  if (updErr) throw new Error(updErr.message);
+  if (payment.status !== normalized) {
+    const { data: transitioned, error: updErr } = await admin
+      .from("paiements")
+      .update({ status: normalized })
+      .eq("id", payment.id)
+      .eq("status", payment.status)
+      .select("id")
+      .maybeSingle<{ id: string }>();
+    if (updErr) throw new Error(updErr.message);
+    if (!transitioned) {
+      return {
+        paymentId: payment.id,
+        normalizedStatus: normalized,
+        subscriptionActivated: false,
+        skippedReason: "no_transition",
+      };
+    }
+  }
 
   if (normalized !== "succeeded") {
-    // Billing event pour statuts non-terminaux (failed, processing…)
     const rawPayload = payment.raw_payload as Record<string, unknown> | null;
     const fleetId = rawPayload?.fleetId as string | undefined;
     if (fleetId) {
@@ -97,48 +169,78 @@ export async function runInboundPaymentWebhook(
     };
   }
 
-  const activation = await activateSubscriptionForSucceededPayment(admin, payment);
-
-  // Billing event paiement réussi
-  const rawPayload2 = payment.raw_payload as Record<string, unknown> | null;
-  const fleetId2 = rawPayload2?.fleetId as string | undefined;
-  if (fleetId2) {
-    await admin.from("billing_events").insert({
-      fleet_id: fleetId2,
-      payment_id: payment.id,
-      subscription_id: activation.subscriptionId ?? null,
-      event_type: activation.activated ? "subscription.activated" : "payment.successful",
-      payload: {
-        external_ref: externalRef,
-        subscription_activated: activation.activated,
-        subscription_id: activation.subscriptionId,
-      },
-    }).then(() => void 0);
+  const claimToken = await claimPaymentEffects(admin, payment.id);
+  if (!claimToken) {
+    return {
+      paymentId: payment.id,
+      normalizedStatus: normalized,
+      subscriptionActivated: false,
+      skippedReason: "effects_in_progress_or_done",
+    };
   }
 
-  return {
-    paymentId: payment.id,
-    normalizedStatus: normalized,
-    subscriptionActivated: activation.activated,
-    subscriptionId: activation.subscriptionId,
-  };
+  try {
+    const activation = await activateSubscriptionForSucceededPayment(admin, payment);
+
+    const rawPayload2 = payment.raw_payload as Record<string, unknown> | null;
+    const fleetId2 = rawPayload2?.fleetId as string | undefined;
+    if (fleetId2) {
+      await admin.from("billing_events").insert({
+        fleet_id: fleetId2,
+        payment_id: payment.id,
+        subscription_id: activation.subscriptionId ?? null,
+        event_type: activation.activated ? "subscription.activated" : "payment.successful",
+        payload: {
+          external_ref: externalRef,
+          subscription_activated: activation.activated,
+          subscription_id: activation.subscriptionId,
+        },
+      }).then(() => void 0);
+    }
+
+    await completePaymentEffects(admin, payment.id, claimToken);
+
+    return {
+      paymentId: payment.id,
+      normalizedStatus: normalized,
+      subscriptionActivated: activation.activated,
+      subscriptionId: activation.subscriptionId,
+    };
+  } catch (error) {
+    await releasePaymentEffects(admin, payment.id, claimToken);
+    throw error;
+  }
 }
 
 async function activateSubscriptionForSucceededPayment(
   admin: SupabaseClient,
   payment: PaymentRow,
 ): Promise<{ activated: boolean; subscriptionId?: string }> {
-  const { data: already } = await admin.from("abonnements").select("id").eq("payment_id", payment.id).maybeSingle();
-  if (already?.id) {
-    return { activated: false, subscriptionId: already.id };
-  }
-
   const parsedPayload = rawPayloadSchema.safeParse(payment.raw_payload);
   if (!parsedPayload.success) {
     throw new Error("Impossible d’activer l’abonnement : raw_payload du paiement invalide ou incomplet.");
   }
 
   const { fleetId, planCode, vehicleCount, durationMonths, vehicleIds } = parsedPayload.data;
+
+  const { data: already, error: alreadyError } = await admin
+    .from("abonnements")
+    .select("id, starts_at, ends_at")
+    .eq("payment_id", payment.id)
+    .maybeSingle<{ id: string; starts_at: string; ends_at: string }>();
+  if (alreadyError) throw new Error(alreadyError.message);
+
+  if (already?.id) {
+    await syncVehicleRights(admin, {
+      fleetId,
+      subscriptionId: already.id,
+      vehicleCount,
+      vehicleIds,
+      startsAtIso: already.starts_at,
+      endsAtIso: already.ends_at,
+    });
+    return { activated: false, subscriptionId: already.id };
+  }
 
   const { data: flotte, error: flotteErr } = await admin
     .from("flottes")
@@ -168,6 +270,19 @@ async function activateSubscriptionForSucceededPayment(
     requestedVehicleCount: vehicleCount,
     planMaxVehicles: planRow.max_vehicles,
   });
+
+  if (vehicleIds?.length) {
+    const { data: selectedVehicles, error: selectedVehiclesError } = await admin
+      .from("vehicules")
+      .select("id")
+      .eq("fleet_id", fleetId)
+      .in("id", vehicleIds)
+      .returns<{ id: string }[]>();
+    if (selectedVehiclesError) throw new Error(selectedVehiclesError.message);
+    if ((selectedVehicles ?? []).length !== vehicleCount) {
+      throw new Error("La sélection de véhicules payée ne correspond plus aux véhicules de la flotte.");
+    }
+  }
 
   const now = new Date();
   const nowIso = now.toISOString();
@@ -272,6 +387,9 @@ async function syncVehicleRights(
       .returns<{ id: string }[]>();
     if (vfErr) throw new Error(vfErr.message);
     ids = (inFleet ?? []).map((r) => r.id);
+    if (ids.length !== vehicleCount) {
+      throw new Error("Impossible d’attribuer plus ou moins de droits véhicules que le nombre payé.");
+    }
   } else if (vehicleCount > 0) {
     const { data: rows, error } = await admin
       .from("vehicules")

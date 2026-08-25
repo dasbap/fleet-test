@@ -5,6 +5,7 @@ import {
   type User,
 } from "@supabase/supabase-js";
 
+// TODO
 export interface SupabaseEnv {
   url: string;
   anonKey: string;
@@ -27,10 +28,53 @@ export function getSupabaseEnv(): SupabaseEnv {
   };
 }
 
-export function applyCors(res: VercelResponse, origin = "*"): void {
-  res.setHeader("Access-Control-Allow-Origin", origin);
+function getRequestOrigin(req: VercelRequest): string {
+  const origin = req.headers.origin;
+  if (Array.isArray(origin)) return origin[0]?.trim() ?? "";
+  return typeof origin === "string" ? origin.trim() : "";
+}
+
+export function applyCors(req: VercelRequest, res: VercelResponse): void {
+  res.setHeader("Access-Control-Allow-Origin", resolveAllowedCorsOrigin(getRequestOrigin(req)));
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Cache-Control", "no-store, private");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+}
+
+function isAllowedLocalOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+      url.username === "" &&
+      url.password === ""
+    );
+  } catch {
+    return false;
+  }
+}
+
+function resolveAllowedCorsOrigin(origin: string): string {
+  const configuredAppUrl =
+    process.env.VITE_APP_URL ?? process.env.APP_URL ?? "https://www.e-samba.com";
+  const fallbackOrigin = configuredAppUrl.replace(/\/$/, "");
+  const requestOrigin = origin.replace(/\/$/, "");
+  const allowedOrigins = new Set([
+    fallbackOrigin,
+    "https://www.e-samba.com",
+    "https://app.e-samba.com",
+  ]);
+  const allowLocalDevelopmentOrigins = process.env.NODE_ENV !== "production";
+
+  if (allowLocalDevelopmentOrigins && isAllowedLocalOrigin(requestOrigin)) {
+    return requestOrigin;
+  }
+
+  return allowedOrigins.has(requestOrigin) ? requestOrigin : fallbackOrigin;
 }
 
 export function handlePreflight(

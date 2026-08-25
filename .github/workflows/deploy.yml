@@ -5,48 +5,45 @@ on:
     branches:
       - main
   workflow_dispatch:
-    inputs:
-      branch:
-        description: Branch to deploy
-        required: true
-        default: main
 
 permissions:
   contents: read
 
 concurrency:
-  group: vercel-production-${{ github.event.inputs.branch || github.ref_name }}
+  group: vercel-production-main
   cancel-in-progress: true
 
 jobs:
   deploy:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
+    environment: production
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ github.event.inputs.branch || github.ref }}
+          ref: main
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
 
       - name: Pull Vercel environment
-        run: npx --yes vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
+        run: npx --yes vercel@58.4.0 pull --yes --environment=production --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Build Vercel artifact
-        run: npx --yes vercel@latest build --prod --token "$VERCEL_TOKEN"
+        run: npx --yes vercel@58.4.0 build --prod --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Deploy to Vercel production
-        run: npx --yes vercel@latest deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+        run: npx --yes vercel@58.4.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}

@@ -1,15 +1,4 @@
 #!/usr/bin/env node
-/**
- * Vérifie que tous les comptes démo E-Samba existent, se connectent et ont une adhésion flotte.
- *
- * Usage :
- *   node --env-file=.env.local scripts/verify-demo-accounts.mjs
- *   npm run verify:demo-accounts
- *
- * Optionnel (UI Playwright) :
- *   E2E_BASE_URL=http://127.0.0.1:8080 node --env-file=.env.local scripts/verify-demo-accounts.mjs --ui
- */
-
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,11 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-
-const DEMO_PASSWORD = "Demo2025!";
 const DEFAULT_BASE = "http://127.0.0.1:8080";
 
-/** Aligné avec src/features/auth/data/demoCredentials.ts */
 const DEMO_ACCOUNTS = [
   { role: "Organizer", email: "demo.organizer@esamba.test", expectedRole: "organizer", minAdhesions: 1 },
   { role: "Manager 1", email: "demo.manager1@esamba.test", expectedRole: "manager", minAdhesions: 1 },
@@ -47,6 +33,14 @@ function loadEnvLocal() {
 
 loadEnvLocal();
 
+function demoPassword() {
+  const password = process.env.DEMO_PASSWORD?.trim() ?? "";
+  if (password.length < 16) {
+    throw new Error("DEMO_PASSWORD est requis et doit contenir au moins 16 caractères.");
+  }
+  return password;
+}
+
 function fail(msg) {
   console.error(`[FAIL] ${msg}`);
   process.exitCode = 1;
@@ -56,7 +50,7 @@ function ok(msg) {
   console.log(`[OK] ${msg}`);
 }
 
-async function verifyApiAccounts() {
+async function verifyApiAccounts(password) {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const anon = process.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !anon) {
@@ -69,7 +63,7 @@ async function verifyApiAccounts() {
     const sb = createClient(url, anon);
     const { data, error } = await sb.auth.signInWithPassword({
       email: acc.email,
-      password: DEMO_PASSWORD,
+      password,
     });
 
     if (error || !data.session) {
@@ -115,7 +109,7 @@ function expectedPostLoginUrlPattern(expectedRole) {
   return /\/dashboard/;
 }
 
-async function verifyUiLogin() {
+async function verifyUiLogin(password) {
   const { chromium } = await import("playwright");
   const base = process.env.E2E_BASE_URL?.trim() || DEFAULT_BASE;
   const browser = await chromium.launch({ headless: true });
@@ -130,14 +124,11 @@ async function verifyUiLogin() {
 
     try {
       await page.goto(`${base}/auth`, { waitUntil: "networkidle", timeout: 90_000 });
-
       const emailInput = page.locator("#email, input[type='email']").first();
       await emailInput.waitFor({ state: "visible", timeout: 20_000 });
       await emailInput.fill(acc.email);
-
       const passwordInput = page.locator("#password, input[type='password']").first();
-      await passwordInput.fill(DEMO_PASSWORD);
-
+      await passwordInput.fill(password);
       await page.locator('form button[type="submit"]').first().click();
       const urlPattern = expectedPostLoginUrlPattern(acc.expectedRole);
       await page.waitForURL(urlPattern, { timeout: 45_000 });
@@ -171,11 +162,12 @@ async function verifyUiLogin() {
 }
 
 async function main() {
+  const password = demoPassword();
   const withUi = process.argv.includes("--ui");
   console.log("=== Vérification comptes démo E-Samba ===\n");
 
   console.log("--- API Supabase ---");
-  const apiOk = await verifyApiAccounts();
+  const apiOk = await verifyApiAccounts(password);
   if (!apiOk) {
     console.log("\n=== Échec API ===");
     process.exit(1);
@@ -183,7 +175,7 @@ async function main() {
 
   if (withUi) {
     console.log("\n--- UI Playwright ---");
-    const uiOk = await verifyUiLogin();
+    const uiOk = await verifyUiLogin(password);
     if (!uiOk) {
       console.log("\n=== Échec UI ===");
       process.exit(1);

@@ -13,7 +13,6 @@ interface InitiateBody {
   vehicleCount?: number;
   durationMonths?: number;
   billing?: string;
-  amount?: number;
   email?: string;
 }
 
@@ -43,15 +42,11 @@ export async function POST(request: Request) {
   }
 
   const { supabase, context, user } = auth;
-  const vehicleCount = Math.max(body.vehicleCount ?? 1, 1);
-  const durationMonths = resolveDurationMonths(
-    body.billing,
-    body.durationMonths,
-  );
+  const durationMonths = resolveDurationMonths(body.billing, body.durationMonths);
 
   const { data: subscription, error: subError } = await supabase
     .from("abonnements")
-    .select("id, fleet_id")
+    .select("id, fleet_id, vehicle_slots, plan_id")
     .eq("id", body.subscriptionId)
     .eq("fleet_id", context.fleetId)
     .maybeSingle();
@@ -63,25 +58,60 @@ export async function POST(request: Request) {
     );
   }
 
+  if (
+    body.vehicleCount != null &&
+    (!Number.isInteger(body.vehicleCount) || body.vehicleCount < 1)
+  ) {
+    return NextResponse.json({ error: "vehicleCount invalide" }, { status: 400 });
+  }
+
+  const vehicleCount = subscription.vehicle_slots;
+  if (!Number.isInteger(vehicleCount) || vehicleCount < 1) {
+    return NextResponse.json(
+      { error: "Nombre de vehicules de l'abonnement invalide." },
+      { status: 400 },
+    );
+  }
+
+  if (body.vehicleCount != null && body.vehicleCount !== subscription.vehicle_slots) {
+    return NextResponse.json(
+      { error: "Le nombre de vehicules ne correspond pas a l'abonnement." },
+      { status: 400 },
+    );
+  }
+
   const { data: plan, error: planError } = await supabase
     .from("plans")
-    .select("price_per_vehicle, is_active")
-    .eq("code", body.planCode.trim())
+    .select("id, code, price_per_vehicle, is_active, max_vehicles")
+    .eq("id", subscription.plan_id)
     .maybeSingle();
 
   if (planError || !plan?.is_active) {
     return NextResponse.json({ error: "Plan introuvable" }, { status: 400 });
   }
 
-  const amountXaf =
-    body.amount && body.amount > 0
-      ? body.amount
-      : plan.price_per_vehicle * vehicleCount * durationMonths;
+  if (plan.code !== body.planCode.trim()) {
+    return NextResponse.json(
+      { error: "Le plan ne correspond pas a l'abonnement." },
+      { status: 400 },
+    );
+  }
+
+  if (plan.max_vehicles != null && vehicleCount > plan.max_vehicles) {
+    return NextResponse.json(
+      { error: "Limite de vehicules du plan depassee" },
+      { status: 400 },
+    );
+  }
+
+  const amountXaf = plan.price_per_vehicle * vehicleCount * durationMonths;
+  if (!Number.isFinite(amountXaf) || amountXaf <= 0) {
+    return NextResponse.json({ error: "Montant invalide" }, { status: 400 });
+  }
 
   const merchantRef = buildMerchantReference("FAPSHI");
   const returnUrl = `${getAppUrl()}/dashboard/abonnement/success?ref=${encodeURIComponent(merchantRef)}`;
   const payerEmail = body.email ?? user.email ?? undefined;
-
   const useLiveApi = fapshiCreds.endpoint.includes("live.fapshi.com");
 
   const fapshiRes = await fetch(fapshiCreds.endpoint, {
@@ -110,7 +140,7 @@ export async function POST(request: Request) {
             currency: "XAF",
             externalId: body.subscriptionId,
             redirectUrl: returnUrl,
-            description: `E-Samba ${body.planCode}`,
+            description: `E-Samba ${plan.code}`,
           },
     ),
   }).catch(() => null);
@@ -151,27 +181,28 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error: paymentError } = await supabase.from("paiements").insert({
-    org_id: context.orgId,
-    provider: "fapshi",
-    amount: amountXaf,
-    currency: "XAF",
-    status: "initiated",
-    external_ref: body.subscriptionId,
-    provider_reference: merchantRef,
-    idempotency_key: merchantRef,
-    raw_payload: {
-      subscriptionId: body.subscriptionId,
-      planCode: body.planCode,
-      vehicleCount,
-      durationMonths,
-      fleetId: context.fleetId,
-      fapshiExternalId: body.subscriptionId,
+  const { data: payment, error: paymentError } = await supabase.rpc(
+    "create_payment_intent",
+    {
+      p_org_id: context.orgId,
+      p_fleet_id: context.fleetId,
+      p_plan_code: plan.code,
+      p_vehicle_count: vehicleCount,
+      p_duration_months: durationMonths,
+      p_provider: "fapshi",
+      p_external_ref: body.subscriptionId,
+      p_idempotency_key: merchantRef,
+      p_expected_amount: amountXaf,
+      p_vehicle_ids: null,
+      p_phone_number: null,
+      p_checkout: false,
+      p_subscription_id: body.subscriptionId,
+      p_provider_reference: merchantRef,
     },
-  });
+  );
 
-  if (paymentError) {
-    return NextResponse.json({ error: paymentError.message }, { status: 500 });
+  if (paymentError || !payment) {
+    return NextResponse.json({ error: "Création du paiement impossible" }, { status: 500 });
   }
 
   return NextResponse.json({

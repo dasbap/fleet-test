@@ -1,6 +1,3 @@
-/**
- * Génère DEMO-CREDENTIALS.pdf à partir du contenu aligné sur DEMO-CREDENTIALS.md
- */
 import { writeFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -15,21 +12,14 @@ const doc = new jsPDF();
 let y = 18;
 
 doc.setFontSize(16);
-doc.text("Identifiants démo E-Samba", 14, y);
+doc.text("Accès démo E-Samba", 14, y);
 y += 10;
 
 doc.setFontSize(10);
 const intro =
-  "Comptes créés par le script supabase/create-demo-organization-complete.sql pour la démonstration.";
+  "Les mots de passe ne sont pas intégrés au dépôt ni à ce document. Ils doivent être transmis séparément par un canal privé.";
 doc.text(doc.splitTextToSize(intro, 182), 14, y);
-y += 14;
-
-doc.setFontSize(12);
-doc.text("Mot de passe commun", 14, y);
-y += 7;
-doc.setFontSize(10);
-doc.text("Mot de passe (tous les comptes) : Demo2025!", 14, y);
-y += 12;
+y += 16;
 
 doc.setFontSize(12);
 doc.text("Comptes", 14, y);
@@ -52,34 +42,20 @@ autoTable(doc, {
 });
 
 y = doc.lastAutoTable.finalY + 12;
-
-doc.setFontSize(12);
-doc.text("Connexion", 14, y);
-y += 7;
-doc.setFontSize(10);
-const steps = [
-  "1. Lancer l'application (ex. npm run dev).",
-  "2. Aller sur la page de connexion.",
-  "3. Saisir l'email du compte (ex. demo.organizer@esamba.test) et le mot de passe Demo2025!.",
-];
-steps.forEach((line) => {
-  doc.text(doc.splitTextToSize(line, 182), 14, y);
-  y += 6;
-});
-y += 4;
-
 doc.setFontSize(12);
 doc.text("Sécurité", 14, y);
 y += 7;
 doc.setFontSize(10);
 const bullets = [
-  "À utiliser uniquement en environnement de démo/test.",
-  "Ne pas utiliser ce mot de passe en production.",
-  "Les comptes @esamba.test sont destinés aux jeux de données de démonstration (voir aussi NETTOYAGE-BASE-DONNEES.md).",
+  "Ne jamais inclure un mot de passe réel dans un document généré ou versionné.",
+  "Utiliser DEMO_PASSWORD uniquement depuis un environnement local non versionné ou un gestionnaire de secrets CI.",
+  "Considérer comme compromis tout ancien secret déjà publié dans l'historique Git et le remplacer avant utilisation distante.",
 ];
+
 bullets.forEach((line) => {
-  doc.text(doc.splitTextToSize("• " + line, 178), 18, y);
-  y += doc.getTextDimensions(doc.splitTextToSize(line, 170)).h + 4;
+  const wrapped = doc.splitTextToSize(`• ${line}`, 178);
+  doc.text(wrapped, 18, y);
+  y += doc.getTextDimensions(wrapped).h + 4;
 });
 
 const buf = doc.output("arraybuffer");

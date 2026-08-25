@@ -63,7 +63,6 @@ interface SidebarNavItem extends DashboardNavItem {
   icon: LucideIcon;
 }
 
-//todo
 const DASHBOARD_NAV_ICONS: Record<string, LucideIcon> = {
   [ROUTE_PATHS.dashboard]: LayoutDashboard,
   [ROUTE_PATHS.dashboardVehicles]: Car,
@@ -105,10 +104,13 @@ function withIcons(items: readonly DashboardNavItem[]): SidebarNavItem[] {
   }));
 }
 
-function buildOrganizerMenu(userRole: AppRole, planOptions: {
-  financeEnabled: boolean;
-  reportsEnabled: boolean;
-}): SidebarNavItem[] {
+function buildOrganizerMenu(
+  userRole: AppRole,
+  planOptions: {
+    financeEnabled: boolean;
+    reportsEnabled: boolean;
+  }
+): SidebarNavItem[] {
   const core = filterDashboardNavByPlan(DASHBOARD_NAV.organizer, planOptions);
   const extras: DashboardNavItem[] = [];
 
@@ -137,7 +139,9 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
 
   const menuItems: Record<AppRole, SidebarNavItem[]> = {
     organizer: buildOrganizerMenu(userRole, planOptions),
-    manager: withIcons(filterDashboardNavByPlan(DASHBOARD_NAV.manager, planOptions)),
+    manager: withIcons(
+      filterDashboardNavByPlan(DASHBOARD_NAV.manager, planOptions)
+    ),
     driver: withIcons(DASHBOARD_NAV.driver),
     mechanic: withIcons(DASHBOARD_NAV.mechanic),
   };
@@ -149,7 +153,9 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
       );
   const items = isAdmin ? withIcons(adminItems) : menuItems[userRole];
   const footerLinks = isAdmin
-    ? DASHBOARD_SIDEBAR_FOOTER.filter((link) => link.href === ROUTE_PATHS.dashboardProfile)
+    ? DASHBOARD_SIDEBAR_FOOTER.filter(
+        (link) => link.href === ROUTE_PATHS.dashboardProfile
+      )
     : DASHBOARD_SIDEBAR_FOOTER;
 
   const containerVariants = {
@@ -158,7 +164,11 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
   };
   const itemVariants = {
     hidden: { opacity: 0, x: -8 },
-    show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+    show: {
+      opacity: 1,
+      x: 0,
+      transition: { type: "spring", stiffness: 300, damping: 24 },
+    },
   };
 
   return (
@@ -169,8 +179,12 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
             <Zap className="w-5 h-5 text-primary-foreground" />
           </div>
           <div className="flex flex-col">
-            <span className="font-heading font-bold text-base leading-none text-sidebar-foreground">E-Samba</span>
-            <span className="text-[10px] text-sidebar-foreground/50 leading-none mt-0.5 font-medium tracking-wide">Smart Fleet Africa</span>
+            <span className="font-heading font-bold text-base leading-none text-sidebar-foreground">
+              E-Samba
+            </span>
+            <span className="text-[10px] text-sidebar-foreground/50 leading-none mt-0.5 font-medium tracking-wide">
+              Smart Fleet Africa
+            </span>
           </div>
         </Link>
       </SidebarHeader>
@@ -182,23 +196,43 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <motion.div variants={containerVariants} initial="hidden" animate="show">
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
+              >
                 {items.map((item) => {
-                  const isActive = isDashboardNavActive(location.pathname, item.href);
+                  const isActive = isDashboardNavActive(
+                    location.pathname,
+                    item.href
+                  );
                   return (
-                    <motion.div key={`${item.href}-${item.label}`} variants={itemVariants}>
+                    <motion.div
+                      key={`${item.href}-${item.label}`}
+                      variants={itemVariants}
+                    >
                       <SidebarMenuItem>
                         <SidebarMenuButton
                           asChild
                           isActive={isActive}
-                          className={isActive ? "bg-primary/15 text-primary font-semibold" : "hover:bg-sidebar-accent"}
+                          className={
+                            isActive
+                              ? "bg-primary/15 text-primary font-semibold"
+                              : "hover:bg-sidebar-accent"
+                          }
                         >
                           <Link
                             to={item.href}
                             aria-current={isActive ? "page" : undefined}
                             className="flex items-center gap-3 px-3 py-2 rounded-lg"
                           >
-                            <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "text-sidebar-foreground/60"}`} />
+                            <item.icon
+                              className={`w-4 h-4 shrink-0 ${
+                                isActive
+                                  ? "text-primary"
+                                  : "text-sidebar-foreground/60"
+                              }`}
+                            />
                             <span className="text-sm">{item.label}</span>
                             {isActive && (
                               <motion.div
@@ -222,7 +256,8 @@ const DashboardSidebar = ({ userRole }: DashboardSidebarProps) => {
         <SidebarMenu>
           {footerLinks.map((link) => {
             const isActive = location.pathname === link.href;
-            const Icon = link.href === ROUTE_PATHS.dashboardProfile ? User : Settings;
+            const Icon =
+              link.href === ROUTE_PATHS.dashboardProfile ? User : Settings;
             return (
               <SidebarMenuItem key={link.href}>
                 <SidebarMenuButton asChild isActive={isActive}>

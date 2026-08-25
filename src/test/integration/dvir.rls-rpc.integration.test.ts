@@ -33,6 +33,7 @@ describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
   let testVehicleIdA = "";
   let testVehicleIdB = "";
   let testAuthUserId = "";
+  let guardAuthUserId = "";
   const createdDvirIds: string[] = [];
   const unique = Date.now();
 
@@ -117,8 +118,6 @@ describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
 
     testUserId = sessionData.user.id;
 
-    // The on_auth_user_created trigger that normally creates the profils row may be
-    // absent from local migrations. Insert it explicitly so flotte_adhesions FK holds.
     const { error: profilError } = await supabaseAdmin
       .from("profils")
       .insert({ user_id: testUserId, full_name: "Test DVIR User" });
@@ -152,6 +151,33 @@ describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
     testFleetId = fleetId as string;
 
     await setMembershipRole("organizer", true);
+
+    const guardEmail = `dvir-organizer-guard-${unique}@example.com`;
+    const guardPassword = `DvirGuard!${unique}`;
+    const { data: guardUser, error: guardUserError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email: guardEmail,
+        password: guardPassword,
+        email_confirm: true,
+      });
+    expect(guardUserError).toBeNull();
+    expect(guardUser.user).toBeDefined();
+    guardAuthUserId = guardUser.user!.id;
+
+    const { error: guardProfileError } = await supabaseAdmin
+      .from("profils")
+      .insert({ user_id: guardAuthUserId, full_name: "DVIR Organizer Guard" });
+    expect(guardProfileError).toBeNull();
+
+    const { error: guardMembershipError } = await supabaseAdmin
+      .from("flotte_adhesions")
+      .insert({
+        fleet_id: testFleetId,
+        user_id: guardAuthUserId,
+        role: "organizer",
+        is_active: true,
+      });
+    expect(guardMembershipError).toBeNull();
 
     const { error: trialError } = await supabaseAdmin.rpc("billing_start_trial", {
       p_fleet_id: testFleetId,
@@ -211,15 +237,15 @@ describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
         .delete()
         .eq("fleet_id", testFleetId);
       await supabase.from("vehicules").delete().eq("fleet_id", testFleetId);
-      await supabase
-        .from("flotte_adhesions")
-        .delete()
-        .eq("fleet_id", testFleetId);
-      await supabase.from("flottes").delete().eq("id", testFleetId);
+      await supabaseAdmin.from("flottes").delete().eq("id", testFleetId);
     }
 
     if (testOrgId) {
       await supabase.from("organisations").delete().eq("id", testOrgId);
+    }
+
+    if (guardAuthUserId) {
+      await supabaseAdmin.auth.admin.deleteUser(guardAuthUserId);
     }
 
     if (testAuthUserId) {

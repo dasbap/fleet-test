@@ -10,7 +10,7 @@ import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const MIN_PASSWORD_LENGTH = 8;
 
-type SupabasePasswordError = Error & {
+type PasswordChangeError = Error & {
   code?: string;
   status?: number;
   weakPassword?: {
@@ -19,7 +19,7 @@ type SupabasePasswordError = Error & {
   };
 };
 
-function getPasswordErrorMessage(error: SupabasePasswordError): string {
+function getPasswordErrorMessage(error: PasswordChangeError): string {
   switch (error.code) {
     case "same_password":
       return "Le nouveau mot de passe doit être différent du mot de passe temporaire.";
@@ -67,7 +67,7 @@ export default function SetPasswordPage() {
     return <Navigate to={ROUTE_PATHS.dashboard} replace />;
   }
 
-  const clearPasswordMarker = async () => {
+  const changePasswordAndClearMarker = async () => {
     const { data: sessionData, error: sessionError } =
       await supabase.auth.getSession();
 
@@ -87,6 +87,7 @@ export default function SetPasswordPage() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
+      body: JSON.stringify({ password }),
     });
 
     const result = (await response.json().catch(() => ({}))) as {
@@ -96,11 +97,14 @@ export default function SetPasswordPage() {
     };
 
     if (!response.ok || result.ok !== true) {
-      throw new Error(
+      const requestError = new Error(
         result.details ??
           result.error ??
-          "Votre mot de passe a été enregistré, mais l'accès n'a pas pu être finalisé."
-      );
+          "Votre mot de passe n'a pas pu être enregistré."
+      ) as PasswordChangeError;
+      requestError.code = result.error;
+      requestError.status = response.status;
+      throw requestError;
     }
   };
 
@@ -123,35 +127,7 @@ export default function SetPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw sessionError;
-      }
-
-      if (!sessionData.session) {
-        throw new Error(
-          "Votre session a expiré. Reconnectez-vous avec le mot de passe temporaire."
-        );
-      }
-
-      const { error: updateError } = await supabase.auth.updateUser({
-        password,
-      });
-
-      if (updateError) {
-        console.error("[set-password] Supabase error:", {
-          name: updateError.name,
-          message: updateError.message,
-          code: updateError.code,
-          status: updateError.status,
-        });
-
-        throw updateError;
-      }
-
-      await clearPasswordMarker();
+      await changePasswordAndClearMarker();
 
       const { error: refreshError } = await supabase.auth.refreshSession();
 
@@ -163,7 +139,7 @@ export default function SetPasswordPage() {
         replace: true,
       });
     } catch (submissionError) {
-      const authError = submissionError as SupabasePasswordError;
+      const authError = submissionError as PasswordChangeError;
 
       setError(getPasswordErrorMessage(authError));
     } finally {

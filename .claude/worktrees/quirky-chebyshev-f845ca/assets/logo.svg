@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <!-- Flotte E-Samba mark: same identity as public/favicon.svg -->
-  <rect width="1024" height="1024" rx="96" fill="#22c55e"/>
-  <path d="M512 288 L384 512 L480 512 L416 736 L640 448 L544 448 L608 288 Z" fill="#0a0a0a"/>
-</svg>

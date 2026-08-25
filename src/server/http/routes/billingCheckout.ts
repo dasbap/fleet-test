@@ -1,6 +1,9 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
-import { createBillingCheckoutForUser } from "../../domain/billingCheckout.js";
+import {
+  createBillingCheckoutForUser,
+  type BillingCheckoutIntent,
+} from "../../domain/billingCheckout.js";
 import { getPaymentProvider } from "../../env.js";
 import { getBearerToken } from "../auth.js";
 import { jsonInternalServerError } from "../errorResponse.js";
@@ -32,9 +35,10 @@ async function handleBillingCheckout(c: Context) {
   }
   try {
     const supabase = createSupabaseUserClient(token);
+    const intent = parsed.data as BillingCheckoutIntent;
     const result = await createBillingCheckoutForUser(
       supabase,
-      parsed.data,
+      intent,
       getPaymentProvider(),
     );
     return c.json(result);

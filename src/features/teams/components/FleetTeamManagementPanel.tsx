@@ -498,7 +498,12 @@ export function FleetTeamManagementPanel({
                   {(canUpdateRoles || canRemoveMembers) && member.user_id !== user?.id && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" type="button">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          type="button"
+                          aria-label={`Actions pour ${member.profile?.full_name || "utilisateur sans nom"}`}
+                        >
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>

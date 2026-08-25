@@ -222,6 +222,10 @@ const ALERT_TYPE_FR: Record<AlertType, string> = {
   maintenance_due: "Maintenance requise",
   document_expired: "Document expiré",
   failure_risk: "Risque de panne",
+  speeding: "Exces de vitesse",
+  geofence_enter: "Entree de zone",
+  geofence_exit: "Sortie de zone",
+  faq_answer: "Reponse FAQ",
 };
 
 const WORKFLOW_STATUS_FR: Record<IncidentWorkflowStatusDto, string> = {
@@ -238,6 +242,10 @@ const DTO_ALERT_TYPE_FR: Record<OperationalAlertTypeDto, string> = {
   maintenance_due: "Maintenance requise",
   document_expired: "Document expiré",
   failure_risk: "Risque de panne",
+  speeding: "Exces de vitesse",
+  geofence_enter: "Entree de zone",
+  geofence_exit: "Sortie de zone",
+  faq_answer: "Reponse FAQ",
 };
 
 const DTO_SEVERITY_FR: Record<OperationalAlertSeverityDto, string> = {

@@ -20,6 +20,8 @@ begin
       'maintenance_due',
       'document_expired',
       'failure_risk',
+      'speeding',
+      'geofence_enter',
       'geofence_exit'
     );
   end if;
@@ -29,6 +31,8 @@ $$;
 alter type public.alert_type add value if not exists 'maintenance_due';
 alter type public.alert_type add value if not exists 'document_expired';
 alter type public.alert_type add value if not exists 'failure_risk';
+alter type public.alert_type add value if not exists 'speeding';
+alter type public.alert_type add value if not exists 'geofence_enter';
 alter type public.alert_type add value if not exists 'geofence_exit';
 
 do $$

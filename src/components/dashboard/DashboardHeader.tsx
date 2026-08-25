@@ -55,18 +55,18 @@ const DashboardHeader = ({
 
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-      <div className="h-full px-4 flex items-center justify-between gap-4">
+      <div className="flex h-full items-center justify-between gap-2 px-3 sm:gap-4 sm:px-4">
         {/* Left */}
-        <div className="flex items-center gap-4">
-          <SidebarTrigger className="-ml-1" />
-          <Button variant="ghost" size="icon" asChild>
+        <div data-testid="dashboard-header-left" className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
+          <SidebarTrigger aria-label="Ouvrir le menu dashboard" className="-ml-1 shrink-0" />
+          <Button variant="ghost" size="icon" className="hidden shrink-0 sm:inline-flex" asChild>
             <Link to="/" aria-label="Retour accueil">
               <Home className="w-5 h-5" />
             </Link>
           </Button>
           {showFleetControls && tenantOptions.length > 1 ? (
             <Select value={userFleetId ?? undefined} onValueChange={setActiveFleetId}>
-              <SelectTrigger className="w-[220px] h-9">
+              <SelectTrigger className="h-9 min-w-0 flex-1 sm:w-[220px] sm:flex-none">
                 <SelectValue placeholder="Sélectionner une flotte" />
               </SelectTrigger>
               <SelectContent>
@@ -79,17 +79,17 @@ const DashboardHeader = ({
             </Select>
           ) : null}
           {showFleetControls ? (
-            <UniversalSearch fleetId={userFleetId} className="max-w-md" />
+            <UniversalSearch fleetId={userFleetId} className="hidden min-w-0 max-w-md flex-1 lg:block" />
           ) : null}
         </div>
 
         {/* Right */}
-        <div className="flex items-center gap-3">
+        <div data-testid="dashboard-header-right" className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
           {showFleetControls ? (
-            <>
+            <div className="hidden items-center gap-2 sm:flex">
               <AdaptiveNetworkQualityBadge />
               <OfflineSyncIndicator />
-            </>
+            </div>
           ) : null}
           {/* Notifications */}
           {showFleetControls ? (

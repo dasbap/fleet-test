@@ -1,5 +1,9 @@
-# Claude worktrees (internes, jamais commiter)
+# Claude / agents locaux (jamais versionner)
 .claude/worktrees/
+.claude/settings.local.json
+.claude/**/settings.local.json
+.codex/
+.agents/
 
 # Logs
 logs
@@ -23,8 +27,9 @@ dist-ssr
 .env.local.bak
 .env.*.bak
 .env.vercel*
-.env.prod
 .env.test
+.env*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -43,9 +48,11 @@ dist-ssr
 # Vercel
 .vercel
 
-# Cursor / IDE - tout sauf la config MCP (partage equipe)
+# Cursor / IDE - tout sauf la config MCP partagee equipe
 .cursor/*
 !.cursor/mcp.json
+!.cursor/rules/
+!.cursor/rules/*.mdc
 
 # Lighthouse CI (sorties locales de lhci autorun)
 .lighthouseci
@@ -56,14 +63,9 @@ apps/mobile/.expo/
 
 # Rapports de test temporaires
 TEST-REPORT-*.json
+
 # Playwright (artefacts locaux)
 test-results/
-!.cursor/rules/
-!.cursor/rules/*.mdc
-
-# Android - ressources natives (mipmaps, splash) : versionnees pour CI / builds reproductibles.
-# Icones sources : resources/icon.svg, resources/icon.png (regeneres via npm run cap:assets).
-# Ne pas ignorer android/app/src/main/res/ ni le dossier resources/ a la racine.
 
 # Android - publication Play (ne jamais versionner)
 android/app/google-services.json
@@ -71,6 +73,7 @@ android/app/google-services.*.json
 ios/App/App/GoogleService-Info.plist
 apps/mobile/android/app/debug.keystore
 android/keystore.properties
+android/keystores/
 android/*.jks
 android/*.keystore
 android/app/*.jks
@@ -80,12 +83,5 @@ android/.github-android-secrets.local.txt
 # Cache outillage local (Supabase CLI, etc.)
 .cache/
 
-# Skills agents locaux (non partagés)
-.agents/
-
-
 scripts/android-release.env.ps1
 releases/
-android/keystore.properties
-android/keystores/
-.vercel

@@ -30,4 +30,14 @@ describe("ContactPage", () => {
     expect(screen.getByRole("heading", { name: "Nous contacter" })).toBeInTheDocument();
     expect(screen.getByTestId("contact-demo-form")).toBeInTheDocument();
   });
+
+  it("expose le titre contact comme h1 principal", () => {
+    render(
+      <MemoryRouter>
+        <ContactPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { level: 1, name: "Nous contacter" })).toBeInTheDocument();
+  });
 });

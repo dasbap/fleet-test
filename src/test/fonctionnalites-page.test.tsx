@@ -45,4 +45,19 @@ describe("FonctionnalitesPage", () => {
     expect(screen.queryByText(/permissions/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/sanctions automatiques/i)).not.toBeInTheDocument();
   });
+
+  it("affiche une copie francaise accentuee", () => {
+    render(
+      <MemoryRouter>
+        <FonctionnalitesPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Une flotte plus lisible, sans tout dévoiler",
+    );
+    expect(screen.getByText(/présente la valeur/)).toBeInTheDocument();
+    expect(screen.getByText(/véhicules, des équipes et des priorités/)).toBeInTheDocument();
+    expect(screen.getByText(/équipes et des priorités du jour/)).toBeInTheDocument();
+  });
 });

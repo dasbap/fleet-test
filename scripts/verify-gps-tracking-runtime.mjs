@@ -46,6 +46,8 @@ const expectedColumnsByTable = {
     'protocol',
     'label',
     'is_active',
+    'speed_limit_kmh',
+    'speed_alert_tolerance_kmh',
     'created_at',
     'updated_at',
   ],
@@ -77,6 +79,17 @@ const expectedColumnsByTable = {
     'received_at',
     'updated_at',
   ],
+  vehicle_speed_states: [
+    'vehicle_id',
+    'fleet_id',
+    'tracker_imei',
+    'is_speeding',
+    'speed_kmh',
+    'speed_limit_kmh',
+    'threshold_kmh',
+    'tracker_time',
+    'updated_at',
+  ],
   gps_ingest_logs: ['id', 'fleet_id', 'imei', 'status', 'reason', 'payload', 'created_at'],
 };
 
@@ -84,6 +97,7 @@ const expectedPolicies = {
   gps_devices: ['gps_devices_select_policy', 'gps_devices_write_policy'],
   vehicle_positions: ['vehicle_positions_select_policy'],
   vehicle_positions_latest: ['vehicle_positions_latest_select_policy'],
+  vehicle_speed_states: ['vehicle_speed_states_select_policy'],
   gps_ingest_logs: ['gps_ingest_logs_select_policy'],
 };
 
@@ -94,10 +108,13 @@ const expectedPrivileges = [
   ['authenticated', 'public.gps_devices', 'DELETE'],
   ['authenticated', 'public.vehicle_positions', 'SELECT'],
   ['authenticated', 'public.vehicle_positions_latest', 'SELECT'],
+  ['authenticated', 'public.vehicle_speed_states', 'SELECT'],
   ['authenticated', 'public.gps_ingest_logs', 'SELECT'],
   ['service_role', 'public.gps_devices', 'INSERT'],
   ['service_role', 'public.vehicle_positions', 'INSERT'],
   ['service_role', 'public.vehicle_positions_latest', 'UPDATE'],
+  ['service_role', 'public.vehicle_speed_states', 'INSERT'],
+  ['service_role', 'public.vehicle_speed_states', 'UPDATE'],
   ['service_role', 'public.gps_ingest_logs', 'INSERT'],
 ];
 
@@ -112,6 +129,16 @@ try {
     JOIN pg_namespace n ON n.oid = t.typnamespace
     WHERE n.nspname = 'public'
       AND t.typname = 'gps_tracker_protocol'
+  `);
+
+  const alertTypesResult = await client.query(`
+    SELECT e.enumlabel
+    FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public'
+      AND t.typname = 'alert_type'
+      AND e.enumlabel = 'speeding'
   `);
 
   const tablesResult = await client.query(`
@@ -155,6 +182,7 @@ try {
 
   const errors = [];
   if (typesResult.rows.length !== 1) errors.push('type manquant: public.gps_tracker_protocol');
+  if (alertTypesResult.rows.length !== 1) errors.push('type manquant: public.alert_type.speeding');
 
   const tableByName = new Map(tablesResult.rows.map((row) => [row.relname, row]));
   const columnsByTable = columnsResult.rows.reduce((acc, row) => {
@@ -197,6 +225,7 @@ try {
 
   console.log(JSON.stringify({
     types: typesResult.rows,
+    alertTypes: alertTypesResult.rows,
     tables: tablesResult.rows,
     columns: columnsResult.rows,
     policies: policiesResult.rows,

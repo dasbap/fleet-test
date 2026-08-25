@@ -91,9 +91,24 @@ describe("DashboardHeader", () => {
     expect(universalSearchSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         fleetId: "fleet-test-1",
-        className: "max-w-md",
+        className: "hidden min-w-0 max-w-md flex-1 lg:block",
       }),
     );
+  });
+
+  it("contraint les zones gauche et droite pour eviter le debordement mobile", () => {
+    const { container } = renderHeader({
+      userRole: "organizer",
+      displayName: "Tuto Organisateur",
+      initials: "TO",
+    });
+
+    const left = container.querySelector("[data-testid='dashboard-header-left']");
+    const right = container.querySelector("[data-testid='dashboard-header-right']");
+
+    expect(left).toHaveClass("min-w-0", "flex-1");
+    expect(right).toHaveClass("min-w-0", "shrink-0");
+    expect(screen.getByRole("button", { name: /ouvrir le menu dashboard/i })).toBeInTheDocument();
   });
 
   it("affiche un bouton pour revenir a l'accueil public", () => {
