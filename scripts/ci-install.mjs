@@ -15,21 +15,25 @@ const run = (command, args) => {
 };
 
 run("npm", ["config", "set", "fetch-retries", "5"]);
-run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"]);
 
-// npm can omit platform-specific optional packages from an existing lock/tree,
-// which leaves native modules such as sharp present without their Linux libvips
-// runtime. Re-resolve optional dependencies for the current runner without
-// mutating package-lock.json or running lifecycle scripts.
+// Keep CI strictly locked to package-lock.json while explicitly materializing
+// platform-specific optional packages (notably sharp/libvips on Linux).
+// A second `npm install` here would re-resolve semver ranges and make the CI
+// bundle differ from a clean local `npm ci` build.
 run("npm", [
-  "install",
+  "ci",
   "--include=optional",
   "--ignore-scripts",
   "--no-audit",
   "--no-fund",
-  "--no-save",
-  "--package-lock=false",
 ]);
+
+if (process.platform === "linux" && process.arch === "x64") {
+  run("node", [
+    "-e",
+    "require('./node_modules/vite-imagetools/node_modules/sharp'); console.log('vite-imagetools sharp linux runtime OK')",
+  ]);
+}
 
 run("npx", [
   "prisma",
