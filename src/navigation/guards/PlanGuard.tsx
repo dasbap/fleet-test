@@ -6,10 +6,16 @@ import { PageLoader } from "@/components/dashboard/PageLoader";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import type { BillingSnapshot } from "@/services/billing.service";
 
-function hasNonFreeActivePlan(snapshot: BillingSnapshot | undefined): boolean {
+const SITE_ACCESS_SUBSCRIPTION_STATUSES = new Set([
+  "active",
+  "inactive",
+  "pending_payment",
+]);
+
+function hasSiteAccessPlan(snapshot: BillingSnapshot | undefined): boolean {
   const sub = snapshot?.subscription;
   if (!sub?.plan) return false;
-  if (sub.status !== "active") return false;
+  if (!SITE_ACCESS_SUBSCRIPTION_STATUSES.has(sub.status)) return false;
   return sub.plan.code !== "free";
 }
 
@@ -44,7 +50,7 @@ export function PlanGuard({
   if (!canQueryBilling) return <Navigate to={ROUTE_PATHS.tenantBootstrap} replace />;
   if (isNotchPaymentReturn(location.pathname, location.search)) return <>{children}</>;
   if (billingLoading) return <PageLoader />;
-  if (!hasNonFreeActivePlan(billing)) return <Navigate to={fallbackTo} replace />;
+  if (!hasSiteAccessPlan(billing)) return <Navigate to={fallbackTo} replace />;
 
   return <>{children}</>;
 }
