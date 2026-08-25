@@ -18,6 +18,13 @@ BEGIN
         p.prosrc ILIKE '%IF auth.role() <> ''service_role'' THEN%'
         OR p.prosrc ILIKE '%IF auth.role() != ''service_role'' THEN%'
       )
+      AND NOT EXISTS (
+        SELECT 1
+        FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) acl
+        JOIN pg_roles granted_role ON granted_role.oid = acl.grantee
+        WHERE granted_role.rolname = 'authenticated'
+          AND acl.privilege_type = 'EXECUTE'
+      )
   LOOP
     EXECUTE format(
       'REVOKE EXECUTE ON FUNCTION %I.%I(%s) FROM PUBLIC, anon, authenticated',
