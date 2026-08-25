@@ -16,6 +16,21 @@ const run = (command, args) => {
 
 run("npm", ["config", "set", "fetch-retries", "5"]);
 run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"]);
+
+// npm can omit platform-specific optional packages from an existing lock/tree,
+// which leaves native modules such as sharp present without their Linux libvips
+// runtime. Re-resolve optional dependencies for the current runner without
+// mutating package-lock.json or running lifecycle scripts.
+run("npm", [
+  "install",
+  "--include=optional",
+  "--ignore-scripts",
+  "--no-audit",
+  "--no-fund",
+  "--no-save",
+  "--package-lock=false",
+]);
+
 run("npx", [
   "prisma",
   "generate",
