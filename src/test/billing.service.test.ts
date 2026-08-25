@@ -36,6 +36,12 @@ const pendingProRow = {
   status: "pending_payment",
 };
 
+const inactiveProRow = {
+  ...activeProRow,
+  id: "sub-inactive",
+  status: "inactive",
+};
+
 describe("computeLapsedPaidFromLatestSubscription", () => {
   const now = new Date("2026-06-01T00:00:00.000Z");
 
@@ -57,7 +63,23 @@ describe("computeLapsedPaidFromLatestSubscription", () => {
     ).toBe(false);
   });
 
-  it("true si plan payant et statut non actif", () => {
+  it("false si plan payant est en attente de paiement ou d'activation", () => {
+    for (const status of ["pending_payment", "inactive"]) {
+      expect(
+        computeLapsedPaidFromLatestSubscription(
+          {
+            status,
+            starts_at: "2025-01-01T00:00:00.000Z",
+            ends_at: "2026-12-31T00:00:00.000Z",
+            plans: { code: "starter" },
+          },
+          now,
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("true si plan payant et statut expire", () => {
     expect(
       computeLapsedPaidFromLatestSubscription(
         {
@@ -129,6 +151,22 @@ describe("BillingService", () => {
     expect(snapshot.subscription?.id).toBe("sub-pending");
     expect(snapshot.subscription?.status).toBe("pending_payment");
     expect(snapshot.subscription?.plan?.code).toBe("pro");
+    expect(snapshot.lapsedPaid).toBe(false);
+  });
+
+  it("utilise inactive sans le considerer comme expire", async () => {
+    const repository = new BillingRepository();
+    repository.findActiveSubscriptionByFleetId.mockResolvedValue(null);
+    repository.findPendingSubscriptionByFleetId.mockResolvedValue(inactiveProRow);
+    repository.findLatestSubscriptionByFleetId.mockResolvedValue(inactiveProRow);
+    repository.findLatestPaymentsByOrgId.mockResolvedValue([]);
+
+    const service = new BillingService(repository);
+    const snapshot = await service.getBillingSnapshot("org-1", "fleet-1");
+
+    expect(snapshot.subscription?.id).toBe("sub-inactive");
+    expect(snapshot.subscription?.status).toBe("inactive");
+    expect(snapshot.lapsedPaid).toBe(false);
   });
 
   it("rejette les paramètres manquants", async () => {
