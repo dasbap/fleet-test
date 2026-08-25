@@ -33,7 +33,7 @@ export async function loadBillingSnapshotForUser(
   const nowIso = new Date().toISOString();
   const now = new Date();
 
-  const [subActive, subLatest, paymentsRes] = await Promise.all([
+  const [subActive, subPending, subLatest, paymentsRes] = await Promise.all([
     supabase
       .from("abonnements")
       .select("id, status, starts_at, ends_at, plan_id, plans(id, code, name, price_per_vehicle)")
@@ -41,6 +41,14 @@ export async function loadBillingSnapshotForUser(
       .eq("status", "active")
       .lte("starts_at", nowIso)
       .gte("ends_at", nowIso)
+      .order("ends_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<SubscriptionRow>(),
+    supabase
+      .from("abonnements")
+      .select("id, status, starts_at, ends_at, plan_id, plans(id, code, name, price_per_vehicle)")
+      .eq("fleet_id", fleetId)
+      .in("status", ["inactive", "pending_payment"])
       .order("ends_at", { ascending: false })
       .limit(1)
       .maybeSingle<SubscriptionRow>(),
@@ -61,10 +69,11 @@ export async function loadBillingSnapshotForUser(
   ]);
 
   if (subActive.error) throw new Error(subActive.error.message);
+  if (subPending.error) throw new Error(subPending.error.message);
   if (subLatest.error) throw new Error(subLatest.error.message);
   if (paymentsRes.error) throw new Error(paymentsRes.error.message);
 
-  const subscription = subActive.data ?? null;
+  const subscription = subActive.data ?? subPending.data ?? null;
   const latest = subLatest.data ?? null;
   const recentPayments = paymentsRes.data ?? [];
 
