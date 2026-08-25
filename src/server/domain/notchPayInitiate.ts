@@ -181,6 +181,14 @@ export async function initiateNotchPayPayment(
     phoneNumber: intent.phone,
   });
 
+  const { error: pendingSubscriptionError } = await supabase.rpc(
+    "ensure_pending_subscription_for_payment",
+    { p_payment_id: payment.paymentId },
+  );
+  if (pendingSubscriptionError) {
+    throw new Error(pendingSubscriptionError.message);
+  }
+
   return {
     paymentId: payment.paymentId,
     reference: notchRef,
