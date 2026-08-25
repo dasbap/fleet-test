@@ -68,6 +68,27 @@ export class BillingRepository {
     return data ?? null;
   }
 
+  /**
+   * Abonnement non encore actif mais autorisant l'accès au site.
+   */
+  async findPendingSubscriptionByFleetId(fleetId: string): Promise<SubscriptionRow | null> {
+    const { data, error } = await supabase
+      .from("abonnements")
+      .select("id, status, starts_at, ends_at, plan_id, plans(id, code, name, price_per_vehicle)")
+      .eq("fleet_id", fleetId)
+      .in("status", ["inactive", "pending_payment"])
+      .order("ends_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<SubscriptionRow>();
+
+    if (error) {
+      console.error("Erreur lors de la lecture de l'abonnement en attente :", error);
+      throw new Error(error.message);
+    }
+
+    return data ?? null;
+  }
+
   async findLatestPaymentsByOrgId(orgId: string): Promise<PaymentRow[]> {
     const { data, error } = await supabase
       .from("paiements")
