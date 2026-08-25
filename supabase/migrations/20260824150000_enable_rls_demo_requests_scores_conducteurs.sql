@@ -9,7 +9,7 @@ on public.demo_requests
 for insert
 to anon, authenticated
 with check (
-  status = 'pending'::public.demo_request_status
+  status = 'pending'
   and decision_reason is null
   and decided_by is null
   and decided_at is null
