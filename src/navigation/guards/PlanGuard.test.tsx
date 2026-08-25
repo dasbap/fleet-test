@@ -3,54 +3,37 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { PlanGuard } from "./PlanGuard";
 
-const { mockUseAuth, mockUseBilling } = vi.hoisted(() => ({
+const { mockUseAuth, mockUseFleetSiteAccess } = vi.hoisted(() => ({
   mockUseAuth: vi.fn(),
-  mockUseBilling: vi.fn(),
+  mockUseFleetSiteAccess: vi.fn(),
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-vi.mock("@/hooks/useBilling", () => ({
-  useBilling: () => mockUseBilling(),
+vi.mock("@/hooks/useFleetSiteAccess", () => ({
+  useFleetSiteAccess: () => mockUseFleetSiteAccess(),
 }));
 
-function mockAuthenticatedUser() {
+function mockAuthenticatedUser(role = "organizer") {
   mockUseAuth.mockReturnValue({
     user: { id: "u1" },
     orgId: "o1",
-    activeTenantContext: { fleetId: "f1", role: "organizer" },
+    activeTenantContext: { fleetId: "f1", role },
     isLoading: false,
   });
-}
-
-function billingWith(status: string, code = "pro") {
-  return {
-    data: {
-      lapsedPaid: false,
-      subscription: {
-        id: "s1",
-        status,
-        startsAt: "",
-        endsAt: "",
-        plan: { id: "p1", code, name: "Pro", pricePerVehicle: 0 },
-      },
-      recentPayments: [],
-    },
-    isLoading: false,
-  };
 }
 
 describe("PlanGuard", () => {
   beforeEach(() => {
     mockUseAuth.mockReset();
-    mockUseBilling.mockReset();
+    mockUseFleetSiteAccess.mockReset();
   });
 
-  it("affiche les enfants lorsque plan payant actif", () => {
+  it("affiche les enfants lorsque le RPC autorise l'accès", () => {
     mockAuthenticatedUser();
-    mockUseBilling.mockReturnValue(billingWith("active"));
+    mockUseFleetSiteAccess.mockReturnValue({ data: true, isLoading: false });
 
     render(
       <MemoryRouter>
@@ -63,27 +46,24 @@ describe("PlanGuard", () => {
     expect(screen.getByTestId("paid")).toBeInTheDocument();
   });
 
-  it.each(["inactive", "pending_payment"])(
-    "autorise le site lorsque l'abonnement est %s",
-    (status) => {
-      mockAuthenticatedUser();
-      mockUseBilling.mockReturnValue(billingWith(status));
+  it("autorise aussi un conducteur membre actif lorsque la flotte a accès", () => {
+    mockAuthenticatedUser("driver");
+    mockUseFleetSiteAccess.mockReturnValue({ data: true, isLoading: false });
 
-      render(
-        <MemoryRouter>
-          <PlanGuard>
-            <div data-testid="pending-access">Dashboard</div>
-          </PlanGuard>
-        </MemoryRouter>,
-      );
+    render(
+      <MemoryRouter>
+        <PlanGuard>
+          <div data-testid="driver-access">Dashboard</div>
+        </PlanGuard>
+      </MemoryRouter>,
+    );
 
-      expect(screen.getByTestId("pending-access")).toBeInTheDocument();
-    },
-  );
+    expect(screen.getByTestId("driver-access")).toBeInTheDocument();
+  });
 
-  it("redirige vers upgrade lorsque plan free ou absent", () => {
+  it("redirige vers upgrade lorsque le RPC refuse l'accès", () => {
     mockAuthenticatedUser();
-    mockUseBilling.mockReturnValue(billingWith("active", "free"));
+    mockUseFleetSiteAccess.mockReturnValue({ data: false, isLoading: false });
 
     render(
       <MemoryRouter initialEntries={["/x"]}>
