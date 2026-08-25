@@ -5,6 +5,7 @@ import { initiateNotchPayPayment } from "@/server/domain/notchPayInitiate";
 const ORG_ID = "00000000-0000-4000-8000-000000000001";
 const FLEET_ID = "00000000-0000-4000-8000-000000000002";
 const VEHICLE_ID = "00000000-0000-4000-8000-000000000010";
+const PAYMENT_ID = "00000000-0000-4000-8000-000000000099";
 
 function createSupabaseMock(vehicleIdsInFleet: string[] = [], userEmail = "payeur@example.test") {
   const rpc = vi.fn(async (fn: string) => {
@@ -14,12 +15,18 @@ function createSupabaseMock(vehicleIdsInFleet: string[] = [], userEmail = "payeu
     if (fn === "create_payment_intent") {
       return {
         data: {
-          payment_id: "00000000-0000-4000-8000-000000000099",
+          payment_id: PAYMENT_ID,
           reference: "ESAMBA-TEST",
           amount_xaf: 15000,
           currency: "XAF",
           status: "initiated",
         },
+        error: null,
+      };
+    }
+    if (fn === "ensure_pending_subscription_for_payment") {
+      return {
+        data: "00000000-0000-4000-8000-000000000199",
         error: null,
       };
     }
@@ -174,7 +181,7 @@ describe("initiateNotchPayPayment security", () => {
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
-    const { supabase } = createSupabaseMock([], "owner@example.test");
+    const { supabase, rpc } = createSupabaseMock([], "owner@example.test");
 
     const result = await initiateNotchPayPayment(supabase as never, {
       orgId: ORG_ID,
@@ -186,7 +193,11 @@ describe("initiateNotchPayPayment security", () => {
 
     expect(result.checkoutUrl).toBe("https://pay.notchpay.co/pay_test_top_level_url");
     expect(result.reference).toBe("trx.test_top_level_url");
+    expect(rpc).toHaveBeenCalledWith("ensure_pending_subscription_for_payment", {
+      p_payment_id: PAYMENT_ID,
+    });
   });
+
   it("uses the authenticated user email when no payment contact is provided", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -198,7 +209,7 @@ describe("initiateNotchPayPayment security", () => {
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
-    const { supabase } = createSupabaseMock([], "owner@example.test");
+    const { supabase, rpc } = createSupabaseMock([], "owner@example.test");
 
     await initiateNotchPayPayment(supabase as never, {
       orgId: ORG_ID,
@@ -212,5 +223,8 @@ describe("initiateNotchPayPayment security", () => {
     const payload = JSON.parse(init.body as string) as { email?: string; phone?: string };
     expect(payload.email).toBe("owner@example.test");
     expect(payload.phone).toBeUndefined();
+    expect(rpc).toHaveBeenCalledWith("ensure_pending_subscription_for_payment", {
+      p_payment_id: PAYMENT_ID,
+    });
   });
 });
