@@ -94,10 +94,15 @@ export function useNotchPayCallback(): void {
         ]);
 
         if (!cancelled) {
-          if (result.paymentStatus === "succeeded") {
+          if (result.paymentStatus === "succeeded" && result.subscriptionActivated) {
             toast({
               title: "Abonnement activé",
-              description: merchantRef ? `Paiement confirmé — réf. ${merchantRef}.` : "Paiement confirmé.",
+              description: `Paiement confirmé — réf. ${merchantRef}.`,
+            });
+          } else if (result.paymentStatus === "succeeded") {
+            toast({
+              title: "Paiement confirmé",
+              description: "L'abonnement est prêt. Activez-le depuis Abonnements ou en l'utilisant pour créer un véhicule.",
             });
           } else {
             toast({
