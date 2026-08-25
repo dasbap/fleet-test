@@ -85,3 +85,6 @@ android/.github-android-secrets.local.txt
 
 scripts/android-release.env.ps1
 releases/
+
+.vercel
+.env*

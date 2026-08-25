@@ -43,7 +43,6 @@ import { cn } from "@/lib/utils";
 import { ContextualHelpTrigger } from "@/components/help/ContextualHelpTrigger";
 import { buildSupportMailto, SUPPORT } from "@/config/navigation";
 import { STATUS_CONFIG } from "@/features/billing/constants/billingStatusConfig";
-import { useNotchPayCallback } from "@/features/billing/hooks/useNotchPayCallback";
 import {
   resolveEffectiveVehicleSlots,
   sumActiveSubscriptionVehicleCapacity,
@@ -55,8 +54,6 @@ import type { FleetBillingContext } from "@/types/fleet-billing";
 export default function BillingPage() {
   const { userFleetId } = useAuth();
   const { can } = useRoleAccess();
-  useNotchPayCallback();
-
   const billing        = useFleetBillingContext(userFleetId ?? undefined);
   const subscriptions  = useFleetSubscriptions(userFleetId ?? undefined);
   const paymentHistory = usePaymentHistory();
