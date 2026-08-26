@@ -72,6 +72,29 @@ async function assertSelectedVehiclesBelongToFleet(
   }
 }
 
+async function failPendingPayment(supabase: SupabaseClient, paymentId: string): Promise<void> {
+  const { error } = await supabase.rpc("fail_payment_initiation", {
+    p_payment_id: paymentId,
+  });
+  if (error) {
+    throw new Error(`Impossible de clôturer le paiement en attente: ${error.message}`);
+  }
+}
+
+async function bindProviderReference(
+  supabase: SupabaseClient,
+  paymentId: string,
+  providerReference: string,
+): Promise<void> {
+  const { data, error } = await supabase.rpc("bind_payment_provider_reference", {
+    p_payment_id: paymentId,
+    p_provider_reference: providerReference,
+  });
+  if (error || data !== true) {
+    throw new Error(error?.message ?? "Impossible de lier la référence Notch Pay au paiement.");
+  }
+}
+
 export async function initiateNotchPayPayment(
   supabase: SupabaseClient,
   intent: NotchPayIntent,
@@ -125,14 +148,33 @@ export async function initiateNotchPayPayment(
   const callbackUrl = `${getAppUrl()}/dashboard/billing?status=success&ref=${encodeURIComponent(merchantRef)}`;
   const contact = await resolvePaymentContact(supabase, intent);
 
+  const payment = await createServerOwnedPaymentIntent(supabase, {
+    orgId: intent.orgId,
+    fleetId: intent.fleetId,
+    planCode: intent.planCode,
+    vehicleCount: intent.vehicleCount,
+    durationMonths,
+    provider: "notch",
+    externalRef: merchantRef,
+    idempotencyKey: merchantRef,
+    expectedAmountXaf: amountXaf,
+    vehicleIds: intent.vehicleIds,
+    phoneNumber: intent.phone,
+  });
+
+  if (payment.status !== "pending") {
+    throw new Error("Le paiement doit être en attente avant toute demande Notch Pay.");
+  }
+
   const payload: NotchPayCreatePaymentRequest = {
-    amount: amountXaf,
+    amount: payment.amountXaf,
     currency: "XAF",
     reference: merchantRef,
     description: `Abonnement E-Samba — plan ${intent.planCode} (${intent.vehicleCount} véhicule(s), ${durationMonths} mois)`,
     callback: callbackUrl,
     ...contact,
     metadata: {
+      paymentId: payment.paymentId,
       fleetId: intent.fleetId,
       orgId: intent.orgId,
       planCode: intent.planCode,
@@ -141,18 +183,25 @@ export async function initiateNotchPayPayment(
     },
   };
 
-  const notchRes = await fetch(`${NOTCH_PAY_API_URL}/payments`, {
-    method: "POST",
-    headers: {
-      Authorization: apiKey,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  let notchRes: Response;
+  try {
+    notchRes = await fetch(`${NOTCH_PAY_API_URL}/payments`, {
+      method: "POST",
+      headers: {
+        Authorization: apiKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    await failPendingPayment(supabase, payment.paymentId);
+    throw error;
+  }
 
   if (!notchRes.ok) {
     const raw = await notchRes.text().catch(() => "");
+    await failPendingPayment(supabase, payment.paymentId);
     throw new Error(`Notch Pay API error ${notchRes.status}: ${raw.slice(0, 500)}`);
   }
 
@@ -162,31 +211,25 @@ export async function initiateNotchPayPayment(
     : null;
   const checkoutUrl = tx?.authorization_url ?? notchData.authorization_url;
   if (!checkoutUrl) {
+    await failPendingPayment(supabase, payment.paymentId);
     throw new Error("Notch Pay n'a pas retourné d'URL de paiement.");
   }
 
   const notchRef = tx?.reference ?? merchantRef;
 
-  const payment = await createServerOwnedPaymentIntent(supabase, {
-    orgId: intent.orgId,
-    fleetId: intent.fleetId,
-    planCode: intent.planCode,
-    vehicleCount: intent.vehicleCount,
-    durationMonths,
-    provider: "notch",
-    externalRef: notchRef,
-    idempotencyKey: merchantRef,
-    expectedAmountXaf: amountXaf,
-    vehicleIds: intent.vehicleIds,
-    phoneNumber: intent.phone,
-  });
+  try {
+    await bindProviderReference(supabase, payment.paymentId, notchRef);
 
-  const { error: pendingSubscriptionError } = await supabase.rpc(
-    "ensure_pending_subscription_for_payment",
-    { p_payment_id: payment.paymentId },
-  );
-  if (pendingSubscriptionError) {
-    throw new Error(pendingSubscriptionError.message);
+    const { error: pendingSubscriptionError } = await supabase.rpc(
+      "ensure_pending_subscription_for_payment",
+      { p_payment_id: payment.paymentId },
+    );
+    if (pendingSubscriptionError) {
+      throw new Error(pendingSubscriptionError.message);
+    }
+  } catch (error) {
+    await failPendingPayment(supabase, payment.paymentId);
+    throw error;
   }
 
   return {
