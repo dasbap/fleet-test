@@ -1,9 +1,11 @@
 import { spawnSync } from "node:child_process";
 
+const STRYKER_VERSION = "10.0.0";
+
 const args = [
   "-y",
-  "--package=@stryker-mutator/core",
-  "--package=@stryker-mutator/vitest-runner",
+  `--package=@stryker-mutator/core@${STRYKER_VERSION}`,
+  `--package=@stryker-mutator/vitest-runner@${STRYKER_VERSION}`,
   "stryker",
   "run",
   "stryker.config.mjs",
