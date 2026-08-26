@@ -42,6 +42,20 @@ describe("business logic bypass hardening", () => {
     expect(hardeningMigration).not.toContain("CREATE POLICY invitations_lecture_auth");
   });
 
+  it("keeps invitation acceptance grants idempotent when the legacy rpc is absent", () => {
+    expect(hardeningMigration).toContain(
+      "IF to_regprocedure('public.accepter_invitation(text)') IS NOT NULL THEN",
+    );
+    expect(hardeningMigration).toContain(
+      "REVOKE EXECUTE ON FUNCTION public.accepter_invitation(text) FROM PUBLIC",
+    );
+    expect(hardeningMigration).toContain(
+      "REVOKE EXECUTE ON FUNCTION public.accepter_invitation(text) FROM anon",
+    );
+    expect(hardeningMigration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.accepter_invitation(text) TO authenticated",
+    );
+  });
   it("makes existing payment intents immutable to authenticated clients", () => {
     expect(hardeningMigration).toContain("DROP POLICY IF EXISTS paiements_update_manager_org");
     expect(hardeningMigration).toContain(
@@ -124,6 +138,9 @@ describe("business logic bypass hardening", () => {
 
   it("keeps global maintenance jobs service-role only", () => {
     expect(sensitiveRpcMigration).toContain(
+      "IF to_regprocedure('public.nettoyer_base_donnees(boolean)') IS NOT NULL THEN",
+    );
+    expect(sensitiveRpcMigration).toContain(
       "REVOKE EXECUTE ON FUNCTION public.nettoyer_base_donnees(boolean) FROM PUBLIC, anon, authenticated",
     );
     expect(sensitiveRpcMigration).toContain(
@@ -147,6 +164,24 @@ describe("business logic bypass hardening", () => {
     );
   });
 
+  it("bootstraps access universe enum before using access-code helpers", () => {
+    expect(accessCodeMigration).toContain("CREATE TYPE public.access_universe AS ENUM");
+    expect(accessCodeMigration).toContain("'internal', 'temporary', 'real'");
+    expect(accessCodeMigration.indexOf("CREATE TYPE public.access_universe AS ENUM")).toBeLessThan(
+      accessCodeMigration.indexOf("RETURNS public.access_universe"),
+    );
+  });
+  it("bootstraps access-code tables before compiling access-code consumers", () => {
+    expect(accessCodeMigration).toContain("CREATE TABLE IF NOT EXISTS public.access_codes");
+    expect(accessCodeMigration).toContain("CREATE TABLE IF NOT EXISTS public.access_code_uses");
+    expect(accessCodeMigration).toContain("CREATE OR REPLACE FUNCTION public.access_code_validate");
+    expect(accessCodeMigration.indexOf("CREATE TABLE IF NOT EXISTS public.access_codes")).toBeLessThan(
+      accessCodeMigration.indexOf("v_row public.access_codes%ROWTYPE"),
+    );
+    expect(accessCodeMigration.indexOf("CREATE OR REPLACE FUNCTION public.access_code_validate")).toBeLessThan(
+      accessCodeMigration.indexOf("CREATE OR REPLACE FUNCTION public.access_code_consume"),
+    );
+  });
   it("binds access-code create, consume and revoke identities to auth.uid", () => {
     expect(accessCodeMigration).toContain("p_user_id IS DISTINCT FROM auth.uid()");
     expect(accessCodeMigration).toContain("p_creator_id IS DISTINCT FROM auth.uid()");

@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./styles/globals.css";
-import { reportWebVitals } from "./reportWebVitals";
 import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { preloadRouteChunksForPath } from "@/app/routes/preloadRouteChunks";
 import { isValidUuid } from "@/lib/isUuid";
@@ -143,7 +142,13 @@ const bootstrap = async () => {
     void import("./instrument").catch((err) => {
       console.error("Échec du chargement instrument (Sentry) :", err);
     });
-    reportWebVitals();
+    void import("./reportWebVitals")
+      .then(({ reportWebVitals }) => {
+        reportWebVitals();
+      })
+      .catch((error) => {
+        console.error("Échec du chargement Web Vitals:", error);
+      });
 
     if (import.meta.env.PROD && isProtectedVercelDeployment()) {
       unregisterProtectedVercelServiceWorkers();

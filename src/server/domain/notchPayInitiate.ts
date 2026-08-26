@@ -32,6 +32,25 @@ function assertSelectedVehiclesMatchChargedCount(vehicleIds: string[] | undefine
   }
 }
 
+async function resolvePaymentContact(
+  supabase: SupabaseClient,
+  intent: NotchPayIntent,
+): Promise<{ email?: string; phone?: string }> {
+  const phone = intent.phone?.trim();
+  const email = intent.email?.trim();
+  if (phone || email) {
+    return { ...(phone ? { phone } : {}), ...(email ? { email } : {}) };
+  }
+
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw new Error(error.message);
+  const userEmail = data.user?.email?.trim();
+  if (!userEmail) {
+    throw new Error("Un email ou un téléphone est requis pour initier le paiement Notch Pay.");
+  }
+  return { email: userEmail };
+}
+
 async function assertSelectedVehiclesBelongToFleet(
   supabase: SupabaseClient,
   fleetId: string,
@@ -104,6 +123,7 @@ export async function initiateNotchPayPayment(
   const referenceEntropy = crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase();
   const merchantRef = `ESAMBA-${Date.now().toString(36).toUpperCase()}-${referenceEntropy}`;
   const callbackUrl = `${getAppUrl()}/dashboard/billing?status=success&ref=${encodeURIComponent(merchantRef)}`;
+  const contact = await resolvePaymentContact(supabase, intent);
 
   const payload: NotchPayCreatePaymentRequest = {
     amount: amountXaf,
@@ -111,8 +131,7 @@ export async function initiateNotchPayPayment(
     reference: merchantRef,
     description: `Abonnement E-Samba — plan ${intent.planCode} (${intent.vehicleCount} véhicule(s), ${durationMonths} mois)`,
     callback: callbackUrl,
-    ...(intent.phone ? { phone: intent.phone } : {}),
-    ...(intent.email ? { email: intent.email } : {}),
+    ...contact,
     metadata: {
       fleetId: intent.fleetId,
       orgId: intent.orgId,
@@ -138,12 +157,15 @@ export async function initiateNotchPayPayment(
   }
 
   const notchData = (await notchRes.json()) as NotchPayCreatePaymentResponse;
-  const tx = notchData.transaction;
-  if (!tx?.authorization_url) {
+  const tx = typeof notchData.transaction === "object" && notchData.transaction !== null
+    ? notchData.transaction
+    : null;
+  const checkoutUrl = tx?.authorization_url ?? notchData.authorization_url;
+  if (!checkoutUrl) {
     throw new Error("Notch Pay n'a pas retourné d'URL de paiement.");
   }
 
-  const notchRef = tx.reference ?? merchantRef;
+  const notchRef = tx?.reference ?? merchantRef;
 
   const payment = await createServerOwnedPaymentIntent(supabase, {
     orgId: intent.orgId,
@@ -159,10 +181,18 @@ export async function initiateNotchPayPayment(
     phoneNumber: intent.phone,
   });
 
+  const { error: pendingSubscriptionError } = await supabase.rpc(
+    "ensure_pending_subscription_for_payment",
+    { p_payment_id: payment.paymentId },
+  );
+  if (pendingSubscriptionError) {
+    throw new Error(pendingSubscriptionError.message);
+  }
+
   return {
     paymentId: payment.paymentId,
     reference: notchRef,
-    checkoutUrl: tx.authorization_url,
+    checkoutUrl,
     amountXaf: payment.amountXaf,
   };
 }

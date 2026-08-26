@@ -3,6 +3,7 @@ import { vi } from "vitest";
 vi.mock("@/repositories/billing.repository", () => ({
   BillingRepository: class BillingRepository {
     findActiveSubscriptionByFleetId = vi.fn();
+    findPendingSubscriptionByFleetId = vi.fn();
     findLatestSubscriptionByFleetId = vi.fn();
     findLatestPaymentsByOrgId = vi.fn();
   },
@@ -29,6 +30,18 @@ const activeProRow = {
   },
 };
 
+const pendingProRow = {
+  ...activeProRow,
+  id: "sub-pending",
+  status: "pending_payment",
+};
+
+const inactiveProRow = {
+  ...activeProRow,
+  id: "sub-inactive",
+  status: "inactive",
+};
+
 describe("computeLapsedPaidFromLatestSubscription", () => {
   const now = new Date("2026-06-01T00:00:00.000Z");
 
@@ -50,7 +63,23 @@ describe("computeLapsedPaidFromLatestSubscription", () => {
     ).toBe(false);
   });
 
-  it("true si plan payant et statut non actif", () => {
+  it("false si plan payant est en attente de paiement ou d'activation", () => {
+    for (const status of ["pending_payment", "inactive"]) {
+      expect(
+        computeLapsedPaidFromLatestSubscription(
+          {
+            status,
+            starts_at: "2025-01-01T00:00:00.000Z",
+            ends_at: "2026-12-31T00:00:00.000Z",
+            plans: { code: "starter" },
+          },
+          now,
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("true si plan payant et statut expire", () => {
     expect(
       computeLapsedPaidFromLatestSubscription(
         {
@@ -88,6 +117,7 @@ describe("BillingService", () => {
   it("mappe correctement le snapshot billing", async () => {
     const repository = new BillingRepository();
     repository.findActiveSubscriptionByFleetId.mockResolvedValue(activeProRow);
+    repository.findPendingSubscriptionByFleetId.mockResolvedValue(null);
     repository.findLatestSubscriptionByFleetId.mockResolvedValue(activeProRow);
     repository.findLatestPaymentsByOrgId.mockResolvedValue([
       {
@@ -108,6 +138,37 @@ describe("BillingService", () => {
     expect(snapshot.recentPayments[0].provider).toBe("momo");
   });
 
+  it("utilise pending_payment lorsqu'il n'y a pas d'abonnement actif", async () => {
+    const repository = new BillingRepository();
+    repository.findActiveSubscriptionByFleetId.mockResolvedValue(null);
+    repository.findPendingSubscriptionByFleetId.mockResolvedValue(pendingProRow);
+    repository.findLatestSubscriptionByFleetId.mockResolvedValue(pendingProRow);
+    repository.findLatestPaymentsByOrgId.mockResolvedValue([]);
+
+    const service = new BillingService(repository);
+    const snapshot = await service.getBillingSnapshot("org-1", "fleet-1");
+
+    expect(snapshot.subscription?.id).toBe("sub-pending");
+    expect(snapshot.subscription?.status).toBe("pending_payment");
+    expect(snapshot.subscription?.plan?.code).toBe("pro");
+    expect(snapshot.lapsedPaid).toBe(false);
+  });
+
+  it("utilise inactive sans le considerer comme expire", async () => {
+    const repository = new BillingRepository();
+    repository.findActiveSubscriptionByFleetId.mockResolvedValue(null);
+    repository.findPendingSubscriptionByFleetId.mockResolvedValue(inactiveProRow);
+    repository.findLatestSubscriptionByFleetId.mockResolvedValue(inactiveProRow);
+    repository.findLatestPaymentsByOrgId.mockResolvedValue([]);
+
+    const service = new BillingService(repository);
+    const snapshot = await service.getBillingSnapshot("org-1", "fleet-1");
+
+    expect(snapshot.subscription?.id).toBe("sub-inactive");
+    expect(snapshot.subscription?.status).toBe("inactive");
+    expect(snapshot.lapsedPaid).toBe(false);
+  });
+
   it("rejette les paramètres manquants", async () => {
     const service = new BillingService(new BillingRepository());
     await expect(service.getBillingSnapshot("", "fleet-1")).rejects.toThrow(
@@ -120,6 +181,7 @@ describe("BillingService", () => {
     repository.findActiveSubscriptionByFleetId.mockRejectedValue(
       new Error("permission denied for table paiements"),
     );
+    repository.findPendingSubscriptionByFleetId.mockResolvedValue(null);
     repository.findLatestSubscriptionByFleetId.mockResolvedValue(null);
     repository.findLatestPaymentsByOrgId.mockResolvedValue([]);
 
@@ -133,25 +195,26 @@ describe("BillingService", () => {
     });
   });
 
-  it("signale clairement une route API protegee qui renvoie du HTML", async () => {
+  it("bascule sur Supabase direct en localhost lorsque le BFF local est indisponible", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response("<!DOCTYPE html><html><body>Vercel SSO</body></html>", {
-          status: 200,
-          headers: { "Content-Type": "text/html; charset=utf-8" },
-        }),
-      ),
+      vi.fn().mockRejectedValue(new TypeError("fetch failed")),
     );
 
-    const service = new BillingService(new BillingRepository());
+    const repository = new BillingRepository();
+    repository.findActiveSubscriptionByFleetId.mockResolvedValue(null);
+    repository.findPendingSubscriptionByFleetId.mockResolvedValue(pendingProRow);
+    repository.findLatestSubscriptionByFleetId.mockResolvedValue(pendingProRow);
+    repository.findLatestPaymentsByOrgId.mockResolvedValue([]);
 
-    await expect(
-      service.getBillingSnapshot(
-        "00000000-0000-4000-8000-000000000001",
-        "00000000-0000-4000-8000-000000000002",
-        { accessToken: "user-token" },
-      ),
-    ).rejects.toThrow("La route API facturation a renvoye du HTML");
+    const service = new BillingService(repository);
+    const snapshot = await service.getBillingSnapshot(
+      "00000000-0000-4000-8000-000000000001",
+      "00000000-0000-4000-8000-000000000002",
+      { accessToken: "user-token" },
+    );
+
+    expect(snapshot.subscription?.status).toBe("pending_payment");
+    expect(repository.findPendingSubscriptionByFleetId).toHaveBeenCalled();
   });
 });

@@ -180,7 +180,7 @@ export async function runInboundPaymentWebhook(
   }
 
   try {
-    const activation = await activateSubscriptionForSucceededPayment(admin, payment);
+    const activation = await prepareSubscriptionForSucceededPayment(admin, payment);
 
     const rawPayload2 = payment.raw_payload as Record<string, unknown> | null;
     const fleetId2 = rawPayload2?.fleetId as string | undefined;
@@ -212,33 +212,46 @@ export async function runInboundPaymentWebhook(
   }
 }
 
-async function activateSubscriptionForSucceededPayment(
+async function prepareSubscriptionForSucceededPayment(
   admin: SupabaseClient,
   payment: PaymentRow,
 ): Promise<{ activated: boolean; subscriptionId?: string }> {
   const parsedPayload = rawPayloadSchema.safeParse(payment.raw_payload);
   if (!parsedPayload.success) {
-    throw new Error("Impossible d’activer l’abonnement : raw_payload du paiement invalide ou incomplet.");
+    throw new Error("Impossible de préparer l’abonnement : raw_payload du paiement invalide ou incomplet.");
   }
 
   const { fleetId, planCode, vehicleCount, durationMonths, vehicleIds } = parsedPayload.data;
 
   const { data: already, error: alreadyError } = await admin
     .from("abonnements")
-    .select("id, starts_at, ends_at")
+    .select("id, status, starts_at, ends_at")
     .eq("payment_id", payment.id)
-    .maybeSingle<{ id: string; starts_at: string; ends_at: string }>();
+    .maybeSingle<{ id: string; status: string; starts_at: string; ends_at: string }>();
   if (alreadyError) throw new Error(alreadyError.message);
 
   if (already?.id) {
-    await syncVehicleRights(admin, {
-      fleetId,
-      subscriptionId: already.id,
-      vehicleCount,
-      vehicleIds,
-      startsAtIso: already.starts_at,
-      endsAtIso: already.ends_at,
-    });
+    if (already.status === "active") {
+      await syncVehicleRights(admin, {
+        fleetId,
+        subscriptionId: already.id,
+        vehicleCount,
+        vehicleIds,
+        startsAtIso: already.starts_at,
+        endsAtIso: already.ends_at,
+      });
+      return { activated: true, subscriptionId: already.id };
+    }
+
+    if (already.status === "pending_payment") {
+      const { error: settleError } = await admin
+        .from("abonnements")
+        .update({ status: "inactive" })
+        .eq("id", already.id)
+        .eq("status", "pending_payment");
+      if (settleError) throw new Error(settleError.message);
+    }
+
     return { activated: false, subscriptionId: already.id };
   }
 
@@ -301,16 +314,10 @@ async function activateSubscriptionForSucceededPayment(
 
   if (subErr) throw new Error(subErr.message);
 
-  let subscriptionId: string;
-  let startsAtIso: string;
-  let endsAtIso: string;
-
   if (activeSub && activeSub.plan_id === planRow.id) {
     const previousEnd = new Date(activeSub.ends_at);
     const base = previousEnd > now ? previousEnd : now;
-    const newEnd = addCalendarMonthsUtc(base, months);
-    startsAtIso = activeSub.starts_at;
-    endsAtIso = newEnd.toISOString();
+    const endsAtIso = addCalendarMonthsUtc(base, months).toISOString();
     const { error: extErr } = await admin
       .from("abonnements")
       .update({
@@ -324,44 +331,37 @@ async function activateSubscriptionForSucceededPayment(
       })
       .eq("id", activeSub.id);
     if (extErr) throw new Error(extErr.message);
-    subscriptionId = activeSub.id;
-  } else {
-    if (activeSub) {
-      const { error: cancelErr } = await admin
-        .from("abonnements")
-        .update({ status: "cancelled", ends_at: nowIso })
-        .eq("id", activeSub.id);
-      if (cancelErr) throw new Error(cancelErr.message);
-    }
-    startsAtIso = nowIso;
-    endsAtIso = addCalendarMonthsUtc(now, months).toISOString();
-    const { data: inserted, error: insErr } = await admin
-      .from("abonnements")
-      .insert({
-        fleet_id: fleetId,
-        plan_id: planRow.id,
-        payment_id: payment.id,
-        starts_at: startsAtIso,
-        ends_at: endsAtIso,
-        status: "active",
-        vehicle_slots: Math.max(1, vehicleCount),
-      })
-      .select("id")
-      .single<{ id: string }>();
-    if (insErr) throw new Error(insErr.message);
-    subscriptionId = inserted.id;
+
+    await syncVehicleRights(admin, {
+      fleetId,
+      subscriptionId: activeSub.id,
+      vehicleCount,
+      vehicleIds,
+      startsAtIso: activeSub.starts_at,
+      endsAtIso,
+    });
+
+    return { activated: true, subscriptionId: activeSub.id };
   }
 
-  await syncVehicleRights(admin, {
-    fleetId,
-    subscriptionId,
-    vehicleCount,
-    vehicleIds,
-    startsAtIso,
-    endsAtIso,
-  });
+  const startsAtIso = nowIso;
+  const endsAtIso = addCalendarMonthsUtc(now, months).toISOString();
+  const { data: inserted, error: insErr } = await admin
+    .from("abonnements")
+    .insert({
+      fleet_id: fleetId,
+      plan_id: planRow.id,
+      payment_id: payment.id,
+      starts_at: startsAtIso,
+      ends_at: endsAtIso,
+      status: "inactive",
+      vehicle_slots: Math.max(1, vehicleCount),
+    })
+    .select("id")
+    .single<{ id: string }>();
+  if (insErr) throw new Error(insErr.message);
 
-  return { activated: true, subscriptionId };
+  return { activated: false, subscriptionId: inserted.id };
 }
 
 async function syncVehicleRights(

@@ -1,8 +1,13 @@
 BEGIN;
 
 -- Global cleanup/archive routines are maintenance jobs, never end-user actions.
-REVOKE EXECUTE ON FUNCTION public.nettoyer_base_donnees(boolean) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.nettoyer_base_donnees(boolean) TO service_role;
+DO $$
+BEGIN
+  IF to_regprocedure('public.nettoyer_base_donnees(boolean)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.nettoyer_base_donnees(boolean) FROM PUBLIC, anon, authenticated;
+    GRANT EXECUTE ON FUNCTION public.nettoyer_base_donnees(boolean) TO service_role;
+  END IF;
+END $$;
 
 DO $$
 BEGIN

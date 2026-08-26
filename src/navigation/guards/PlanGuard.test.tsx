@@ -3,46 +3,46 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { PlanGuard } from "./PlanGuard";
 
-const { mockUseAuth, mockUseBilling } = vi.hoisted(() => ({
+const { mockUseAuth, mockUseFleetSiteAccess } = vi.hoisted(() => ({
   mockUseAuth: vi.fn(),
-  mockUseBilling: vi.fn(),
+  mockUseFleetSiteAccess: vi.fn(),
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-vi.mock("@/hooks/useBilling", () => ({
-  useBilling: () => mockUseBilling(),
+vi.mock("@/hooks/useFleetSiteAccess", () => ({
+  useFleetSiteAccess: () => mockUseFleetSiteAccess(),
 }));
+
+function mockAuthenticatedUser(role = "organizer") {
+  mockUseAuth.mockReturnValue({
+    user: { id: "u1" },
+    orgId: "o1",
+    activeTenantContext: { fleetId: "f1", role },
+    isLoading: false,
+  });
+}
+
+function allowedAccess(data: boolean) {
+  return {
+    data,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  };
+}
 
 describe("PlanGuard", () => {
   beforeEach(() => {
     mockUseAuth.mockReset();
-    mockUseBilling.mockReset();
+    mockUseFleetSiteAccess.mockReset();
   });
 
-  it("affiche les enfants lorsque plan payant actif", () => {
-    mockUseAuth.mockReturnValue({
-      user: { id: "u1" },
-      orgId: "o1",
-      activeTenantContext: { fleetId: "f1", role: "organizer" },
-      isLoading: false,
-    });
-    mockUseBilling.mockReturnValue({
-      data: {
-        lapsedPaid: false,
-        subscription: {
-          id: "s1",
-          status: "active",
-          startsAt: "",
-          endsAt: "",
-          plan: { id: "p1", code: "pro", name: "Pro", pricePerVehicle: 0 },
-        },
-        recentPayments: [],
-      },
-      isLoading: false,
-    });
+  it("affiche les enfants lorsque le RPC autorise l'accès", () => {
+    mockAuthenticatedUser();
+    mockUseFleetSiteAccess.mockReturnValue(allowedAccess(true));
 
     render(
       <MemoryRouter>
@@ -55,27 +55,24 @@ describe("PlanGuard", () => {
     expect(screen.getByTestId("paid")).toBeInTheDocument();
   });
 
-  it("redirige vers upgrade lorsque plan free ou absent", () => {
-    mockUseAuth.mockReturnValue({
-      user: { id: "u1" },
-      orgId: "o1",
-      activeTenantContext: { fleetId: "f1", role: "organizer" },
-      isLoading: false,
-    });
-    mockUseBilling.mockReturnValue({
-      data: {
-        lapsedPaid: false,
-        subscription: {
-          id: "s1",
-          status: "active",
-          startsAt: "",
-          endsAt: "",
-          plan: { id: "p1", code: "free", name: "Free", pricePerVehicle: 0 },
-        },
-        recentPayments: [],
-      },
-      isLoading: false,
-    });
+  it("autorise aussi un conducteur membre actif lorsque la flotte a accès", () => {
+    mockAuthenticatedUser("driver");
+    mockUseFleetSiteAccess.mockReturnValue(allowedAccess(true));
+
+    render(
+      <MemoryRouter>
+        <PlanGuard>
+          <div data-testid="driver-access">Dashboard</div>
+        </PlanGuard>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("driver-access")).toBeInTheDocument();
+  });
+
+  it("redirige vers upgrade lorsque le RPC refuse explicitement l'accès", () => {
+    mockAuthenticatedUser();
+    mockUseFleetSiteAccess.mockReturnValue(allowedAccess(false));
 
     render(
       <MemoryRouter initialEntries={["/x"]}>
@@ -94,5 +91,60 @@ describe("PlanGuard", () => {
     );
 
     expect(screen.getByTestId("up")).toBeInTheDocument();
+  });
+
+  it("ne transforme pas une erreur RPC en faux besoin d'upgrade", () => {
+    mockAuthenticatedUser();
+    mockUseFleetSiteAccess.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/x"]}>
+        <Routes>
+          <Route
+            path="/x"
+            element={
+              <PlanGuard>
+                <div>Payant</div>
+              </PlanGuard>
+            }
+          />
+          <Route path="/upgrade" element={<div data-testid="up">Upgrade</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Impossible de vérifier l’accès à cette flotte.",
+    );
+    expect(screen.queryByTestId("up")).not.toBeInTheDocument();
+  });
+
+  it("ne contourne pas le refus d'accès avec un faux retour Notch Pay", () => {
+    mockAuthenticatedUser();
+    mockUseFleetSiteAccess.mockReturnValue(allowedAccess(false));
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard/billing?status=success&ref=fake"]}>
+        <Routes>
+          <Route
+            path="/dashboard/billing"
+            element={
+              <PlanGuard>
+                <div data-testid="billing">Facturation</div>
+              </PlanGuard>
+            }
+          />
+          <Route path="/upgrade" element={<div data-testid="up">Upgrade</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("up")).toBeInTheDocument();
+    expect(screen.queryByTestId("billing")).not.toBeInTheDocument();
   });
 });
