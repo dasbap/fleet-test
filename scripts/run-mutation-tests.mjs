@@ -12,11 +12,22 @@ const args = [
   ...process.argv.slice(2),
 ];
 
-const command = process.platform === "win32" ? "npx.cmd" : "npx";
-const result = spawnSync(command, args, {
-  stdio: "inherit",
-  env: process.env,
-});
+let result;
+
+if (process.platform === "win32") {
+  const quote = (value) => `"${String(value).replace(/"/g, '\\"')}"`;
+  const commandLine = ["npx", ...args].map(quote).join(" ");
+
+  result = spawnSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", commandLine], {
+    stdio: "inherit",
+    env: process.env,
+  });
+} else {
+  result = spawnSync("npx", args, {
+    stdio: "inherit",
+    env: process.env,
+  });
+}
 
 if (result.error) {
   console.error("Impossible de lancer les tests de mutation:", result.error);
