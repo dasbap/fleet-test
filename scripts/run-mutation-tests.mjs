@@ -1,8 +1,9 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const STRYKER_VERSION = "10.0.0";
+const TYPESCRIPT_VERSION = "5.9.3";
 const VALID_PROFILES = new Set(["pr", "critical", "full"]);
 const runtimeDir = resolve(".stryker-runtime");
 const runtimeBin = join(runtimeDir, "node_modules", ".bin");
@@ -31,6 +32,29 @@ function run(command, args, options = {}) {
   });
 }
 
+function runtimePackageVersion(packageName) {
+  try {
+    const packageJsonPath = join(
+      runtimeDir,
+      "node_modules",
+      ...packageName.split("/"),
+      "package.json",
+    );
+    return JSON.parse(readFileSync(packageJsonPath, "utf8")).version;
+  } catch {
+    return null;
+  }
+}
+
+function runtimeIsCompatible() {
+  return (
+    existsSync(strykerExecutable) &&
+    runtimePackageVersion("@stryker-mutator/core") === STRYKER_VERSION &&
+    runtimePackageVersion("@stryker-mutator/vitest-runner") === STRYKER_VERSION &&
+    runtimePackageVersion("typescript") === TYPESCRIPT_VERSION
+  );
+}
+
 const cliArgs = process.argv.slice(2);
 let profile = process.env.MUTATION_PROFILE ?? "critical";
 
@@ -48,7 +72,12 @@ if (!VALID_PROFILES.has(profile)) {
 process.env.MUTATION_PROFILE = profile;
 console.log(`[mutation] profil=${profile}`);
 
-if (!existsSync(strykerExecutable)) {
+if (!runtimeIsCompatible()) {
+  if (existsSync(runtimeDir)) {
+    console.log("[mutation] reconstruction du runtime Stryker incompatible ou obsolete");
+    rmSync(runtimeDir, { recursive: true, force: true });
+  }
+
   const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
   const installArgs = [
     "install",
@@ -61,7 +90,7 @@ if (!existsSync(strykerExecutable)) {
     "--no-fund",
     `@stryker-mutator/core@${STRYKER_VERSION}`,
     `@stryker-mutator/vitest-runner@${STRYKER_VERSION}`,
-    "typescript",
+    `typescript@${TYPESCRIPT_VERSION}`,
   ];
 
   const install = run(npmCommand, installArgs);
@@ -73,6 +102,10 @@ if (!existsSync(strykerExecutable)) {
     process.exit(install.status ?? 1);
   }
 }
+
+console.log(
+  `[mutation] runtime Stryker ${STRYKER_VERSION}, TypeScript ${TYPESCRIPT_VERSION}`,
+);
 
 const result = run(strykerExecutable, [
   "run",
