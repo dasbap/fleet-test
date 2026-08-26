@@ -1,34 +1,128 @@
 name: Mutation Tests
 
 on:
+  pull_request:
+    branches:
+      - pre-prod
+      - main
+  push:
+    branches:
+      - pre-prod
   workflow_dispatch:
+    inputs:
+      profile:
+        description: Mutation profile to run
+        required: true
+        default: critical
+        type: choice
+        options:
+          - pr
+          - critical
+          - full
 
 permissions:
   contents: read
 
+concurrency:
+  group: mutation-${{ github.event_name }}-${{ github.ref }}-${{ github.event.inputs.profile || 'auto' }}
+  cancel-in-progress: true
+
 jobs:
-  mutation-tests:
+  mutation-pr:
+    name: Mutation tests — PR critical gate
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: npm
 
       - name: Install dependencies
+        timeout-minutes: 8
         run: node scripts/ci-install.mjs
 
-      - name: Run broad mutation tests
+      - name: Run PR mutation profile
+        run: node scripts/run-mutation-tests.mjs pr
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-pr-${{ github.run_id }}
+          path: reports/mutation/pr
+          if-no-files-found: ignore
+          retention-days: 7
+
+  mutation-critical:
+    name: Mutation tests — pre-prod critical
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'critical')
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
+
+      - name: Run critical mutation profile
+        run: node scripts/run-mutation-tests.mjs critical
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-critical-${{ github.run_id }}
+          path: reports/mutation/critical
+          if-no-files-found: ignore
+          retention-days: 14
+
+  mutation-manual:
+    name: Mutation tests — manual ${{ github.event.inputs.profile }}
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.profile != 'critical'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ github.event.inputs.profile == 'full' && 360 || 60 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
+
+      - name: Run selected mutation profile
+        env:
+          MUTATION_PROFILE: ${{ github.event.inputs.profile }}
         run: node scripts/run-mutation-tests.mjs
 
       - name: Upload mutation report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mutation-report
-          path: reports/mutation
+          name: mutation-report-${{ github.event.inputs.profile }}-${{ github.run_id }}
+          path: reports/mutation/${{ github.event.inputs.profile }}
           if-no-files-found: ignore
+          retention-days: 30
