@@ -19,13 +19,24 @@ const exclusions = [
 ];
 
 const profiles = {
-  // Gate rapide pour PR : uniquement les invariants les plus sensibles.
+  // Gate PR rapide : uniquement des unités critiques avec couverture mutation effective.
+  // Les gros flux partiellement couverts restent dans `critical` afin que NoCoverage
+  // ne rende pas le check PR inutilisable.
   pr: [
-    "src/server/domain/billing/**/*.{ts,tsx}",
-    "src/server/domain/*{Billing,billing,Payment,payment,Money,money,Notch,notch}*.{ts,tsx}",
-    "src/server/payments/**/*.{ts,tsx}",
-    "src/server/http/**/*{auth,Auth,password,Password,security,Security,webhook,Webhook,gps,Gps,billing,Billing,payment,Payment,subscription,Subscription}*.{ts,tsx}",
-    "src/services/*{billing,payment,subscription,vehicle,assignment,access-code,auth,security,gps}*.{ts,tsx}",
+    "src/server/domain/billing/billingAuthorization.ts",
+    "src/server/domain/billing/paymentIntent.ts",
+    "src/server/domain/billingCheckout.ts",
+    "src/server/domain/mobileMoneyInitiate.ts",
+    "src/server/domain/notchPayInitiate.ts",
+    "src/server/http/routes/gpsIngest.ts",
+    "src/server/http/routes/webhooksPayment.ts",
+    "src/services/access-code.service.ts",
+    "src/services/admin-subscription.service.ts",
+    "src/services/billing.service.ts",
+    "src/services/payment-history.service.ts",
+    "src/services/subscription-management.service.ts",
+    "src/services/vehicle-search.service.ts",
+    "src/services/vehicle.service.ts",
     ...exclusions,
   ],
 
