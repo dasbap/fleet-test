@@ -15,10 +15,7 @@ const args = [
 let result;
 
 if (process.platform === "win32") {
-  const quote = (value) => `"${String(value).replace(/"/g, '\\"')}"`;
-  const commandLine = ["npx", ...args].map(quote).join(" ");
-
-  result = spawnSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", commandLine], {
+  result = spawnSync("cmd.exe", ["/d", "/s", "/c", "npx", ...args], {
     stdio: "inherit",
     env: process.env,
   });
