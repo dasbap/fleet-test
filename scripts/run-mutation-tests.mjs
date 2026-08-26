@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const STRYKER_VERSION = "10.0.0";
+const VALID_PROFILES = new Set(["pr", "critical", "full"]);
 const runtimeDir = resolve(".stryker-runtime");
 const runtimeBin = join(runtimeDir, "node_modules", ".bin");
 const strykerExecutable = join(
@@ -29,6 +30,23 @@ function run(command, args, options = {}) {
     ...options,
   });
 }
+
+const cliArgs = process.argv.slice(2);
+let profile = process.env.MUTATION_PROFILE ?? "critical";
+
+if (cliArgs[0] && VALID_PROFILES.has(cliArgs[0])) {
+  profile = cliArgs.shift();
+}
+
+if (!VALID_PROFILES.has(profile)) {
+  console.error(
+    `Profil mutation inconnu: ${profile}. Utilisez pr, critical ou full.`,
+  );
+  process.exit(2);
+}
+
+process.env.MUTATION_PROFILE = profile;
+console.log(`[mutation] profil=${profile}`);
 
 if (!existsSync(strykerExecutable)) {
   const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -59,7 +77,7 @@ if (!existsSync(strykerExecutable)) {
 const result = run(strykerExecutable, [
   "run",
   "stryker.config.mjs",
-  ...process.argv.slice(2),
+  ...cliArgs,
 ]);
 
 if (result.error) {
