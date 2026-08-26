@@ -19,6 +19,8 @@ interface Options {
   planError?: { message: string } | null;
   payment?: unknown;
   paymentError?: { message: string } | null;
+  bindError?: { message: string } | null;
+  failError?: { message: string } | null;
   pendingError?: { message: string } | null;
   userEmail?: string | null;
   userError?: { message: string } | null;
@@ -32,7 +34,7 @@ function makeSupabase(options: Options = {}) {
     ? { id: "plan-1", price_per_vehicle: 15000, max_vehicles: 25, is_active: true }
     : options.plan;
   const payment = options.payment === undefined
-    ? { payment_id: PAYMENT_ID, status: "initiated", amount_xaf: 15000, currency: "XAF" }
+    ? { payment_id: PAYMENT_ID, status: "pending", amount_xaf: 15000, currency: "XAF" }
     : options.payment;
 
   const rpc = vi.fn(async (fn: string) => {
@@ -41,6 +43,12 @@ function makeSupabase(options: Options = {}) {
     }
     if (fn === "create_payment_intent") {
       return { data: payment, error: options.paymentError ?? null };
+    }
+    if (fn === "bind_payment_provider_reference") {
+      return { data: options.bindError ? null : true, error: options.bindError ?? null };
+    }
+    if (fn === "fail_payment_initiation") {
+      return { data: options.failError ? null : true, error: options.failError ?? null };
     }
     if (fn === "ensure_pending_subscription_for_payment") {
       return { data: "sub-pending", error: options.pendingError ?? null };
@@ -278,7 +286,7 @@ describe("Notch Pay exhaustive security matrix", () => {
     const fetchMock = vi.fn().mockResolvedValue(okNotchResponse());
     vi.stubGlobal("fetch", fetchMock);
     const { supabase } = makeSupabase({
-      payment: { payment_id: PAYMENT_ID, status: "initiated", amount_xaf: 90000, currency: "XAF" },
+      payment: { payment_id: PAYMENT_ID, status: "pending", amount_xaf: 90000, currency: "XAF" },
     });
 
     await initiateNotchPayPayment(
@@ -294,6 +302,7 @@ describe("Notch Pay exhaustive security matrix", () => {
     expect(payload.amount).toBe(90000);
     expect(payload.currency).toBe("XAF");
     expect(payload.metadata).toEqual({
+      paymentId: PAYMENT_ID,
       fleetId: FLEET_ID,
       orgId: ORG_ID,
       planCode: "starter",
@@ -302,7 +311,19 @@ describe("Notch Pay exhaustive security matrix", () => {
     });
   });
 
-  it("rejette proprement une erreur HTTP Notch Pay et borne le corps d'erreur", async () => {
+  it("persiste le paiement pending avant tout appel réseau", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okNotchResponse());
+    vi.stubGlobal("fetch", fetchMock);
+    const { supabase, rpc } = makeSupabase();
+
+    await initiateNotchPayPayment(supabase as never, intent({ email: "payer@example.test" }));
+
+    const createCall = rpc.mock.calls.findIndex(([fn]) => fn === "create_payment_intent");
+    expect(createCall).toBeGreaterThan(-1);
+    expect(rpc.mock.invocationCallOrder[createCall]).toBeLessThan(fetchMock.mock.invocationCallOrder[0]);
+  });
+
+  it("rejette proprement une erreur HTTP Notch Pay et clôture le pending", async () => {
     const longBody = "x".repeat(800);
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
@@ -314,10 +335,11 @@ describe("Notch Pay exhaustive security matrix", () => {
 
     await expect(initiateNotchPayPayment(supabase as never, intent({ email: "payer@example.test" })))
       .rejects.toThrow(/Notch Pay API error 502/);
-    expect(rpc).not.toHaveBeenCalledWith("create_payment_intent", expect.anything());
+    expect(rpc).toHaveBeenCalledWith("create_payment_intent", expect.anything());
+    expect(rpc).toHaveBeenCalledWith("fail_payment_initiation", { p_payment_id: PAYMENT_ID });
   });
 
-  it("refuse une réponse Notch Pay sans URL de paiement", async () => {
+  it("refuse une réponse Notch Pay sans URL de paiement et clôture le pending", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ transaction: { reference: "trx-no-url" } }),
@@ -327,7 +349,7 @@ describe("Notch Pay exhaustive security matrix", () => {
 
     await expect(initiateNotchPayPayment(supabase as never, intent({ email: "payer@example.test" })))
       .rejects.toThrow(/pas retourné d'URL de paiement/i);
-    expect(rpc).not.toHaveBeenCalledWith("create_payment_intent", expect.anything());
+    expect(rpc).toHaveBeenCalledWith("fail_payment_initiation", { p_payment_id: PAYMENT_ID });
   });
 
   it("accepte l'URL imbriquée transaction.authorization_url", async () => {
@@ -341,31 +363,54 @@ describe("Notch Pay exhaustive security matrix", () => {
     expect(result.reference).toBe("trx-secure");
   });
 
-  it("propage une erreur de création du payment intent après succès PSP", async () => {
+  it("ne contacte jamais le PSP si le pending local ne peut pas être créé", async () => {
     const fetchMock = vi.fn().mockResolvedValue(okNotchResponse());
     vi.stubGlobal("fetch", fetchMock);
     const { supabase, rpc } = makeSupabase({ paymentError: { message: "intent persistence failed" } });
 
     await expect(initiateNotchPayPayment(supabase as never, intent({ email: "payer@example.test" })))
       .rejects.toThrow("intent persistence failed");
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(rpc).not.toHaveBeenCalledWith("ensure_pending_subscription_for_payment", expect.anything());
   });
 
-  it("propage une erreur de préparation d'abonnement pending", async () => {
+  it("refuse un statut local autre que pending avant le PSP", async () => {
     const fetchMock = vi.fn().mockResolvedValue(okNotchResponse());
     vi.stubGlobal("fetch", fetchMock);
-    const { supabase } = makeSupabase({ pendingError: { message: "pending subscription failed" } });
+    const { supabase } = makeSupabase({
+      payment: { payment_id: PAYMENT_ID, status: "succeeded", amount_xaf: 15000, currency: "XAF" },
+    });
+
+    await expect(initiateNotchPayPayment(supabase as never, intent({ email: "payer@example.test" })))
+      .rejects.toThrow(/doit être en attente/i);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("propage une erreur de liaison PSP et clôture le pending", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okNotchResponse());
+    vi.stubGlobal("fetch", fetchMock);
+    const { supabase, rpc } = makeSupabase({ bindError: { message: "provider bind failed" } });
+
+    await expect(initiateNotchPayPayment(supabase as never, intent({ email: "payer@example.test" })))
+      .rejects.toThrow("provider bind failed");
+    expect(rpc).toHaveBeenCalledWith("fail_payment_initiation", { p_payment_id: PAYMENT_ID });
+    expect(rpc).not.toHaveBeenCalledWith("ensure_pending_subscription_for_payment", expect.anything());
+  });
+
+  it("propage une erreur de préparation d'abonnement pending et clôture le paiement", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okNotchResponse());
+    vi.stubGlobal("fetch", fetchMock);
+    const { supabase, rpc } = makeSupabase({ pendingError: { message: "pending subscription failed" } });
 
     await expect(initiateNotchPayPayment(supabase as never, intent({ email: "payer@example.test" })))
       .rejects.toThrow("pending subscription failed");
+    expect(rpc).toHaveBeenCalledWith("fail_payment_initiation", { p_payment_id: PAYMENT_ID });
   });
 
-  it("lie le payment intent à la référence PSP et crée l'abonnement pending", async () => {
+  it("lie la référence PSP puis crée l'abonnement pending sans l'activer", async () => {
     const fetchMock = vi.fn().mockResolvedValue(okNotchResponse());
     vi.stubGlobal("fetch", fetchMock);
-    const { supabase, rpc } = makeSupabase({
-      payment: { payment_id: PAYMENT_ID, status: "initiated", amount_xaf: 15000, currency: "XAF" },
-    });
+    const { supabase, rpc } = makeSupabase();
 
     await initiateNotchPayPayment(supabase as never, intent({ email: "payer@example.test" }));
 
@@ -373,10 +418,15 @@ describe("Notch Pay exhaustive security matrix", () => {
       "create_payment_intent",
       expect.objectContaining({
         p_provider: "notch",
-        p_external_ref: "trx-secure",
         p_expected_amount: 15000,
       }),
     );
+    const createArgs = rpc.mock.calls.find(([fn]) => fn === "create_payment_intent")?.[1] as Record<string, unknown>;
+    expect(createArgs.p_external_ref).toMatch(/^ESAMBA-/);
+    expect(rpc).toHaveBeenCalledWith("bind_payment_provider_reference", {
+      p_payment_id: PAYMENT_ID,
+      p_provider_reference: "trx-secure",
+    });
     expect(rpc).toHaveBeenCalledWith("ensure_pending_subscription_for_payment", {
       p_payment_id: PAYMENT_ID,
     });
