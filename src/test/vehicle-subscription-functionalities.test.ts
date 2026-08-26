@@ -87,13 +87,16 @@ describe("Fonctionnalités véhicule protégées en base", () => {
   });
 
   it("refuse l'affectation d'un conducteur si le véhicule n'a pas d'abonnement actif", () => {
-    expect(driverAssignmentMigration).toContain("JOIN public.droits_vehicules dv");
-    expect(driverAssignmentMigration).toContain("dv.active = true");
+    expect(driverAssignmentMigration).toMatch(/FROM\s+public\.droits_vehicules\s+dv/i);
+    expect(driverAssignmentMigration).toMatch(/JOIN\s+public\.abonnements\s+a\s+ON\s+a\.id\s*=\s*dv\.subscription_id/i);
+    expect(driverAssignmentMigration).toMatch(/dv\.active\s+(?:IS\s+TRUE|=\s*true)/i);
+    expect(driverAssignmentMigration).toContain("dv.status = 'active'");
+    expect(driverAssignmentMigration).toContain("dv.starts_at <= now()");
+    expect(driverAssignmentMigration).toContain("dv.ends_at >= now()");
+    expect(driverAssignmentMigration).toContain("a.fleet_id = p_fleet_id");
     expect(driverAssignmentMigration).toContain("a.status = 'active'");
     expect(driverAssignmentMigration).toContain("a.starts_at <= now()");
-    expect(driverAssignmentMigration).toContain(
-      "COALESCE(a.ends_at, 'infinity'::timestamptz) >= now()",
-    );
+    expect(driverAssignmentMigration).toContain("a.ends_at >= now()");
     expect(driverAssignmentMigration).toContain(
       "RAISE EXCEPTION 'vehicule_sans_abonnement_actif'",
     );
