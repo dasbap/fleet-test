@@ -19,10 +19,16 @@ function createSupabaseMock(vehicleIdsInFleet: string[] = [], userEmail = "payeu
           reference: "ESAMBA-TEST",
           amount_xaf: 15000,
           currency: "XAF",
-          status: "initiated",
+          status: "pending",
         },
         error: null,
       };
+    }
+    if (fn === "bind_payment_provider_reference") {
+      return { data: true, error: null };
+    }
+    if (fn === "fail_payment_initiation") {
+      return { data: true, error: null };
     }
     if (fn === "ensure_pending_subscription_for_payment") {
       return {
@@ -193,6 +199,10 @@ describe("initiateNotchPayPayment security", () => {
 
     expect(result.checkoutUrl).toBe("https://pay.notchpay.co/pay_test_top_level_url");
     expect(result.reference).toBe("trx.test_top_level_url");
+    expect(rpc).toHaveBeenCalledWith("bind_payment_provider_reference", {
+      p_payment_id: PAYMENT_ID,
+      p_provider_reference: "trx.test_top_level_url",
+    });
     expect(rpc).toHaveBeenCalledWith("ensure_pending_subscription_for_payment", {
       p_payment_id: PAYMENT_ID,
     });
@@ -220,9 +230,10 @@ describe("initiateNotchPayPayment security", () => {
     });
 
     const [, init] = fetchMock.mock.calls[0];
-    const payload = JSON.parse(init.body as string) as { email?: string; phone?: string };
+    const payload = JSON.parse(init.body as string) as { email?: string; phone?: string; metadata?: { paymentId?: string } };
     expect(payload.email).toBe("owner@example.test");
     expect(payload.phone).toBeUndefined();
+    expect(payload.metadata?.paymentId).toBe(PAYMENT_ID);
     expect(rpc).toHaveBeenCalledWith("ensure_pending_subscription_for_payment", {
       p_payment_id: PAYMENT_ID,
     });

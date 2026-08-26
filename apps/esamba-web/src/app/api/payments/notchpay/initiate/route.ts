@@ -112,30 +112,67 @@ export async function POST(request: Request) {
   const callbackUrl = `${getAppUrl()}/dashboard/abonnement/success?ref=${encodeURIComponent(merchantRef)}`;
   const payerEmail = body.email ?? user.email ?? undefined;
 
-  const notchRes = await fetch(`${NOTCH_PAY_API_URL}/payments`, {
-    method: "POST",
-    headers: {
-      Authorization: apiKey.startsWith("Bearer ") ? apiKey : `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
+  const { data: payment, error: paymentError } = await supabase.rpc(
+    "create_payment_intent",
+    {
+      p_org_id: context.orgId,
+      p_fleet_id: context.fleetId,
+      p_plan_code: plan.code,
+      p_vehicle_count: vehicleCount,
+      p_duration_months: durationMonths,
+      p_provider: "notch",
+      p_external_ref: merchantRef,
+      p_idempotency_key: merchantRef,
+      p_expected_amount: amountXaf,
+      p_vehicle_ids: null,
+      p_phone_number: null,
+      p_checkout: false,
+      p_subscription_id: body.subscriptionId,
+      p_provider_reference: null,
     },
-    body: JSON.stringify({
-      amount: amountXaf,
-      currency: "XAF",
-      reference: merchantRef,
-      description: `E-Samba — Plan ${plan.name}`,
-      callback: callbackUrl,
-      email: payerEmail,
-      metadata: {
-        fleetId: context.fleetId,
-        orgId: context.orgId,
-        subscriptionId: body.subscriptionId,
-        planCode: plan.code,
-        vehicleCount: String(vehicleCount),
-        durationMonths: String(durationMonths),
+  );
+
+  if (paymentError || !payment?.payment_id || payment.status !== "pending") {
+    return NextResponse.json({ error: "Création du paiement en attente impossible" }, { status: 500 });
+  }
+
+  const failPending = async () => {
+    await supabase.rpc("fail_payment_initiation", {
+      p_payment_id: payment.payment_id,
+    });
+  };
+
+  let notchRes: Response;
+  try {
+    notchRes = await fetch(`${NOTCH_PAY_API_URL}/payments`, {
+      method: "POST",
+      headers: {
+        Authorization: apiKey.startsWith("Bearer ") ? apiKey : `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        amount: amountXaf,
+        currency: "XAF",
+        reference: merchantRef,
+        description: `E-Samba — Plan ${plan.name}`,
+        callback: callbackUrl,
+        email: payerEmail,
+        metadata: {
+          paymentId: payment.payment_id,
+          fleetId: context.fleetId,
+          orgId: context.orgId,
+          subscriptionId: body.subscriptionId,
+          planCode: plan.code,
+          vehicleCount: String(vehicleCount),
+          durationMonths: String(durationMonths),
+        },
+      }),
+    });
+  } catch {
+    await failPending();
+    return NextResponse.json({ error: "NotchPay indisponible" }, { status: 502 });
+  }
 
   const notchRaw = await notchRes.text().catch(() => "");
   let notchData: {
@@ -151,6 +188,7 @@ export async function POST(request: Request) {
   }
 
   if (!notchRes.ok) {
+    await failPending();
     return NextResponse.json(
       {
         error:
@@ -165,37 +203,32 @@ export async function POST(request: Request) {
   const notchRef = notchData.transaction?.reference ?? merchantRef;
 
   if (!checkoutUrl) {
+    await failPending();
     return NextResponse.json(
       { error: "URL de paiement NotchPay manquante" },
       { status: 502 },
     );
   }
 
-  const { data: payment, error: paymentError } = await supabase.rpc(
-    "create_payment_intent",
+  const { data: bound, error: bindError } = await supabase.rpc(
+    "bind_payment_provider_reference",
     {
-      p_org_id: context.orgId,
-      p_fleet_id: context.fleetId,
-      p_plan_code: plan.code,
-      p_vehicle_count: vehicleCount,
-      p_duration_months: durationMonths,
-      p_provider: "notch",
-      p_external_ref: notchRef,
-      p_idempotency_key: merchantRef,
-      p_expected_amount: amountXaf,
-      p_vehicle_ids: null,
-      p_phone_number: null,
-      p_checkout: false,
-      p_subscription_id: body.subscriptionId,
+      p_payment_id: payment.payment_id,
       p_provider_reference: notchRef,
     },
   );
 
-  if (paymentError || !payment) {
-    return NextResponse.json({ error: "Création du paiement impossible" }, { status: 500 });
+  if (bindError || bound !== true) {
+    await failPending();
+    return NextResponse.json(
+      { error: "Liaison de la référence NotchPay impossible" },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({
+    paymentId: payment.payment_id,
+    paymentStatus: "pending",
     checkoutUrl,
     authorization_url: checkoutUrl,
     reference: notchRef,
