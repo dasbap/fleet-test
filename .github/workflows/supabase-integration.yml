@@ -1,6 +1,14 @@
 name: Supabase Integration (Remote)
 
 on:
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
   push:
     branches:
       - main
