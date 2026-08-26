@@ -6,6 +6,7 @@ const args = [
   "-y",
   `--package=@stryker-mutator/core@${STRYKER_VERSION}`,
   `--package=@stryker-mutator/vitest-runner@${STRYKER_VERSION}`,
+  "--package=typescript",
   "stryker",
   "run",
   "stryker.config.mjs",
@@ -15,10 +16,14 @@ const args = [
 let result;
 
 if (process.platform === "win32") {
-  result = spawnSync("cmd.exe", ["/d", "/s", "/c", "npx", ...args], {
-    stdio: "inherit",
-    env: process.env,
-  });
+  result = spawnSync(
+    process.env.ComSpec || "cmd.exe",
+    ["/d", "/s", "/c", "npx", ...args],
+    {
+      stdio: "inherit",
+      env: process.env,
+    },
+  );
 } else {
   result = spawnSync("npx", args, {
     stdio: "inherit",
