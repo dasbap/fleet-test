@@ -10,6 +10,15 @@ on:
       - fix/ci-green-main
       - "release/**"
 
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+      - PRINCIPALE
+      - fix/ci-green-main
+      - "release/**"
+
   workflow_dispatch:
 
 concurrency:
