@@ -242,6 +242,16 @@ async function prepareSubscriptionForSucceededPayment(
       });
       return { activated: true, subscriptionId: already.id };
     }
+
+    if (already.status === "pending_payment") {
+      const { error: settleError } = await admin
+        .from("abonnements")
+        .update({ status: "inactive" })
+        .eq("id", already.id)
+        .eq("status", "pending_payment");
+      if (settleError) throw new Error(settleError.message);
+    }
+
     return { activated: false, subscriptionId: already.id };
   }
 
