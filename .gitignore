@@ -67,6 +67,11 @@ TEST-REPORT-*.json
 # Playwright (artefacts locaux)
 test-results/
 
+# Mutation testing (artefacts locaux Stryker)
+.stryker-runtime/
+.stryker-tmp/
+reports/mutation/
+
 # Android - publication Play (ne jamais versionner)
 android/app/google-services.json
 android/app/google-services.*.json
