@@ -1,75 +1,89 @@
+const profile = process.env.MUTATION_PROFILE ?? "critical";
+
+const exclusions = [
+  "!src/test/**",
+  "!src/**/__tests__/**",
+  "!src/**/*.test.{ts,tsx}",
+  "!src/**/*.spec.{ts,tsx}",
+  "!api/**/*.test.{ts,tsx}",
+  "!api/**/*.spec.{ts,tsx}",
+  "!packages/**/__tests__/**",
+  "!packages/**/*.test.{ts,tsx}",
+  "!packages/**/*.spec.{ts,tsx}",
+  "!**/*.d.ts",
+  "!**/generated/**",
+  "!**/*.generated.{ts,tsx}",
+  "!src/integrations/supabase/types.ts",
+  "!src/main.tsx",
+  "!src/vite-env.d.ts",
+];
+
+const profiles = {
+  // Gate rapide pour PR : uniquement les invariants les plus sensibles.
+  pr: [
+    "src/server/domain/billing/**/*.{ts,tsx}",
+    "src/server/domain/*{Billing,billing,Payment,payment,Money,money,Notch,notch}*.{ts,tsx}",
+    "src/server/payments/**/*.{ts,tsx}",
+    "src/server/http/**/*{auth,Auth,password,Password,security,Security,webhook,Webhook,gps,Gps,billing,Billing,payment,Payment,subscription,Subscription}*.{ts,tsx}",
+    "src/services/*{billing,payment,subscription,vehicle,assignment,access-code,auth,security,gps}*.{ts,tsx}",
+    ...exclusions,
+  ],
+
+  // Validation pre-prod : toutes les couches serveur et services métier critiques.
+  critical: [
+    "src/server/**/*.{ts,tsx}",
+    "src/services/**/*.{ts,tsx}",
+    "src/lib/**/*{billing,payment,subscription,vehicle,fleet,auth,security,gps,entitlement}*.{ts,tsx}",
+    "api/**/*.{ts,tsx}",
+    "packages/**/*{billing,payment,subscription,vehicle,auth,security,gps}*.{ts,tsx}",
+    ...exclusions,
+  ],
+
+  // Audit manuel large. Jamais lancé automatiquement dans les PR.
+  full: [
+    "src/**/*.{ts,tsx}",
+    "api/**/*.{ts,tsx}",
+    "packages/**/*.{ts,tsx}",
+    ...exclusions,
+  ],
+};
+
+if (!(profile in profiles)) {
+  throw new Error(
+    `MUTATION_PROFILE inconnu: ${profile}. Valeurs: ${Object.keys(profiles).join(", ")}`,
+  );
+}
+
+const reportDir = `reports/mutation/${profile}`;
+
+console.log(`[mutation] profile=${profile}`);
+
 export default {
   testRunner: "vitest",
   plugins: ["@stryker-mutator/vitest-runner"],
-  mutate: [
-    // BFF / securite / auth / webhooks / billing / GPS
-    "src/server/**/*.{ts,tsx}",
-
-    // Services metier avec effets et invariants importants
-    "src/services/**/*.{ts,tsx}",
-
-    // Logique metier partagee critique
-    "src/lib/**/*billing*.{ts,tsx}",
-    "src/lib/**/*payment*.{ts,tsx}",
-    "src/lib/**/*subscription*.{ts,tsx}",
-    "src/lib/**/*vehicle*.{ts,tsx}",
-    "src/lib/**/*fleet*.{ts,tsx}",
-    "src/lib/**/*auth*.{ts,tsx}",
-    "src/lib/**/*security*.{ts,tsx}",
-    "src/lib/**/*gps*.{ts,tsx}",
-    "src/lib/**/*entitlement*.{ts,tsx}",
-
-    // Fonctions API server-side encore actives
-    "api/**/*.{ts,tsx}",
-
-    // Packages uniquement lorsqu'ils portent de la logique metier critique
-    "packages/**/*billing*.{ts,tsx}",
-    "packages/**/*payment*.{ts,tsx}",
-    "packages/**/*subscription*.{ts,tsx}",
-    "packages/**/*vehicle*.{ts,tsx}",
-    "packages/**/*auth*.{ts,tsx}",
-    "packages/**/*security*.{ts,tsx}",
-    "packages/**/*gps*.{ts,tsx}",
-
-    // Exclusions tests / types / code genere
-    "!src/test/**",
-    "!src/**/__tests__/**",
-    "!src/**/*.test.{ts,tsx}",
-    "!src/**/*.spec.{ts,tsx}",
-    "!api/**/*.test.{ts,tsx}",
-    "!api/**/*.spec.{ts,tsx}",
-    "!packages/**/__tests__/**",
-    "!packages/**/*.test.{ts,tsx}",
-    "!packages/**/*.spec.{ts,tsx}",
-    "!**/*.d.ts",
-    "!**/generated/**",
-    "!**/*.generated.{ts,tsx}",
-    "!src/integrations/supabase/types.ts",
-    "!src/main.tsx",
-    "!src/vite-env.d.ts"
-  ],
+  mutate: profiles[profile],
   vitest: {
-    related: true
+    related: true,
   },
   ignoreStatic: true,
   reporters: ["clear-text", "progress", "html", "json"],
   htmlReporter: {
-    fileName: "reports/mutation/mutation.html"
+    fileName: `${reportDir}/mutation.html`,
   },
   jsonReporter: {
-    fileName: "reports/mutation/mutation.json"
+    fileName: `${reportDir}/mutation.json`,
   },
   thresholds: {
     high: 80,
     low: 60,
-    break: 50
+    break: profile === "pr" ? 40 : 50,
   },
   timeoutMS: 15000,
   timeoutFactor: 1.5,
   concurrency: 2,
   incremental: true,
-  incrementalFile: "reports/mutation/stryker-incremental.json",
-  tempDirName: ".stryker-tmp",
+  incrementalFile: `${reportDir}/stryker-incremental.json`,
+  tempDirName: `.stryker-tmp-${profile}`,
   cleanTempDir: true,
-  allowConsoleColors: true
+  allowConsoleColors: true,
 };
