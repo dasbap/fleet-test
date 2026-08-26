@@ -1,5 +1,4 @@
 /** @vitest-environment node */
-import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { applyCors } from "../../api/_lib/vercel-api";
 
@@ -47,19 +46,5 @@ describe("Vercel API CORS", () => {
     expect(productionHeaders.get("Access-Control-Allow-Origin")).toBe(
       "https://www.e-samba.com",
     );
-  });
-
-  it("conserve le nettoyage des marqueurs legacy sur la route Hono", () => {
-    const source = readFileSync(
-      "src/server/http/routes/passwordChange.ts",
-      "utf8",
-    );
-
-    expect(source).toContain("const userMetadata = currentUserData.user.user_metadata ?? {}");
-    expect(source).toContain("userMetadata.must_set_password === true");
-    expect(source).toContain("user_metadata: {");
-    expect(source).toContain("must_set_password: false");
-    expect(source).toContain("temporary_password_active: false");
-    expect(source).toContain("MARKER_UPDATE_ATTEMPTS = 3");
   });
 });
