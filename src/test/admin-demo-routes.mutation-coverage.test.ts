@@ -202,7 +202,7 @@ describe("admin demo routes mutation coverage", () => {
     createSupabaseServiceClient.mockReturnValue(serviceClient({ currentUsers: [{ user: null }] }));
     let response = await request("/api/auth/clear-password-marker", {});
     expect(response.status).toBe(404);
-    createSupabaseServiceClient.mockReturnValue(serviceClient({ updateUser: null }));
+    createSupabaseServiceClient.mockReturnValue(serviceClient({ updateUser: { user: null } }));
     response = await request("/api/auth/clear-password-marker", {});
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ ok: false, error: "password_marker_update_failed" });
