@@ -28,9 +28,52 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pr-tests-shard:
+    name: PR tests shard ${{ matrix.shard }}/4
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
+
+      - name: Run PR tests shard
+        run: npx vitest run --shard=${{ matrix.shard }}/4 --exclude "tests/integration/**" --exclude "tests/e2e/**"
+
+  pr-tests:
+    name: PR tests
+    if: always() && github.event_name == 'pull_request'
+    needs: pr-tests-shard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all PR test shards
+        env:
+          SHARDS_RESULT: ${{ needs.pr-tests-shard.result }}
+        run: |
+          if [ "$SHARDS_RESULT" != "success" ]; then
+            echo "One or more PR test shards failed: $SHARDS_RESULT"
+            exit 1
+          fi
+          echo "All PR test shards passed."
+
   mutation-pr-shard:
     name: Mutation shard ${{ matrix.shard }}/4
     if: github.event_name == 'pull_request'
+    needs: pr-tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
