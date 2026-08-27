@@ -87,7 +87,7 @@ export default {
   thresholds: {
     high: 80,
     low: 60,
-    break: profile === "pr" ? 40 : 50,
+    break: 60,
   },
   timeoutMS: 15000,
   timeoutFactor: 1.5,
