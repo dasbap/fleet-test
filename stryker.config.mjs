@@ -1,5 +1,6 @@
 const profile = process.env.MUTATION_PROFILE ?? "critical";
 const mutationShard = process.env.MUTATION_SHARD?.trim() || null;
+const criticalShard = process.env.MUTATION_CRITICAL_SHARD?.trim() || null;
 
 const exclusions = [
   "!src/test/**",
@@ -61,6 +62,37 @@ const prShards = {
   ],
 };
 
+const criticalShards = {
+  "1": ["src/server/domain/**/*.{ts,tsx}"],
+  "2": ["src/server/http/**/*.{ts,tsx}"],
+  "3": [
+    "src/server/*.{ts,tsx}",
+    "src/server/infra/**/*.{ts,tsx}",
+    "src/server/payments/**/*.{ts,tsx}",
+    "api/**/*.{ts,tsx}",
+  ],
+  "4": [
+    "src/services/[A-Fa-f]*.{ts,tsx}",
+    "src/services/[A-Fa-f]*/**/*.{ts,tsx}",
+  ],
+  "5": [
+    "src/services/[G-Mg-m]*.{ts,tsx}",
+    "src/services/[G-Mg-m]*/**/*.{ts,tsx}",
+  ],
+  "6": [
+    "src/services/[N-Sn-s]*.{ts,tsx}",
+    "src/services/[N-Sn-s]*/**/*.{ts,tsx}",
+  ],
+  "7": [
+    "src/services/[T-Zt-z]*.{ts,tsx}",
+    "src/services/[T-Zt-z]*/**/*.{ts,tsx}",
+  ],
+  "8": [
+    "src/lib/**/*{billing,payment,subscription,vehicle,fleet,auth,security,gps,entitlement}*.{ts,tsx}",
+    "packages/**/*{billing,payment,subscription,vehicle,auth,security,gps}*.{ts,tsx}",
+  ],
+};
+
 const profiles = {
   pr: [...prFiles, ...exclusions],
   critical: [
@@ -89,17 +121,43 @@ if (mutationShard && profile !== "pr") {
   throw new Error("MUTATION_SHARD est reserve au profil pr.");
 }
 
+if (criticalShard && profile !== "critical") {
+  throw new Error("MUTATION_CRITICAL_SHARD est reserve au profil critical.");
+}
+
+if (mutationShard && criticalShard) {
+  throw new Error("Un seul type de shard mutation peut etre actif a la fois.");
+}
+
 if (mutationShard && !(mutationShard in prShards)) {
   throw new Error(`MUTATION_SHARD inconnu: ${mutationShard}. Valeurs: ${Object.keys(prShards).join(", ")}`);
 }
 
-const mutate = mutationShard
-  ? [...prShards[mutationShard], ...exclusions]
-  : profiles[profile];
-const reportProfile = mutationShard ? `${profile}-shard-${mutationShard}` : profile;
-const reportDir = `reports/mutation/${reportProfile}`;
+if (criticalShard && !(criticalShard in criticalShards)) {
+  throw new Error(
+    `MUTATION_CRITICAL_SHARD inconnu: ${criticalShard}. Valeurs: ${Object.keys(criticalShards).join(", ")}`,
+  );
+}
 
-console.log(`[mutation] profile=${profile}${mutationShard ? ` shard=${mutationShard}/4` : ""}`);
+const shardFiles = mutationShard
+  ? prShards[mutationShard]
+  : criticalShard
+    ? criticalShards[criticalShard]
+    : null;
+const mutate = shardFiles ? [...shardFiles, ...exclusions] : profiles[profile];
+const reportProfile = mutationShard
+  ? `${profile}-shard-${mutationShard}`
+  : criticalShard
+    ? `${profile}-shard-${criticalShard}`
+    : profile;
+const reportDir = `reports/mutation/${reportProfile}`;
+const shardLabel = mutationShard
+  ? ` shard=${mutationShard}/4`
+  : criticalShard
+    ? ` shard=${criticalShard}/8`
+    : "";
+
+console.log(`[mutation] profile=${profile}${shardLabel}`);
 
 export default {
   testRunner: "vitest",
@@ -119,7 +177,7 @@ export default {
   thresholds: {
     high: 80,
     low: 60,
-    break: mutationShard ? 0 : 60,
+    break: shardFiles ? 0 : 60,
   },
   timeoutMS: 15000,
   timeoutFactor: 1.5,
