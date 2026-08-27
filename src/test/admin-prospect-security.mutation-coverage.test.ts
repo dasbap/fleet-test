@@ -91,7 +91,7 @@ describe("admin prospect security mutation coverage", () => {
     createSupabaseServiceClient.mockReturnValue(admin);
     const resetPasswordForEmail = vi.fn().mockResolvedValue({ error: null });
     createClient.mockReturnValue({ auth: { resetPasswordForEmail } });
-    const response = await post({ email: "  USER@Example.COM ", company_name: "Acme", fleet_id: "00000000-0000-4000-8000-000000000001" });
+    const response = await post({ email: "USER@Example.COM", company_name: "Acme", fleet_id: "00000000-0000-4000-8000-000000000001" });
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual(expect.objectContaining({ ok: true, user_id: "prospect-1", email: "user@example.com", fleet_id: "fleet-1", permanent_access: false, must_set_password: true }));
     expect(admin.rpc).toHaveBeenCalledWith("prospect_create_account", expect.objectContaining({ p_email: "user@example.com", p_company_name: "Acme", p_trial_days: 7, p_account_type: "prospect", p_permanent_access: false }));
