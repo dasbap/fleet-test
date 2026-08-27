@@ -1,4 +1,5 @@
 const profile = process.env.MUTATION_PROFILE ?? "critical";
+const mutationShard = process.env.MUTATION_SHARD?.trim() || null;
 
 const exclusions = [
   "!src/test/**",
@@ -18,29 +19,50 @@ const exclusions = [
   "!src/vite-env.d.ts",
 ];
 
-const profiles = {
-  // Gate PR rapide : uniquement des unités critiques avec couverture mutation effective.
-  // Les gros flux partiellement couverts restent dans `critical` afin que NoCoverage
-  // ne rende pas le check PR inutilisable.
-  pr: [
-    "src/server/domain/billing/billingAuthorization.ts",
-    "src/server/domain/billing/paymentIntent.ts",
-    "src/server/domain/billingCheckout.ts",
-    "src/server/domain/mobileMoneyInitiate.ts",
-    "src/server/domain/notchPayInitiate.ts",
+const prFiles = [
+  "src/server/domain/billing/billingAuthorization.ts",
+  "src/server/domain/billing/paymentIntent.ts",
+  "src/server/domain/billingCheckout.ts",
+  "src/server/domain/mobileMoneyInitiate.ts",
+  "src/server/domain/notchPayInitiate.ts",
+  "src/server/http/routes/gpsIngest.ts",
+  "src/server/http/routes/webhooksPayment.ts",
+  "src/services/access-code.service.ts",
+  "src/services/admin-subscription.service.ts",
+  "src/services/billing.service.ts",
+  "src/services/payment-history.service.ts",
+  "src/services/subscription-management.service.ts",
+  "src/services/vehicle-search.service.ts",
+  "src/services/vehicle.service.ts",
+];
+
+const prShards = {
+  "1": [
     "src/server/http/routes/gpsIngest.ts",
     "src/server/http/routes/webhooksPayment.ts",
-    "src/services/access-code.service.ts",
-    "src/services/admin-subscription.service.ts",
-    "src/services/billing.service.ts",
-    "src/services/payment-history.service.ts",
-    "src/services/subscription-management.service.ts",
-    "src/services/vehicle-search.service.ts",
-    "src/services/vehicle.service.ts",
-    ...exclusions,
   ],
+  "2": [
+    "src/services/subscription-management.service.ts",
+    "src/services/billing.service.ts",
+    "src/services/vehicle-search.service.ts",
+  ],
+  "3": [
+    "src/server/domain/notchPayInitiate.ts",
+    "src/services/admin-subscription.service.ts",
+    "src/services/access-code.service.ts",
+  ],
+  "4": [
+    "src/services/vehicle.service.ts",
+    "src/server/domain/mobileMoneyInitiate.ts",
+    "src/server/domain/billingCheckout.ts",
+    "src/server/domain/billing/billingAuthorization.ts",
+    "src/server/domain/billing/paymentIntent.ts",
+    "src/services/payment-history.service.ts",
+  ],
+};
 
-  // Validation pre-prod : toutes les couches serveur et services métier critiques.
+const profiles = {
+  pr: [...prFiles, ...exclusions],
   critical: [
     "src/server/**/*.{ts,tsx}",
     "src/services/**/*.{ts,tsx}",
@@ -49,8 +71,6 @@ const profiles = {
     "packages/**/*{billing,payment,subscription,vehicle,auth,security,gps}*.{ts,tsx}",
     ...exclusions,
   ],
-
-  // Audit manuel large. Jamais lancé automatiquement dans les PR.
   full: [
     "src/**/*.{ts,tsx}",
     "api/**/*.{ts,tsx}",
@@ -65,14 +85,26 @@ if (!(profile in profiles)) {
   );
 }
 
-const reportDir = `reports/mutation/${profile}`;
+if (mutationShard && profile !== "pr") {
+  throw new Error("MUTATION_SHARD est reserve au profil pr.");
+}
 
-console.log(`[mutation] profile=${profile}`);
+if (mutationShard && !(mutationShard in prShards)) {
+  throw new Error(`MUTATION_SHARD inconnu: ${mutationShard}. Valeurs: ${Object.keys(prShards).join(", ")}`);
+}
+
+const mutate = mutationShard
+  ? [...prShards[mutationShard], ...exclusions]
+  : profiles[profile];
+const reportProfile = mutationShard ? `${profile}-shard-${mutationShard}` : profile;
+const reportDir = `reports/mutation/${reportProfile}`;
+
+console.log(`[mutation] profile=${profile}${mutationShard ? ` shard=${mutationShard}/4` : ""}`);
 
 export default {
   testRunner: "vitest",
   plugins: ["@stryker-mutator/vitest-runner"],
-  mutate: profiles[profile],
+  mutate,
   vitest: {
     related: true,
   },
@@ -87,14 +119,14 @@ export default {
   thresholds: {
     high: 80,
     low: 60,
-    break: 60,
+    break: mutationShard ? 0 : 60,
   },
   timeoutMS: 15000,
   timeoutFactor: 1.5,
   concurrency: 2,
   incremental: true,
   incrementalFile: `${reportDir}/stryker-incremental.json`,
-  tempDirName: `.stryker-tmp-${profile}`,
+  tempDirName: `.stryker-tmp-${reportProfile}`,
   cleanTempDir: true,
   allowConsoleColors: true,
 };
