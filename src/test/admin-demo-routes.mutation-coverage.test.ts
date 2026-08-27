@@ -25,12 +25,15 @@ function serviceClient(options?: { rpcData?: any; rpcError?: any; generatedLink?
   for (const [i, data] of (options?.currentUsers ?? [{ user: { id: "u1", app_metadata: {}, updated_at: "2026-08-27T12:00:00Z" } }, { user: { id: "u1", app_metadata: { must_set_password: false }, updated_at: "2026-08-27T12:00:00Z" } }]).entries()) {
     getUserById.mockResolvedValueOnce({ data, error: options?.currentErrors?.[i] ?? null });
   }
+  const rpcData = options && "rpcData" in options ? options.rpcData : { ok: true, token: "magic-token" };
+  const generatedLink = options && "generatedLink" in options ? options.generatedLink : { properties: { action_link: "https://magic.test/link" } };
+  const updateUser = options && "updateUser" in options ? options.updateUser : { user: { id: "u1" } };
   return {
-    rpc: vi.fn().mockResolvedValue({ data: options?.rpcData ?? { ok: true, token: "magic-token" }, error: options?.rpcError ?? null }),
+    rpc: vi.fn().mockResolvedValue({ data: rpcData, error: options?.rpcError ?? null }),
     auth: { admin: {
-      generateLink: vi.fn().mockResolvedValue({ data: options?.generatedLink ?? { properties: { action_link: "https://magic.test/link" } }, error: options?.generateError ?? null }),
+      generateLink: vi.fn().mockResolvedValue({ data: generatedLink, error: options?.generateError ?? null }),
       getUserById,
-      updateUserById: vi.fn().mockResolvedValue({ data: options?.updateUser ?? { user: { id: "u1" } }, error: options?.updateError ?? null }),
+      updateUserById: vi.fn().mockResolvedValue({ data: updateUser, error: options?.updateError ?? null }),
     } },
   };
 }
@@ -75,6 +78,8 @@ describe("admin demo routes mutation coverage", () => {
     expect(await response.json()).toEqual({ ok: false, error: "missing_auth_token" });
     vi.stubEnv("SUPABASE_URL", "");
     vi.stubEnv("SUPABASE_ANON_KEY", "");
+    vi.stubEnv("VITE_SUPABASE_URL", "");
+    vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
     response = await request("/api/admin/generate-magic-link", {});
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ ok: false, error: "server_configuration_error" });
@@ -180,7 +185,7 @@ describe("admin demo routes mutation coverage", () => {
     const response = await request("/api/auth/clear-password-marker", {}, { auth: true });
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true, must_set_password: false });
-    expect(admin.auth.admin.updateUserById).toHaveBeenCalledWith("u1", { app_metadata: { must_set_password: false, temporary_password_active: false, temporary_password_issued_at: "2026-08-27T10:00:00Z", keep: "x" } });
+    expect(admin.auth.admin.updateUserById).toHaveBeenCalledWith("admin-1", { app_metadata: { must_set_password: false, temporary_password_active: false, temporary_password_issued_at: "2026-08-27T10:00:00Z", keep: "x" } });
   });
 
   it("enforces password marker security and verification", async () => {
