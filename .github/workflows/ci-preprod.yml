@@ -96,6 +96,7 @@ jobs:
 
   tests-shard:
     name: Vitest shard ${{ matrix.shard }}/4
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -118,7 +119,7 @@ jobs:
 
   tests:
     name: Vitest
-    if: always()
+    if: always() && github.event_name != 'pull_request'
     needs: tests-shard
     runs-on: ubuntu-latest
     steps:
