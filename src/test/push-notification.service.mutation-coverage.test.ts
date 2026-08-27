@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const checkPermissions = vi.fn();
-const requestPermissions = vi.fn();
-const register = vi.fn();
-const addListener = vi.fn();
-const createChannel = vi.fn();
-const getPlatform = vi.fn();
-const isNativePlatform = vi.fn();
-const dispatchFromPushPayload = vi.fn();
-const disableDeviceToken = vi.fn();
+const { checkPermissions, requestPermissions, register, addListener, createChannel, getPlatform, isNativePlatform, dispatchFromPushPayload, disableDeviceToken } = vi.hoisted(() => ({
+  checkPermissions: vi.fn(),
+  requestPermissions: vi.fn(),
+  register: vi.fn(),
+  addListener: vi.fn(),
+  createChannel: vi.fn(),
+  getPlatform: vi.fn(),
+  isNativePlatform: vi.fn(),
+  dispatchFromPushPayload: vi.fn(),
+  disableDeviceToken: vi.fn(),
+}));
 
 vi.mock("@capacitor/core", () => ({ Capacitor: { getPlatform } }));
 vi.mock("@capacitor/push-notifications", () => ({ PushNotifications: { checkPermissions, requestPermissions, register, addListener, createChannel } }));
