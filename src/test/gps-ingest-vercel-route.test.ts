@@ -112,16 +112,18 @@ describe("GPS ingest Vercel route", () => {
   });
 
   it.each([
-    ["nonce trop court", "0123456789abcdef", Date.now()],
-    ["nonce avec caractere non hexadecimal", "z123456789abcdef0123456789abcdef", Date.now()],
-    ["timestamp trop ancien", "0123456789abcdef0123456789abcdea", Date.now() - 120_001],
-    ["timestamp trop futur", "0123456789abcdef0123456789abcdeb", Date.now() + 30_001],
-  ])("rejette %s", async (_label, nonce, timestamp) => {
+    ["nonce trop court", "0123456789abcdef", 0],
+    ["nonce avec caractere non hexadecimal", "z123456789abcdef0123456789abcdef", 0],
+    ["timestamp trop ancien", "0123456789abcdef0123456789abcdea", -120_001],
+    ["timestamp trop futur", "0123456789abcdef0123456789abcdeb", 30_001],
+  ])("rejette %s", async (_label, nonce, timestampOffsetMs) => {
+    const now = Date.now();
+    vi.spyOn(Date, "now").mockReturnValue(now);
     const body = JSON.stringify(validPayload);
     const app = createVercelApiApp();
     const response = await app.request("/api/gps/ingest", {
       method: "POST",
-      headers: signedHeadersAt(body, timestamp, nonce),
+      headers: signedHeadersAt(body, now + timestampOffsetMs, nonce),
       body,
     });
     expect(response.status).toBe(401);
