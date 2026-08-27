@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const requirePermission = vi.fn();
-const canManageRole = vi.fn();
-class RbacError extends Error {
-  constructor(message: string, public code: string, public permission: string) { super(message); }
-}
+const { requirePermission, canManageRole, RbacError } = vi.hoisted(() => {
+  class HoistedRbacError extends Error {
+    constructor(message: string, public code: string, public permission: string) { super(message); }
+  }
+  return {
+    requirePermission: vi.fn(),
+    canManageRole: vi.fn(),
+    RbacError: HoistedRbacError,
+  };
+});
 vi.mock("@/lib/rbac/server", () => ({ requirePermission, RbacError }));
 vi.mock("@/lib/rbac/permissions", () => ({ canManageRole }));
 
