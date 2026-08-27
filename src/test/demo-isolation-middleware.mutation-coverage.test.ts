@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 
-const createSupabaseServiceClient = vi.fn();
+const { createSupabaseServiceClient } = vi.hoisted(() => ({
+  createSupabaseServiceClient: vi.fn(),
+}));
 vi.mock("@/server/infra/supabaseServiceClient", () => ({ createSupabaseServiceClient }));
 vi.mock("@/server/http/auth", () => ({ getBearerToken: (value?: string) => value?.startsWith("Bearer ") ? value.slice(7) : null }));
 vi.mock("@/lib/supabase-runtime-errors", () => ({ throwIfSupabaseInfrastructureError: vi.fn() }));
