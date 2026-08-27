@@ -28,11 +28,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  mutation-pr:
-    name: Mutation tests — PR critical gate
+  mutation-pr-shard:
+    name: Mutation shard ${{ matrix.shard }}/4
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -47,17 +51,50 @@ jobs:
         timeout-minutes: 8
         run: node scripts/ci-install.mjs
 
-      - name: Run PR mutation profile
+      - name: Run PR mutation shard
+        env:
+          MUTATION_SHARD: ${{ matrix.shard }}
         run: node scripts/run-mutation-tests.mjs pr
 
-      - name: Upload mutation report
+      - name: Upload mutation shard report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mutation-report-pr-${{ github.run_id }}
-          path: reports/mutation/pr
-          if-no-files-found: ignore
+          name: mutation-report-pr-shard-${{ matrix.shard }}-${{ github.run_id }}
+          path: reports/mutation/pr-shard-${{ matrix.shard }}
+          if-no-files-found: error
           retention-days: 7
+
+  mutation-pr:
+    name: Mutation tests — PR critical gate
+    if: always() && github.event_name == 'pull_request'
+    needs: mutation-pr-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Verify shard jobs
+        env:
+          SHARDS_RESULT: ${{ needs.mutation-pr-shard.result }}
+        run: |
+          if [ "$SHARDS_RESULT" != "success" ]; then
+            echo "One or more mutation shards failed: $SHARDS_RESULT"
+            exit 1
+          fi
+
+      - name: Download mutation shard reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mutation-report-pr-shard-*-${{ github.run_id }}
+          path: reports/mutation-shards
+          merge-multiple: false
+
+      - name: Aggregate mutation score
+        env:
+          EXPECTED_MUTATION_SHARDS: 4
+        run: node scripts/aggregate-mutation-reports.mjs reports/mutation-shards 60
 
   mutation-critical:
     name: Mutation tests — pre-prod critical
@@ -124,5 +161,4 @@ jobs:
         with:
           name: mutation-report-${{ github.event.inputs.profile }}-${{ github.run_id }}
           path: reports/mutation/${{ github.event.inputs.profile }}
-          if-no-files-found: ignore
           retention-days: 30
