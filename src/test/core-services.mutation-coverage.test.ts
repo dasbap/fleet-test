@@ -81,7 +81,8 @@ describe("core services mutation coverage", () => {
     await expect(service.uploadAvatar("u2", new File(["x"], "avatar", { type: "image/jpeg" }))).rejects.toThrow("URL introuvable après l'upload");
     await expect(service.resolveAvatarDisplayUrl(null)).resolves.toBeNull();
     await expect(service.resolveAvatarDisplayUrl("   ")).resolves.toBeNull();
-    await expect(service.resolveAvatarDisplayUrl("https://cdn.test/avatar.jpg")).resolves.toBe("https://cdn.test/avatar.jpg");
+    await expect(service.resolveAvatarDisplayUrl("https://cdn.test/avatar.jpg")).resolves.toBe("https://signed.test/a");
+    expect(repository.getSignedUrl).toHaveBeenCalledWith("https://cdn.test/avatar.jpg");
     repository.getSignedUrl.mockResolvedValueOnce("https://signed.test/path");
     await expect(service.resolveAvatarDisplayUrl("u1/avatar.png")).resolves.toBe("https://signed.test/path");
   });
