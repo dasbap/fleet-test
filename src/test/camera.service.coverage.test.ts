@@ -143,7 +143,7 @@ describe("CameraService", () => {
     await expect(service.takePictureFromCamera()).rejects.toMatchObject({ code: "user_cancelled", message: "Capture annulée." });
 
     cameraMock.getPhoto.mockRejectedValueOnce({ reason: "native failure" });
-    await expect(service.takePictureFromCamera()).rejects.toMatchObject({ code: "unknown", message: "[object Object]" });
+    await expect(service.takePictureFromCamera()).rejects.toMatchObject({ code: "unknown", message: "Impossible d’utiliser l’appareil photo." });
     expect(lifecycleMock.finished).toHaveBeenCalledTimes(2);
   });
 
