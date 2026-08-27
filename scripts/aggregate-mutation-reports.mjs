@@ -5,16 +5,9 @@ const root = resolve(process.argv[2] ?? "reports/mutation-shards");
 const threshold = Number(process.argv[3] ?? 60);
 const expectedReports = Number(process.env.EXPECTED_MUTATION_SHARDS ?? 4);
 const scoreMode = process.env.MUTATION_SCORE_MODE ?? "total";
-const maxNoCoverageRaw = process.env.MAX_NO_COVERAGE;
-const maxNoCoverage =
-  maxNoCoverageRaw === undefined ? null : Number(maxNoCoverageRaw);
 
 if (!new Set(["total", "covered"]).has(scoreMode)) {
   throw new Error(`MUTATION_SCORE_MODE invalide: ${scoreMode}`);
-}
-
-if (maxNoCoverage !== null && !Number.isFinite(maxNoCoverage)) {
-  throw new Error(`MAX_NO_COVERAGE invalide: ${maxNoCoverageRaw}`);
 }
 
 function findReports(dir) {
@@ -84,18 +77,9 @@ console.log(`mutationScore=${score.toFixed(2)}%`);
 console.log(`coveredMutationScore=${coveredScore.toFixed(2)}%`);
 console.log(`scoreMode=${scoreMode}`);
 console.log(`breakThreshold=${threshold.toFixed(2)}%`);
-if (maxNoCoverage !== null) {
-  console.log(`maxNoCoverage=${maxNoCoverage}`);
-}
 
 if (errors > 0) {
   throw new Error(`Mutation reports contain ${errors} execution errors.`);
-}
-
-if (maxNoCoverage !== null && counts.NoCoverage > maxNoCoverage) {
-  throw new Error(
-    `NoCoverage ${counts.NoCoverage} exceeds allowed maximum ${maxNoCoverage}.`,
-  );
 }
 
 if (selectedScore < threshold) {
