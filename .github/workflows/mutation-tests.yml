@@ -96,13 +96,17 @@ jobs:
           EXPECTED_MUTATION_SHARDS: 4
         run: node scripts/aggregate-mutation-reports.mjs reports/mutation-shards 60
 
-  mutation-critical:
-    name: Mutation tests — pre-prod critical
+  mutation-critical-shard:
+    name: Critical mutation shard ${{ matrix.shard }}/8
     if: >
       github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'critical')
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -117,17 +121,53 @@ jobs:
         timeout-minutes: 8
         run: node scripts/ci-install.mjs
 
-      - name: Run critical mutation profile
+      - name: Run critical mutation shard
+        env:
+          MUTATION_CRITICAL_SHARD: ${{ matrix.shard }}
         run: node scripts/run-mutation-tests.mjs critical
 
-      - name: Upload mutation report
+      - name: Upload critical mutation shard report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mutation-report-critical-${{ github.run_id }}
-          path: reports/mutation/critical
-          if-no-files-found: ignore
+          name: mutation-report-critical-shard-${{ matrix.shard }}-${{ github.run_id }}
+          path: reports/mutation/critical-shard-${{ matrix.shard }}
+          if-no-files-found: error
           retention-days: 14
+
+  mutation-critical:
+    name: Mutation tests — pre-prod critical
+    if: >
+      always() &&
+      (github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'critical'))
+    needs: mutation-critical-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Verify critical shard jobs
+        env:
+          SHARDS_RESULT: ${{ needs.mutation-critical-shard.result }}
+        run: |
+          if [ "$SHARDS_RESULT" != "success" ]; then
+            echo "One or more critical mutation shards failed: $SHARDS_RESULT"
+            exit 1
+          fi
+
+      - name: Download critical mutation shard reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mutation-report-critical-shard-*-${{ github.run_id }}
+          path: reports/mutation-critical-shards
+          merge-multiple: false
+
+      - name: Aggregate critical mutation score
+        env:
+          EXPECTED_MUTATION_SHARDS: 8
+        run: node scripts/aggregate-mutation-reports.mjs reports/mutation-critical-shards 60
 
   mutation-manual:
     name: Mutation tests — manual ${{ github.event.inputs.profile }}
