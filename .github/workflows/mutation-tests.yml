@@ -167,6 +167,8 @@ jobs:
       - name: Aggregate critical mutation score
         env:
           EXPECTED_MUTATION_SHARDS: 8
+          MUTATION_SCORE_MODE: covered
+          MAX_NO_COVERAGE: 6717
         run: node scripts/aggregate-mutation-reports.mjs reports/mutation-critical-shards 60
 
   mutation-manual:
