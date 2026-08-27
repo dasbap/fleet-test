@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const canShareMock = vi.fn();
-const shareMock = vi.fn();
-const isNativePlatformMock = vi.fn();
+const { canShareMock, shareMock, isNativePlatformMock } = vi.hoisted(() => ({
+  canShareMock: vi.fn(),
+  shareMock: vi.fn(),
+  isNativePlatformMock: vi.fn(),
+}));
 
 vi.mock("@capacitor/share", () => ({ Share: { canShare: canShareMock, share: shareMock } }));
 vi.mock("@/lib/platform", () => ({ isNativePlatform: isNativePlatformMock }));
