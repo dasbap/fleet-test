@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const enqueueTutorialSync = vi.fn();
-const peekTutorialSyncQueue = vi.fn();
-const shiftTutorialSyncQueue = vi.fn();
+const { enqueueTutorialSync, peekTutorialSyncQueue, shiftTutorialSyncQueue } = vi.hoisted(() => ({
+  enqueueTutorialSync: vi.fn(),
+  peekTutorialSyncQueue: vi.fn(),
+  shiftTutorialSyncQueue: vi.fn(),
+}));
 
 vi.mock("@/features/tutorials/lib/tutorialSyncQueue", () => ({
   enqueueTutorialSync,
