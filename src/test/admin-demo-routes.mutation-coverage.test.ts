@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 
-const createSupabaseServiceClient = vi.fn();
-const createSupabaseUserClient = vi.fn();
+const { createSupabaseServiceClient, createSupabaseUserClient } = vi.hoisted(() => ({
+  createSupabaseServiceClient: vi.fn(),
+  createSupabaseUserClient: vi.fn(),
+}));
 vi.mock("@/server/infra/supabaseServiceClient", () => ({ createSupabaseServiceClient }));
 vi.mock("@/server/infra/supabaseUserClient", () => ({ createSupabaseUserClient }));
 vi.mock("@/server/env", () => ({ getAppUrl: () => "https://app.test", getSupabaseUrl: () => "https://supabase.test" }));
