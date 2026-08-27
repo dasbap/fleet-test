@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const isNativePlatform = vi.fn();
-const writeFile = vi.fn();
-const stat = vi.fn();
-const readFile = vi.fn();
-const deleteFile = vi.fn();
-const capacitorIsNative = vi.fn();
+const { isNativePlatform, writeFile, stat, readFile, deleteFile, capacitorIsNative } = vi.hoisted(() => ({
+  isNativePlatform: vi.fn(),
+  writeFile: vi.fn(),
+  stat: vi.fn(),
+  readFile: vi.fn(),
+  deleteFile: vi.fn(),
+  capacitorIsNative: vi.fn(),
+}));
 
 vi.mock("@/lib/platform", () => ({ isNativePlatform }));
 vi.mock("@capacitor/core", () => ({ Capacitor: { isNativePlatform: capacitorIsNative } }));
