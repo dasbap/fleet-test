@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import type { Context, Hono, Next } from "hono";
 import { z } from "zod";
+import { normalizeDemoPhone } from "../../../lib/demoPhoneValidation.js";
 import { getAppUrl, getSupabaseAnonKey, getSupabaseUrl } from "../../env.js";
 import { createSupabaseServiceClient } from "../../infra/supabaseServiceClient.js";
 import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
@@ -57,6 +58,13 @@ async function handleSecureLocalProspect(c: Context) {
   if (!parsed.success) return c.json({ ok: false, error: "invalid_payload", details: parsed.error.flatten() }, 400);
   if (parsed.data.permanent_access === true && !auth.isSuperAdmin) return c.json({ ok: false, error: "forbidden_super_admin_required" }, 403);
 
+  let phone: string;
+  try {
+    phone = normalizeDemoPhone(parsed.data.phone, parsed.data.country_code);
+  } catch (error) {
+    return c.json({ ok: false, error: "invalid_phone_for_country", details: error instanceof Error ? error.message : "invalid_phone" }, 400);
+  }
+
   const admin = createSupabaseServiceClient();
   if (!admin) return c.json({ ok: false, error: "server_configuration_error" }, 503);
 
@@ -66,31 +74,55 @@ async function handleSecureLocalProspect(c: Context) {
   const clientProfile = {
     full_name: parsed.data.full_name,
     company_name: parsed.data.company_name,
-    phone: parsed.data.phone,
+    phone,
     company_identifier: parsed.data.company_identifier,
     country_code: parsed.data.country_code,
   };
+  const userMetadata = {
+    ...clientProfile,
+    account_type: parsed.data.account_type ?? "prospect",
+    trial_days: parsed.data.trial_days ?? 7,
+    permanent_access: parsed.data.permanent_access === true,
+    created_by_demo: true,
+    demo_verification_pending: false,
+  };
+  const appMetadata = {
+    must_set_password: true,
+    temporary_password_active: true,
+    temporary_password_issued_at: temporaryPasswordIssuedAt,
+  };
 
-  const { data: authData, error: authError } = await admin.auth.admin.createUser({
-    email,
-    password: temporaryPassword,
-    email_confirm: true,
-    app_metadata: {
-      must_set_password: true,
-      temporary_password_active: true,
-      temporary_password_issued_at: temporaryPasswordIssuedAt,
-    },
-    user_metadata: {
-      ...clientProfile,
-      account_type: parsed.data.account_type ?? "prospect",
-      trial_days: parsed.data.trial_days ?? 7,
-      permanent_access: parsed.data.permanent_access === true,
-      created_by_demo: true,
-    },
-  });
-  if (authError || !authData.user) return c.json({ ok: false, error: "auth_create_failed" }, 500);
+  const { data: verifiedUserIdData, error: verifiedUserLookupError } = await admin.rpc("demo_verified_user_id_by_email", { p_email: email });
+  if (verifiedUserLookupError) return c.json({ ok: false, error: "verified_email_lookup_failed" }, 500);
 
-  const userId = authData.user.id;
+  let userId = typeof verifiedUserIdData === "string" ? verifiedUserIdData : "";
+  let createdNewUser = false;
+
+  if (userId) {
+    const { data: existingUserData, error: existingUserError } = await admin.auth.admin.getUserById(userId);
+    if (existingUserError || !existingUserData.user) return c.json({ ok: false, error: "verified_user_not_found" }, 500);
+    if (existingUserData.user.user_metadata?.demo_verification_pending !== true) {
+      return c.json({ ok: false, error: "email_already_has_account" }, 409);
+    }
+    const { error: updateVerifiedUserError } = await admin.auth.admin.updateUserById(userId, {
+      password: temporaryPassword,
+      app_metadata: { ...(existingUserData.user.app_metadata ?? {}), ...appMetadata },
+      user_metadata: { ...(existingUserData.user.user_metadata ?? {}), ...userMetadata },
+    });
+    if (updateVerifiedUserError) return c.json({ ok: false, error: "auth_update_failed" }, 500);
+  } else {
+    const { data: authData, error: authError } = await admin.auth.admin.createUser({
+      email,
+      password: temporaryPassword,
+      email_confirm: true,
+      app_metadata: appMetadata,
+      user_metadata: userMetadata,
+    });
+    if (authError || !authData.user) return c.json({ ok: false, error: "auth_create_failed" }, 500);
+    userId = authData.user.id;
+    createdNewUser = true;
+  }
+
   const { data: registrationData, error: registrationError } = await admin.rpc("prospect_create_account", {
     p_user_id: userId,
     p_email: email,
@@ -103,14 +135,14 @@ async function handleSecureLocalProspect(c: Context) {
   });
   const registration = registrationData as { ok?: boolean; fleet_id?: string; trial_end?: string } | null;
   if (registrationError || !registration?.ok) {
-    await admin.auth.admin.deleteUser(userId);
+    if (createdNewUser) await admin.auth.admin.deleteUser(userId);
     return c.json({ ok: false, error: "registration_failed" }, 500);
   }
 
   const publicAuth = createClient(getSupabaseUrl(), getSupabaseAnonKey(), { auth: { persistSession: false, autoRefreshToken: false } });
   const { error: resetError } = await publicAuth.auth.resetPasswordForEmail(email, { redirectTo: `${getAppUrl()}/set-password` });
   if (resetError) {
-    await admin.auth.admin.deleteUser(userId);
+    if (createdNewUser) await admin.auth.admin.deleteUser(userId);
     return c.json({ ok: false, error: "password_setup_email_failed" }, 502);
   }
 
@@ -141,7 +173,7 @@ async function handleSecureLocalProspect(c: Context) {
     login_url: `${getAppUrl()}/auth?email=${encodeURIComponent(email)}&prospect=1`,
     must_set_password: true,
     password_delivery: "reset_email",
-    function_version: "admin-demo-local-v4",
+    function_version: "admin-demo-local-v5",
   }, 201);
 }
 
