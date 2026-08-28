@@ -36,42 +36,17 @@ async function readBillingSnapshotJson(res: Response): Promise<BillingSnapshot> 
 export class BillingService {
   constructor(private repository: BillingRepository) {}
 
-  async getBillingSnapshot(
-    orgId: string,
-    fleetId: string,
-    options?: BillingSnapshotRequestOptions,
-  ): Promise<BillingSnapshot> {
-    if (!orgId?.trim()) {
-      throw new Error("L'identifiant de l'organisation est requis.");
-    }
-    if (!fleetId?.trim()) {
-      throw new Error("L'identifiant de la flotte est requis.");
-    }
-
-    if (options?.accessToken) {
-      const url = `/api/billing/subscriptions?org_id=${encodeURIComponent(orgId.trim())}&fleet_id=${encodeURIComponent(fleetId.trim())}`;
-      const res = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${options.accessToken}`,
-        },
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || `Erreur API facturation (${res.status})`);
-      }
-      return readBillingSnapshotJson(res);
-    }
-
+  private async getDirectBillingSnapshot(orgId: string, fleetId: string): Promise<BillingSnapshot> {
     try {
       const now = new Date();
-      const [subscription, latest, recentPayments] = await Promise.all([
+      const [activeSubscription, pendingSubscription, latest, recentPayments] = await Promise.all([
         this.repository.findActiveSubscriptionByFleetId(fleetId),
+        this.repository.findPendingSubscriptionByFleetId(fleetId),
         this.repository.findLatestSubscriptionByFleetId(fleetId),
         this.repository.findLatestPaymentsByOrgId(orgId),
       ]);
 
+      const subscription = activeSubscription ?? pendingSubscription;
       const lapsedPaid = computeLapsedPaidFromLatestSubscription(latest, now);
 
       return {
@@ -116,5 +91,50 @@ export class BillingService {
       }
       throw error;
     }
+  }
+
+  async getBillingSnapshot(
+    orgId: string,
+    fleetId: string,
+    options?: BillingSnapshotRequestOptions,
+  ): Promise<BillingSnapshot> {
+    if (!orgId?.trim()) {
+      throw new Error("L'identifiant de l'organisation est requis.");
+    }
+    if (!fleetId?.trim()) {
+      throw new Error("L'identifiant de la flotte est requis.");
+    }
+
+    if (options?.accessToken) {
+      const url = `/api/billing/subscriptions?org_id=${encodeURIComponent(orgId.trim())}&fleet_id=${encodeURIComponent(fleetId.trim())}`;
+      try {
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${options.accessToken}`,
+          },
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(text || `Erreur API facturation (${res.status})`);
+        }
+        return await readBillingSnapshotJson(res);
+      } catch (error) {
+        const isLocalDev =
+          import.meta.env.DEV &&
+          typeof window !== "undefined" &&
+          (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+        if (!isLocalDev) throw error;
+
+        console.warn(
+          "[billing] BFF local indisponible, lecture Supabase directe avec RLS utilisateur.",
+          error,
+        );
+        return this.getDirectBillingSnapshot(orgId, fleetId);
+      }
+    }
+
+    return this.getDirectBillingSnapshot(orgId, fleetId);
   }
 }

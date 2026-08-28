@@ -5,16 +5,47 @@ import { initiateNotchPayPayment } from "@/server/domain/notchPayInitiate";
 const ORG_ID = "00000000-0000-4000-8000-000000000001";
 const FLEET_ID = "00000000-0000-4000-8000-000000000002";
 const VEHICLE_ID = "00000000-0000-4000-8000-000000000010";
+const PAYMENT_ID = "00000000-0000-4000-8000-000000000099";
 
-function createSupabaseMock(vehicleIdsInFleet: string[] = []) {
+function createSupabaseMock(vehicleIdsInFleet: string[] = [], userEmail = "payeur@example.test") {
   const rpc = vi.fn(async (fn: string) => {
     if (fn === "rbac_check_permission") {
       return { data: { allowed: true }, error: null };
+    }
+    if (fn === "create_payment_intent") {
+      return {
+        data: {
+          payment_id: PAYMENT_ID,
+          reference: "ESAMBA-TEST",
+          amount_xaf: 15000,
+          currency: "XAF",
+          status: "pending",
+        },
+        error: null,
+      };
+    }
+    if (fn === "bind_payment_provider_reference") {
+      return { data: true, error: null };
+    }
+    if (fn === "fail_payment_initiation") {
+      return { data: true, error: null };
+    }
+    if (fn === "ensure_pending_subscription_for_payment") {
+      return {
+        data: "00000000-0000-4000-8000-000000000199",
+        error: null,
+      };
     }
     throw new Error(`rpc inattendue: ${fn}`);
   });
 
   const supabase = {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: { email: userEmail } },
+        error: null,
+      }),
+    },
     rpc,
     from: vi.fn((table: string) => {
       if (table === "flottes") {
@@ -137,5 +168,74 @@ describe("initiateNotchPayPayment security", () => {
     ).rejects.toThrow(/ne correspond pas aux vehicules de la flotte/i);
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts the documented top-level Notch Pay authorization URL", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        code: 201,
+        status: "Accepted",
+        message: "Payment initialized",
+        transaction: {
+          reference: "trx.test_top_level_url",
+          amount: 15000,
+          currency: "XAF",
+          status: "pending",
+        },
+        authorization_url: "https://pay.notchpay.co/pay_test_top_level_url",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { supabase, rpc } = createSupabaseMock([], "owner@example.test");
+
+    const result = await initiateNotchPayPayment(supabase as never, {
+      orgId: ORG_ID,
+      fleetId: FLEET_ID,
+      planCode: "starter",
+      vehicleCount: 1,
+      durationMonths: 1,
+    });
+
+    expect(result.checkoutUrl).toBe("https://pay.notchpay.co/pay_test_top_level_url");
+    expect(result.reference).toBe("trx.test_top_level_url");
+    expect(rpc).toHaveBeenCalledWith("bind_payment_provider_reference", {
+      p_payment_id: PAYMENT_ID,
+      p_provider_reference: "trx.test_top_level_url",
+    });
+    expect(rpc).toHaveBeenCalledWith("ensure_pending_subscription_for_payment", {
+      p_payment_id: PAYMENT_ID,
+    });
+  });
+
+  it("uses the authenticated user email when no payment contact is provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        transaction: {
+          reference: "trx.test_contact",
+          authorization_url: "https://checkout.notchpay.example/pay",
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { supabase, rpc } = createSupabaseMock([], "owner@example.test");
+
+    await initiateNotchPayPayment(supabase as never, {
+      orgId: ORG_ID,
+      fleetId: FLEET_ID,
+      planCode: "starter",
+      vehicleCount: 1,
+      durationMonths: 1,
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    const payload = JSON.parse(init.body as string) as { email?: string; phone?: string; metadata?: { paymentId?: string } };
+    expect(payload.email).toBe("owner@example.test");
+    expect(payload.phone).toBeUndefined();
+    expect(payload.metadata?.paymentId).toBe(PAYMENT_ID);
+    expect(rpc).toHaveBeenCalledWith("ensure_pending_subscription_for_payment", {
+      p_payment_id: PAYMENT_ID,
+    });
   });
 });

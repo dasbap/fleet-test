@@ -32,6 +32,25 @@ function assertSelectedVehiclesMatchChargedCount(vehicleIds: string[] | undefine
   }
 }
 
+async function resolvePaymentContact(
+  supabase: SupabaseClient,
+  intent: NotchPayIntent,
+): Promise<{ email?: string; phone?: string }> {
+  const phone = intent.phone?.trim();
+  const email = intent.email?.trim();
+  if (phone || email) {
+    return { ...(phone ? { phone } : {}), ...(email ? { email } : {}) };
+  }
+
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw new Error(error.message);
+  const userEmail = data.user?.email?.trim();
+  if (!userEmail) {
+    throw new Error("Un email ou un téléphone est requis pour initier le paiement Notch Pay.");
+  }
+  return { email: userEmail };
+}
+
 async function assertSelectedVehiclesBelongToFleet(
   supabase: SupabaseClient,
   fleetId: string,
@@ -50,6 +69,29 @@ async function assertSelectedVehiclesBelongToFleet(
   if (error) throw new Error(error.message);
   if ((data ?? []).length !== vehicleCount) {
     throw new Error("La selection de vehicules ne correspond pas aux vehicules de la flotte.");
+  }
+}
+
+async function failPendingPayment(supabase: SupabaseClient, paymentId: string): Promise<void> {
+  const { error } = await supabase.rpc("fail_payment_initiation", {
+    p_payment_id: paymentId,
+  });
+  if (error) {
+    throw new Error(`Impossible de clôturer le paiement en attente: ${error.message}`);
+  }
+}
+
+async function bindProviderReference(
+  supabase: SupabaseClient,
+  paymentId: string,
+  providerReference: string,
+): Promise<void> {
+  const { data, error } = await supabase.rpc("bind_payment_provider_reference", {
+    p_payment_id: paymentId,
+    p_provider_reference: providerReference,
+  });
+  if (error || data !== true) {
+    throw new Error(error?.message ?? "Impossible de lier la référence Notch Pay au paiement.");
   }
 }
 
@@ -104,46 +146,7 @@ export async function initiateNotchPayPayment(
   const referenceEntropy = crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase();
   const merchantRef = `ESAMBA-${Date.now().toString(36).toUpperCase()}-${referenceEntropy}`;
   const callbackUrl = `${getAppUrl()}/dashboard/billing?status=success&ref=${encodeURIComponent(merchantRef)}`;
-
-  const payload: NotchPayCreatePaymentRequest = {
-    amount: amountXaf,
-    currency: "XAF",
-    reference: merchantRef,
-    description: `Abonnement E-Samba — plan ${intent.planCode} (${intent.vehicleCount} véhicule(s), ${durationMonths} mois)`,
-    callback: callbackUrl,
-    ...(intent.phone ? { phone: intent.phone } : {}),
-    ...(intent.email ? { email: intent.email } : {}),
-    metadata: {
-      fleetId: intent.fleetId,
-      orgId: intent.orgId,
-      planCode: intent.planCode,
-      vehicleCount: String(intent.vehicleCount),
-      durationMonths: String(durationMonths),
-    },
-  };
-
-  const notchRes = await fetch(`${NOTCH_PAY_API_URL}/payments`, {
-    method: "POST",
-    headers: {
-      Authorization: apiKey,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!notchRes.ok) {
-    const raw = await notchRes.text().catch(() => "");
-    throw new Error(`Notch Pay API error ${notchRes.status}: ${raw.slice(0, 500)}`);
-  }
-
-  const notchData = (await notchRes.json()) as NotchPayCreatePaymentResponse;
-  const tx = notchData.transaction;
-  if (!tx?.authorization_url) {
-    throw new Error("Notch Pay n'a pas retourné d'URL de paiement.");
-  }
-
-  const notchRef = tx.reference ?? merchantRef;
+  const contact = await resolvePaymentContact(supabase, intent);
 
   const payment = await createServerOwnedPaymentIntent(supabase, {
     orgId: intent.orgId,
@@ -152,17 +155,87 @@ export async function initiateNotchPayPayment(
     vehicleCount: intent.vehicleCount,
     durationMonths,
     provider: "notch",
-    externalRef: notchRef,
+    externalRef: merchantRef,
     idempotencyKey: merchantRef,
     expectedAmountXaf: amountXaf,
     vehicleIds: intent.vehicleIds,
     phoneNumber: intent.phone,
   });
 
+  if (payment.status !== "pending") {
+    throw new Error("Le paiement doit être en attente avant toute demande Notch Pay.");
+  }
+
+  const payload: NotchPayCreatePaymentRequest = {
+    amount: payment.amountXaf,
+    currency: "XAF",
+    reference: merchantRef,
+    description: `Abonnement E-Samba — plan ${intent.planCode} (${intent.vehicleCount} véhicule(s), ${durationMonths} mois)`,
+    callback: callbackUrl,
+    ...contact,
+    metadata: {
+      paymentId: payment.paymentId,
+      fleetId: intent.fleetId,
+      orgId: intent.orgId,
+      planCode: intent.planCode,
+      vehicleCount: String(intent.vehicleCount),
+      durationMonths: String(durationMonths),
+    },
+  };
+
+  let notchRes: Response;
+  try {
+    notchRes = await fetch(`${NOTCH_PAY_API_URL}/payments`, {
+      method: "POST",
+      headers: {
+        Authorization: apiKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    await failPendingPayment(supabase, payment.paymentId);
+    throw error;
+  }
+
+  if (!notchRes.ok) {
+    const raw = await notchRes.text().catch(() => "");
+    await failPendingPayment(supabase, payment.paymentId);
+    throw new Error(`Notch Pay API error ${notchRes.status}: ${raw.slice(0, 500)}`);
+  }
+
+  const notchData = (await notchRes.json()) as NotchPayCreatePaymentResponse;
+  const tx = typeof notchData.transaction === "object" && notchData.transaction !== null
+    ? notchData.transaction
+    : null;
+  const checkoutUrl = tx?.authorization_url ?? notchData.authorization_url;
+  if (!checkoutUrl) {
+    await failPendingPayment(supabase, payment.paymentId);
+    throw new Error("Notch Pay n'a pas retourné d'URL de paiement.");
+  }
+
+  const notchRef = tx?.reference ?? merchantRef;
+
+  try {
+    await bindProviderReference(supabase, payment.paymentId, notchRef);
+
+    const { error: pendingSubscriptionError } = await supabase.rpc(
+      "ensure_pending_subscription_for_payment",
+      { p_payment_id: payment.paymentId },
+    );
+    if (pendingSubscriptionError) {
+      throw new Error(pendingSubscriptionError.message);
+    }
+  } catch (error) {
+    await failPendingPayment(supabase, payment.paymentId);
+    throw error;
+  }
+
   return {
     paymentId: payment.paymentId,
     reference: notchRef,
-    checkoutUrl: tx.authorization_url,
+    checkoutUrl,
     amountXaf: payment.amountXaf,
   };
 }

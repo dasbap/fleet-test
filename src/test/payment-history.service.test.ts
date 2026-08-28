@@ -38,4 +38,31 @@ describe("PaymentHistoryService", () => {
     expect(payments[0]?.durationMonths).toBe(3);
     expect(payments[0]?.vehicleCount).toBe(5);
   });
+
+  it("refuse les événements billing sans fleetId", async () => {
+    const findBillingEventsByFleet = vi.fn();
+    const service = createService({ findBillingEventsByFleet });
+
+    await expect(service.getBillingEvents("")).rejects.toThrow(
+      "L'identifiant de flotte est requis",
+    );
+    expect(findBillingEventsByFleet).not.toHaveBeenCalled();
+  });
+
+  it("retourne les événements billing de la flotte", async () => {
+    const events = [
+      {
+        id: "event-1",
+        fleet_id: "fleet-1",
+        event_type: "subscription_activated",
+        payload: {},
+        created_at: "2026-01-02T00:00:00Z",
+      },
+    ];
+    const findBillingEventsByFleet = vi.fn().mockResolvedValue(events);
+    const service = createService({ findBillingEventsByFleet });
+
+    await expect(service.getBillingEvents("fleet-1")).resolves.toEqual(events);
+    expect(findBillingEventsByFleet).toHaveBeenCalledWith("fleet-1");
+  });
 });

@@ -5,7 +5,6 @@ import {
   type User,
 } from "@supabase/supabase-js";
 
-// TODO
 export interface SupabaseEnv {
   url: string;
   anonKey: string;

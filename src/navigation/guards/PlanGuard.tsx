@@ -1,22 +1,9 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useBilling } from "@/hooks/useBilling";
+import { useFleetSiteAccess } from "@/hooks/useFleetSiteAccess";
 import { PageLoader } from "@/components/dashboard/PageLoader";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
-import type { BillingSnapshot } from "@/services/billing.service";
-
-/**
- * Garde minimale « plan payant » : abonnement actif avec un plan autre que `free`.
- * Les feature flags par module (rapports, IA, etc.) nécessiteront une extension de
- * {@link BillingSnapshot} ou une table `plans` côté API (voir plan d’architecture).
- */
-function hasNonFreeActivePlan(snapshot: BillingSnapshot | undefined): boolean {
-  const sub = snapshot?.subscription;
-  if (!sub?.plan) return false;
-  if (sub.status !== "active") return false;
-  return sub.plan.code !== "free";
-}
 
 interface PlanGuardProps {
   children: ReactNode;
@@ -29,32 +16,37 @@ export function PlanGuard({
 }: PlanGuardProps) {
   const { user, orgId, activeTenantContext, isLoading: authLoading } = useAuth();
   const fleetId = activeTenantContext?.fleetId ?? null;
-  const canQueryBilling = Boolean(orgId && fleetId);
+  const canQueryAccess = Boolean(orgId && fleetId);
 
-  const { data: billing, isLoading: billingLoading } = useBilling(
-    canQueryBilling ? orgId : null,
-    canQueryBilling ? fleetId : null,
-  );
+  const {
+    data: hasSiteAccess,
+    isLoading: accessLoading,
+    isError: accessError,
+    refetch: refetchAccess,
+  } = useFleetSiteAccess(canQueryAccess ? fleetId : null);
 
-  if (authLoading) {
-    return <PageLoader />;
+  if (authLoading) return <PageLoader />;
+  if (!user) return <Navigate to={ROUTE_PATHS.auth} replace />;
+  if (!canQueryAccess) return <Navigate to={ROUTE_PATHS.tenantBootstrap} replace />;
+  if (accessLoading) return <PageLoader />;
+
+  if (accessError) {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 px-6 text-center">
+        <p role="alert">Impossible de vérifier l’accès à cette flotte.</p>
+        <button
+          type="button"
+          className="rounded-md border px-4 py-2"
+          onClick={() => void refetchAccess()}
+        >
+          Réessayer
+        </button>
+      </div>
+    );
   }
 
-  if (!user) {
-    return <Navigate to={ROUTE_PATHS.auth} replace />;
-  }
-
-  if (!canQueryBilling) {
-    return <Navigate to={ROUTE_PATHS.tenantBootstrap} replace />;
-  }
-
-  if (billingLoading) {
-    return <PageLoader />;
-  }
-
-  if (!hasNonFreeActivePlan(billing)) {
-    return <Navigate to={fallbackTo} replace />;
-  }
+  if (hasSiteAccess === false) return <Navigate to={fallbackTo} replace />;
+  if (hasSiteAccess !== true) return <PageLoader />;
 
   return <>{children}</>;
 }

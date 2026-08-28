@@ -12,13 +12,10 @@ describe("super admin permanent demo access policy", () => {
     const sql = readFileSync(migrationPath, "utf8").toLowerCase();
 
     expect(sql).toContain("p_permanent_access boolean default false");
-
     expect(sql).toContain("case when p_permanent_access then null");
-
     expect(sql).toContain(
       "public.is_platform_super_admin() or dp.expires_at is not null"
     );
-
     expect(sql).toContain(
       "grant execute on function public.prospect_create_account(uuid, text, text, uuid, uuid, int, text, boolean) to service_role"
     );
@@ -34,23 +31,15 @@ describe("super admin permanent demo access policy", () => {
     );
 
     expect(source).toContain("const invitedBy = body.invited_by ?? null");
-
     expect(source).toContain(
       "const permanentAccess = body.permanent_access === true"
     );
-
-    expect(source).toContain("permanentAccess && !invitedBy");
-
-    expect(source).toContain("permanentAccess && invitedBy");
-
+    expect(source).toContain("if (permanentAccess)");
+    expect(source).toContain("if (!invitedBy)");
     expect(source).toContain('.from("admin_profiles")');
-
     expect(source).toContain('.eq("user_id", invitedBy)');
-
     expect(source).toContain('.eq("internal_role", "super_admin")');
-
     expect(source).toContain('.eq("is_active", true)');
-
     expect(source).toContain("forbidden_super_admin_required");
   });
 });

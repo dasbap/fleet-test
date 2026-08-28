@@ -20,3 +20,6 @@ releases
 coverage
 playwright-report
 blob-report
+.stryker-runtime/
+.stryker-tmp/
+reports/mutation/

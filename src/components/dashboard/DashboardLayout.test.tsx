@@ -3,10 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import DashboardLayout from "./DashboardLayout";
 
-const { mockUseAuth, mockUseRoleAccess, headerRoleSpy } = vi.hoisted(() => ({
+const { mockUseAuth, mockUseRoleAccess, headerRoleSpy, notchPayCallbackSpy } = vi.hoisted(() => ({
   mockUseAuth: vi.fn(),
   mockUseRoleAccess: vi.fn(),
   headerRoleSpy: vi.fn(),
+  notchPayCallbackSpy: vi.fn(),
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -19,6 +20,10 @@ vi.mock("@/hooks/useRealtimeNotifications", () => ({
 
 vi.mock("@/hooks/useRoleAccess", () => ({
   useRoleAccess: () => mockUseRoleAccess(),
+}));
+
+vi.mock("@/features/billing/hooks/useNotchPayCallback", () => ({
+  useNotchPayCallback: () => notchPayCallbackSpy(),
 }));
 
 vi.mock("@/lib/platform", () => ({
@@ -76,8 +81,26 @@ vi.mock("@/components/shared/HelpCenter", () => ({
 describe("DashboardLayout — rôle affiché par flotte active", () => {
   beforeEach(() => {
     headerRoleSpy.mockReset();
+    notchPayCallbackSpy.mockReset();
     mockUseAuth.mockReset();
     mockUseRoleAccess.mockReturnValue({ isAdmin: false });
+  });
+
+  it("monte le callback Notch Pay au niveau dashboard", () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "u1", email: "seb@test.com", user_metadata: {} },
+      role: "organizer",
+      userFleetId: "fleet-1",
+      activeTenantContext: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard/billing?status=success&ref=ESAMBA-TEST"]}>
+        <DashboardLayout />
+      </MemoryRouter>
+    );
+
+    expect(notchPayCallbackSpy).toHaveBeenCalledTimes(1);
   });
 
   it("utilise le rôle de la flotte active quand il diffère du rôle global", () => {

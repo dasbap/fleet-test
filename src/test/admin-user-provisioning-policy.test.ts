@@ -28,7 +28,7 @@ describe("admin user provisioning policy", () => {
     expect(pageSource).toContain("canProvisionAccounts");
     expect(pageSource).toContain("Flotte cible");
     expect(pageSource).toContain("role !== \"organizer\"");
-    expect(pageSource).toContain("L'organisateur creera sa flotte");
+    expect(pageSource).toContain("l'organisateur finalisera sa flotte sur /start");
     expect(pageSource).not.toContain("Fleet ID optionnel");
     expect(pageSource).not.toContain("reservee aux administrateurs E-Samba");
   });

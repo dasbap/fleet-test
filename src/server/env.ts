@@ -85,9 +85,38 @@ export function getPaymentProvider(): PaymentProviderId {
   return "notch";
 }
 
+function normalizePublicUrl(value: string): string {
+  const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  return withProtocol.replace(/\/$/, "");
+}
+
+function isLocalUrl(value: string): boolean {
+  try {
+    const hostname = new URL(normalizePublicUrl(value)).hostname.toLowerCase();
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
 export function getAppUrl(): string {
-  const v = process.env.APP_URL?.trim();
-  return (v || "https://www.e-samba.com").replace(/\/$/, "");
+  const configured = process.env.APP_URL?.trim();
+  const isVercelDeployment = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
+
+  if (configured && !(isVercelDeployment && isLocalUrl(configured))) {
+    return normalizePublicUrl(configured);
+  }
+
+  if (process.env.VERCEL_ENV === "preview") {
+    const previewUrl = process.env.VERCEL_URL?.trim();
+    if (previewUrl) return normalizePublicUrl(previewUrl);
+  }
+
+  if (process.env.VERCEL_ENV === "production") {
+    return "https://www.e-samba.com";
+  }
+
+  return configured ? normalizePublicUrl(configured) : "https://www.e-samba.com";
 }
 
 export function getBackendUrl(): string {

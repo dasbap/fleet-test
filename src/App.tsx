@@ -3,7 +3,6 @@ import Providers from "@/components/Providers";
 import { PageSEO } from "@/components/PageSEO";
 import { BrowserRouter, Routes } from "react-router-dom";
 import { WebVitalsRouteSync } from "@/components/WebVitalsRouteSync";
-import { RoutePageFallback } from "@/components/RoutePageFallback";
 import { appRoutes } from "@/app/routes/app.routes";
 import { LazySentryErrorBoundary } from "@/components/errors/LazySentryErrorBoundary";
 import { HelpProvider } from "@/context/HelpContext";
@@ -40,9 +39,7 @@ const AppContent = () => (
           </Suspense>
           <NativeBackButtonBridge />
           <PageSEO />
-          <Suspense fallback={<RoutePageFallback />}>
-            <Routes>{appRoutes}</Routes>
-          </Suspense>
+          <Routes>{appRoutes}</Routes>
         </HelpProvider>
       </BrowserRouter>
     </Providers>

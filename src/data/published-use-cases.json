@@ -2,16 +2,19 @@
   {
     "slug": "esamba-transporteur-pme-maintenance-predictive",
     "title": "Maintenance prédictive pour transporteurs PME | E-Samba",
-    "meta_description": "Réduisez les immobilisations avec la maintenance prédictive E-Samba : alertes kilométriques, historique atelier et priorisation des véhicules à risque."
+    "meta_description": "Réduisez les immobilisations avec la maintenance prédictive E-Samba : alertes kilométriques, historique atelier et priorisation des véhicules à risque.",
+    "lastmod": "2026-08-17"
   },
   {
     "slug": "mobile-logistique-cemac-dvir-inspections",
     "title": "DVIR mobile pour logistique CEMAC | E-Samba",
-    "meta_description": "Contrôles journaliers DVIR sur mobile : photos, signature conducteur et traçabilité pour les opérateurs CEMAC."
+    "meta_description": "Contrôles journaliers DVIR sur mobile : photos, signature conducteur et traçabilité pour les opérateurs CEMAC.",
+    "lastmod": "2026-08-17"
   },
   {
     "slug": "n8n-saas-b2b-alertes-flotte",
     "title": "Automatiser les alertes flotte avec n8n et E-Samba",
-    "meta_description": "Connectez E-Samba à n8n pour router les alertes critiques vers Slack, email ou webhooks métier."
+    "meta_description": "Connectez E-Samba à n8n pour router les alertes critiques vers Slack, email ou webhooks métier.",
+    "lastmod": "2026-08-17"
   }
 ]

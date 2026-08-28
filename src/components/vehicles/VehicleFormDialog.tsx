@@ -26,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCreateVehicle } from "@/hooks/useVehicles";
 import { useActivation } from "@/hooks/useActivation";
 import { useFleetSubscriptions } from "@/hooks/useSubscriptionManagement";
+import type { SubscriptionSummary } from "@/services/subscription-management.service";
 
 const vehicleFormSchema = vehicleCreateFormSchema;
 type VehicleFormValues = VehicleCreateFormValues;
@@ -37,17 +38,27 @@ interface VehicleFormDialogProps {
   onSuccess?: () => void;
 }
 
+function availableSlotsForCreation(subscription: SubscriptionSummary): number {
+  if (subscription.status === "inactive") {
+    if (subscription.vehicleCapacity === null) return Number.MAX_SAFE_INTEGER;
+    return Math.max(0, subscription.vehicleCapacity - subscription.vehicleCount);
+  }
+  return subscription.availableSlots;
+}
+
 const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFormDialogProps) => {
   const createVehicle = useCreateVehicle();
   const { data: subscriptions = [], isLoading: subscriptionsLoading } = useFleetSubscriptions(fleetId);
   const { completeStep } = useActivation();
   const subscriptionOptions = useMemo(
     () =>
-      subscriptions.filter(
-        (subscription) =>
-          (subscription.status === "active" || subscription.status === "trial") &&
-          subscription.availableSlots > 0,
-      ),
+      subscriptions.filter((subscription) => {
+        const usableStatus =
+          subscription.status === "active" ||
+          subscription.status === "trial" ||
+          subscription.status === "inactive";
+        return usableStatus && availableSlotsForCreation(subscription) > 0;
+      }),
     [subscriptions],
   );
 
@@ -74,7 +85,7 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
       current_km: data.current_km,
     });
     await completeStep("first_vehicle");
-    
+
     onOpenChange(false);
     form.reset();
     onSuccess?.();
@@ -115,24 +126,27 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger aria-label="Selectionner un abonnement">
-                        <SelectValue placeholder="Choisir un abonnement actif" />
+                        <SelectValue placeholder="Choisir un abonnement" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {subscriptionOptions.map((subscription) => (
-                        <SelectItem key={subscription.id} value={subscription.id}>
-                          {subscription.planName ?? subscription.planCode ?? "Abonnement"} -{" "}
-                          {subscription.availableSlots} slot
-                          {subscription.availableSlots > 1 ? "s" : ""} disponible
-                          {subscription.availableSlots > 1 ? "s" : ""}
-                        </SelectItem>
-                      ))}
+                      {subscriptionOptions.map((subscription) => {
+                        const availableSlots = availableSlotsForCreation(subscription);
+                        return (
+                          <SelectItem key={subscription.id} value={subscription.id}>
+                            {subscription.planName ?? subscription.planCode ?? "Abonnement"} -{" "}
+                            {subscription.status === "inactive" ? "en attente · " : ""}
+                            {availableSlots} slot{availableSlots > 1 ? "s" : ""} disponible
+                            {availableSlots > 1 ? "s" : ""}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   <FormMessage />
                   {!subscriptionsLoading && subscriptionOptions.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
-                      Aucun abonnement actif avec slot vehicule disponible.
+                      Aucun abonnement actif ou en attente avec un slot véhicule disponible.
                     </p>
                   ) : null}
                 </FormItem>

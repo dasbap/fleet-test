@@ -27,7 +27,7 @@ export interface NotchPayTransaction {
   currency: string;
   status: string;
   /** URL de paiement vers laquelle rediriger l'utilisateur. */
-  authorization_url: string;
+  authorization_url?: string;
 }
 
 /** Réponse complète de POST /payments. */
@@ -35,7 +35,11 @@ export interface NotchPayCreatePaymentResponse {
   code: number;
   status: string;
   message: string;
-  transaction: NotchPayTransaction;
+  transaction: NotchPayTransaction | string;
+
+  /** URL de paiement vers laquelle rediriger l'utilisateur. */
+
+  authorization_url?: string;
 }
 
 /** Intent interne E-Samba → Notch Pay. */

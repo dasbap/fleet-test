@@ -1,8 +1,9 @@
 /**
  * Vérifie que la somme gzip des JS listés dans dist/index.html (entry + modulepreload)
- * ne dépasse pas un budget (défaut 330 Ko — dette tracée, cible 220 Ko). À lancer après `npm run build`.
+ * ne dépasse jamais le budget critique de 285 Ko. Une variable d'environnement peut
+ * rendre le seuil plus strict, mais jamais l'augmenter.
  *
- * Personnalisation : BUNDLE_BUDGET_INITIAL_GZIP_KB=240 node scripts/check-initial-js-budget.mjs
+ * Exemple : BUNDLE_BUDGET_INITIAL_GZIP_KB=280 node scripts/check-initial-js-budget.mjs
  */
 
 import { readFile } from "node:fs/promises";
@@ -12,9 +13,16 @@ import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
+const MAX_CRITICAL_BUDGET_KB = 285;
 
 async function main() {
-  const budgetKb = Number.parseFloat(process.env.BUNDLE_BUDGET_INITIAL_GZIP_KB ?? "330");
+  const requestedBudgetKb = Number.parseFloat(
+    process.env.BUNDLE_BUDGET_INITIAL_GZIP_KB ?? String(MAX_CRITICAL_BUDGET_KB),
+  );
+  const budgetKb = Number.isFinite(requestedBudgetKb)
+    ? Math.min(requestedBudgetKb, MAX_CRITICAL_BUDGET_KB)
+    : MAX_CRITICAL_BUDGET_KB;
+
   let html;
   try {
     html = await readFile(join(root, "index.html"), "utf8");
@@ -35,7 +43,9 @@ async function main() {
   }
 
   const totalKb = totalGzip / 1024;
-  console.log(`Budget JS initial (gzip, somme index.html) : ${totalKb.toFixed(1)} Ko / ${budgetKb} Ko max`);
+  console.log(
+    `Budget JS initial (gzip, somme index.html) : ${totalKb.toFixed(1)} Ko / ${budgetKb} Ko max`,
+  );
 
   if (totalKb > budgetKb) {
     console.error("Dépassement du budget. Réduire les modulepreload ou le graphe d’entrée.");

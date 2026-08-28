@@ -7,6 +7,14 @@ import { resolvePaymentWebhookProvider } from "../../payments/webhookProviders.j
 
 const MAX_PAYMENT_WEBHOOK_BODY_BYTES = 64 * 1024;
 
+function resolveInboundProviderHint(c: Context): string | undefined {
+  const explicit = c.req.header("x-psp-provider")?.trim();
+  if (explicit) return explicit;
+  if (c.req.header("x-notch-signature")) return "notch";
+  if (c.req.header("x-cinetpay-signature")) return "cinetpay";
+  return undefined;
+}
+
 async function handleInboundPaymentWebhook(c: Context) {
   const contentLengthRaw = c.req.header("content-length");
   if (contentLengthRaw) {
@@ -24,7 +32,7 @@ async function handleInboundPaymentWebhook(c: Context) {
     return c.json({ error: "Payload webhook trop volumineux" }, 413);
   }
 
-  const provider = resolvePaymentWebhookProvider(c.req.header("x-psp-provider"));
+  const provider = resolvePaymentWebhookProvider(resolveInboundProviderHint(c));
   const secrets = getPaymentWebhookSecrets();
   try {
     provider.verify(rawBody, (name) => c.req.header(name) ?? undefined, secrets);

@@ -70,6 +70,26 @@
       "destination": "/ressources/index.html"
     },
     {
+      "source": "/api/health",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/gps/ingest",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/admin/generate-magic-link",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/demo/magic-link",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/auth/clear-password-marker",
+      "destination": "/api/[...path]"
+    },
+    {
       "source": "/api/billing/subscriptions",
       "destination": "/api/[...path]"
     },

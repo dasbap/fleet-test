@@ -1,0 +1,248 @@
+name: Mutation Tests
+
+on:
+  pull_request:
+    branches:
+      - pre-prod
+      - main
+  push:
+    branches:
+      - pre-prod
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Mutation profile to run
+        required: true
+        default: critical
+        type: choice
+        options:
+          - pr
+          - critical
+          - full
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.event_name }}-${{ github.ref }}-${{ github.event.inputs.profile || 'auto' }}
+  cancel-in-progress: true
+
+jobs:
+  pr-tests-shard:
+    name: PR tests shard ${{ matrix.shard }}/4
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
+
+      - name: Run PR tests shard
+        run: npx vitest run --shard=${{ matrix.shard }}/4 --exclude "tests/integration/**" --exclude "tests/e2e/**"
+
+  pr-tests:
+    name: PR tests
+    if: always() && github.event_name == 'pull_request'
+    needs: pr-tests-shard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all PR test shards
+        env:
+          SHARDS_RESULT: ${{ needs.pr-tests-shard.result }}
+        run: |
+          if [ "$SHARDS_RESULT" != "success" ]; then
+            echo "One or more PR test shards failed: $SHARDS_RESULT"
+            exit 1
+          fi
+          echo "All PR test shards passed."
+
+  mutation-pr-shard:
+    name: Mutation shard ${{ matrix.shard }}/4
+    if: github.event_name == 'pull_request'
+    needs: pr-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
+
+      - name: Run PR mutation shard
+        env:
+          MUTATION_SHARD: ${{ matrix.shard }}
+        run: node scripts/run-mutation-tests.mjs pr
+
+      - name: Upload mutation shard report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-pr-shard-${{ matrix.shard }}-${{ github.run_id }}
+          path: reports/mutation/pr-shard-${{ matrix.shard }}
+          if-no-files-found: error
+          retention-days: 7
+
+  mutation-pr:
+    name: Mutation tests — PR critical gate
+    if: always() && github.event_name == 'pull_request'
+    needs: mutation-pr-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Verify shard jobs
+        env:
+          SHARDS_RESULT: ${{ needs.mutation-pr-shard.result }}
+        run: |
+          if [ "$SHARDS_RESULT" != "success" ]; then
+            echo "One or more mutation shards failed: $SHARDS_RESULT"
+            exit 1
+          fi
+
+      - name: Download mutation shard reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mutation-report-pr-shard-*-${{ github.run_id }}
+          path: reports/mutation-shards
+          merge-multiple: false
+
+      - name: Aggregate mutation score
+        env:
+          EXPECTED_MUTATION_SHARDS: 4
+        run: node scripts/aggregate-mutation-reports.mjs reports/mutation-shards 60
+
+  mutation-critical-shard:
+    name: Critical mutation shard ${{ matrix.shard }}/8
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'critical')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
+
+      - name: Run critical mutation shard
+        env:
+          MUTATION_CRITICAL_SHARD: ${{ matrix.shard }}
+        run: node scripts/run-mutation-tests.mjs critical
+
+      - name: Upload critical mutation shard report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-critical-shard-${{ matrix.shard }}-${{ github.run_id }}
+          path: reports/mutation/critical-shard-${{ matrix.shard }}
+          if-no-files-found: error
+          retention-days: 14
+
+  mutation-critical:
+    name: Mutation tests — pre-prod critical
+    if: >
+      always() &&
+      (github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'critical'))
+    needs: mutation-critical-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Verify critical shard jobs
+        env:
+          SHARDS_RESULT: ${{ needs.mutation-critical-shard.result }}
+        run: |
+          if [ "$SHARDS_RESULT" != "success" ]; then
+            echo "One or more critical mutation shards failed: $SHARDS_RESULT"
+            exit 1
+          fi
+
+      - name: Download critical mutation shard reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mutation-report-critical-shard-*-${{ github.run_id }}
+          path: reports/mutation-critical-shards
+          merge-multiple: false
+
+      - name: Aggregate critical mutation score
+        env:
+          EXPECTED_MUTATION_SHARDS: 8
+          MUTATION_SCORE_MODE: covered
+        run: node scripts/aggregate-mutation-reports.mjs reports/mutation-critical-shards 60
+
+  mutation-manual:
+    name: Mutation tests — manual ${{ github.event.inputs.profile }}
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.profile != 'critical'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ github.event.inputs.profile == 'full' && 360 || 60 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
+
+      - name: Run selected mutation profile
+        env:
+          MUTATION_PROFILE: ${{ github.event.inputs.profile }}
+        run: node scripts/run-mutation-tests.mjs
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-${{ github.event.inputs.profile }}-${{ github.run_id }}
+          path: reports/mutation/${{ github.event.inputs.profile }}
+          retention-days: 30

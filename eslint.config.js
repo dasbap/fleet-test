@@ -65,6 +65,13 @@ export default tseslint.config(
     },
   },
   {
+    files: ["src/test/**/*.mutation-coverage.test.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unsafe-function-type": "off",
+    },
+  },
+  {
     files: ["src/server/**/*.ts"],
     languageOptions: {
       ecmaVersion: 2022,

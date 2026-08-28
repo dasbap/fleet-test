@@ -94,6 +94,81 @@ describe("billing Notch Pay handler", () => {
   });
 });
 
+describe("catch-all Hono routes", () => {
+  it("route les wrappers Hono redondants vers la fonction catch-all", () => {
+    const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
+      rewrites?: Array<{ source?: string; destination?: string }>;
+    };
+
+    expect(config.rewrites).toEqual(
+      expect.arrayContaining([
+        {
+          source: "/api/health",
+          destination: "/api/[...path]",
+        },
+        {
+          source: "/api/gps/ingest",
+          destination: "/api/[...path]",
+        },
+        {
+          source: "/api/admin/generate-magic-link",
+          destination: "/api/[...path]",
+        },
+        {
+          source: "/api/demo/magic-link",
+          destination: "/api/[...path]",
+        },
+        {
+          source: "/api/auth/clear-password-marker",
+          destination: "/api/[...path]",
+        },
+      ]),
+    );
+  });
+});
+
+describe("consolidated Hono route behavior", () => {
+  it("garde les controles auth et payload des routes consolidees", async () => {
+    const app = createVercelApiApp();
+
+    const generateMagicLink = await app.fetch(
+      new Request("https://fleet.test/api/admin/generate-magic-link", {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+    );
+    expect(generateMagicLink.status).toBe(401);
+    expect(await generateMagicLink.json()).toEqual({
+      ok: false,
+      error: "missing_auth_token",
+    });
+
+    const demoMagicLink = await app.fetch(
+      new Request("https://fleet.test/api/demo/magic-link", {
+        method: "POST",
+        body: JSON.stringify({ action: "validate", token: "not-a-uuid" }),
+      }),
+    );
+    expect(demoMagicLink.status).toBe(404);
+    expect(await demoMagicLink.json()).toEqual({
+      ok: false,
+      error: "token_not_found",
+    });
+
+    const clearPasswordMarker = await app.fetch(
+      new Request("https://fleet.test/api/auth/clear-password-marker", {
+        method: "POST",
+        body: JSON.stringify({ password: "new-password-123" }),
+      }),
+    );
+    expect(clearPasswordMarker.status).toBe(401);
+    expect(await clearPasswordMarker.json()).toEqual({
+      ok: false,
+      error: "missing_auth_token",
+    });
+  });
+});
+
 describe("Vercel Hobby function budget", () => {
   it("ne declare pas plus de 12 fonctions serverless", () => {
     const functionFiles = globSync("api/**/*.ts", {
@@ -101,19 +176,16 @@ describe("Vercel Hobby function budget", () => {
       nodir: true,
     }).sort();
 
-    expect(functionFiles).toHaveLength(12);
+    expect(functionFiles.length).toBeLessThanOrEqual(12);
   });
 });
 
 describe("direct Vercel admin routes", () => {
-  it("reuse the shared CORS and platform-admin guard", () => {
+  it("garde create-prospect direct pour son fallback ADMIN_SECRET specifique", () => {
     const createProspect = readFileSync("api/admin/create-prospect.ts", "utf8");
-    const generateMagicLink = readFileSync("api/admin/generate-magic-link.ts", "utf8");
 
-    for (const source of [createProspect, generateMagicLink]) {
-      expect(source).toContain("applyCors");
-      expect(source).toContain("requirePlatformAdmin");
-      expect(source).not.toContain('Access-Control-Allow-Origin", process.env.VITE_APP_URL ?? "*"');
-    }
+    expect(createProspect).toContain("applyCors");
+    expect(createProspect).toContain("requirePlatformAdmin");
+    expect(createProspect).not.toContain('Access-Control-Allow-Origin", process.env.VITE_APP_URL ?? "*"');
   });
 });

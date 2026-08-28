@@ -64,9 +64,10 @@ async function handlePasswordChange(c: Context) {
     return c.json({ ok: true, must_set_password: false });
   }
 
-  const { error: passwordUpdateError } = await userClient.auth.updateUser({
-    password: parsed.data.password,
-  });
+  const { error: passwordUpdateError } = await admin.auth.admin.updateUserById(
+    user.id,
+    { password: parsed.data.password },
+  );
 
   if (passwordUpdateError) {
     const code = passwordUpdateError.code ?? "password_update_failed";

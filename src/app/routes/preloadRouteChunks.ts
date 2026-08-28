@@ -38,11 +38,27 @@ const dashboardLeafTasks: RoutePreloadTask[] = [
   { test: (p) => p.startsWith("/dashboard/scan"), preload: () => import("@/pages/Scan") },
 ];
 
+const devDashboardWarmupTasks: Array<() => Promise<unknown>> = [
+  () => import("@/features/home/screens/MobileHomePage"),
+  () => import("@/features/fleet/screens/MobileFleetPage"),
+  () => import("@/pages/Maintenance"),
+  () => import("@/features/alerts/screens/MobileAlertsPage"),
+  () => import("@/pages/Drivers"),
+  () => import("@/features/operations/screens/MobileOperationsPage"),
+  () => import("@/pages/Teams"),
+  () => import("@/pages/Invitations"),
+  () => import("@/pages/Settings"),
+  () => import("@/features/account/screens/MobileAccountPage"),
+  () => import("@/pages/Finances"),
+  () => import("@/pages/Collections"),
+];
+
 const rootTasks: RoutePreloadTask[] = [
   { test: (p) => p === "/", preload: () => import("@/pages/Index") },
   { test: (p) => p.startsWith("/auth"), preload: () => import("@/features/auth/screens/AuthPage") },
   { test: (p) => p.startsWith("/login"), preload: () => import("@/features/auth/screens/MobileLoginScreen") },
   { test: (p) => p.startsWith("/onboarding"), preload: () => import("@/components/auth/OnboardingRoute") },
+  { test: (p) => p.startsWith("/start"), preload: () => import("@/components/auth/TenantBootstrapRoute") },
 ];
 
 const hasFastConnection = () => {
@@ -99,11 +115,12 @@ export function preloadRouteChunksForPath(pathname: string) {
       ? undefined
       : dashboardLeafTasks.find((task) => task.test(normalizedPath));
     if (matchedDashboardTask) tasks.push(matchedDashboardTask.preload);
+    if (import.meta.env.DEV) tasks.push(...devDashboardWarmupTasks);
   } else {
     const matchedRootTask = rootTasks.find((task) => task.test(normalizedPath));
     if (matchedRootTask) tasks.push(matchedRootTask.preload);
   }
 
   if (tasks.length === 0) return;
-  runPreloadTasksInIdleSlices(tasks);
+  runPreloadTasksInIdleSlices([...new Set(tasks)]);
 }
