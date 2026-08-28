@@ -5,6 +5,28 @@ update public.demo_requests
 set email = lower(trim(email))
 where email is not null;
 
+create table if not exists public.demo_request_duplicate_archive (
+  archive_id uuid primary key default gen_random_uuid(),
+  original_id uuid not null,
+  email text,
+  payload jsonb not null,
+  archived_at timestamptz not null default now()
+);
+
+alter table public.demo_request_duplicate_archive enable row level security;
+revoke all on public.demo_request_duplicate_archive from anon, authenticated;
+
+with ranked as (
+  select d.*,
+         row_number() over (partition by lower(d.email) order by d.created_at asc, d.id asc) as rn
+  from public.demo_requests d
+  where d.email is not null
+)
+insert into public.demo_request_duplicate_archive (original_id, email, payload)
+select r.id, r.email, to_jsonb(r) - 'rn'
+from ranked r
+where r.rn > 1;
+
 with ranked as (
   select id,
          row_number() over (partition by lower(email) order by created_at asc, id asc) as rn
