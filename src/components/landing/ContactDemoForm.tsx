@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowRight, CheckCircle2, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSubmitDemoRequest } from "@/hooks/useSubmitDemoRequest";
-import { supabase } from "@/integrations/supabase/client";
+import { createEphemeralSupabaseClient } from "@/integrations/supabase/client";
 
 const CENTRAL_AFRICA_COUNTRIES = [
   { code: "CM", label: "Cameroun" },
@@ -19,10 +19,12 @@ const CENTRAL_AFRICA_COUNTRIES = [
 interface ContactDemoFormProps { className?: string; }
 
 export function ContactDemoForm({ className }: ContactDemoFormProps) {
+  const verificationClientRef = useRef<ReturnType<typeof createEphemeralSupabaseClient> | null>(null);
   const [form, setForm] = useState({ name: "", email: "", company: "", phone: "", company_identifier: "", country_code: "" });
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
+  const [emailVerificationToken, setEmailVerificationToken] = useState("");
   const [verificationPending, setVerificationPending] = useState(false);
   const [sent, setSent] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -30,9 +32,11 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
 
   function updateEmail(email: string) {
     setForm((current) => ({ ...current, email }));
+    verificationClientRef.current = null;
     setOtp("");
     setOtpSent(false);
     setEmailVerified(false);
+    setEmailVerificationToken("");
   }
 
   async function sendVerificationCode() {
@@ -44,8 +48,9 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     }
     setVerificationPending(true);
     try {
-      await supabase.auth.signOut();
-      const { error } = await supabase.auth.signInWithOtp({
+      const verificationClient = createEphemeralSupabaseClient();
+      verificationClientRef.current = verificationClient;
+      const { error } = await verificationClient.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
@@ -54,6 +59,8 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       });
       if (error) throw error;
       setOtpSent(true);
+      setEmailVerified(false);
+      setEmailVerificationToken("");
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Impossible d'envoyer le code de vérification E-Samba.");
     } finally {
@@ -69,20 +76,26 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       setFormError("Saisissez le code E-Samba à 6 chiffres reçu par e-mail.");
       return;
     }
+    const verificationClient = verificationClientRef.current;
+    if (!verificationClient) {
+      setFormError("Renvoyez un code de vérification E-Samba.");
+      return;
+    }
     setVerificationPending(true);
     try {
-      const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+      const { data, error } = await verificationClient.auth.verifyOtp({ email, token, type: "email" });
       if (error) throw error;
-      if (!data.user || data.user.email?.toLowerCase() !== email) {
+      if (!data.user || data.user.email?.toLowerCase() !== email || !data.session?.access_token) {
         throw new Error("La vérification de l'adresse e-mail a échoué.");
       }
       if (data.user.user_metadata?.demo_verification_pending !== true) {
-        await supabase.auth.signOut();
         throw new Error("Cette adresse e-mail est déjà associée à un compte E-Samba.");
       }
+      setEmailVerificationToken(data.session.access_token);
       setEmailVerified(true);
     } catch (error) {
       setEmailVerified(false);
+      setEmailVerificationToken("");
       setFormError(error instanceof Error ? error.message : "Code de vérification invalide ou expiré.");
     } finally {
       setVerificationPending(false);
@@ -92,7 +105,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setFormError(null);
-    if (!emailVerified) {
+    if (!emailVerified || !emailVerificationToken) {
       setFormError("Vérifiez votre adresse e-mail avec le code E-Samba avant d'envoyer la demande.");
       return;
     }
@@ -112,8 +125,10 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
         phone: form.phone,
         companyIdentifier: form.company_identifier,
         countryCode: form.country_code,
+        emailVerificationToken,
       });
-      await supabase.auth.signOut();
+      verificationClientRef.current = null;
+      setEmailVerificationToken("");
       setSent(true);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Impossible d'envoyer la demande.");
