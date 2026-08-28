@@ -17,6 +17,7 @@ import { registerHealthRoutes } from "./routes/health.js";
 import { registerAdminDemoRoutes } from "./routes/adminDemo.js";
 import { registerAdminProspectSecurityRoutes } from "./routes/adminProspectSecurity.js";
 import { registerPasswordChangeRoutes } from "./routes/passwordChange.js";
+import { registerDemoRequestRoutes } from "./routes/demoRequest.js";
 import {
   registerLegacyWebhooksPaymentRoutes,
   registerWebhooksPaymentRoutes,
@@ -107,6 +108,7 @@ export function createServerApp() {
   registerPasswordChangeRoutes(app);
   registerAdminProspectSecurityRoutes(app);
   registerAdminDemoRoutes(app);
+  registerDemoRequestRoutes(app);
   registerGpsIngestRoutes(app);
 
   registerLegacyBillingSnapshotRoute(app);
