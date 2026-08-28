@@ -86,10 +86,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     res.status(400).json({ ok: false, error: "invalid_profile_fields" });
     return;
   }
-  if (clientOrganizerRequested && (!fullName || !phone || !companyName || !companyIdentifier || !CENTRAL_AFRICA_COUNTRY_CODES.has(countryCode))) {
-    res.status(400).json({ ok: false, error: "incomplete_client_profile" });
-    return;
-  }
   if (platformAdminRequested && !auth.isSuperAdmin) {
     res.status(403).json({ ok: false, error: "forbidden_super_admin_required" });
     return;
@@ -104,6 +100,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
   if (!platformAdminRequested && !fleetId && !auth.isAdmin) {
     res.status(403).json({ ok: false, error: "forbidden_fleet_scope" });
+    return;
+  }
+  if (clientOrganizerRequested && (!fullName || !phone || !companyName || !companyIdentifier || !CENTRAL_AFRICA_COUNTRY_CODES.has(countryCode))) {
+    res.status(400).json({ ok: false, error: "incomplete_client_profile" });
     return;
   }
   if (!platformAdminRequested && fleetId) {
@@ -128,19 +128,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   const temporaryPasswordIssuedAt = new Date().toISOString();
+  const userMetadata = {
+    full_name: fullName || null,
+    phone: phone || null,
+    ...(clientOrganizerRequested
+      ? {
+          company_name: companyName,
+          company_identifier: companyIdentifier,
+          country_code: countryCode,
+        }
+      : {}),
+    created_by_admin: auth.user.id,
+  };
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
     password: generateTempPassword(),
     email_confirm: true,
     app_metadata: { must_set_password: true, temporary_password_active: true, temporary_password_issued_at: temporaryPasswordIssuedAt },
-    user_metadata: {
-      full_name: fullName || null,
-      phone: phone || null,
-      company_name: clientOrganizerRequested ? companyName : null,
-      company_identifier: clientOrganizerRequested ? companyIdentifier : null,
-      country_code: clientOrganizerRequested ? countryCode : null,
-      created_by_admin: auth.user.id,
-    },
+    user_metadata: userMetadata,
   });
 
   if (createError || !created.user) {
