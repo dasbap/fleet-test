@@ -3,7 +3,11 @@ const BFF_GENERATE_MAGIC_LINK = "/api/admin/generate-magic-link";
 
 export interface CreateProspectPayload {
   email: string;
-  company_name?: string;
+  full_name: string;
+  company_name: string;
+  phone: string;
+  company_identifier: string;
+  country_code: string;
   account_type?: "prospect" | "investor" | "internal" | "dev";
   fleet_id?: string;
   trial_days: number;
@@ -32,14 +36,8 @@ export interface GenerateMagicLinkResult {
   error?: string;
 }
 
-async function readBffJson<T extends { ok: boolean; error?: string }>(
-  res: Response,
-  unavailableError: string,
-): Promise<T & { rateLimited?: boolean }> {
-  if (res.status === 429) {
-    return { ok: false, rateLimited: true } as T & { rateLimited?: boolean };
-  }
-
+async function readBffJson<T extends { ok: boolean; error?: string }>(res: Response, unavailableError: string): Promise<T & { rateLimited?: boolean }> {
+  if (res.status === 429) return { ok: false, rateLimited: true } as T & { rateLimited?: boolean };
   const text = await res.text();
   let data: Partial<T> | null = null;
   if (text.length > 0) {
@@ -50,23 +48,13 @@ async function readBffJson<T extends { ok: boolean; error?: string }>(
     }
   }
   if (!res.ok) {
-    return {
-      ok: false,
-      error: data?.error ?? unavailableError,
-    } as T & { rateLimited?: boolean };
+    return { ok: false, error: data?.error ?? unavailableError } as T & { rateLimited?: boolean };
   }
-
   return (data ?? { ok: false, error: unavailableError }) as T & { rateLimited?: boolean };
 }
 
-/**
- * Appels BFF Vercel pour les actions admin démo sensibles (secret côté serveur).
- */
 export class AdminDemoBffRepository {
-  async createProspect(
-    accessToken: string,
-    payload: CreateProspectPayload,
-  ): Promise<CreateProspectResult & { rateLimited?: boolean }> {
+  async createProspect(accessToken: string, payload: CreateProspectPayload): Promise<CreateProspectResult & { rateLimited?: boolean }> {
     const res = await fetch(BFF_CREATE_PROSPECT, {
       method: "POST",
       headers: {
@@ -75,14 +63,10 @@ export class AdminDemoBffRepository {
       },
       body: JSON.stringify(payload),
     });
-
     return readBffJson<CreateProspectResult>(res, "bff_route_unavailable");
   }
 
-  async generateMagicLink(
-    accessToken: string,
-    payload: GenerateMagicLinkPayload,
-  ): Promise<GenerateMagicLinkResult & { rateLimited?: boolean }> {
+  async generateMagicLink(accessToken: string, payload: GenerateMagicLinkPayload): Promise<GenerateMagicLinkResult & { rateLimited?: boolean }> {
     const res = await fetch(BFF_GENERATE_MAGIC_LINK, {
       method: "POST",
       headers: {
@@ -91,7 +75,6 @@ export class AdminDemoBffRepository {
       },
       body: JSON.stringify(payload),
     });
-
     return readBffJson<GenerateMagicLinkResult>(res, "bff_route_unavailable");
   }
 }
