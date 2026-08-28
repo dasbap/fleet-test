@@ -9,22 +9,34 @@ export interface DemoRequestInsert {
   country_code: string;
 }
 
-/**
- * Accès Supabase pour les demandes de démo (formulaire landing).
- */
 export class DemoRequestRepository {
   async create(input: DemoRequestInsert): Promise<void> {
-    const { error } = await supabase.from("demo_requests").insert({
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user || !user.email || user.email.toLowerCase() !== input.email.toLowerCase()) {
+      throw new Error("Vérifiez votre adresse e-mail avec le code E-Samba avant d'envoyer la demande.");
+    }
+
+    const payload = {
       full_name: input.full_name,
       email: input.email,
       company: input.company ?? null,
       phone: input.phone,
       company_identifier: input.company_identifier,
       country_code: input.country_code,
-    });
+      verified_user_id: user.id,
+    } as never;
+
+    const { error } = await supabase.from("demo_requests").insert(payload);
 
     if (error) {
       console.error("Erreur création demande démo:", error);
+      if (error.code === "23505") {
+        throw new Error("Cette adresse e-mail a déjà été utilisée pour une demande E-Samba.");
+      }
       throw new Error(error.message);
     }
   }
