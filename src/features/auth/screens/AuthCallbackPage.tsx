@@ -11,21 +11,77 @@ import {
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const DEMO_VERIFICATION_DRAFT_KEY = "esamba_demo_verification_draft";
 const DEMO_VERIFICATION_INTENT_KEY = "esamba_demo_verification_intent";
 
 type CallbackState = "processing" | "error";
 
+type DemoVerificationDraft = {
+  name: string;
+  email: string;
+  company: string;
+  phone: string;
+  company_identifier: string;
+  country_code: string;
+};
+
+function readDemoDraft(): DemoVerificationDraft | null {
+  try {
+    const raw = window.localStorage.getItem(DEMO_VERIFICATION_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<DemoVerificationDraft>;
+    if (
+      !parsed.name?.trim() ||
+      !parsed.email?.trim() ||
+      !parsed.company?.trim() ||
+      !parsed.phone?.trim() ||
+      !parsed.company_identifier?.trim() ||
+      !parsed.country_code?.trim()
+    ) {
+      return null;
+    }
+    return {
+      name: parsed.name,
+      email: parsed.email,
+      company: parsed.company,
+      phone: parsed.phone,
+      company_identifier: parsed.company_identifier,
+      country_code: parsed.country_code,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function mapDemoSubmitError(status: number, error?: string): string {
+  if (status === 409 && error === "demo_email_already_used") {
+    return "Cette adresse e-mail a déjà été utilisée pour une demande E-Samba.";
+  }
+  if (status === 409 && error === "email_already_registered") {
+    return "Cette adresse e-mail est déjà associée à un compte E-Samba.";
+  }
+  if (status === 401) {
+    return "La vérification e-mail a expiré. Demandez un nouveau lien depuis le formulaire de démo.";
+  }
+  if (status === 403 && error === "verified_email_mismatch") {
+    return "L'adresse vérifiée ne correspond pas à celle du formulaire.";
+  }
+  return "Votre e-mail a été vérifié, mais la demande de démo n'a pas pu être enregistrée. Réessayez depuis le formulaire.";
+}
+
 /**
- * Callback Supabase Auth — PKCE (magic link, confirmation email, etc.).
- * Une vérification de demande de démo reste strictement dans le parcours public :
- * elle ne passe jamais par /post-login ou /start.
+ * Callback Supabase Auth — PKCE.
+ *
+ * Pour une demande de démo, l'utilisateur Auth créé par Supabase est purement
+ * transitoire : le callback échange le code, envoie immédiatement la demande au
+ * BFF avec le JWT vérifié, puis le BFF supprime cet utilisateur Auth. Aucun
+ * onboarding produit (/post-login, /start) n'est déclenché.
  */
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [state, setState] = useState<CallbackState>("processing");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
   const handled = useRef(false);
 
   useEffect(() => {
@@ -65,35 +121,79 @@ export default function AuthCallbackPage() {
       }, 12_000);
 
       try {
-        // getSession() ne garantit pas l'échange du code PKCE. On échange donc
-        // explicitement le ?code= reçu dans le magic link.
         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError || !data.session) {
           throw exchangeError ?? new Error("verification_session_missing");
         }
         if (cancelled) return;
 
-        window.clearTimeout(timeout);
-
-        if (demoIntent) {
-          if (data.session.user.user_metadata?.demo_verification_pending !== true) {
-            await supabase.auth.signOut();
-            setErrorMessage("Cette adresse e-mail est déjà associée à un compte E-Samba.");
-            setState("error");
-            return;
-          }
-
-          // Ne jamais aiguiller une vérification commerciale vers le produit.
-          navigate(`${ROUTE_PATHS.contact}?demo_email_verified=1`, { replace: true });
+        if (!demoIntent) {
+          window.clearTimeout(timeout);
+          navigate(ROUTE_PATHS.postLogin, { replace: true });
           return;
         }
 
-        navigate(ROUTE_PATHS.postLogin, { replace: true });
-      } catch (exchangeError) {
+        const draft = readDemoDraft();
+        if (!draft) {
+          await supabase.auth.signOut({ scope: "local" });
+          throw new Error("demo_draft_missing");
+        }
+
+        if (data.session.user.user_metadata?.demo_verification_pending !== true) {
+          await supabase.auth.signOut({ scope: "local" });
+          window.clearTimeout(timeout);
+          setErrorMessage("Cette adresse e-mail est déjà associée à un compte E-Samba.");
+          setState("error");
+          return;
+        }
+
+        const response = await fetch("/api/demo/request", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${data.session.access_token}`,
+          },
+          body: JSON.stringify({
+            full_name: draft.name,
+            email: draft.email,
+            company: draft.company,
+            phone: draft.phone,
+            company_identifier: draft.company_identifier,
+            country_code: draft.country_code,
+          }),
+        });
+
+        let body: { ok?: boolean; error?: string } = {};
+        try {
+          body = (await response.json()) as { ok?: boolean; error?: string };
+        } catch {
+          // Le statut HTTP reste suffisant pour l'UX.
+        }
+
+        // Le BFF supprime l'utilisateur Auth transitoire après l'insert. On ne
+        // conserve donc aucune session locale qui pourrait déclencher /start.
+        await supabase.auth.signOut({ scope: "local" });
         window.clearTimeout(timeout);
-        console.error("[auth-callback] code exchange failed:", exchangeError);
+
+        if (!response.ok || body.ok !== true) {
+          window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
+          setErrorMessage(mapDemoSubmitError(response.status, body.error));
+          setState("error");
+          return;
+        }
+
+        window.localStorage.removeItem(DEMO_VERIFICATION_DRAFT_KEY);
+        window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
+        navigate(`${ROUTE_PATHS.contact}?demo_request_sent=1`, { replace: true });
+      } catch (callbackError) {
+        window.clearTimeout(timeout);
+        console.error("[auth-callback] verification failed:", callbackError);
         if (!cancelled) {
-          setErrorMessage("Le lien de vérification est invalide ou expiré. Demandez un nouveau lien depuis le formulaire.");
+          const message =
+            callbackError instanceof Error && callbackError.message === "demo_draft_missing"
+              ? "Les informations de votre demande ne sont plus disponibles dans ce navigateur. Revenez au formulaire et recommencez la vérification."
+              : "Le lien de vérification est invalide ou expiré. Demandez un nouveau lien depuis le formulaire.";
+          setErrorMessage(message);
           setState("error");
         }
       }
@@ -110,10 +210,8 @@ export default function AuthCallbackPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <AlertCircle className="mx-auto h-10 w-10 text-destructive mb-2" />
-            <CardTitle>Lien invalide</CardTitle>
-            <CardDescription>
-              {errorMessage ?? "Ce lien n'est plus valide."}
-            </CardDescription>
+            <CardTitle>Vérification impossible</CardTitle>
+            <CardDescription>{errorMessage ?? "Ce lien n'est plus valide."}</CardDescription>
           </CardHeader>
           <div className="px-6 pb-6">
             <Button
@@ -135,7 +233,7 @@ export default function AuthCallbackPage() {
         <CardHeader className="text-center">
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary mb-2" />
           <CardTitle>Vérification en cours…</CardTitle>
-          <CardDescription>Validation de votre adresse e-mail.</CardDescription>
+          <CardDescription>Validation de votre e-mail et envoi de votre demande de démo.</CardDescription>
         </CardHeader>
       </Card>
     </div>
