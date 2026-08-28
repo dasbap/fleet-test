@@ -20,6 +20,10 @@ export class DemoRequestRepository {
       throw new Error("Vérifiez votre adresse e-mail avec le code E-Samba avant d'envoyer la demande.");
     }
 
+    if (user.user_metadata?.demo_verification_pending !== true) {
+      throw new Error("Cette adresse e-mail est déjà associée à un compte E-Samba.");
+    }
+
     const payload = {
       full_name: input.full_name,
       email: input.email,
