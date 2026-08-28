@@ -78,15 +78,23 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
   const submitDemoRequest = useSubmitDemoRequest();
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo_request_sent") === "1") {
+      window.localStorage.removeItem(DEMO_VERIFICATION_DRAFT_KEY);
+      window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
+      setSent(true);
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
+
     const savedDraft = readSavedDraft();
     if (savedDraft) {
       setForm(savedDraft);
     }
 
-    const shouldResumeVerification =
-      window.localStorage.getItem(DEMO_VERIFICATION_INTENT_KEY) === "demo" ||
-      new URLSearchParams(window.location.search).get("demo_email_verified") === "1";
-
+    // Compatibilité OTP : si une configuration SMTP personnalisée est ajoutée
+    // plus tard, le code à 6 chiffres peut toujours finaliser le formulaire ici.
+    const shouldResumeVerification = params.get("demo_email_verified") === "1";
     if (!shouldResumeVerification) return;
 
     let cancelled = false;
@@ -109,9 +117,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       setVerificationEmailSent(true);
       setFormError(null);
       window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
-      if (new URLSearchParams(window.location.search).has("demo_email_verified")) {
-        window.history.replaceState({}, "", window.location.pathname);
-      }
+      window.history.replaceState({}, "", window.location.pathname);
     })();
 
     return () => {
@@ -133,6 +139,10 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     const email = form.email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setFormError("Renseignez une adresse e-mail valide.");
+      return;
+    }
+    if (!form.name.trim() || !form.company.trim() || !form.phone.trim() || !form.company_identifier.trim() || !form.country_code) {
+      setFormError("Complétez tous les champs avant de vérifier votre adresse e-mail.");
       return;
     }
 
@@ -207,14 +217,6 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       setFormError("Vérifiez votre adresse e-mail depuis l'e-mail E-Samba avant d'envoyer la demande.");
       return;
     }
-    if (!form.company.trim()) {
-      setFormError("Renseignez le nom de votre entreprise.");
-      return;
-    }
-    if (!form.country_code) {
-      setFormError("Sélectionnez un pays d'Afrique centrale.");
-      return;
-    }
     try {
       await submitDemoRequest.mutateAsync({
         name: form.name,
@@ -229,7 +231,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       setEmailVerificationToken("");
       window.localStorage.removeItem(DEMO_VERIFICATION_DRAFT_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
       setSent(true);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Impossible d'envoyer la demande.");
@@ -237,7 +239,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
   }
 
   if (sent) {
-    return <div className={className}><div className="py-8 text-center"><CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-primary" /><h3 className="mb-2 text-xl font-heading font-bold">Demande envoyée !</h3><p className="text-sm text-muted-foreground">Votre adresse e-mail a été vérifiée et votre demande est transmise aux admins. Vous recevrez un email quand votre accès sera accepté ou refusé.</p></div></div>;
+    return <div className={className}><div className="py-8 text-center"><CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-primary" /><h3 className="mb-2 text-xl font-heading font-bold">Demande envoyée !</h3><p className="text-sm text-muted-foreground">Votre adresse e-mail a été vérifiée et votre demande est transmise aux admins. Aucun compte E-Samba n'est créé à ce stade. Le compte sera créé uniquement si un administrateur accepte votre demande.</p></div></div>;
   }
 
   return (
@@ -258,7 +260,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
         {verificationEmailSent && !emailVerified ? (
           <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-3">
             <p className="font-medium">Vérifiez votre boîte mail</p>
-            <p className="text-xs text-muted-foreground">E-Samba a envoyé un e-mail à <strong>{form.email.trim()}</strong>. Cliquez sur le lien ou le bouton contenu dans cet e-mail. Vous reviendrez automatiquement ici et vos informations seront conservées.</p>
+            <p className="text-xs text-muted-foreground">E-Samba a envoyé un e-mail à <strong>{form.email.trim()}</strong>. Cliquez sur le lien ou le bouton contenu dans cet e-mail. Ce clic vérifiera votre adresse et enverra automatiquement la demande. Aucun compte produit ne sera conservé.</p>
             <div className="border-t pt-3 space-y-2">
               <p className="text-xs text-muted-foreground">Si votre e-mail contient plutôt un code à 6 chiffres, vous pouvez aussi le saisir ici :</p>
               <div className="flex gap-2">
