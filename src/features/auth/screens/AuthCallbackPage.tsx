@@ -11,17 +11,14 @@ import {
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const DEMO_VERIFICATION_INTENT_KEY = "esamba_demo_verification_intent";
+
 type CallbackState = "processing" | "error";
 
 /**
- * Callback Supabase Auth — PKCE (magic link, confirmation email, etc.)
- *
- * Supabase redirige ici avec ?code=XXX après clic sur un lien email.
- * Le client JS échange automatiquement le code contre une session via
- * onAuthStateChange (SIGNED_IN). On attend cet événement, puis on redirige
- * vers /post-login pour l'aiguillage classique (dashboard / onboarding).
- *
- * Timeout de sécurité : si rien ne se passe en 10s → erreur.
+ * Callback Supabase Auth — PKCE (magic link, confirmation email, etc.).
+ * Les magic links de vérification d'une demande de démo reviennent sur /contact
+ * au lieu d'entrer dans l'aiguillage produit /post-login.
  */
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -38,8 +35,10 @@ export default function AuthCallbackPage() {
     const code = searchParams.get("code");
     const error = searchParams.get("error");
     const errorDescription = searchParams.get("error_description");
+    const demoIntent =
+      searchParams.get("intent") === "demo" ||
+      window.localStorage.getItem(DEMO_VERIFICATION_INTENT_KEY) === "demo";
 
-    // Erreur transmise par Supabase dans l'URL (lien expiré, déjà utilisé…)
     if (error) {
       const msg =
         errorDescription?.replace(/\+/g, " ") ??
@@ -55,27 +54,23 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    // Timeout : si Supabase ne répond pas en 10s.
     const timeout = setTimeout(() => {
       setErrorMessage("La connexion a pris trop de temps. Réessaie depuis l'email.");
       setState("error");
     }, 10_000);
 
-    // Le client Supabase JS v2 échange automatiquement le code PKCE.
-    // On force via getSession() pour déclencher l'échange si ce n'est pas encore fait,
-    // puis on écoute onAuthStateChange pour confirmer.
     void supabase.auth.getSession();
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
+      if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session) {
         clearTimeout(timeout);
         listener.subscription.unsubscribe();
-        // Aiguillage centralisé (dashboard / onboarding / start).
-        navigate(ROUTE_PATHS.postLogin, { replace: true });
-      }
-      if (event === "USER_UPDATED" && session) {
-        clearTimeout(timeout);
-        listener.subscription.unsubscribe();
+
+        if (demoIntent && session.user.user_metadata?.demo_verification_pending === true) {
+          navigate(`${ROUTE_PATHS.contact}?demo_email_verified=1`, { replace: true });
+          return;
+        }
+
         navigate(ROUTE_PATHS.postLogin, { replace: true });
       }
     });
@@ -116,7 +111,7 @@ export default function AuthCallbackPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary mb-2" />
-          <CardTitle>Connexion en cours…</CardTitle>
+          <CardTitle>Vérification en cours…</CardTitle>
           <CardDescription>Quelques secondes.</CardDescription>
         </CardHeader>
       </Card>
