@@ -1,11 +1,9 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAuthStorage } from '@/lib/auth/supabaseAuthStorage';
 
-// Récupération des variables d'environnement avec typage explicite
 const SUPABASE_URL: string | undefined = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY: string | undefined = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Vérification stricte des variables d'environnement
 if (typeof SUPABASE_URL !== 'string' || !SUPABASE_URL) {
   throw new Error(
     "La variable d'environnement VITE_SUPABASE_URL est manquante ou invalide. " +
@@ -20,12 +18,29 @@ if (typeof SUPABASE_ANON_KEY !== 'string' || !SUPABASE_ANON_KEY) {
   );
 }
 
-// Détecte si on tourne dans un WebView Capacitor (Android / iOS).
-// Capacitor injecte window.Capacitor avant le chargement du bundle JS.
 const estEnvCapacitor: boolean =
   typeof window !== 'undefined' &&
   !!(window as Window & { Capacitor?: { isNativePlatform?: () => boolean } })
     .Capacitor?.isNativePlatform?.();
+
+export function createEphemeralSupabaseClient(accessToken?: string): SupabaseClient {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+    db: {
+      schema: 'public',
+    },
+    global: {
+      headers: {
+        "x-client-info": "smart-fleet-africa@1.0.0",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+    },
+  });
+}
 
 export const supabase: SupabaseClient = createClient(
   SUPABASE_URL,
@@ -33,12 +48,9 @@ export const supabase: SupabaseClient = createClient(
   {
     auth: {
       storage: getSupabaseAuthStorage(),
-      // Clé namespaced — évite les collisions si plusieurs apps sur le même domaine
       storageKey: "sfa_auth_token",
       persistSession: true,
       autoRefreshToken: true,
-      // Capacitor + web utilisent PKCE. En natif, on garde detectSessionInUrl=false
-      // car la session est réinjectée via deep link, pas via parsing d'URL webview.
       detectSessionInUrl: !estEnvCapacitor,
       flowType: "pkce",
     },
