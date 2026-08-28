@@ -9,6 +9,24 @@ export interface DemoRequestInsert {
   country_code: string;
 }
 
+function mapDemoInsertError(error: { code?: string; message?: string; details?: string | null }): Error {
+  if (error.code === "23505") {
+    return new Error("Cette adresse e-mail a déjà été utilisée pour une demande E-Samba.");
+  }
+
+  const message = `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
+  if (error.code === "42501" || message.includes("row-level security") || message.includes("permission denied")) {
+    console.error("[E-Samba config] Le schéma/RLS Supabase de cet environnement n'est pas synchronisé. Appliquer les migrations et exécuter npm run supabase:push-auth-config.");
+    return new Error("Le service de demande de démo n'est pas encore configuré sur cet environnement. Réessayez plus tard.");
+  }
+
+  if (message.includes("jwt") || message.includes("token") || message.includes("unauthorized")) {
+    return new Error("Votre vérification e-mail a expiré. Demandez un nouveau code E-Samba.");
+  }
+
+  return new Error(error.message || "Impossible d'envoyer la demande de démo.");
+}
+
 export class DemoRequestRepository {
   async create(input: DemoRequestInsert, verificationAccessToken: string): Promise<void> {
     const client = createEphemeralSupabaseClient(verificationAccessToken);
@@ -39,10 +57,7 @@ export class DemoRequestRepository {
 
     if (error) {
       console.error("Erreur création demande démo:", error);
-      if (error.code === "23505") {
-        throw new Error("Cette adresse e-mail a déjà été utilisée pour une demande E-Samba.");
-      }
-      throw new Error(error.message);
+      throw mapDemoInsertError(error);
     }
   }
 }
