@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAdminDemoRequests, useFinalizeDemoRequest, useUpdateDemoRequestAutoMode } from "@/hooks/useAdminDemoRequests";
+import { useAdminDemoRequestSettings, useAdminDemoRequests, useFinalizeDemoRequest, useUpdateDemoRequestAutoMode } from "@/hooks/useAdminDemoRequests";
 import { isDemoRequestSchemaMissingError } from "@/repositories/admin-demo-request.repository";
 import type { CreateDemoPayload } from "@/hooks/useAdminDemoAccounts";
 import type { AdminDemoRequest, DemoRequestAutoDecision } from "@/types/demo-request";
@@ -33,17 +33,17 @@ export function DemoRequestsPanel({ onCreateAccess, onReloadSessions }: DemoRequ
   const [reasonById, setReasonById] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const { data: requests = [], error, isError, isLoading, refetch } = useAdminDemoRequests(includeProcessed);
+  const { data: persistedSettings } = useAdminDemoRequestSettings();
   const finalizeRequest = useFinalizeDemoRequest();
   const updateAutoMode = useUpdateDemoRequestAutoMode();
-  const settings = requests[0];
   const [autoSettings, setAutoSettings] = useState<{ enabled: boolean; decision: DemoRequestAutoDecision }>({ enabled: false, decision: "refuse" });
   const pendingCount = useMemo(() => requests.filter((request) => request.status === "pending").length, [requests]);
   const isSchemaMissing = isError && isDemoRequestSchemaMissingError(error);
 
   useEffect(() => {
-    if (!settings) return;
-    setAutoSettings({ enabled: settings.auto_decision_enabled, decision: settings.auto_decision });
-  }, [settings?.auto_decision_enabled, settings?.auto_decision]);
+    if (!persistedSettings) return;
+    setAutoSettings(persistedSettings);
+  }, [persistedSettings?.enabled, persistedSettings?.decision]);
 
   function saveAutoSettings(nextSettings: { enabled: boolean; decision: DemoRequestAutoDecision }) {
     setAutoSettings(nextSettings);
