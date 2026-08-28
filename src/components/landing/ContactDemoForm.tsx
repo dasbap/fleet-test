@@ -18,6 +18,22 @@ const CENTRAL_AFRICA_COUNTRIES = [
 
 interface ContactDemoFormProps { className?: string; }
 
+function mapOtpError(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  const normalized = message.toLowerCase();
+  if (normalized.includes("rate") || normalized.includes("too many")) {
+    return "Trop de codes ont été demandés. Attendez quelques minutes avant de réessayer.";
+  }
+  if (normalized.includes("expired") || normalized.includes("invalid") || normalized.includes("token")) {
+    return "Code invalide ou expiré. Demandez un nouveau code E-Samba. Si l'e-mail reçu ne contient pas un code à 6 chiffres, la configuration de vérification de cet environnement n'est pas encore synchronisée.";
+  }
+  if (normalized.includes("fetch") || normalized.includes("network")) {
+    return "Impossible de joindre le service de vérification E-Samba. Vérifiez votre connexion et réessayez.";
+  }
+  console.error("[E-Samba config] Vérifier la configuration Auth Supabase. En environnement administré, exécuter npm run supabase:push-auth-config si le template OTP n'est pas déployé.", error);
+  return "Le service de vérification e-mail E-Samba n'est pas disponible sur cet environnement. Réessayez plus tard.";
+}
+
 export function ContactDemoForm({ className }: ContactDemoFormProps) {
   const verificationClientRef = useRef<ReturnType<typeof createEphemeralSupabaseClient> | null>(null);
   const [form, setForm] = useState({ name: "", email: "", company: "", phone: "", company_identifier: "", country_code: "" });
@@ -62,7 +78,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       setEmailVerified(false);
       setEmailVerificationToken("");
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Impossible d'envoyer le code de vérification E-Samba.");
+      setFormError(mapOtpError(error));
     } finally {
       setVerificationPending(false);
     }
@@ -86,7 +102,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       const { data, error } = await verificationClient.auth.verifyOtp({ email, token, type: "email" });
       if (error) throw error;
       if (!data.user || data.user.email?.toLowerCase() !== email || !data.session?.access_token) {
-        throw new Error("La vérification de l'adresse e-mail a échoué.");
+        throw new Error("invalid_verification_session");
       }
       if (data.user.user_metadata?.demo_verification_pending !== true) {
         throw new Error("Cette adresse e-mail est déjà associée à un compte E-Samba.");
@@ -96,7 +112,11 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     } catch (error) {
       setEmailVerified(false);
       setEmailVerificationToken("");
-      setFormError(error instanceof Error ? error.message : "Code de vérification invalide ou expiré.");
+      if (error instanceof Error && error.message.includes("déjà associée")) {
+        setFormError(error.message);
+      } else {
+        setFormError(mapOtpError(error));
+      }
     } finally {
       setVerificationPending(false);
     }
@@ -146,11 +166,11 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
         <div><Label htmlFor="demo-name">Nom complet *</Label><Input id="demo-name" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Jean Dupont" className="mt-1" /></div>
         <div><Label htmlFor="demo-company">Entreprise *</Label><Input id="demo-company" required value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} placeholder="TransCam SARL" className="mt-1" /></div>
         <div className="space-y-2"><Label htmlFor="demo-email">Adresse mail *</Label><div className="flex gap-2"><Input id="demo-email" required type="email" autoComplete="email" value={form.email} onChange={(event) => updateEmail(event.target.value)} placeholder="vous@entreprise.com" disabled={emailVerified} /><Button type="button" variant="outline" onClick={() => void sendVerificationCode()} disabled={verificationPending || emailVerified}>{emailVerified ? "Vérifiée" : otpSent ? "Renvoyer" : "Vérifier"}</Button></div>{emailVerified ? <p className="flex items-center gap-1 text-xs text-primary"><MailCheck className="h-3.5 w-3.5" />Adresse e-mail vérifiée par E-Samba.</p> : null}</div>
-        {otpSent && !emailVerified ? <div className="space-y-2"><Label htmlFor="demo-email-otp">Code de vérification E-Samba *</Label><div className="flex gap-2"><Input id="demo-email-otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="123456" /><Button type="button" onClick={() => void verifyEmailCode()} disabled={verificationPending || otp.length !== 6}>Valider le code</Button></div><p className="text-xs text-muted-foreground">Un code à 6 chiffres a été envoyé à {form.email.trim()}.</p></div> : null}
+        {otpSent && !emailVerified ? <div className="space-y-2"><Label htmlFor="demo-email-otp">Code de vérification E-Samba *</Label><div className="flex gap-2"><Input id="demo-email-otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="123456" /><Button type="button" onClick={() => void verifyEmailCode()} disabled={verificationPending || otp.length !== 6}>Valider le code</Button></div><p className="text-xs text-muted-foreground">Un code à 6 chiffres a été envoyé à {form.email.trim()}.</p><p className="text-xs text-muted-foreground">Si l'e-mail reçu contient seulement un lien ou un bouton et aucun code à 6 chiffres, la vérification E-Samba n'est pas encore configurée sur cet environnement. Réessayez plus tard.</p></div> : null}
         <div><Label htmlFor="demo-phone">Téléphone *</Label><Input id="demo-phone" required type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="+237 6 XX XX XX XX" className="mt-1" /></div>
         <div><Label htmlFor="demo-company-identifier">Numéro d'identifiant entreprise *</Label><Input id="demo-company-identifier" required value={form.company_identifier} onChange={(event) => setForm({ ...form, company_identifier: event.target.value })} placeholder="RCCM, NIU, NIF..." className="mt-1" /></div>
         <div><Label htmlFor="demo-country">Pays *</Label><Select value={form.country_code} onValueChange={(value) => setForm({ ...form, country_code: value })}><SelectTrigger id="demo-country" className="mt-1"><SelectValue placeholder="Sélectionner un pays" /></SelectTrigger><SelectContent>{CENTRAL_AFRICA_COUNTRIES.map((country) => <SelectItem key={country.code} value={country.code}>{country.label}</SelectItem>)}</SelectContent></Select></div>
-        {formError ? <p className="text-xs text-destructive">{formError}</p> : null}
+        {formError ? <p className="text-xs text-destructive" role="alert">{formError}</p> : null}
         <Button type="submit" className="w-full gap-2" disabled={submitDemoRequest.isPending || verificationPending || !emailVerified}>{submitDemoRequest.isPending ? "Envoi..." : "Demander ma démo"}<ArrowRight className="h-4 w-4" /></Button>
       </div>
     </form>
