@@ -25,6 +25,7 @@ const estEnvCapacitor: boolean =
 
 export function createEphemeralSupabaseClient(accessToken?: string): SupabaseClient {
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    accessToken: accessToken ? async () => accessToken : undefined,
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -36,7 +37,6 @@ export function createEphemeralSupabaseClient(accessToken?: string): SupabaseCli
     global: {
       headers: {
         "x-client-info": "smart-fleet-africa@1.0.0",
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
     },
   });
