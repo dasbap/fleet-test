@@ -24,7 +24,6 @@ const MOBILE_REDIRECT_URLS = [
   "https://www.e-samba.com/auth/update-password/**",
 ];
 
-/** URLs déjà en prod (ne pas retirer lors du merge config push). */
 const PRODUCTION_REDIRECT_URLS = [
   "https://www.e-samba.com/**",
   "https://e-samba.com/**",
@@ -32,6 +31,10 @@ const PRODUCTION_REDIRECT_URLS = [
   "http://localhost:8080/**",
   "http://smart-fleet-africa.vercel.app/**",
 ];
+
+const DEMO_OTP_TEMPLATE_BLOCK = `[auth.email.template.magic_link]
+subject = "E-Samba — Vérification de votre adresse e-mail"
+content_path = "./templates/magic_link.html"`;
 
 function log(msg) {
   console.log(`[mobile-setup] ${msg}`);
@@ -188,8 +191,15 @@ function mergeConfigTomlRedirects() {
     text = text.replace(/additional_redirect_urls\s*=\s*\[[\s\S]*?\]/, block);
   }
 
+  if (!text.includes("[auth.email.template.magic_link]")) {
+    text = text.replace(
+      /\n\[auth\.sms\]/,
+      `\n${DEMO_OTP_TEMPLATE_BLOCK}\n\n[auth.sms]`,
+    );
+  }
+
   fs.writeFileSync(configPath, text, "utf8");
-  log("supabase/config.toml : site_url + redirect URLs mobile fusionnés.");
+  log("supabase/config.toml : redirects + template OTP E-Samba fusionnés.");
 }
 
 function pushSupabaseConfig() {
