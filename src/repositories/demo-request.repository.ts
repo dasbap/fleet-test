@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { createEphemeralSupabaseClient } from "@/integrations/supabase/client";
 
 export interface DemoRequestInsert {
   full_name: string;
@@ -10,11 +10,12 @@ export interface DemoRequestInsert {
 }
 
 export class DemoRequestRepository {
-  async create(input: DemoRequestInsert): Promise<void> {
+  async create(input: DemoRequestInsert, verificationAccessToken: string): Promise<void> {
+    const client = createEphemeralSupabaseClient(verificationAccessToken);
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser();
+    } = await client.auth.getUser(verificationAccessToken);
 
     if (userError || !user || !user.email || user.email.toLowerCase() !== input.email.toLowerCase()) {
       throw new Error("Vérifiez votre adresse e-mail avec le code E-Samba avant d'envoyer la demande.");
@@ -34,7 +35,7 @@ export class DemoRequestRepository {
       verified_user_id: user.id,
     } as never;
 
-    const { error } = await supabase.from("demo_requests").insert(payload);
+    const { error } = await client.from("demo_requests").insert(payload);
 
     if (error) {
       console.error("Erreur création demande démo:", error);
