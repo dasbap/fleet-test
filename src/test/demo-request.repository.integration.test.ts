@@ -1,13 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createEphemeralSupabaseClient, getUser, insert } = vi.hoisted(() => ({
-  createEphemeralSupabaseClient: vi.fn(),
-  getUser: vi.fn(),
-  insert: vi.fn(),
-}));
-
-vi.mock("@/integrations/supabase/client", () => ({ createEphemeralSupabaseClient }));
-
 import { DemoRequestRepository } from "@/repositories/demo-request.repository";
 
 const input = {
@@ -19,46 +11,39 @@ const input = {
   country_code: "CM",
 };
 
+const fetchMock = vi.fn();
+
+function response(status: number, body: object) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: vi.fn().mockResolvedValue(body),
+  };
+}
+
 describe("DemoRequestRepository", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getUser.mockResolvedValue({
-      data: {
-        user: {
-          id: "verified-user",
-          email: input.email,
-          user_metadata: { demo_verification_pending: true },
-        },
-      },
-      error: null,
-    });
-    insert.mockResolvedValue({ error: null });
-    createEphemeralSupabaseClient.mockReturnValue({
-      auth: { getUser },
-      from: vi.fn(() => ({ insert })),
-    });
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockResolvedValue(response(201, { ok: true }));
   });
 
-  it("uses the verified token for the RLS insert", async () => {
+  it("uses the verified token for the BFF request", async () => {
     const repository = new DemoRequestRepository();
     await repository.create(input, "verified-jwt");
 
-    expect(createEphemeralSupabaseClient).toHaveBeenCalledWith("verified-jwt");
-    expect(getUser).toHaveBeenCalledWith("verified-jwt");
-    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
-      email: input.email,
-      verified_user_id: "verified-user",
-    }));
+    expect(fetchMock).toHaveBeenCalledWith("/api/demo/request", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer verified-jwt",
+      },
+      body: JSON.stringify(input),
+    });
   });
 
-  it("turns an RLS deployment failure into a user-facing configuration error", async () => {
-    insert.mockResolvedValue({
-      error: {
-        code: "42501",
-        message: 'new row violates row-level security policy for table "demo_requests"',
-        details: null,
-      },
-    });
+  it("turns a deployment failure into a user-facing configuration error", async () => {
+    fetchMock.mockResolvedValue(response(503, { ok: false, error: "server_configuration_error" }));
 
     const repository = new DemoRequestRepository();
     await expect(repository.create(input, "verified-jwt")).rejects.toThrow(
@@ -67,7 +52,7 @@ describe("DemoRequestRepository", () => {
   });
 
   it("rejects duplicate demo emails with a clear message", async () => {
-    insert.mockResolvedValue({ error: { code: "23505", message: "duplicate key" } });
+    fetchMock.mockResolvedValue(response(409, { ok: false, error: "demo_email_already_used" }));
     const repository = new DemoRequestRepository();
 
     await expect(repository.create(input, "verified-jwt")).rejects.toThrow(
