@@ -40,7 +40,15 @@ function serviceClient(options: any = {}) {
       createUser: vi.fn().mockResolvedValue({ data: { user: "createdUser" in options ? options.createdUser : { id: "prospect-1" } }, error: options.createError ?? null }),
       deleteUser,
     } },
-    rpc: vi.fn().mockResolvedValue({ data: "registration" in options ? options.registration : { ok: true, fleet_id: "fleet-1", trial_end: "2026-09-01" }, error: options.registrationError ?? null }),
+    rpc: vi.fn((name: string) => {
+      if (name === "demo_verified_user_id_by_email") {
+        return Promise.resolve({ data: options.verifiedUserId ?? null, error: options.verifiedUserLookupError ?? null });
+      }
+      return Promise.resolve({
+        data: "registration" in options ? options.registration : { ok: true, fleet_id: "fleet-1", trial_end: "2026-09-01" },
+        error: options.registrationError ?? null,
+      });
+    }),
     from: vi.fn(() => ({ insert: vi.fn().mockResolvedValue({ error: options.notificationError ?? null }) })),
     deleteUser,
   };
