@@ -13,11 +13,11 @@ export type {
 
 export interface CreateDemoPayload {
   email: string;
-  full_name: string;
-  company_name: string;
-  phone: string;
-  company_identifier: string;
-  country_code: string;
+  full_name?: string;
+  company_name?: string;
+  phone?: string;
+  company_identifier?: string;
+  country_code?: string;
   account_type: DemoAccountType;
   trial_days: number;
   label?: string;
@@ -61,16 +61,14 @@ export class AdminDemoService {
     accessToken: string | null | undefined,
     payload: CreateDemoPayload
   ): Promise<CreateDemoAccessResult> {
-    if (!accessToken) {
-      return { ok: false, error: "session_expirée" };
-    }
+    if (!accessToken) return { ok: false, error: "session_expirée" };
 
     const email = payload.email.trim().toLowerCase();
-    const fullName = payload.full_name.trim();
-    const companyName = payload.company_name.trim();
-    const phone = payload.phone.trim();
-    const companyIdentifier = payload.company_identifier.trim();
-    const countryCode = payload.country_code.trim().toUpperCase();
+    const fullName = payload.full_name?.trim() ?? "";
+    const companyName = payload.company_name?.trim() ?? "";
+    const phone = payload.phone?.trim() ?? "";
+    const companyIdentifier = payload.company_identifier?.trim() ?? "";
+    const countryCode = payload.country_code?.trim().toUpperCase() ?? "";
 
     if (!email) return { ok: false, error: "email_requis" };
     if (!fullName) return { ok: false, error: "nom_complet_requis" };
@@ -78,42 +76,24 @@ export class AdminDemoService {
     if (!phone) return { ok: false, error: "telephone_requis" };
     if (!companyIdentifier) return { ok: false, error: "identifiant_entreprise_requis" };
     if (!/^[A-Z]{2}$/.test(countryCode)) return { ok: false, error: "code_pays_invalide" };
-
-    if (payload.trial_days > MAX_DEMO_TRIAL_DAYS) {
-      return { ok: false, error: "duree_demo_max_31_jours" };
-    }
+    if (payload.trial_days > MAX_DEMO_TRIAL_DAYS) return { ok: false, error: "duree_demo_max_31_jours" };
 
     try {
-      const prospectData = await this.bffRepository.createProspect(
-        accessToken,
-        {
-          email,
-          full_name: fullName,
-          company_name: companyName,
-          phone,
-          company_identifier: companyIdentifier,
-          country_code: countryCode,
-          account_type: payload.account_type,
-          trial_days: payload.trial_days,
-          send_email: payload.send_email,
-          permanent_access: payload.permanent_access,
-        }
-      );
+      const prospectData = await this.bffRepository.createProspect(accessToken, {
+        email,
+        full_name: fullName,
+        company_name: companyName,
+        phone,
+        company_identifier: companyIdentifier,
+        country_code: countryCode,
+        account_type: payload.account_type,
+        trial_days: payload.trial_days,
+        send_email: payload.send_email,
+        permanent_access: payload.permanent_access,
+      });
 
-      if (prospectData.rateLimited) {
-        return {
-          ok: false,
-          error:
-            "Limite de créations atteinte (10/heure). Réessaie dans une heure.",
-        };
-      }
-
-      if (!prospectData.ok || !prospectData.user_id) {
-        return {
-          ok: false,
-          error: formatCreateAccessError(prospectData.error),
-        };
-      }
+      if (prospectData.rateLimited) return { ok: false, error: "Limite de créations atteinte (10/heure). Réessaie dans une heure." };
+      if (!prospectData.ok || !prospectData.user_id) return { ok: false, error: formatCreateAccessError(prospectData.error) };
 
       const linkData = await this.bffRepository.generateMagicLink(accessToken, {
         user_id: prospectData.user_id,
@@ -121,16 +101,8 @@ export class AdminDemoService {
         email,
         label: payload.label,
       });
-
-      if (linkData.rateLimited) {
-        return { ok: false, error: "Limite de génération de liens atteinte." };
-      }
-
-      return {
-        ok: true,
-        user_id: prospectData.user_id,
-        magic_url: linkData.magic_url,
-      };
+      if (linkData.rateLimited) return { ok: false, error: "Limite de génération de liens atteinte." };
+      return { ok: true, user_id: prospectData.user_id, magic_url: linkData.magic_url };
     } catch (err) {
       return { ok: false, error: String(err) };
     }
@@ -144,9 +116,7 @@ export class AdminDemoService {
 
   async reactivateAccount(userId: string, adminId: string, extendHours?: number): Promise<boolean> {
     if (!userId || !adminId) throw new Error("Identifiants utilisateur requis");
-    if (extendHours !== undefined && extendHours > MAX_DEMO_EXTENSION_HOURS) {
-      throw new Error("Une demo ne peut pas depasser un mois depuis sa creation");
-    }
+    if (extendHours !== undefined && extendHours > MAX_DEMO_EXTENSION_HOURS) throw new Error("Une demo ne peut pas depasser un mois depuis sa creation");
     const result = await this.repository.reactivateAccount(userId, adminId, extendHours ?? null);
     return result.ok;
   }
