@@ -37,6 +37,7 @@ describe("DemoRequestService", () => {
       service.submitRequest({
         name: "  ",
         email: "contact@transcam.cm",
+        company: "TransCam",
         phone: "+237600000000",
         companyIdentifier: "RCCM-DLA-2024-B-123",
         countryCode: "CM",
@@ -49,6 +50,7 @@ describe("DemoRequestService", () => {
       service.submitRequest({
         name: "Jean",
         email: "contact",
+        company: "TransCam",
         phone: "+237600000000",
         companyIdentifier: "RCCM-DLA-2024-B-123",
         countryCode: "CM",
@@ -61,6 +63,7 @@ describe("DemoRequestService", () => {
       service.submitRequest({
         name: "Jean",
         email: "contact@transcam.cm",
+        company: "TransCam",
         phone: "+237600000000",
         companyIdentifier: " ",
         countryCode: "CM",
@@ -73,6 +76,7 @@ describe("DemoRequestService", () => {
       service.submitRequest({
         name: "Jean",
         email: "contact@transcam.cm",
+        company: "TransCam",
         phone: "+237600000000",
         companyIdentifier: "RCCM-DLA-2024-B-123",
         countryCode: "SN",
