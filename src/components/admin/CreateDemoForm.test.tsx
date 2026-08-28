@@ -30,7 +30,7 @@ describe("CreateDemoForm", () => {
     render(<CreateDemoForm onSubmit={vi.fn()} />);
     expect(screen.getByLabelText(/nom complet/i)).toBeRequired();
     expect(screen.getByLabelText(/email \*/i)).toBeRequired();
-    expect(screen.getByLabelText(/entreprise \*/i)).toBeRequired();
+    expect(screen.getByLabelText(/^entreprise \*$/i)).toBeRequired();
     expect(screen.getByLabelText(/téléphone/i)).toBeRequired();
     expect(screen.getByLabelText(/identifiant entreprise/i)).toBeRequired();
     expect(screen.getByText(/pays \*/i)).toBeInTheDocument();
