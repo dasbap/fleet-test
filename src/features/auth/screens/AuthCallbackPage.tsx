@@ -17,8 +17,8 @@ type CallbackState = "processing" | "error";
 
 /**
  * Callback Supabase Auth — PKCE (magic link, confirmation email, etc.).
- * Les magic links de vérification d'une demande de démo reviennent sur /contact
- * au lieu d'entrer dans l'aiguillage produit /post-login.
+ * Une vérification de demande de démo reste strictement dans le parcours public :
+ * elle ne passe jamais par /post-login ou /start.
  */
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -49,35 +49,58 @@ export default function AuthCallbackPage() {
     }
 
     if (!code) {
-      setErrorMessage("Paramètre de connexion manquant. Réessaie depuis l'email.");
+      setErrorMessage("Paramètre de vérification manquant. Réessayez depuis l'e-mail.");
       setState("error");
       return;
     }
 
-    const timeout = setTimeout(() => {
-      setErrorMessage("La connexion a pris trop de temps. Réessaie depuis l'email.");
-      setState("error");
-    }, 10_000);
+    let cancelled = false;
 
-    void supabase.auth.getSession();
+    void (async () => {
+      const timeout = window.setTimeout(() => {
+        if (!cancelled) {
+          setErrorMessage("La vérification a pris trop de temps. Demandez un nouveau lien depuis le formulaire de démo.");
+          setState("error");
+        }
+      }, 12_000);
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session) {
-        clearTimeout(timeout);
-        listener.subscription.unsubscribe();
+      try {
+        // getSession() ne garantit pas l'échange du code PKCE. On échange donc
+        // explicitement le ?code= reçu dans le magic link.
+        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError || !data.session) {
+          throw exchangeError ?? new Error("verification_session_missing");
+        }
+        if (cancelled) return;
 
-        if (demoIntent && session.user.user_metadata?.demo_verification_pending === true) {
+        window.clearTimeout(timeout);
+
+        if (demoIntent) {
+          if (data.session.user.user_metadata?.demo_verification_pending !== true) {
+            await supabase.auth.signOut();
+            setErrorMessage("Cette adresse e-mail est déjà associée à un compte E-Samba.");
+            setState("error");
+            return;
+          }
+
+          // Ne jamais aiguiller une vérification commerciale vers le produit.
           navigate(`${ROUTE_PATHS.contact}?demo_email_verified=1`, { replace: true });
           return;
         }
 
         navigate(ROUTE_PATHS.postLogin, { replace: true });
+      } catch (exchangeError) {
+        window.clearTimeout(timeout);
+        console.error("[auth-callback] code exchange failed:", exchangeError);
+        if (!cancelled) {
+          setErrorMessage("Le lien de vérification est invalide ou expiré. Demandez un nouveau lien depuis le formulaire.");
+          setState("error");
+        }
       }
-    });
+    })();
 
     return () => {
-      clearTimeout(timeout);
-      listener.subscription.unsubscribe();
+      cancelled = true;
     };
   }, [navigate, searchParams]);
 
@@ -96,9 +119,9 @@ export default function AuthCallbackPage() {
             <Button
               className="w-full"
               variant="outline"
-              onClick={() => navigate(ROUTE_PATHS.auth, { replace: true })}
+              onClick={() => navigate(ROUTE_PATHS.contact, { replace: true })}
             >
-              Retour à la connexion
+              Retour à la demande de démo
             </Button>
           </div>
         </Card>
@@ -112,7 +135,7 @@ export default function AuthCallbackPage() {
         <CardHeader className="text-center">
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary mb-2" />
           <CardTitle>Vérification en cours…</CardTitle>
-          <CardDescription>Quelques secondes.</CardDescription>
+          <CardDescription>Validation de votre adresse e-mail.</CardDescription>
         </CardHeader>
       </Card>
     </div>
