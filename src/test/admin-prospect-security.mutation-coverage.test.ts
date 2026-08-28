@@ -14,6 +14,18 @@ vi.mock("@/server/env", () => ({ getAppUrl: () => "https://app.test", getSupabas
 
 import { registerAdminProspectSecurityRoutes } from "@/server/http/routes/adminProspectSecurity";
 
+const completeProfile = {
+  full_name: "Awa Test",
+  company_name: "Acme",
+  phone: "+237699000000",
+  company_identifier: "RCCM-123",
+  country_code: "CM",
+};
+
+function validPayload(overrides: Record<string, unknown> = {}) {
+  return { email: "a@b.com", ...completeProfile, ...overrides };
+}
+
 function userClient(options: any = {}) {
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: "user" in options ? options.user : { id: "admin-1" } }, error: options.authError ?? null }) },
@@ -58,20 +70,27 @@ describe("admin prospect security mutation coverage", () => {
   });
 
   it("requires authentication and admin permissions", async () => {
-    expect((await post({ email: "a@b.com" }, false)).status).toBe(401);
+    expect((await post(validPayload(), false)).status).toBe(401);
     createSupabaseUserClient.mockReturnValue(userClient({ user: null }));
-    expect((await post({ email: "a@b.com" })).status).toBe(401);
+    expect((await post(validPayload())).status).toBe(401);
     createSupabaseUserClient.mockReturnValue(userClient({ authError: { message: "bad" } }));
-    expect((await post({ email: "a@b.com" })).status).toBe(401);
+    expect((await post(validPayload())).status).toBe(401);
     createSupabaseUserClient.mockReturnValue(userClient({ isAdmin: false }));
-    const denied = await post({ email: "a@b.com" });
+    const denied = await post(validPayload());
     expect(denied.status).toBe(403);
     expect(await denied.json()).toEqual({ ok: false, error: "forbidden_not_platform_admin" });
   });
 
   it("rejects malformed bodies and business-invalid payloads", async () => {
     expect((await post("{")).status).toBe(400);
-    for (const body of [{ email: "bad" }, { email: "a@b.com", company_name: "" }, { email: "a@b.com", account_type: "bad" }, { email: "a@b.com", trial_days: 0 }, { email: "a@b.com", trial_days: 32 }, { email: "a@b.com", fleet_id: "bad" }]) {
+    for (const body of [
+      validPayload({ email: "bad" }),
+      validPayload({ company_name: "" }),
+      validPayload({ account_type: "bad" }),
+      validPayload({ trial_days: 0 }),
+      validPayload({ trial_days: 32 }),
+      validPayload({ fleet_id: "bad" }),
+    ]) {
       const response = await post(body);
       expect(response.status).toBe(400);
       expect((await response.json()).error).toBe("invalid_payload");
@@ -80,10 +99,10 @@ describe("admin prospect security mutation coverage", () => {
 
   it("requires super admin for permanent access and service client", async () => {
     createSupabaseUserClient.mockReturnValue(userClient({ isSuperAdmin: false }));
-    expect((await post({ email: "a@b.com", permanent_access: true })).status).toBe(403);
+    expect((await post(validPayload({ permanent_access: true }))).status).toBe(403);
     createSupabaseUserClient.mockReturnValue(userClient());
     createSupabaseServiceClient.mockReturnValue(null);
-    expect((await post({ email: "a@b.com" })).status).toBe(503);
+    expect((await post(validPayload())).status).toBe(503);
   });
 
   it("creates a normalized prospect", async () => {
@@ -91,7 +110,7 @@ describe("admin prospect security mutation coverage", () => {
     createSupabaseServiceClient.mockReturnValue(admin);
     const resetPasswordForEmail = vi.fn().mockResolvedValue({ error: null });
     createClient.mockReturnValue({ auth: { resetPasswordForEmail } });
-    const response = await post({ email: "USER@Example.COM", company_name: "Acme", fleet_id: "00000000-0000-4000-8000-000000000001" });
+    const response = await post(validPayload({ email: "USER@Example.COM", fleet_id: "00000000-0000-4000-8000-000000000001" }));
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual(expect.objectContaining({ ok: true, user_id: "prospect-1", email: "user@example.com", fleet_id: "fleet-1", permanent_access: false, must_set_password: true }));
     expect(admin.rpc).toHaveBeenCalledWith("prospect_create_account", expect.objectContaining({ p_email: "user@example.com", p_company_name: "Acme", p_trial_days: 7, p_account_type: "prospect", p_permanent_access: false }));
@@ -100,13 +119,13 @@ describe("admin prospect security mutation coverage", () => {
 
   it("handles auth creation and registration failures with rollback", async () => {
     createSupabaseServiceClient.mockReturnValue(serviceClient({ createError: { message: "create" } }));
-    expect((await post({ email: "a@b.com" })).status).toBe(500);
+    expect((await post(validPayload())).status).toBe(500);
     createSupabaseServiceClient.mockReturnValue(serviceClient({ createdUser: null }));
-    expect((await post({ email: "a@b.com" })).status).toBe(500);
+    expect((await post(validPayload())).status).toBe(500);
     for (const options of [{ registration: null }, { registration: { ok: false } }, { registrationError: { message: "rpc" } }]) {
       const admin = serviceClient(options);
       createSupabaseServiceClient.mockReturnValue(admin);
-      const response = await post({ email: "a@b.com" });
+      const response = await post(validPayload());
       expect(response.status).toBe(500);
       expect(admin.deleteUser).toHaveBeenCalledWith("prospect-1");
     }
@@ -116,7 +135,7 @@ describe("admin prospect security mutation coverage", () => {
     const admin = serviceClient();
     createSupabaseServiceClient.mockReturnValue(admin);
     createClient.mockReturnValue({ auth: { resetPasswordForEmail: vi.fn().mockResolvedValue({ error: { message: "mail" } }) } });
-    const response = await post({ email: "a@b.com" });
+    const response = await post(validPayload());
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({ ok: false, error: "password_setup_email_failed" });
     expect(admin.deleteUser).toHaveBeenCalledWith("prospect-1");
