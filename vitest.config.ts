@@ -17,11 +17,6 @@ const repoRoot = (() => {
 })();
 const runSupabaseIntegration = process.env.RUN_SUPABASE_INTEGRATION === "1";
 
-/**
- * Plusieurs paquets @radix-ui déclarent `module` / `exports.import` vers `dist/index.mjs`
- * alors que seul `dist/index.js` est présent dans node_modules (artefact npm / Windows).
- * Vitest/Vite échoue alors sur « Cannot find module … index.mjs ».
- */
 function radixPreferJsWhenMjsMissing(): Plugin {
   return {
     name: "radix-prefer-js-when-mjs-missing",
