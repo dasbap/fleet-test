@@ -3,7 +3,7 @@ import { DemoRequestRepository } from "@/repositories/demo-request.repository";
 export interface SubmitDemoRequestInput {
   name: string;
   email: string;
-  company: string;
+  company?: string;
   phone: string;
   companyIdentifier: string;
   countryCode: string;
@@ -19,7 +19,7 @@ export class DemoRequestService {
     const fullName = input.name.trim();
     const email = input.email.trim().toLowerCase();
     const phone = input.phone.trim();
-    const company = input.company.trim();
+    const company = input.company?.trim() ?? "";
     const companyIdentifier = input.companyIdentifier.trim();
     const countryCode = input.countryCode.trim().toUpperCase();
 
