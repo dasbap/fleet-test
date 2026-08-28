@@ -12,15 +12,16 @@ describe("demo magic-link verification flow", () => {
   });
 
   it("redirige une verification demo vers contact et non post-login", () => {
-    expect(callbackSource).toContain('demo_verification_pending === true');
-    expect(callbackSource).toContain('ROUTE_PATHS.contact}?demo_email_verified=1');
+    expect(callbackSource).toContain('demo_verification_pending !== true');
+    expect(callbackSource).toContain('ROUTE_PATHS.contact}?demo_request_sent=1');
     expect(callbackSource).toContain('DEMO_VERIFICATION_INTENT_KEY');
+    expect(callbackSource).toContain('await supabase.auth.signOut({ scope: "local" })');
   });
 
   it("reprend la session verifiee et restaure le formulaire", () => {
     expect(formSource).toContain('supabase.auth.getSession()');
     expect(formSource).toContain('setEmailVerificationToken(data.session.access_token)');
     expect(formSource).toContain('setForm(draft)');
-    expect(formSource).toContain('await supabase.auth.signOut()');
+    expect(formSource).toContain('await supabase.auth.signOut({ scope: "local" })');
   });
 });
