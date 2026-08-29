@@ -29,7 +29,7 @@ concurrency:
 jobs:
   sync:
     name: Sync Vercel environment
-    runs-on: [self-hosted, Linux, runner_1]
+    runs-on: [self-hosted, Linux]
     environment: production
     timeout-minutes: 20
 
