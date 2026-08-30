@@ -1,0 +1,202 @@
+﻿name: Provision Prod Demo Users
+
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: Number of final demo users to keep
+        required: true
+        default: "5"
+      test_sixth:
+        description: Create, test, and delete utilisateur6@tmp.com
+        required: true
+        default: "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: provision-prod-demo-users
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    runs-on: [self-hosted, Linux]
+    environment: production
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL || vars.VITE_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      APP_URL: https://www.e-samba.com
+      COUNT: ${{ github.event.inputs.count }}
+      TEST_SIXTH: ${{ github.event.inputs.test_sixth }}
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+
+      - name: Provision demo users
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { appendFile } from "node:fs/promises";
+
+          const supabaseUrl = (process.env.SUPABASE_URL || "").replace(/[\r\n]+$/g, "").trim().replace(/\/+$/, "");
+          const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+          const appUrl = (process.env.APP_URL || "https://www.e-samba.com").replace(/\/+$/, "");
+          const keepCount = Number.parseInt(process.env.COUNT || "5", 10);
+          const testSixth = process.env.TEST_SIXTH === "true";
+
+          if (!supabaseUrl || !serviceRoleKey || !Number.isInteger(keepCount) || keepCount < 1 || keepCount > 5) {
+            throw new Error("invalid_configuration");
+          }
+
+          const authHeaders = {
+            apikey: serviceRoleKey,
+            authorization: `Bearer ${serviceRoleKey}`,
+            "content-type": "application/json",
+          };
+
+          async function supabaseJson(path, init = {}) {
+            const response = await fetch(`${supabaseUrl}${path}`, {
+              ...init,
+              headers: { ...authHeaders, ...(init.headers || {}) },
+            });
+            const text = await response.text();
+            const data = text ? JSON.parse(text) : null;
+            if (!response.ok) throw new Error(`${path}: ${response.status} ${data?.msg || data?.message || data?.error || "request_failed"}`);
+            return data;
+          }
+
+          async function restRpc(name, body) {
+            return await supabaseJson(`/rest/v1/rpc/${name}`, { method: "POST", body: JSON.stringify(body) });
+          }
+
+          async function restDelete(table, column, value) {
+            if (!value) return;
+            const query = `${encodeURIComponent(column)}=eq.${encodeURIComponent(value)}`;
+            await supabaseJson(`/rest/v1/${table}?${query}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+          }
+
+          function tempPassword() {
+            return `Aa1!${crypto.randomUUID().replaceAll("-", "")}`;
+          }
+
+          async function findUser(email) {
+            const data = await supabaseJson("/auth/v1/admin/users?page=1&per_page=1000", { method: "GET" });
+            return (data.users || []).find((user) => (user.email || "").toLowerCase() === email.toLowerCase()) || null;
+          }
+
+          async function createAuthUser(index, email) {
+            const issuedAt = new Date().toISOString();
+            const data = await supabaseJson("/auth/v1/admin/users", {
+              method: "POST",
+              body: JSON.stringify({
+                email,
+                password: tempPassword(),
+                email_confirm: true,
+                app_metadata: {
+                  must_set_password: true,
+                  temporary_password_active: true,
+                  temporary_password_issued_at: issuedAt,
+                },
+                user_metadata: {
+                  full_name: `utilisateur_${index}`,
+                  company_name: `Compte demo ${index}`,
+                  phone: `+23769000000${index}`,
+                  company_identifier: `TMP-DEMO-${index}`,
+                  country_code: "CM",
+                  account_type: "prospect",
+                  trial_days: 7,
+                  permanent_access: false,
+                  created_by_demo: true,
+                },
+              }),
+            });
+            if (!data?.id) throw new Error(`${email}: auth_create_failed`);
+            return data;
+          }
+
+          async function createOrGetUser(index) {
+            const email = `utilisateur${index}@tmp.com`;
+            let user = await findUser(email);
+            let fleetId = null;
+
+            if (!user) {
+              user = await createAuthUser(index, email);
+              const registration = await restRpc("prospect_create_account", {
+                p_user_id: user.id,
+                p_email: email,
+                p_company_name: `Compte demo ${index}`,
+                p_invited_by: null,
+                p_fleet_id: null,
+                p_trial_days: 7,
+                p_account_type: "prospect",
+                p_permanent_access: false,
+              });
+              if (!registration?.ok) throw new Error(`${email}: prospect_registration_failed`);
+              fleetId = registration.fleet_id || null;
+            }
+
+            const linkData = await restRpc("demo_create_magic_link", {
+              p_user_id: user.id,
+              p_fleet_id: fleetId,
+              p_email: email,
+              p_label: `Compte utilisateur ${index}`,
+              p_expires_at: null,
+              p_created_by: null,
+            });
+            if (!linkData?.ok || !linkData.token) throw new Error(`${email}: magic_link_failed`);
+
+            return {
+              email,
+              user_id: user.id,
+              fleet_id: fleetId,
+              link: `${appUrl}/demo/access?token=${linkData.token}`,
+            };
+          }
+
+          async function deleteUserAndRows(record) {
+            if (!record?.user_id) return;
+            await restDelete("demo_magic_links", "user_id", record.user_id);
+            await restDelete("demo_sessions", "user_id", record.user_id);
+            await restDelete("demo_profiles", "user_id", record.user_id);
+            await restDelete("prospect_registrations", "user_id", record.user_id);
+            if (record.fleet_id) await restDelete("flottes", "id", record.fleet_id);
+            await supabaseJson(`/auth/v1/admin/users/${record.user_id}`, { method: "DELETE" });
+          }
+
+          const kept = [];
+          for (let index = 1; index <= keepCount; index += 1) kept.push(await createOrGetUser(index));
+
+          let sixthTest = null;
+          if (testSixth) {
+            const sixth = await createOrGetUser(6);
+            const token = new URL(sixth.link).searchParams.get("token");
+            const response = await fetch(`${appUrl}/api/demo/magic-link`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ action: "validate", token }),
+            });
+            const data = await response.json().catch(() => ({ ok: false, error: "invalid_json" }));
+            sixthTest = { status: response.status, ok: Boolean(response.ok && data.ok) };
+            await deleteUserAndRows(sixth);
+            if (!sixthTest.ok) throw new Error(`sixth_link_test_failed:${JSON.stringify(sixthTest)}`);
+          }
+
+          const summary = [
+            "### Comptes demo prod",
+            "",
+            ...kept.map((user, index) => `${index + 1}. ${user.email} - ${user.link}`),
+            "",
+            `Sixieme compte teste et supprime: ${sixthTest?.ok === true}`,
+          ].join("\n");
+          if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
+          console.log(JSON.stringify({ ok: true, kept, sixth_test: sixthTest }, null, 2));
+          NODE
