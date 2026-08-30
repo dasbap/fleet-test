@@ -1,4 +1,4 @@
-﻿name: Provision Prod Demo Users
+name: Provision Prod Demo Users
 
 on:
   workflow_dispatch:
@@ -11,6 +11,9 @@ on:
         description: Create, test, and delete utilisateur6@tmp.com
         required: true
         default: "true"
+      links_public_key_b64:
+        description: Base64-encoded PEM public key used to encrypt generated links
+        required: true
 
 permissions:
   contents: read
@@ -23,10 +26,11 @@ jobs:
   provision:
     runs-on: [self-hosted, Linux]
     environment: production
-    timeout-minutes: 20
+    timeout-minutes: 10
     env:
       SUPABASE_URL: ${{ vars.SUPABASE_URL || vars.VITE_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      LINKS_PUBLIC_KEY_B64: ${{ github.event.inputs.links_public_key_b64 }}
       APP_URL: https://www.e-samba.com
       COUNT: ${{ github.event.inputs.count }}
       TEST_SIXTH: ${{ github.event.inputs.test_sixth }}
@@ -46,14 +50,16 @@ jobs:
           set -euo pipefail
           node --input-type=module <<'NODE'
           import { appendFile } from "node:fs/promises";
+          import { createCipheriv, publicEncrypt, randomBytes } from "node:crypto";
 
           const supabaseUrl = (process.env.SUPABASE_URL || "").replace(/[\r\n]+$/g, "").trim().replace(/\/+$/, "");
           const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+          const publicKeyB64 = (process.env.LINKS_PUBLIC_KEY_B64 || "").trim();
           const appUrl = (process.env.APP_URL || "https://www.e-samba.com").replace(/\/+$/, "");
           const keepCount = Number.parseInt(process.env.COUNT || "5", 10);
           const testSixth = process.env.TEST_SIXTH === "true";
 
-          if (!supabaseUrl || !serviceRoleKey || !Number.isInteger(keepCount) || keepCount < 1 || keepCount > 5) {
+          if (!supabaseUrl || !serviceRoleKey || !publicKeyB64 || !Number.isInteger(keepCount) || keepCount < 1 || keepCount > 5) {
             throw new Error("invalid_configuration");
           }
 
@@ -63,11 +69,21 @@ jobs:
             "content-type": "application/json",
           };
 
+          async function fetchWithTimeout(url, init = {}, label = url) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(new Error(`${label}: timeout`)), 15000);
+            try {
+              return await fetch(url, { ...init, signal: controller.signal });
+            } finally {
+              clearTimeout(timeout);
+            }
+          }
+
           async function supabaseJson(path, init = {}) {
-            const response = await fetch(`${supabaseUrl}${path}`, {
+            const response = await fetchWithTimeout(`${supabaseUrl}${path}`, {
               ...init,
               headers: { ...authHeaders, ...(init.headers || {}) },
-            });
+            }, path);
             const text = await response.text();
             const data = text ? JSON.parse(text) : null;
             if (!response.ok) throw new Error(`${path}: ${response.status} ${data?.msg || data?.message || data?.error || "request_failed"}`);
@@ -84,13 +100,28 @@ jobs:
             await supabaseJson(`/rest/v1/${table}?${query}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
           }
 
-          function tempPassword() {
-            return `Aa1!${crypto.randomUUID().replaceAll("-", "")}`;
+          async function getExistingActiveLink(email) {
+            const query = new URLSearchParams({
+              select: "token,user_id,fleet_id,email,is_active,expires_at,created_at",
+              email: `eq.${email}`,
+              is_active: "eq.true",
+              order: "created_at.desc",
+              limit: "1",
+            });
+            const rows = await supabaseJson(`/rest/v1/demo_magic_links?${query.toString()}`, { method: "GET" });
+            const row = Array.isArray(rows) ? rows[0] : null;
+            if (!row?.token) return null;
+            return {
+              email,
+              user_id: row.user_id,
+              fleet_id: row.fleet_id || null,
+              link: `${appUrl}/demo/access?token=${row.token}`,
+              reused: true,
+            };
           }
 
-          async function findUser(email) {
-            const data = await supabaseJson("/auth/v1/admin/users?page=1&per_page=1000", { method: "GET" });
-            return (data.users || []).find((user) => (user.email || "").toLowerCase() === email.toLowerCase()) || null;
+          function tempPassword() {
+            return `Aa1!${crypto.randomUUID().replaceAll("-", "")}`;
           }
 
           async function createAuthUser(index, email) {
@@ -125,24 +156,22 @@ jobs:
 
           async function createOrGetUser(index) {
             const email = `utilisateur${index}@tmp.com`;
-            let user = await findUser(email);
-            let fleetId = null;
+            const existingLink = await getExistingActiveLink(email);
+            if (existingLink) return existingLink;
 
-            if (!user) {
-              user = await createAuthUser(index, email);
-              const registration = await restRpc("prospect_create_account", {
-                p_user_id: user.id,
-                p_email: email,
-                p_company_name: `Compte demo ${index}`,
-                p_invited_by: null,
-                p_fleet_id: null,
-                p_trial_days: 7,
-                p_account_type: "prospect",
-                p_permanent_access: false,
-              });
-              if (!registration?.ok) throw new Error(`${email}: prospect_registration_failed`);
-              fleetId = registration.fleet_id || null;
-            }
+            const user = await createAuthUser(index, email);
+            const registration = await restRpc("prospect_create_account", {
+              p_user_id: user.id,
+              p_email: email,
+              p_company_name: `Compte demo ${index}`,
+              p_invited_by: null,
+              p_fleet_id: null,
+              p_trial_days: 7,
+              p_account_type: "prospect",
+              p_permanent_access: false,
+            });
+            if (!registration?.ok) throw new Error(`${email}: prospect_registration_failed`);
+            const fleetId = registration.fleet_id || null;
 
             const linkData = await restRpc("demo_create_magic_link", {
               p_user_id: user.id,
@@ -159,6 +188,7 @@ jobs:
               user_id: user.id,
               fleet_id: fleetId,
               link: `${appUrl}/demo/access?token=${linkData.token}`,
+              reused: false,
             };
           }
 
@@ -172,31 +202,55 @@ jobs:
             await supabaseJson(`/auth/v1/admin/users/${record.user_id}`, { method: "DELETE" });
           }
 
+          function encryptPayload(payload) {
+            const publicKey = Buffer.from(publicKeyB64, "base64").toString("utf8");
+            const key = randomBytes(32);
+            const iv = randomBytes(12);
+            const cipher = createCipheriv("aes-256-gcm", key, iv);
+            const plaintext = Buffer.from(JSON.stringify(payload), "utf8");
+            const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+            const tag = cipher.getAuthTag();
+            const encryptedKey = publicEncrypt({ key: publicKey, oaepHash: "sha256" }, key);
+            return {
+              version: 1,
+              key: encryptedKey.toString("base64"),
+              iv: iv.toString("base64"),
+              tag: tag.toString("base64"),
+              ciphertext: encrypted.toString("base64"),
+            };
+          }
+
           const kept = [];
-          for (let index = 1; index <= keepCount; index += 1) kept.push(await createOrGetUser(index));
+          for (let index = 1; index <= keepCount; index += 1) {
+            const record = await createOrGetUser(index);
+            kept.push(record);
+            console.log(JSON.stringify({ event: "kept_user_ready", email: record.email, reused: record.reused === true }));
+          }
 
           let sixthTest = null;
           if (testSixth) {
             const sixth = await createOrGetUser(6);
-            const token = new URL(sixth.link).searchParams.get("token");
-            const response = await fetch(`${appUrl}/api/demo/magic-link`, {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ action: "validate", token }),
-            });
-            const data = await response.json().catch(() => ({ ok: false, error: "invalid_json" }));
-            sixthTest = { status: response.status, ok: Boolean(response.ok && data.ok) };
-            await deleteUserAndRows(sixth);
-            if (!sixthTest.ok) throw new Error(`sixth_link_test_failed:${JSON.stringify(sixthTest)}`);
+            try {
+              const token = new URL(sixth.link).searchParams.get("token");
+              const response = await fetchWithTimeout(`${appUrl}/api/demo/magic-link`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ action: "validate", token }),
+              }, "public_demo_magic_link_validate");
+              const data = await response.json().catch(() => ({ ok: false, error: "invalid_json" }));
+              sixthTest = { status: response.status, ok: Boolean(response.ok && data.ok), error: data?.error || null };
+            } catch (error) {
+              sixthTest = { status: 0, ok: false, error: error?.message || "request_failed" };
+            } finally {
+              await deleteUserAndRows(sixth);
+            }
+            if (!sixthTest.ok) console.log(JSON.stringify({ event: "sixth_test_failed", status: sixthTest.status, error: sixthTest.error }));
           }
 
-          const summary = [
-            "### Comptes demo prod",
-            "",
-            ...kept.map((user, index) => `${index + 1}. ${user.email} - ${user.link}`),
-            "",
-            `Sixieme compte teste et supprime: ${sixthTest?.ok === true}`,
-          ].join("\n");
-          if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
-          console.log(JSON.stringify({ ok: true, kept, sixth_test: sixthTest }, null, 2));
+          const payload = { ok: true, generated_at: new Date().toISOString(), kept, sixth_test: sixthTest };
+          const encrypted = encryptPayload(payload);
+          console.log(`ENCRYPTED_DEMO_LINKS:${JSON.stringify(encrypted)}`);
+          if (process.env.GITHUB_STEP_SUMMARY) {
+            await appendFile(process.env.GITHUB_STEP_SUMMARY, `Demo users ready: ${kept.length}\nSixth account tested and deleted: ${sixthTest?.ok === true}\nEncrypted payload written to logs.\n`);
+          }
           NODE
