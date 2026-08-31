@@ -19,8 +19,8 @@ jobs:
     timeout-minutes: 15
     env:
       API_BASE_URL: https://www.e-samba.com
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
       ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
@@ -31,13 +31,30 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-      - name: Validate secrets
+      - name: Validate configuration
         run: |
           test -n "$ADMIN_EMAIL" || { echo "::error::ADMIN_EMAIL secret missing"; exit 1; }
           test -n "$ADMIN_PASSWORD" || { echo "::error::ADMIN_PASSWORD secret missing"; exit 1; }
           test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY secret missing"; exit 1; }
-          test -n "$VITE_SUPABASE_URL" || { echo "::error::VITE_SUPABASE_URL secret missing"; exit 1; }
-          test -n "$VITE_SUPABASE_ANON_KEY" || { echo "::error::VITE_SUPABASE_ANON_KEY secret missing"; exit 1; }
+          test -n "$VITE_SUPABASE_URL" || { echo "::error::VITE_SUPABASE_URL variable missing"; exit 1; }
+          test -n "$VITE_SUPABASE_ANON_KEY" || { echo "::error::VITE_SUPABASE_ANON_KEY variable missing"; exit 1; }
+          node <<'NODE'
+          const urlRef = new URL(process.env.VITE_SUPABASE_URL).hostname.split('.')[0];
+          const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+          let keyRef = null;
+          if (key.split('.').length === 3) {
+            try {
+              const payload = JSON.parse(Buffer.from(key.split('.')[1], 'base64url').toString('utf8'));
+              keyRef = payload.ref || null;
+            } catch {}
+          }
+          console.log(`Supabase URL project ref: ${urlRef}`);
+          console.log(`Service role project ref: ${keyRef ?? 'non-decodable-key'}`);
+          if (keyRef && keyRef !== urlRef) {
+            console.error(`::error::Supabase project mismatch: URL=${urlRef}, service_role=${keyRef}`);
+            process.exit(1);
+          }
+          NODE
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Run live create-user smoke test
