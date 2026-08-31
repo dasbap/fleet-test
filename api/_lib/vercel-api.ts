@@ -13,18 +13,46 @@ export interface SupabaseEnv {
   appUrl: string;
 }
 
+function readEnv(...names: string[]): string {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+function stripTrailingSlashes(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
 export function getSupabaseEnv(): SupabaseEnv {
   return {
-    url: process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "",
-    anonKey:
-      process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? "",
-    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-    adminSecret: process.env.ADMIN_SECRET ?? "",
-    appUrl:
-      process.env.VITE_APP_URL ??
-      process.env.APP_URL ??
-      "https://www.e-samba.com",
+    url: stripTrailingSlashes(readEnv("SUPABASE_URL", "VITE_SUPABASE_URL")),
+    anonKey: readEnv("SUPABASE_ANON_KEY", "VITE_SUPABASE_ANON_KEY"),
+    serviceRoleKey: readEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    adminSecret: readEnv("ADMIN_SECRET"),
+    appUrl: stripTrailingSlashes(
+      readEnv("VITE_APP_URL", "APP_URL") || "https://www.e-samba.com",
+    ),
   };
+}
+
+export async function fetchWithTimeout(
+  input: Parameters<typeof fetch>[0],
+  init: Parameters<typeof fetch>[1] = {},
+  timeoutMs = 15_000,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export function isFetchTimeout(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
 }
 
 function getRequestOrigin(req: VercelRequest): string {
