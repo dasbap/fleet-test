@@ -1,7 +1,7 @@
 /** @vitest-environment node */
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
-import { applyCors } from "../../api/_lib/vercel-api";
+import { applyCors, getSupabaseEnv } from "../../api/_lib/vercel-api";
 
 describe("Vercel API CORS", () => {
   const originalEnv = { ...process.env };
@@ -34,6 +34,23 @@ describe("Vercel API CORS", () => {
     expect(headers.get("Vary")).toBe("Origin");
   });
 
+
+  it("nettoie les retours ligne dans les variables Supabase Vercel", () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co \r\n";
+    process.env.SUPABASE_ANON_KEY = " anon-key \n";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = " service-role \r\n";
+    process.env.ADMIN_SECRET = " admin-secret \n";
+    process.env.APP_URL = " https://www.e-samba.com/ \r\n";
+    delete process.env.VITE_APP_URL;
+
+    expect(getSupabaseEnv()).toEqual({
+      url: "https://example.supabase.co",
+      anonKey: "anon-key",
+      serviceRoleKey: "service-role",
+      adminSecret: "admin-secret",
+      appUrl: "https://www.e-samba.com",
+    });
+  });
   it("accepte localhost uniquement pour le developpement", () => {
     process.env.NODE_ENV = "development";
     const headers = applyOrigin("http://localhost:8080");

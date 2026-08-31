@@ -8,7 +8,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   applyCors,
+  fetchWithTimeout,
   handlePreflight,
+  isFetchTimeout,
   requirePlatformAdmin,
 } from "../_lib/vercel-api.js";
 
@@ -58,7 +60,7 @@ export default async function handler(
   }
 
   try {
-    const upstream = await fetch(
+    const upstream = await fetchWithTimeout(
       `${auth.env.url}/functions/v1/create-prospect-account`,
       {
         method: "POST",
@@ -97,6 +99,10 @@ export default async function handler(
     );
     res.status(201).json(data);
   } catch (err) {
+    if (isFetchTimeout(err)) {
+      res.status(504).json({ ok: false, error: "upstream_timeout" });
+      return;
+    }
     const message = err instanceof Error ? err.message : String(err);
     console.error("[bff/create-prospect] fetch error:", message);
     res.status(500).json({ ok: false, error: message });
