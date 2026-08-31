@@ -1,0 +1,86 @@
+name: Demo request acceptance lifecycle
+
+on:
+  push:
+    branches:
+      - test/demo-request-acceptance-e2e
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-lifecycle-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  demo-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.109.1
+          github-token: ${{ github.token }}
+
+      - name: Prepare local Supabase ports
+        run: node scripts/prepare-local-supabase-ports.mjs
+
+      - name: Start local Supabase
+        run: supabase start -x vector,logflare
+
+      - name: Replay migrations
+        run: supabase db reset --no-seed
+
+      - name: Export local environment
+        run: |
+          status_file=/tmp/supabase-demo-e2e.env
+          supabase status -o env > "$status_file"
+          set -a
+          source "$status_file"
+          set +a
+
+          test -n "${API_URL:-}" || { echo "::error::API_URL missing"; exit 1; }
+          test -n "${ANON_KEY:-}" || { echo "::error::ANON_KEY missing"; exit 1; }
+          test -n "${SERVICE_ROLE_KEY:-}" || { echo "::error::SERVICE_ROLE_KEY missing"; exit 1; }
+          test -n "${DB_URL:-}" || { echo "::error::DB_URL missing"; exit 1; }
+
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+
+          {
+            echo "SUPABASE_URL=$API_URL"
+            echo "VITE_SUPABASE_URL=$API_URL"
+            echo "SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "VITE_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "DATABASE_URL=$DB_URL"
+            echo "APP_URL=http://127.0.0.1:5173"
+            echo "NODE_ENV=test"
+          } >> "$GITHUB_ENV"
+
+      - name: Run full demo lifecycle
+        run: npx tsx scripts/e2e-demo-lifecycle.ts
+
+      - name: Local Supabase status
+        if: always()
+        run: supabase status || true
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup || true
