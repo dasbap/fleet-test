@@ -19,6 +19,12 @@ type PasswordChangeError = Error & {
   };
 };
 
+type PasswordFunctionResult = {
+  ok?: boolean;
+  error?: string;
+  details?: string;
+};
+
 function getPasswordErrorMessage(error: PasswordChangeError): string {
   switch (error.code) {
     case "same_password":
@@ -68,42 +74,36 @@ export default function SetPasswordPage() {
   }
 
   const changePasswordAndClearMarker = async () => {
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.getSession();
+    const { data, error: functionError } = await supabase.functions.invoke(
+      "set-initial-password",
+      {
+        body: { password },
+      }
+    );
 
-    if (sessionError) {
-      throw sessionError;
-    }
+    const result = (data ?? {}) as PasswordFunctionResult;
 
-    const accessToken = sessionData.session?.access_token;
+    if (functionError || result.ok !== true) {
+      let responseResult = result;
+      let status: number | undefined;
+      const context = (functionError as { context?: unknown } | null)?.context;
 
-    if (!accessToken) {
-      throw new Error("Session introuvable.");
-    }
+      if (context instanceof Response) {
+        status = context.status;
+        responseResult = (await context
+          .clone()
+          .json()
+          .catch(() => result)) as PasswordFunctionResult;
+      }
 
-    const response = await fetch("/api/auth/clear-password-marker", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ password }),
-    });
-
-    const result = (await response.json().catch(() => ({}))) as {
-      ok?: boolean;
-      error?: string;
-      details?: string;
-    };
-
-    if (!response.ok || result.ok !== true) {
       const requestError = new Error(
-        result.details ??
-          result.error ??
+        responseResult.details ??
+          responseResult.error ??
+          functionError?.message ??
           "Votre mot de passe n'a pas pu être enregistré."
       ) as PasswordChangeError;
-      requestError.code = result.error;
-      requestError.status = response.status;
+      requestError.code = responseResult.error;
+      requestError.status = status;
       throw requestError;
     }
   };
