@@ -4,125 +4,74 @@ import { createClient } from "@supabase/supabase-js";
 const required = [
   "VITE_SUPABASE_URL",
   "VITE_SUPABASE_ANON_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
   "ADMIN_EMAIL",
   "ADMIN_PASSWORD",
 ];
-
 for (const key of required) {
   if (!process.env[key]?.trim()) throw new Error(`Variable requise absente: ${key}`);
 }
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL.trim();
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY.trim();
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY.trim();
 const adminEmail = process.env.ADMIN_EMAIL.trim();
 const adminPassword = process.env.ADMIN_PASSWORD;
 const apiBaseUrl = (process.env.API_BASE_URL || "https://www.e-samba.com").replace(/\/$/, "");
 const runMarker = `${process.env.GITHUB_RUN_ID || Date.now()}-${process.env.GITHUB_RUN_ATTEMPT || "1"}`;
 const testEmail = `ci-provision-${runMarker}@example.com`.toLowerCase();
 
-const service = createClient(supabaseUrl, serviceRoleKey, {
+const client = createClient(supabaseUrl, anonKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
-const authClient = createClient(supabaseUrl, anonKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
-
-async function findAuthUserByEmail(email) {
-  for (let page = 1; page <= 20; page += 1) {
-    const { data, error } = await service.auth.admin.listUsers({ page, perPage: 100 });
-    if (error) throw error;
-    const found = data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase());
-    if (found) return found;
-    if (data.users.length < 100) return null;
-  }
-  throw new Error("Recherche Auth interrompue: trop de pages utilisateur");
-}
-
-async function deleteBy(table, column, value) {
-  if (!value) return;
-  const { error } = await service.from(table).delete().eq(column, value);
-  if (error) throw new Error(`Cleanup ${table}.${column}: ${error.message}`);
-}
-
-async function countBy(table, column, value) {
-  if (!value) return 0;
-  const { count, error } = await service
-    .from(table)
-    .select("*", { count: "exact", head: true })
-    .eq(column, value);
-  if (error) throw new Error(`Verification ${table}.${column}: ${error.message}`);
-  return count ?? 0;
-}
-
-async function cleanup(userId) {
-  const authUser = userId ? { id: userId } : await findAuthUserByEmail(testEmail);
-  const id = authUser?.id ?? null;
-
-  if (id) {
-    await deleteBy("flotte_adhesions", "user_id", id);
-    await deleteBy("admin_profiles", "user_id", id);
-    await deleteBy("demo_sessions", "user_id", id);
-    await deleteBy("demo_magic_links", "user_id", id);
-    await deleteBy("demo_onboarding_logs", "user_id", id);
-    await deleteBy("demo_expiration_log", "user_id", id);
-    await deleteBy("demo_audit_logs", "user_id", id);
-    await deleteBy("demo_profiles", "user_id", id);
-    await deleteBy("onboarding_progress", "user_id", id);
-    await deleteBy("notification_tokens", "user_id", id);
-    await deleteBy("profils", "user_id", id);
-  }
-
-  await deleteBy("audit_logs", "target_email", testEmail);
-
-  if (id) {
-    const { error } = await service.auth.admin.deleteUser(id, false);
-    if (error && !error.message.toLowerCase().includes("not found")) throw error;
-  }
-
-  const authRemaining = await findAuthUserByEmail(testEmail);
-  const traces = [];
-  const checks = [
-    ["profils", "user_id", id],
-    ["admin_profiles", "user_id", id],
-    ["flotte_adhesions", "user_id", id],
-    ["demo_profiles", "user_id", id],
-    ["demo_sessions", "user_id", id],
-    ["audit_logs", "target_email", testEmail],
-  ];
-
-  for (const [table, column, value] of checks) {
-    const count = await countBy(table, column, value);
-    if (count !== 0) traces.push({ table, column, count });
-  }
-
-  if (authRemaining || traces.length) {
-    throw new Error(`Nettoyage incomplet: ${JSON.stringify({ auth_remaining: Boolean(authRemaining), traces })}`);
-  }
-
-  return { user_id: id, auth_remaining: 0, public_traces: [] };
-}
 
 let createdUserId = null;
+let adminUserId = null;
 let primaryError = null;
 let cleanupError = null;
 
+async function listDemoSessions() {
+  const { data, error } = await client.rpc("admin_list_demo_sessions", {
+    p_active_only: false,
+  });
+  if (error) throw new Error(`admin_list_demo_sessions: ${error.message}`);
+  return Array.isArray(data) ? data : [];
+}
+
+async function verifyDeleted() {
+  const sessions = await listDemoSessions();
+  const stale = sessions.find(
+    (row) => row?.user_id === createdUserId || String(row?.email || "").toLowerCase() === testEmail,
+  );
+  if (stale) throw new Error(`Nettoyage incomplet: session demo restante pour ${testEmail}`);
+}
+
+async function cleanup() {
+  if (!createdUserId || !adminUserId) return;
+  const { data, error } = await client.rpc("delete_demo_account", {
+    p_user_id: createdUserId,
+    p_deleted_by: adminUserId,
+    p_reason: `CI cleanup ${runMarker}`,
+  });
+  if (error) throw new Error(`delete_demo_account: ${error.message}`);
+  if (!data?.ok) throw new Error(`delete_demo_account a retourne ${JSON.stringify(data)}`);
+  await verifyDeleted();
+}
+
 try {
-  const { data: login, error: loginError } = await authClient.auth.signInWithPassword({
+  const { data: login, error: loginError } = await client.auth.signInWithPassword({
     email: adminEmail,
     password: adminPassword,
   });
-  if (loginError || !login.session?.access_token) {
+  if (loginError || !login.session?.access_token || !login.user?.id) {
     throw new Error(`Connexion admin impossible: ${loginError?.message || "session_absente"}`);
   }
+  adminUserId = login.user.id;
 
-  const { data: isAdmin, error: adminCheckError } = await authClient.rpc("is_platform_admin");
+  const { data: isAdmin, error: adminCheckError } = await client.rpc("is_platform_admin");
   if (adminCheckError || isAdmin !== true) {
-    throw new Error("Compte non reconnu comme admin plateforme");
+    throw new Error(`Compte non reconnu comme admin plateforme: ${adminCheckError?.message || String(isAdmin)}`);
   }
 
-  const response = await fetch(`${apiBaseUrl}/api/admin/create-user`, {
+  const response = await fetch(`${apiBaseUrl}/api/admin/create-prospect`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -130,46 +79,51 @@ try {
     },
     body: JSON.stringify({
       email: testEmail,
-      full_name: `CI Provision ${runMarker}`,
-      phone: "+237690000001",
+      full_name: `CI Prospect ${runMarker}`,
       company_name: `CI Fleet ${runMarker}`,
+      phone: "+237690000001",
       company_identifier: `CI-${runMarker}`,
       country_code: "CM",
-      role: "organizer",
-      platform_admin: false,
+      account_type: "prospect",
+      trial_days: 1,
+      send_email: false,
+      permanent_access: false,
     }),
   });
 
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.ok !== true || !payload?.user_id) {
-    throw new Error(`Creation echouee: HTTP ${response.status} ${JSON.stringify(payload)}`);
+    throw new Error(`Creation temporaire echouee: HTTP ${response.status} ${JSON.stringify(payload)}`);
   }
   createdUserId = payload.user_id;
 
-  const { data: profile, error: profileError } = await service
-    .from("profils")
-    .select("user_id, full_name, phone")
-    .eq("user_id", createdUserId)
-    .maybeSingle();
-  if (profileError || !profile) throw new Error(`Profil utilisateur absent apres creation: ${profileError?.message || "not_found"}`);
-
-  const { data: createdAuth, error: createdAuthError } = await service.auth.admin.getUserById(createdUserId);
-  if (createdAuthError || !createdAuth.user) throw new Error("Utilisateur Auth absent apres creation");
-  if (createdAuth.user.app_metadata?.must_set_password !== true) {
-    throw new Error("Le marqueur must_set_password n'est pas positionne");
+  const sessions = await listDemoSessions();
+  const session = sessions.find((row) => row?.user_id === createdUserId);
+  if (!session) throw new Error("Compte temporaire absent de admin_list_demo_sessions");
+  if (String(session.email || "").toLowerCase() !== testEmail) {
+    throw new Error("Email du compte temporaire incoherent");
   }
+  if (session.is_active !== true) throw new Error("Compte temporaire cree mais inactif");
 
-  console.log(JSON.stringify({ ok: true, created: true, user_id: createdUserId, email: testEmail }));
+  console.log(JSON.stringify({
+    ok: true,
+    created: true,
+    user_id: createdUserId,
+    email: testEmail,
+    account_type: session.account_type,
+  }));
 } catch (error) {
   primaryError = error;
 } finally {
   try {
-    const cleanupResult = await cleanup(createdUserId);
-    console.log(JSON.stringify({ cleanup: cleanupResult }, null, 2));
+    await cleanup();
+    if (createdUserId) {
+      console.log(JSON.stringify({ cleanup_verified: true, user_id: createdUserId }));
+    }
   } catch (error) {
     cleanupError = error;
   }
-  await authClient.auth.signOut().catch(() => {});
+  await client.auth.signOut().catch(() => {});
 }
 
 if (cleanupError) {
