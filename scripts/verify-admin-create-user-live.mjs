@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-import { Client } from "pg";
 import { createClient } from "@supabase/supabase-js";
-import { buildPgClientConfig, resolveDatabaseUrl } from "./apply-sql-file.mjs";
 
 const required = [
   "VITE_SUPABASE_URL",
@@ -12,14 +10,7 @@ const required = [
 ];
 
 for (const key of required) {
-  if (!process.env[key]?.trim()) {
-    throw new Error(`Variable requise absente: ${key}`);
-  }
-}
-
-const databaseUrl = resolveDatabaseUrl(process.env);
-if (!databaseUrl) {
-  throw new Error("Connexion PostgreSQL de nettoyage absente");
+  if (!process.env[key]?.trim()) throw new Error(`Variable requise absente: ${key}`);
 }
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL.trim();
@@ -31,192 +22,86 @@ const apiBaseUrl = (process.env.API_BASE_URL || "https://www.e-samba.com").repla
 const runMarker = `${process.env.GITHUB_RUN_ID || Date.now()}-${process.env.GITHUB_RUN_ATTEMPT || "1"}`;
 const testEmail = `ci-provision-${runMarker}@example.com`.toLowerCase();
 
-const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+const service = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const authClient = createClient(supabaseUrl, anonKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
-const pg = new Client(
-  buildPgClientConfig({
-    databaseUrl,
-    env: { ...process.env, SUPABASE_DB_SSL_NO_VERIFY: "1" },
-  }),
-);
-
-function quoteIdent(value) {
-  return `"${String(value).replaceAll('"', '""')}"`;
-}
 
 async function findAuthUserByEmail(email) {
-  const result = await pg.query(
-    "select id::text, email from auth.users where lower(email) = lower($1) limit 1",
-    [email],
-  );
-  return result.rows[0] || null;
+  for (let page = 1; page <= 20; page += 1) {
+    const { data, error } = await service.auth.admin.listUsers({ page, perPage: 100 });
+    if (error) throw error;
+    const found = data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase());
+    if (found) return found;
+    if (data.users.length < 100) return null;
+  }
+  throw new Error("Recherche Auth interrompue: trop de pages utilisateur");
 }
 
-async function getPublicSearchColumns() {
-  const result = await pg.query(`
-    select c.table_name, c.column_name, c.data_type
-    from information_schema.columns c
-    join information_schema.tables t
-      on t.table_schema = c.table_schema
-     and t.table_name = c.table_name
-    where c.table_schema = 'public'
-      and t.table_type = 'BASE TABLE'
-      and c.data_type in ('uuid', 'text', 'character varying', 'json', 'jsonb')
-    order by c.table_name, c.ordinal_position
-  `);
-  return result.rows;
+async function deleteBy(table, column, value) {
+  if (!value) return;
+  const { error } = await service.from(table).delete().eq(column, value);
+  if (error) throw new Error(`Cleanup ${table}.${column}: ${error.message}`);
 }
 
-function buildMatch(column, params, userId, email) {
-  const name = quoteIdent(column.column_name);
-
-  if (column.data_type === "uuid" && userId) {
-    params.push(userId);
-    return `${name} = $${params.length}::uuid`;
-  }
-
-  if (["text", "character varying"].includes(column.data_type) && email) {
-    params.push(email);
-    return `lower(${name}) = lower($${params.length})`;
-  }
-
-  if (["json", "jsonb"].includes(column.data_type)) {
-    const clauses = [];
-    if (email) {
-      params.push(`%${email}%`);
-      clauses.push(`${name}::text ilike $${params.length}`);
-    }
-    if (userId) {
-      params.push(`%${userId}%`);
-      clauses.push(`${name}::text ilike $${params.length}`);
-    }
-    return clauses.length ? `(${clauses.join(" or ")})` : null;
-  }
-
-  return null;
+async function countBy(table, column, value) {
+  if (!value) return 0;
+  const { count, error } = await service
+    .from(table)
+    .select("*", { count: "exact", head: true })
+    .eq(column, value);
+  if (error) throw new Error(`Verification ${table}.${column}: ${error.message}`);
+  return count ?? 0;
 }
 
-async function groupPublicColumns() {
-  const columns = await getPublicSearchColumns();
-  const tables = new Map();
-  for (const column of columns) {
-    const list = tables.get(column.table_name) || [];
-    list.push(column);
-    tables.set(column.table_name, list);
-  }
-  return tables;
-}
+async function cleanup(userId) {
+  const authUser = userId ? { id: userId } : await findAuthUserByEmail(testEmail);
+  const id = authUser?.id ?? null;
 
-async function deletePublicTraces(userId, email) {
-  const tables = await groupPublicColumns();
-  const deletionLog = [];
-  let lastErrors = [];
-
-  // Plusieurs passes permettent de respecter progressivement les dépendances FK.
-  for (let pass = 1; pass <= 6; pass += 1) {
-    let deletedThisPass = 0;
-    const errors = [];
-
-    for (const [tableName, columns] of tables) {
-      const params = [];
-      const clauses = columns
-        .map((column) => buildMatch(column, params, userId, email))
-        .filter(Boolean);
-
-      if (!clauses.length) continue;
-
-      try {
-        const result = await pg.query(
-          `delete from public.${quoteIdent(tableName)} where ${clauses.join(" or ")}`,
-          params,
-        );
-        const count = result.rowCount || 0;
-        if (count > 0) {
-          deletedThisPass += count;
-          deletionLog.push({ pass, table: tableName, deleted: count });
-        }
-      } catch (error) {
-        errors.push({
-          table: tableName,
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    lastErrors = errors;
-    if (deletedThisPass === 0) break;
+  if (id) {
+    await deleteBy("flotte_adhesions", "user_id", id);
+    await deleteBy("admin_profiles", "user_id", id);
+    await deleteBy("demo_sessions", "user_id", id);
+    await deleteBy("demo_magic_links", "user_id", id);
+    await deleteBy("demo_onboarding_logs", "user_id", id);
+    await deleteBy("demo_expiration_log", "user_id", id);
+    await deleteBy("demo_audit_logs", "user_id", id);
+    await deleteBy("demo_profiles", "user_id", id);
+    await deleteBy("onboarding_progress", "user_id", id);
+    await deleteBy("notification_tokens", "user_id", id);
+    await deleteBy("profils", "user_id", id);
   }
 
-  return { deletionLog, errors: lastErrors };
-}
+  await deleteBy("audit_logs", "target_email", testEmail);
 
-async function findPublicTraces(userId, email) {
-  const tables = await groupPublicColumns();
+  if (id) {
+    const { error } = await service.auth.admin.deleteUser(id, false);
+    if (error && !error.message.toLowerCase().includes("not found")) throw error;
+  }
+
+  const authRemaining = await findAuthUserByEmail(testEmail);
   const traces = [];
+  const checks = [
+    ["profils", "user_id", id],
+    ["admin_profiles", "user_id", id],
+    ["flotte_adhesions", "user_id", id],
+    ["demo_profiles", "user_id", id],
+    ["demo_sessions", "user_id", id],
+    ["audit_logs", "target_email", testEmail],
+  ];
 
-  for (const [tableName, columns] of tables) {
-    const params = [];
-    const clauses = columns
-      .map((column) => buildMatch(column, params, userId, email))
-      .filter(Boolean);
-
-    if (!clauses.length) continue;
-
-    const result = await pg.query(
-      `select count(*)::int as count from public.${quoteIdent(tableName)} where ${clauses.join(" or ")}`,
-      params,
-    );
-    const count = result.rows[0]?.count || 0;
-    if (count > 0) traces.push({ table: tableName, count });
+  for (const [table, column, value] of checks) {
+    const count = await countBy(table, column, value);
+    if (count !== 0) traces.push({ table, column, count });
   }
 
-  return traces;
-}
-
-async function cleanup(createdUserId) {
-  const found = createdUserId
-    ? { id: createdUserId, email: testEmail }
-    : await findAuthUserByEmail(testEmail);
-  const userId = found?.id || null;
-
-  const beforeAuthDelete = await deletePublicTraces(userId, testEmail);
-
-  if (userId) {
-    const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId, false);
-    if (deleteError) {
-      // Fallback réservé au test CI si l'Admin API échoue après nettoyage des FK publiques.
-      await pg.query("delete from auth.users where id = $1::uuid", [userId]);
-    }
+  if (authRemaining || traces.length) {
+    throw new Error(`Nettoyage incomplet: ${JSON.stringify({ auth_remaining: Boolean(authRemaining), traces })}`);
   }
 
-  const afterAuthDelete = await deletePublicTraces(userId, testEmail);
-
-  const authRemaining = await pg.query(
-    `select count(*)::int as count
-       from auth.users
-      where lower(email) = lower($1)
-         or ($2::uuid is not null and id = $2::uuid)`,
-    [testEmail, userId],
-  );
-  const publicTraces = await findPublicTraces(userId, testEmail);
-
-  const result = {
-    user_id: userId,
-    auth_remaining: authRemaining.rows[0]?.count || 0,
-    public_traces: publicTraces,
-    cleanup_errors: [...beforeAuthDelete.errors, ...afterAuthDelete.errors],
-    rows_deleted: [...beforeAuthDelete.deletionLog, ...afterAuthDelete.deletionLog],
-  };
-
-  if (result.auth_remaining !== 0 || result.public_traces.length !== 0) {
-    throw new Error(`Nettoyage incomplet: ${JSON.stringify(result)}`);
-  }
-
-  return result;
+  return { user_id: id, auth_remaining: 0, public_traces: [] };
 }
 
 let createdUserId = null;
@@ -224,16 +109,12 @@ let primaryError = null;
 let cleanupError = null;
 
 try {
-  await pg.connect();
-
   const { data: login, error: loginError } = await authClient.auth.signInWithPassword({
     email: adminEmail,
     password: adminPassword,
   });
   if (loginError || !login.session?.access_token) {
-    throw new Error(
-      `Connexion admin impossible: ${loginError?.message || "session_absente"}`,
-    );
+    throw new Error(`Connexion admin impossible: ${loginError?.message || "session_absente"}`);
   }
 
   const { data: isAdmin, error: adminCheckError } = await authClient.rpc("is_platform_admin");
@@ -250,7 +131,10 @@ try {
     body: JSON.stringify({
       email: testEmail,
       full_name: `CI Provision ${runMarker}`,
-      phone: "",
+      phone: "+237690000001",
+      company_name: `CI Fleet ${runMarker}`,
+      company_identifier: `CI-${runMarker}`,
+      country_code: "CM",
       role: "organizer",
       platform_admin: false,
     }),
@@ -258,29 +142,24 @@ try {
 
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.ok !== true || !payload?.user_id) {
-    throw new Error(
-      `Creation echouee: HTTP ${response.status} ${JSON.stringify(payload)}`,
-    );
+    throw new Error(`Creation echouee: HTTP ${response.status} ${JSON.stringify(payload)}`);
   }
-
   createdUserId = payload.user_id;
 
-  const profile = await pg.query(
-    "select user_id::text from public.profils where user_id = $1::uuid limit 1",
-    [createdUserId],
-  );
-  if (!profile.rowCount) {
-    throw new Error("Profil utilisateur absent apres creation");
+  const { data: profile, error: profileError } = await service
+    .from("profils")
+    .select("user_id, full_name, phone")
+    .eq("user_id", createdUserId)
+    .maybeSingle();
+  if (profileError || !profile) throw new Error(`Profil utilisateur absent apres creation: ${profileError?.message || "not_found"}`);
+
+  const { data: createdAuth, error: createdAuthError } = await service.auth.admin.getUserById(createdUserId);
+  if (createdAuthError || !createdAuth.user) throw new Error("Utilisateur Auth absent apres creation");
+  if (createdAuth.user.app_metadata?.must_set_password !== true) {
+    throw new Error("Le marqueur must_set_password n'est pas positionne");
   }
 
-  console.log(
-    JSON.stringify({
-      ok: true,
-      created: true,
-      user_id: createdUserId,
-      email: testEmail,
-    }),
-  );
+  console.log(JSON.stringify({ ok: true, created: true, user_id: createdUserId, email: testEmail }));
 } catch (error) {
   primaryError = error;
 } finally {
@@ -290,16 +169,13 @@ try {
   } catch (error) {
     cleanupError = error;
   }
-
   await authClient.auth.signOut().catch(() => {});
-  await pg.end().catch(() => {});
 }
 
 if (cleanupError) {
   console.error(cleanupError instanceof Error ? cleanupError.message : String(cleanupError));
   process.exit(2);
 }
-
 if (primaryError) {
   console.error(primaryError instanceof Error ? primaryError.message : String(primaryError));
   process.exit(1);
