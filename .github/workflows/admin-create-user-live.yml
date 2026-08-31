@@ -1,0 +1,94 @@
+name: Live admin user provisioning
+
+on:
+  workflow_dispatch:
+    inputs:
+      roles:
+        description: Roles a tester
+        required: true
+        default: organizer
+        type: choice
+        options:
+          - organizer
+          - organizer,manager,driver,mechanic
+      fleet_id:
+        description: UUID de flotte requis pour manager, driver et mechanic
+        required: false
+        default: ""
+      api_base_url:
+        description: Base URL de l'application
+        required: true
+        default: https://www.e-samba.com
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-admin-user-provisioning
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  provision-and-cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      API_BASE_URL: ${{ inputs.api_base_url }}
+      TEST_ROLES: ${{ inputs.roles }}
+      TEST_FLEET_ID: ${{ inputs.fleet_id }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate configuration
+        run: |
+          test -n "$VITE_SUPABASE_URL" || { echo "::error::VITE_SUPABASE_URL absente"; exit 1; }
+          test -n "$VITE_SUPABASE_ANON_KEY" || { echo "::error::VITE_SUPABASE_ANON_KEY absente"; exit 1; }
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY absente"; exit 1; }
+          test -n "$ADMIN_EMAIL" || { echo "::error::Secret ADMIN_EMAIL absent"; exit 1; }
+          test -n "$ADMIN_PASSWORD" || { echo "::error::Secret ADMIN_PASSWORD absent"; exit 1; }
+          if [[ "$TEST_ROLES" != "organizer" && -z "$TEST_FLEET_ID" ]]; then
+            echo "::error::fleet_id requis pour tester les roles de flotte"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Mask runtime credentials
+        run: |
+          echo "::add-mask::$ADMIN_EMAIL"
+          echo "::add-mask::$ADMIN_PASSWORD"
+          echo "::add-mask::$SUPABASE_SERVICE_ROLE_KEY"
+          echo "::add-mask::$VITE_SUPABASE_ANON_KEY"
+
+      - name: Create users through production API and clean them
+        run: node scripts/verify-admin-create-user-live.mjs
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Test live de creation utilisateur" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- API: \`$API_BASE_URL\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Roles: \`$TEST_ROLES\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Le script exige zero compte Auth restant et zero ligne publique contenant l'identifiant ou l'email ephemere." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Les logs techniques, sauvegardes et traces SMTP ne sont pas supprimes par ce test." >> "$GITHUB_STEP_SUMMARY"
