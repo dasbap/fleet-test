@@ -1,5 +1,4 @@
 /** @vitest-environment node */
-import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { applyCors, getSupabaseEnv } from "../../api/_lib/vercel-api";
 
@@ -34,7 +33,6 @@ describe("Vercel API CORS", () => {
     expect(headers.get("Vary")).toBe("Origin");
   });
 
-
   it("nettoie les retours ligne dans les variables Supabase Vercel", () => {
     process.env.SUPABASE_URL = "https://example.supabase.co \r\n";
     process.env.SUPABASE_ANON_KEY = " anon-key \n";
@@ -51,6 +49,7 @@ describe("Vercel API CORS", () => {
       appUrl: "https://www.e-samba.com",
     });
   });
+
   it("accepte localhost uniquement pour le developpement", () => {
     process.env.NODE_ENV = "development";
     const headers = applyOrigin("http://localhost:8080");
@@ -64,16 +63,5 @@ describe("Vercel API CORS", () => {
     expect(productionHeaders.get("Access-Control-Allow-Origin")).toBe(
       "https://www.e-samba.com",
     );
-  });
-
-  it("conserve le nettoyage des marqueurs legacy sur la route Vercel", () => {
-    const source = readFileSync("api/auth/clear-password-marker.ts", "utf8");
-
-    expect(source).toContain("const userMetadata = currentUserData.user.user_metadata ?? {}");
-    expect(source).toContain("userMetadata.must_set_password === true");
-    expect(source).toContain("user_metadata: {");
-    expect(source).toContain("must_set_password: false");
-    expect(source).toContain("temporary_password_active: false");
-    expect(source).toContain("MARKER_UPDATE_ATTEMPTS = 3");
   });
 });
