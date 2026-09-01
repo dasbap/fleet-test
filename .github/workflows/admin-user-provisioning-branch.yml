@@ -1,0 +1,81 @@
+name: Admin temporary user provisioning
+
+on:
+  push:
+    branches:
+      - test/admin-user-provisioning-live
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-temp-user-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  live-provisioning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Validate configuration
+        run: |
+          for key in ADMIN_EMAIL ADMIN_PASSWORD VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            test -n "${!key:-}" || { echo "::error::$key missing"; exit 1; }
+          done
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Pull Vercel preview environment
+        run: npx --yes vercel@58.4.0 pull --yes --environment=preview --token "$VERCEL_TOKEN"
+
+      - name: Build branch preview
+        run: npx --yes vercel@58.4.0 build --token "$VERCEL_TOKEN"
+
+      - name: Deploy branch preview
+        id: preview
+        run: |
+          preview_url="$(npx --yes vercel@58.4.0 deploy --prebuilt --token "$VERCEL_TOKEN" | tail -n 1)"
+          case "$preview_url" in
+            https://*) ;;
+            *) echo "::error::Invalid Vercel preview URL: $preview_url"; exit 1 ;;
+          esac
+          echo "API_BASE_URL=$preview_url" >> "$GITHUB_ENV"
+          echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
+          echo "Preview: $preview_url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify preview health
+        run: |
+          for attempt in {1..12}; do
+            status="$(curl -L -sS -o /tmp/preview-health.txt -w '%{http_code}' "$API_BASE_URL/api/health" || true)"
+            if [[ "$status" =~ ^2|3 ]]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          cat /tmp/preview-health.txt || true
+          echo "::error::Preview health check failed"
+          exit 1
+
+      - name: Create, verify and fully delete temporary user
+        run: node scripts/verify-admin-create-user-live.mjs
