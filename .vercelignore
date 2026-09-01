@@ -46,3 +46,6 @@ blob-report
 stryker.log
 *.lcov
 *.tsbuildinfo
+
+.env*
+!.env.example
