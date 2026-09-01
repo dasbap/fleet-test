@@ -1,5 +1,5 @@
 /**
- * Applique un fichier SQL via DATABASE_URL (postgres).
+ * Applique un fichier SQL via une connexion PostgreSQL Supabase.
  * Usage: node --env-file=.env.local scripts/apply-sql-file.mjs supabase/migrations/....sql [...]
  */
 
@@ -10,31 +10,44 @@ import { fileURLToPath, pathToFileURL } from 'url';
 const DIRECT_DATA_MUTATION_PATTERN =
   /^\s*(insert\s+into|update\s+\S+|delete\s+from|truncate\s+table|merge\s+into|with\b[\s\S]*?\)\s*(insert\s+into|update\s+\S+|delete\s+from|merge\s+into)\b)/i;
 
-export function resolveDatabaseUrl(env = process.env) {
-  const direct = env.DATABASE_URL?.trim() || env.DIRECT_URL?.trim();
-  if (direct) {
-    try {
-      new URL(direct);
-      return direct;
-    } catch {
-      // Fall back to SUPABASE_DB_PASSWORD + VITE_SUPABASE_URL when a local
-      // direct URL contains unencoded special characters.
-    }
+function asValidDatabaseUrl(value) {
+  const candidate = value?.trim();
+  if (!candidate) return null;
+  try {
+    new URL(candidate);
+    return candidate;
+  } catch {
+    return null;
   }
+}
 
-  const dbUrl = env.SUPABASE_DB_URL?.trim();
-  if (dbUrl) return dbUrl;
+export function resolveDatabaseUrls(env = process.env) {
+  const candidates = [
+    // Supabase's pooler (Supavisor) is IPv4-compatible and is the right
+    // endpoint for GitHub-hosted ubuntu runners, including Free projects.
+    asValidDatabaseUrl(env.SUPABASE_DB_URL),
+    asValidDatabaseUrl(env.DATABASE_URL),
+    asValidDatabaseUrl(env.DIRECT_URL),
+  ].filter(Boolean);
 
   const dbPassword = env.SUPABASE_DB_PASSWORD?.trim();
   const supabaseUrl = env.VITE_SUPABASE_URL?.trim();
   if (dbPassword && supabaseUrl) {
     const ref = supabaseUrl.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1];
     if (ref) {
-      return `postgresql://postgres:${encodeURIComponent(dbPassword)}@db.${ref}.supabase.co:5432/postgres`;
+      // Last-resort direct endpoint. Free Supabase projects may expose this
+      // endpoint over IPv6 only, which GitHub-hosted runners cannot reach.
+      candidates.push(
+        `postgresql://postgres:${encodeURIComponent(dbPassword)}@db.${ref}.supabase.co:5432/postgres`,
+      );
     }
   }
 
-  return null;
+  return [...new Set(candidates)];
+}
+
+export function resolveDatabaseUrl(env = process.env) {
+  return resolveDatabaseUrls(env)[0] ?? null;
 }
 
 export function buildPgClientConfig({ databaseUrl, env = process.env }) {
@@ -81,6 +94,18 @@ export function resolvePgModuleSpecifier(env = process.env) {
 async function loadPgModule(env = process.env) {
   const module = await import(resolvePgModuleSpecifier(env));
   return module.default ?? module;
+}
+
+function databaseHost(databaseUrl) {
+  try {
+    return new URL(databaseUrl).host;
+  } catch {
+    return 'unknown-host';
+  }
+}
+
+function isNetworkReachabilityError(error) {
+  return ['ENETUNREACH', 'EHOSTUNREACH', 'ETIMEDOUT', 'ECONNREFUSED'].includes(error?.code);
 }
 
 export function splitSqlStatements(sql) {
@@ -203,18 +228,37 @@ export async function applySqlFiles(files, env = process.env) {
     throw new Error('Usage: node scripts/apply-sql-file.mjs <fichier.sql> [...]');
   }
 
-  const url = resolveDatabaseUrl(env);
-  if (!url) {
+  const databaseUrls = resolveDatabaseUrls(env);
+  if (databaseUrls.length === 0) {
     throw new Error(
-      'connexion DB manquante. Ajoutez DATABASE_URL, DIRECT_URL, SUPABASE_DB_URL ou SUPABASE_DB_PASSWORD + VITE_SUPABASE_URL',
+      'connexion DB manquante. Ajoutez SUPABASE_DB_URL (pooler recommande), DATABASE_URL, DIRECT_URL ou SUPABASE_DB_PASSWORD + VITE_SUPABASE_URL',
     );
   }
 
   const pg = await loadPgModule(env);
-  const client = new pg.Client(buildPgClientConfig({ databaseUrl: url, env }));
+  let client = null;
+  let lastError = null;
+
+  for (let index = 0; index < databaseUrls.length; index += 1) {
+    const databaseUrl = databaseUrls[index];
+    const candidate = new pg.Client(buildPgClientConfig({ databaseUrl, env }));
+    try {
+      console.log(`DB: connexion via ${databaseHost(databaseUrl)}`);
+      await candidate.connect();
+      client = candidate;
+      break;
+    } catch (error) {
+      lastError = error;
+      await candidate.end().catch(() => {});
+      const hasFallback = index < databaseUrls.length - 1;
+      if (!hasFallback || !isNetworkReachabilityError(error)) throw error;
+      console.warn(`WARN: ${databaseHost(databaseUrl)} inaccessible (${error.code}), essai du endpoint suivant.`);
+    }
+  }
+
+  if (!client) throw lastError ?? new Error('Impossible de se connecter a PostgreSQL.');
 
   try {
-    await client.connect();
     for (const file of files) {
       const sql = prepareSqlForExecution(readFileSync(file, 'utf8'), env);
       if (!sql.trim()) {
