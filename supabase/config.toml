@@ -151,6 +151,10 @@ site_url = "https://www.e-samba.com"
 # Liste des URLs autorisées pour les redirections auth (web + mobile Capacitor).
 # Poussée vers le projet lié : npm run supabase:push-auth-config (scripts/apply-mobile-store-setup.mjs).
 additional_redirect_urls = [
+  "com.esamba.flotte://**",
+  "com.esamba.flotte://auth/callback",
+  "com.esamba.flotte://auth/update-password",
+  "esamba://**",
   "esamba://auth/callback",
   "esamba://auth/update-password",
   "http://127.0.0.1:5173",
@@ -159,8 +163,8 @@ additional_redirect_urls = [
   "http://localhost:8080/**",
   "http://localhost:8080/auth",
   "http://smart-fleet-africa.vercel.app/**",
-  "https://127.0.0.1:3000",
   "https://*.vercel.app/**",
+  "https://127.0.0.1:3000",
   "https://app.e-samba.com/**",
   "https://e-samba.com/**",
   "https://esamba-web.vercel.app/**",
@@ -244,6 +248,10 @@ otp_expiry = 3600
 # enabled = true
 # subject = "Votre mot de passe a été modifié"
 # content_path = "./templates/password_changed_notification.html"
+
+[auth.email.template.magic_link]
+subject = "E-Samba — Vérification de votre adresse e-mail"
+content_path = "./supabase/templates/magic_link.html"
 
 [auth.sms]
 # Autoriser/interdire les nouvelles inscriptions utilisateur via SMS.

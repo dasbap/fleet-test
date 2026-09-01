@@ -144,11 +144,11 @@ function createMockAdmin(): SupabaseClient {
 }
 
 describe("runInboundPaymentWebhook", () => {
-  it("active un abonnement lorsque le paiement passe à succeeded", async () => {
+  it("crée un abonnement en attente lorsque le paiement passe à succeeded", async () => {
     const admin = createMockAdmin();
     const res = await runInboundPaymentWebhook(admin, "EXT-REF-1", "success");
     expect(res.normalizedStatus).toBe("succeeded");
-    expect(res.subscriptionActivated).toBe(true);
+    expect(res.subscriptionActivated).toBe(false);
     expect(res.subscriptionId).toBe(SUB);
     expect(admin.rpc).toHaveBeenCalledWith("claim_payment_webhook_effects", {
       p_payment_id: PAY,

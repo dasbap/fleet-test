@@ -43,4 +43,15 @@ describe("Temporary password security", () => {
     expect(fleetMemberSource).toContain("temporary_password_active: true");
     expect(fleetMemberSource).not.toContain("temp_password:");
   });
+
+  it("ne garde aucun chemin runtime admin qui distribue un mot de passe temporaire", () => {
+    const adminDemoSource = readFileSync("src/server/http/routes/adminDemo.ts", "utf8");
+    const adminProspectSource = readFileSync("src/server/http/routes/adminProspectSecurity.ts", "utf8");
+
+    expect(adminDemoSource).not.toContain("/api/admin/create-prospect");
+    expect(adminDemoSource).not.toContain("temp_password:");
+    expect(adminProspectSource).toContain("resetPasswordForEmail");
+    expect(adminProspectSource).toContain('password_delivery: "reset_email"');
+    expect(adminProspectSource).not.toContain("temp_password:");
+  });
 });

@@ -2,7 +2,6 @@ import { onCLS, onFCP, onINP, onLCP, type Metric } from "web-vitals";
 
 /** Route SPA courante (mis à jour par le routeur pour les métriques par écran). */
 let currentRoutePath = typeof window !== "undefined" ? window.location.pathname : "/";
-let missingEndpointWarned = false;
 
 export function setWebVitalsRoutePath(path: string): void {
   currentRoutePath = path;
@@ -15,7 +14,8 @@ export function getWebVitalsRoutePath(): string {
 
 /**
  * Envoi des Web Vitals pour monitoring (LCP, CLS, INP, FCP).
- * En dev : log en console. En prod : remplacer sendToAnalytics par votre endpoint ou GA.
+ * En développement, les métriques sont visibles dans la console. En production,
+ * l'envoi est optionnel et n'est activé que si VITE_WEB_VITALS_ENDPOINT est défini.
  */
 type WebVitalsPayload = {
   name: Metric["name"];
@@ -57,31 +57,24 @@ function sendToAnalytics(metric: Metric) {
 
   if (import.meta.env.DEV) {
     console.log("[Web Vitals]", payload.name, payload.value, payload);
-  } else {
-    const endpoint = import.meta.env.VITE_WEB_VITALS_ENDPOINT;
-    if (!endpoint) {
-      if (!missingEndpointWarned) {
-        missingEndpointWarned = true;
-        console.warn(
-          "[Web Vitals] VITE_WEB_VITALS_ENDPOINT absent: les métriques ne sont pas envoyées en production.",
-        );
-      }
-      return;
-    }
-
-    const body = JSON.stringify(payload);
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(endpoint, body);
-      return;
-    }
-
-    void fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-      keepalive: true,
-    });
+    return;
   }
+
+  const endpoint = import.meta.env.VITE_WEB_VITALS_ENDPOINT;
+  if (!endpoint) return;
+
+  const body = JSON.stringify(payload);
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon(endpoint, body);
+    return;
+  }
+
+  void fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+    keepalive: true,
+  });
 }
 
 export function reportWebVitals() {

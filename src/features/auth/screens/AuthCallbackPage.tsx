@@ -11,24 +11,77 @@ import {
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const DEMO_VERIFICATION_DRAFT_KEY = "esamba_demo_verification_draft";
+const DEMO_VERIFICATION_INTENT_KEY = "esamba_demo_verification_intent";
+
 type CallbackState = "processing" | "error";
 
+type DemoVerificationDraft = {
+  name: string;
+  email: string;
+  company: string;
+  phone: string;
+  company_identifier: string;
+  country_code: string;
+};
+
+function readDemoDraft(): DemoVerificationDraft | null {
+  try {
+    const raw = window.localStorage.getItem(DEMO_VERIFICATION_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<DemoVerificationDraft>;
+    if (
+      !parsed.name?.trim() ||
+      !parsed.email?.trim() ||
+      !parsed.company?.trim() ||
+      !parsed.phone?.trim() ||
+      !parsed.company_identifier?.trim() ||
+      !parsed.country_code?.trim()
+    ) {
+      return null;
+    }
+    return {
+      name: parsed.name,
+      email: parsed.email,
+      company: parsed.company,
+      phone: parsed.phone,
+      company_identifier: parsed.company_identifier,
+      country_code: parsed.country_code,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function mapDemoSubmitError(status: number, error?: string): string {
+  if (status === 409 && error === "demo_email_already_used") {
+    return "Cette adresse e-mail a déjà été utilisée pour une demande E-Samba.";
+  }
+  if (status === 409 && error === "email_already_registered") {
+    return "Cette adresse e-mail est déjà associée à un compte E-Samba.";
+  }
+  if (status === 401) {
+    return "La vérification e-mail a expiré. Demandez un nouveau lien depuis le formulaire de démo.";
+  }
+  if (status === 403 && error === "verified_email_mismatch") {
+    return "L'adresse vérifiée ne correspond pas à celle du formulaire.";
+  }
+  return "Votre e-mail a été vérifié, mais la demande de démo n'a pas pu être enregistrée. Réessayez depuis le formulaire.";
+}
+
 /**
- * Callback Supabase Auth — PKCE (magic link, confirmation email, etc.)
+ * Callback Supabase Auth — PKCE.
  *
- * Supabase redirige ici avec ?code=XXX après clic sur un lien email.
- * Le client JS échange automatiquement le code contre une session via
- * onAuthStateChange (SIGNED_IN). On attend cet événement, puis on redirige
- * vers /post-login pour l'aiguillage classique (dashboard / onboarding).
- *
- * Timeout de sécurité : si rien ne se passe en 10s → erreur.
+ * Pour une demande de démo, l'utilisateur Auth créé par Supabase est purement
+ * transitoire : le callback échange le code, envoie immédiatement la demande au
+ * BFF avec le JWT vérifié, puis le BFF supprime cet utilisateur Auth. Aucun
+ * onboarding produit (/post-login, /start) n'est déclenché.
  */
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [state, setState] = useState<CallbackState>("processing");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
   const handled = useRef(false);
 
   useEffect(() => {
@@ -38,8 +91,10 @@ export default function AuthCallbackPage() {
     const code = searchParams.get("code");
     const error = searchParams.get("error");
     const errorDescription = searchParams.get("error_description");
+    const demoIntent =
+      searchParams.get("intent") === "demo" ||
+      window.localStorage.getItem(DEMO_VERIFICATION_INTENT_KEY) === "demo";
 
-    // Erreur transmise par Supabase dans l'URL (lien expiré, déjà utilisé…)
     if (error) {
       const msg =
         errorDescription?.replace(/\+/g, " ") ??
@@ -50,39 +105,102 @@ export default function AuthCallbackPage() {
     }
 
     if (!code) {
-      setErrorMessage("Paramètre de connexion manquant. Réessaie depuis l'email.");
+      setErrorMessage("Paramètre de vérification manquant. Réessayez depuis l'e-mail.");
       setState("error");
       return;
     }
 
-    // Timeout : si Supabase ne répond pas en 10s.
-    const timeout = setTimeout(() => {
-      setErrorMessage("La connexion a pris trop de temps. Réessaie depuis l'email.");
-      setState("error");
-    }, 10_000);
+    let cancelled = false;
 
-    // Le client Supabase JS v2 échange automatiquement le code PKCE.
-    // On force via getSession() pour déclencher l'échange si ce n'est pas encore fait,
-    // puis on écoute onAuthStateChange pour confirmer.
-    void supabase.auth.getSession();
+    void (async () => {
+      const timeout = window.setTimeout(() => {
+        if (!cancelled) {
+          setErrorMessage("La vérification a pris trop de temps. Demandez un nouveau lien depuis le formulaire de démo.");
+          setState("error");
+        }
+      }, 12_000);
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        clearTimeout(timeout);
-        listener.subscription.unsubscribe();
-        // Aiguillage centralisé (dashboard / onboarding / start).
-        navigate(ROUTE_PATHS.postLogin, { replace: true });
+      try {
+        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError || !data.session) {
+          throw exchangeError ?? new Error("verification_session_missing");
+        }
+        if (cancelled) return;
+
+        if (!demoIntent) {
+          window.clearTimeout(timeout);
+          navigate(ROUTE_PATHS.postLogin, { replace: true });
+          return;
+        }
+
+        const draft = readDemoDraft();
+        if (!draft) {
+          await supabase.auth.signOut({ scope: "local" });
+          throw new Error("demo_draft_missing");
+        }
+
+        if (data.session.user.user_metadata?.demo_verification_pending !== true) {
+          await supabase.auth.signOut({ scope: "local" });
+          window.clearTimeout(timeout);
+          setErrorMessage("Cette adresse e-mail est déjà associée à un compte E-Samba.");
+          setState("error");
+          return;
+        }
+
+        const response = await fetch("/api/demo/request", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${data.session.access_token}`,
+          },
+          body: JSON.stringify({
+            full_name: draft.name,
+            email: draft.email,
+            company: draft.company,
+            phone: draft.phone,
+            company_identifier: draft.company_identifier,
+            country_code: draft.country_code,
+          }),
+        });
+
+        let body: { ok?: boolean; error?: string } = {};
+        try {
+          body = (await response.json()) as { ok?: boolean; error?: string };
+        } catch {
+          // Le statut HTTP reste suffisant pour l'UX.
+        }
+
+        // Le BFF supprime l'utilisateur Auth transitoire après l'insert. On ne
+        // conserve donc aucune session locale qui pourrait déclencher /start.
+        await supabase.auth.signOut({ scope: "local" });
+        window.clearTimeout(timeout);
+
+        if (!response.ok || body.ok !== true) {
+          window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
+          setErrorMessage(mapDemoSubmitError(response.status, body.error));
+          setState("error");
+          return;
+        }
+
+        window.localStorage.removeItem(DEMO_VERIFICATION_DRAFT_KEY);
+        window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
+        navigate(`${ROUTE_PATHS.contact}?demo_request_sent=1`, { replace: true });
+      } catch (callbackError) {
+        window.clearTimeout(timeout);
+        console.error("[auth-callback] verification failed:", callbackError);
+        if (!cancelled) {
+          const message =
+            callbackError instanceof Error && callbackError.message === "demo_draft_missing"
+              ? "Les informations de votre demande ne sont plus disponibles dans ce navigateur. Revenez au formulaire et recommencez la vérification."
+              : "Le lien de vérification est invalide ou expiré. Demandez un nouveau lien depuis le formulaire.";
+          setErrorMessage(message);
+          setState("error");
+        }
       }
-      if (event === "USER_UPDATED" && session) {
-        clearTimeout(timeout);
-        listener.subscription.unsubscribe();
-        navigate(ROUTE_PATHS.postLogin, { replace: true });
-      }
-    });
+    })();
 
     return () => {
-      clearTimeout(timeout);
-      listener.subscription.unsubscribe();
+      cancelled = true;
     };
   }, [navigate, searchParams]);
 
@@ -92,18 +210,16 @@ export default function AuthCallbackPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <AlertCircle className="mx-auto h-10 w-10 text-destructive mb-2" />
-            <CardTitle>Lien invalide</CardTitle>
-            <CardDescription>
-              {errorMessage ?? "Ce lien n'est plus valide."}
-            </CardDescription>
+            <CardTitle>Vérification impossible</CardTitle>
+            <CardDescription>{errorMessage ?? "Ce lien n'est plus valide."}</CardDescription>
           </CardHeader>
           <div className="px-6 pb-6">
             <Button
               className="w-full"
               variant="outline"
-              onClick={() => navigate(ROUTE_PATHS.auth, { replace: true })}
+              onClick={() => navigate(ROUTE_PATHS.contact, { replace: true })}
             >
-              Retour à la connexion
+              Retour à la demande de démo
             </Button>
           </div>
         </Card>
@@ -116,8 +232,8 @@ export default function AuthCallbackPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary mb-2" />
-          <CardTitle>Connexion en cours…</CardTitle>
-          <CardDescription>Quelques secondes.</CardDescription>
+          <CardTitle>Vérification en cours…</CardTitle>
+          <CardDescription>Validation de votre e-mail et envoi de votre demande de démo.</CardDescription>
         </CardHeader>
       </Card>
     </div>

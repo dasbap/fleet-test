@@ -15,6 +15,7 @@ import { isNativePlatform } from "@/lib/platform";
 import MobileLayout from "@/layouts/MobileLayout";
 import { OfflinePendingSyncBridge } from "@/components/OfflinePendingSyncBridge";
 import { SectionErrorBoundary } from "@/components/errors/SectionErrorBoundary";
+import { useNotchPayCallback } from "@/features/billing/hooks/useNotchPayCallback";
 const NotificationsPermissionGate = lazy(() =>
   import("@/components/notifications/NotificationsPermissionGate").then((module) => ({
     default: module.NotificationsPermissionGate,
@@ -45,6 +46,7 @@ export default function DashboardLayout() {
     .toUpperCase()
     .slice(0, 2);
   useRealtimeNotifications(userFleetId);
+  useNotchPayCallback();
 
   if (isNativePlatform()) {
     return <MobileLayout userRole={userRole} />;

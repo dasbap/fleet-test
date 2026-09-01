@@ -43,6 +43,21 @@ export class AdminDemoRequestRepository {
     return (data ?? []) as AdminDemoRequest[];
   }
 
+  async getSettings(): Promise<{ enabled: boolean; decision: DemoRequestAutoDecision }> {
+    const { data, error } = await supabase
+      .from("demo_request_settings")
+      .select("auto_decision_enabled, auto_decision")
+      .eq("id", true)
+      .maybeSingle();
+
+    if (error) throwDemoRequestError(error);
+
+    return {
+      enabled: data?.auto_decision_enabled ?? false,
+      decision: (data?.auto_decision as DemoRequestAutoDecision | null) ?? "refuse",
+    };
+  }
+
   async finalize(input: {
     requestId: string;
     status: DemoRequestStatus;

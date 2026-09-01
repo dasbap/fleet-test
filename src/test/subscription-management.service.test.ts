@@ -114,6 +114,30 @@ describe("normalizeSubscriptionSummaries", () => {
     expect(result[0].vehicleCapacity).toBeNull();
     expect(result[0].vehicleCount).toBe(12);
   });
+
+  it("returns an empty list for a non-array RPC response", () => {
+    expect(normalizeSubscriptionSummaries(null)).toEqual([]);
+    expect(normalizeSubscriptionSummaries({ subscriptions: [] })).toEqual([]);
+  });
+
+  it("normalizes missing vehicles and missing subscription id", () => {
+    const result = normalizeSubscriptionSummaries([{ plan_code: "starter" }]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("");
+    expect(result[0].vehicles).toEqual([]);
+  });
+
+  it("uses vehicle_id as fallback and then an empty id", () => {
+    const result = normalizeSubscriptionSummaries([
+      {
+        id: "sub-1",
+        vehicles: [{ vehicle_id: "vehicle-fallback" }, {}],
+      },
+    ]);
+
+    expect(result[0].vehicles.map((vehicle) => vehicle.id)).toEqual(["vehicle-fallback", ""]);
+  });
 });
 
 describe("normalizeSubscriptionDetail", () => {
