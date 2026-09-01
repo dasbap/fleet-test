@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   deploy:
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     environment: production
 
@@ -43,7 +44,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Deploy to Vercel production
-        run: npx --yes vercel@58.4.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+        run: npx --yes vercel@58.4.0 deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
