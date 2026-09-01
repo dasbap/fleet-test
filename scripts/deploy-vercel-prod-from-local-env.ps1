@@ -99,16 +99,11 @@ try {
     Set-VercelProductionEnv $key $value
   }
 
-  Write-Host ">> Rafraichissement des variables Production locales Vercel"
-  & npx --yes "vercel@$vercelVersion" pull --yes --environment=production
-  if ($LASTEXITCODE -ne 0) { throw "vercel pull production a echoue" }
-
-  Write-Host ">> Build Vercel Production avec les variables fraichement synchronisees"
-  & npx --yes "vercel@$vercelVersion" build --prod
-  if ($LASTEXITCODE -ne 0) { throw "vercel build --prod a echoue" }
-
-  Write-Host ">> Deploiement Production"
-  & npx --yes "vercel@$vercelVersion" deploy --prebuilt --prod --yes --archive=tgz
+  # Important : on ne fait pas `vercel build` localement. Sous Windows, le build local
+  # peut echouer avec `spawn cmd.exe ENOENT`. Le build distant Vercel utilise directement
+  # les variables Production que l'on vient d'ecraser.
+  Write-Host ">> Deploiement Production avec build distant Vercel"
+  & npx --yes "vercel@$vercelVersion" deploy --prod --force --yes --archive=tgz
   if ($LASTEXITCODE -ne 0) { throw "vercel deploy --prod a echoue" }
 
   Write-Host ""
