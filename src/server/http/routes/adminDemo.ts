@@ -124,7 +124,10 @@ async function forwardJson(
         Authorization: `Bearer ${adminSecret}`,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(MAGIC_LINK_UPSTREAM_TIMEOUT_MS),
+      signal:
+        typeof AbortSignal.timeout === "function"
+          ? AbortSignal.timeout(MAGIC_LINK_UPSTREAM_TIMEOUT_MS)
+          : undefined,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
