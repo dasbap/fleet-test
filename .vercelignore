@@ -20,3 +20,4 @@ releases
 coverage
 playwright-report
 blob-report
+.stryker-tmp
