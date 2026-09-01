@@ -48,10 +48,10 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
-      - name: Checkout production source
+      - name: Checkout pre-prod source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: main
+          ref: pre-prod
           persist-credentials: false
 
       - name: Setup Node.js
@@ -272,4 +272,4 @@ jobs:
           echo "- SUPABASE_SERVICE_ROLE_KEY" >> "$GITHUB_STEP_SUMMARY"
           echo "- ADMIN_SECRET (si configuré dans GitHub)" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Une sync Production/All audite la cohérence du projet Supabase et redéploie main." >> "$GITHUB_STEP_SUMMARY"
+          echo "Une sync Production/All audite la cohérence du projet Supabase et redéploie pre-prod." >> "$GITHUB_STEP_SUMMARY"
