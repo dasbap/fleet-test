@@ -3,6 +3,28 @@ import { createClient } from "@supabase/supabase-js";
 import { applyCors, getSupabaseEnv, handlePreflight } from "../_lib/vercel-api.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DEMO_MAGIC_LINK_TIMEOUT_MS = 12_000;
+
+class UpstreamTimeoutError extends Error {
+  constructor(label: string) {
+    super(`${label}_timeout`);
+    this.name = "UpstreamTimeoutError";
+  }
+}
+
+async function withTimeout<T>(operation: PromiseLike<T>, label: string): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new UpstreamTimeoutError(label)), DEMO_MAGIC_LINK_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
 
 export function resolveAppUrl(req: VercelRequest, configuredAppUrl: string): string {
   const fallback = configuredAppUrl.replace(/\/$/, "");
@@ -55,9 +77,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
 
-  const { data, error } = await admin.rpc("demo_validate_magic_link", {
-    p_token: body.token,
-  });
+  let data: unknown;
+  let error: { message?: string } | null;
+  try {
+    ({ data, error } = await withTimeout(
+      admin.rpc("demo_validate_magic_link", { p_token: body.token }),
+      "demo_magic_link_validation",
+    ));
+  } catch (err) {
+    if (err instanceof UpstreamTimeoutError) {
+      res.status(504).json({ ok: false, error: "upstream_timeout" });
+      return;
+    }
+    throw err;
+  }
 
   if (error) {
     res.status(500).json({ ok: false, error: "validation_error" });
@@ -77,11 +110,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   const appUrl = resolveAppUrl(req, env.appUrl);
-  const { data: otpData, error: otpError } = await admin.auth.admin.generateLink({
-    type: "magiclink",
-    email: result.email,
-    options: { redirectTo: `${appUrl}/demo/onboarding` },
-  });
+  let otpData: { properties?: { action_link?: string } } | null;
+  let otpError: { message?: string } | null;
+  try {
+    ({ data: otpData, error: otpError } = await withTimeout(
+      admin.auth.admin.generateLink({
+        type: "magiclink",
+        email: result.email,
+        options: { redirectTo: `${appUrl}/demo/onboarding` },
+      }),
+      "demo_magic_link_auth_link",
+    ));
+  } catch (err) {
+    if (err instanceof UpstreamTimeoutError) {
+      res.status(504).json({ ok: false, error: "upstream_timeout" });
+      return;
+    }
+    throw err;
+  }
 
   if (otpError || !otpData?.properties?.action_link) {
     res.status(500).json({ ok: false, error: "auth_link_failed" });
