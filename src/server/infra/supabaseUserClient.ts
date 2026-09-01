@@ -13,6 +13,16 @@ function decodeBase64UrlJson(segment: string): Record<string, unknown> | null {
   }
 }
 
+function getSupabaseProjectRef(url: string): string | null {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    const match = hostname.match(/^([a-z0-9]{20})\.supabase\.co$/);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Extrait l'URL du projet Supabase depuis le claim `iss` du JWT utilisateur.
  * La valeur n'est jamais considérée comme authentifiée ici : elle sert uniquement
@@ -38,9 +48,20 @@ export function getSupabaseUrlFromAccessToken(accessToken: string): string | nul
  * navigateur contre un autre projet Supabase.
  */
 export function createSupabaseUserClient(accessToken: string): SupabaseClient {
+  const configuredUrl = getSupabaseUrl();
   const tokenUrl = getSupabaseUrlFromAccessToken(accessToken);
-  const url = tokenUrl ?? getSupabaseUrl();
+  const url = tokenUrl ?? configuredUrl;
   const anon = getSupabaseAnonKey();
+
+  const configuredRef = getSupabaseProjectRef(configuredUrl);
+  const tokenRef = tokenUrl ? getSupabaseProjectRef(tokenUrl) : null;
+  if (configuredRef && tokenRef && configuredRef !== tokenRef) {
+    console.warn("[supabase-user] runtime project mismatch", {
+      configuredProjectRef: configuredRef,
+      tokenProjectRef: tokenRef,
+    });
+  }
+
   return createClient(url, anon, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     global: {
