@@ -181,12 +181,7 @@ async function handleSecureLocalProspect(c: Context) {
   );
 }
 
-async function secureLocalProspectOverride(c: Context, next: Next) {
-  if (process.env.ADMIN_SECRET?.trim()) {
-    await next();
-    return;
-  }
-
+async function secureLocalProspectOverride(c: Context, _next: Next) {
   return handleSecureLocalProspect(c);
 }
 

@@ -136,6 +136,44 @@ describe("BFF routes (Hono)", () => {
     });
   });
 
+  it("POST /api/admin/create-prospect cree le prospect meme quand ADMIN_SECRET est present", async () => {
+    vi.resetModules();
+    process.env.SUPABASE_URL = "https://test.supabase.co";
+    process.env.SUPABASE_ANON_KEY = "test-anon-key";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role";
+    process.env.ADMIN_SECRET = "test-admin-secret";
+
+    vi.doMock("@/server/infra/supabaseUserClient", () => ({
+      createSupabaseUserClient: () => ({
+        auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "admin-1" } }, error: null }) },
+        rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+      }),
+    }));
+
+    vi.doMock("@/server/infra/supabaseServiceClient", () => ({
+      createSupabaseServiceClient: () => ({
+        auth: { admin: { createUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } }, error: null }), deleteUser: vi.fn().mockResolvedValue({ error: null }) } },
+        rpc: vi.fn().mockResolvedValue({ data: { ok: true, fleet_id: "00000000-0000-4000-8000-000000000002", trial_end: "2026-09-07T00:00:00.000Z" }, error: null }),
+        from: vi.fn().mockReturnValue({ insert: vi.fn().mockResolvedValue({ error: null }) }),
+      }),
+    }));
+
+    vi.doMock("@supabase/supabase-js", () => ({
+      createClient: () => ({ auth: { resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }) } }),
+    }));
+
+    const { createServerApp } = await import("@/server/http/app");
+    const app = createServerApp();
+    const res = await app.request("/api/admin/create-prospect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer admin-token" },
+      body: JSON.stringify({ email: "prospect@example.com", full_name: "Prospect Test", company_name: "Entreprise Test", phone: "+237600000000", company_identifier: "RCCM-TEST", country_code: "CM", account_type: "prospect", trial_days: 7, send_email: false }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual(expect.objectContaining({ ok: true, user_id: "user-1", must_set_password: true }));
+  });
+
   it("POST /api/admin/generate-magic-link exige Bearer", async () => {
     const app = createServerApp();
     const res = await app.request("/api/admin/generate-magic-link", {

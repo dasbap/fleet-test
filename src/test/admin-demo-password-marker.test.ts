@@ -309,4 +309,32 @@ describe("Admin demo password marker", () => {
     expect(updateUser).toHaveBeenCalledTimes(1);
     expect(updateUserById).toHaveBeenCalledTimes(2);
   });
+  it("renvoie 504 si Supabase ne repond pas pendant le nettoyage du marqueur", async () => {
+    vi.useFakeTimers();
+    vi.doMock("@/server/infra/supabaseUserClient", () => ({
+      createSupabaseUserClient: () => ({
+        auth: { getUser: vi.fn().mockReturnValue(new Promise(() => undefined)) },
+      }),
+    }));
+
+    vi.doMock("@/server/infra/supabaseServiceClient", () => ({
+      createSupabaseServiceClient: vi.fn(),
+    }));
+
+    const { createServerApp } = await import("@/server/http/app");
+    const app = createServerApp();
+    const responsePromise = app.request("/api/auth/clear-password-marker", {
+      method: "POST",
+      headers: { Authorization: "Bearer user-token", "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "NewStrongPassword123!" }),
+    });
+
+    await vi.advanceTimersByTimeAsync(12_000);
+    const res = await Promise.race([responsePromise, Promise.resolve("still_pending")]);
+
+    expect(res).not.toBe("still_pending");
+    expect((res as Response).status).toBe(504);
+    expect(await (res as Response).json()).toEqual({ ok: false, error: "upstream_timeout" });
+    vi.useRealTimers();
+  });
 });
