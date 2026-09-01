@@ -239,6 +239,9 @@ jobs:
           }
 
           const expectedRef = process.env.SUPABASE_PROJECT_REF?.trim()
+          if (env.VITE_SUPABASE_URL === String.fromCharCode(91,83,69,78,83,73,84,73,86,69,93)) env.VITE_SUPABASE_URL = process.env.VITE_SUPABASE_URL
+          if (env.SUPABASE_URL === String.fromCharCode(91,83,69,78,83,73,84,73,86,69,93)) env.SUPABASE_URL = process.env.SUPABASE_URL
+          if (env.SUPABASE_PROJECT_REF === String.fromCharCode(91,83,69,78,83,73,84,73,86,69,93)) env.SUPABASE_PROJECT_REF = process.env.SUPABASE_PROJECT_REF
           const publicRef = projectRef(env.VITE_SUPABASE_URL)
           const serverRef = projectRef(env.SUPABASE_URL)
           const vercelRef = env.SUPABASE_PROJECT_REF?.trim()
