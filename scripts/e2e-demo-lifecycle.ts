@@ -45,9 +45,17 @@ function assert(condition: unknown, message: string): asserts condition {
 
 async function jsonRequest(path: string, options: RequestInit = {}) {
   const response = await app.request(`${appUrl}${path}`, options);
-  let body: any = null;
-  try { body = await response.json(); } catch {}
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
   return { response, body };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? value as Record<string, unknown> : null;
 }
 
 async function createTestAdmin() {
@@ -111,7 +119,8 @@ async function submitDemoRequest(visitorToken: string, verificationUserId: strin
       country_code: "CM",
     }),
   });
-  assert(response.status === 200 && body?.ok === true, `Demo request failed: HTTP ${response.status} ${JSON.stringify(body)}`);
+  const bodyRecord = asRecord(body);
+  assert(response.status === 200 && bodyRecord?.ok === true, `Demo request failed: HTTP ${response.status} ${JSON.stringify(body)}`);
 
   const { data: deletedVerificationUser } = await service.auth.admin.getUserById(verificationUserId);
   assert(!deletedVerificationUser?.user, "Ephemeral verification Auth user was not deleted");
@@ -131,7 +140,10 @@ async function acceptRequest(adminClient: ReturnType<typeof anon>, adminToken: s
     p_include_processed: false,
   });
   if (listError) throw new Error(`Admin list requests failed: ${listError.message}`);
-  assert(Array.isArray(pending) && pending.some((r: any) => r.id === requestId), "Pending request not visible to admin");
+  assert(
+    Array.isArray(pending) && pending.some((row: unknown) => asRecord(row)?.id === requestId),
+    "Pending request not visible to admin",
+  );
 
   const { response: createResponse, body: createBody } = await jsonRequest("/api/admin/create-prospect", {
     method: "POST",
@@ -149,8 +161,12 @@ async function acceptRequest(adminClient: ReturnType<typeof anon>, adminToken: s
       permanent_access: false,
     }),
   });
-  assert(createResponse.status === 201 && createBody?.ok === true && createBody.user_id, `Prospect creation failed: HTTP ${createResponse.status} ${JSON.stringify(createBody)}`);
-  productUserId = createBody.user_id;
+  const createBodyRecord = asRecord(createBody);
+  assert(
+    createResponse.status === 201 && createBodyRecord?.ok === true && typeof createBodyRecord.user_id === "string",
+    `Prospect creation failed: HTTP ${createResponse.status} ${JSON.stringify(createBody)}`,
+  );
+  productUserId = createBodyRecord.user_id;
   userIds.add(productUserId);
 
   const { response: linkResponse, body: linkBody } = await jsonRequest("/api/admin/generate-magic-link", {
@@ -158,26 +174,30 @@ async function acceptRequest(adminClient: ReturnType<typeof anon>, adminToken: s
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
     body: JSON.stringify({
       user_id: productUserId,
-      fleet_id: createBody.fleet_id ?? null,
+      fleet_id: typeof createBodyRecord.fleet_id === "string" ? createBodyRecord.fleet_id : null,
       email: visitorEmail,
       label: `CI ${marker}`,
     }),
   });
-  assert(linkResponse.status === 200 && linkBody?.ok === true && linkBody.magic_url, `Magic-link generation failed: HTTP ${linkResponse.status} ${JSON.stringify(linkBody)}`);
+  const linkBodyRecord = asRecord(linkBody);
+  assert(
+    linkResponse.status === 200 && linkBodyRecord?.ok === true && typeof linkBodyRecord.magic_url === "string",
+    `Magic-link generation failed: HTTP ${linkResponse.status} ${JSON.stringify(linkBody)}`,
+  );
 
   const { error: finalizeError } = await adminClient.rpc("admin_finalize_demo_request", {
     p_request_id: requestId,
     p_status: "accepted",
     p_reason: "E2E accepted",
     p_provisioned_user_id: productUserId,
-    p_invitation_url: linkBody.magic_url,
+    p_invitation_url: linkBodyRecord.magic_url,
   });
   if (finalizeError) throw new Error(`Demo request finalize failed: ${finalizeError.message}`);
 
-  return linkBody.magic_url as string;
+  return linkBodyRecord.magic_url;
 }
 
-async function useMagicLinkAndSetPassword(magicUrl: string) {
+async function consumeMagicLinkAndSetPassword(magicUrl: string) {
   const demoToken = new URL(magicUrl).searchParams.get("token");
   assert(demoToken, `Missing demo token in magic URL: ${magicUrl}`);
 
@@ -186,9 +206,13 @@ async function useMagicLinkAndSetPassword(magicUrl: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "validate", token: demoToken }),
   });
-  assert(response.status === 200 && body?.ok === true && body.magic_link, `Demo magic-link validation failed: HTTP ${response.status} ${JSON.stringify(body)}`);
+  const bodyRecord = asRecord(body);
+  assert(
+    response.status === 200 && bodyRecord?.ok === true && typeof bodyRecord.magic_link === "string",
+    `Demo magic-link validation failed: HTTP ${response.status} ${JSON.stringify(body)}`,
+  );
 
-  const verifyResponse = await fetch(body.magic_link, { redirect: "manual" });
+  const verifyResponse = await fetch(bodyRecord.magic_link, { redirect: "manual" });
   const location = verifyResponse.headers.get("location");
   assert(location, `Supabase magic link did not redirect (HTTP ${verifyResponse.status})`);
   const redirected = new URL(location);
@@ -212,7 +236,10 @@ async function useMagicLinkAndSetPassword(magicUrl: string) {
     method: "POST",
     headers: { Authorization: `Bearer ${currentToken}` },
   });
-  assert(markerResponse.status === 200 && markerBody?.ok === true, `Password marker clear failed: HTTP ${markerResponse.status} ${JSON.stringify(markerBody)}`);
+  assert(
+    markerResponse.status === 200 && asRecord(markerBody)?.ok === true,
+    `Password marker clear failed: HTTP ${markerResponse.status} ${JSON.stringify(markerBody)}`,
+  );
 
   await user.auth.signOut();
   const login = anon();
@@ -272,7 +299,7 @@ async function purgePublicTraces() {
         const result = await pg.query(`delete from public.${quoteIdent(table)} where ${clauses.join(" or ")}`, params);
         deleted += result.rowCount ?? 0;
       } catch {
-        // Parent rows are retried after dependent rows disappear in later passes.
+        continue;
       }
     }
     if (deleted === 0) break;
@@ -282,7 +309,7 @@ async function purgePublicTraces() {
 async function cleanupEverything() {
   await purgePublicTraces();
   for (const id of [...userIds]) {
-    await service.auth.admin.deleteUser(id, false).catch(() => {});
+    await service.auth.admin.deleteUser(id, false).catch(() => undefined);
   }
   await purgePublicTraces();
 
@@ -306,7 +333,9 @@ async function cleanupEverything() {
           [`%${email}%`],
         );
         if (q.rows[0]?.count > 0) remaining.push({ table: row.table_name, count: q.rows[0].count });
-      } catch {}
+      } catch {
+        continue;
+      }
     }
   }
   if (remaining.length) throw new Error(`Public traces remain: ${JSON.stringify(remaining)}`);
@@ -319,7 +348,7 @@ try {
   const { token: visitorToken, verificationUserId } = await createVerifiedVisitorSession();
   await submitDemoRequest(visitorToken, verificationUserId);
   const magicUrl = await acceptRequest(adminClient, adminToken);
-  await useMagicLinkAndSetPassword(magicUrl);
+  await consumeMagicLinkAndSetPassword(magicUrl);
   console.log(JSON.stringify({ ok: true, request_id: requestId, user_id: productUserId, first_password_verified: true }));
 } catch (error) {
   failure = error;
@@ -331,7 +360,7 @@ try {
     console.error(cleanupError);
     process.exitCode = 2;
   }
-  await pg.end().catch(() => {});
+  await pg.end().catch(() => undefined);
 }
 
 if (failure) {
