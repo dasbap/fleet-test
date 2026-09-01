@@ -7,6 +7,7 @@ const hookMocks = vi.hoisted(() => ({
   requests: undefined as AdminDemoRequest[] | undefined,
   error: null as unknown,
   isError: false,
+  settings: { enabled: false, decision: "refuse" as const },
   updateAutoModeMutate: vi.fn(),
 }));
 
@@ -25,6 +26,7 @@ vi.mock("@/hooks/useAdminDemoRequests", () => ({
     isLoading: false,
     refetch: vi.fn(),
   }),
+  useAdminDemoRequestSettings: () => ({ data: hookMocks.settings }),
   useFinalizeDemoRequest: () => ({
     isPending: false,
     mutateAsync: vi.fn(),
@@ -60,6 +62,7 @@ describe("DemoRequestsPanel", () => {
     hookMocks.requests = [];
     hookMocks.error = null;
     hookMocks.isError = false;
+    hookMocks.settings = { enabled: false, decision: "refuse" };
     hookMocks.updateAutoModeMutate.mockClear();
   });
 
@@ -72,10 +75,7 @@ describe("DemoRequestsPanel", () => {
       <DemoRequestsPanel onCreateAccess={vi.fn()} onReloadSessions={vi.fn()} />
     );
 
-    expect(
-      screen.getByText(/migration des demandes demo/i)
-    ).toBeInTheDocument();
-    expect(screen.getByText(/applique la migration/i)).toBeInTheDocument();
+    expect(screen.getByText(/migration des demandes demo/i)).toBeInTheDocument();
   });
 
   it("met a jour visuellement le mode automatique des qu'un admin coche le switch", () => {

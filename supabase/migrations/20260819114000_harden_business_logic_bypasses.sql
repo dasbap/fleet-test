@@ -29,9 +29,14 @@ USING (
 );
 
 -- accepter_invitation requires auth.uid(), so anon execution serves no purpose.
-REVOKE EXECUTE ON FUNCTION public.accepter_invitation(text) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.accepter_invitation(text) FROM anon;
-GRANT EXECUTE ON FUNCTION public.accepter_invitation(text) TO authenticated;
+DO $$
+BEGIN
+  IF to_regprocedure('public.accepter_invitation(text)') IS NOT NULL THEN
+    REVOKE EXECUTE ON FUNCTION public.accepter_invitation(text) FROM PUBLIC;
+    REVOKE EXECUTE ON FUNCTION public.accepter_invitation(text) FROM anon;
+    GRANT EXECUTE ON FUNCTION public.accepter_invitation(text) TO authenticated;
+  END IF;
+END $$;
 
 -- 3) A client must never be able to mutate a pending payment after the server
 -- computed its price. Otherwise raw_payload/plan/vehicleCount can be changed

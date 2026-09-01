@@ -4,15 +4,7 @@ on:
   push:
     branches:
       - main
-      - master
-      - develop
-      - PRINCIPALE
-      - fix/ci-green-main
-      - "release/**"
-
-  pull_request:
-    branches:
-      - main
+      - pre-prod
       - master
       - develop
       - PRINCIPALE

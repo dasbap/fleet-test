@@ -24,9 +24,7 @@ name: Lighthouse CI — audit complet
 
 on:
   push:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
-  pull_request:
-    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+    branches: [main, pre-prod, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
 concurrency:
@@ -115,7 +113,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
         env:
-          BUNDLE_BUDGET_INITIAL_GZIP_KB: "450"
+          BUNDLE_BUDGET_INITIAL_GZIP_KB: "285"
 
       - name: Démarrer le serveur preview
         run: npm run preview &

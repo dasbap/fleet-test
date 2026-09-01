@@ -4,6 +4,11 @@ import { Hono } from "hono";
 
 const verifyMock = vi.fn();
 const parseMock = vi.fn(() => ({ externalRef: "ref-replay-1", rawStatus: "succeeded" }));
+const resolveProviderMock = vi.fn((provider?: string) => ({
+  id: provider === "notch" ? "notch" : provider === "cinetpay" ? "cinetpay" : "generic",
+  verify: verifyMock,
+  parse: parseMock,
+}));
 const runInboundMock = vi.fn(async () => ({
   paymentId: "pay-1",
   normalizedStatus: "succeeded",
@@ -11,11 +16,7 @@ const runInboundMock = vi.fn(async () => ({
 }));
 
 vi.mock("@/server/payments/webhookProviders", () => ({
-  resolvePaymentWebhookProvider: () => ({
-    id: "generic",
-    verify: verifyMock,
-    parse: parseMock,
-  }),
+  resolvePaymentWebhookProvider: resolveProviderMock,
 }));
 
 vi.mock("@/server/env", () => ({
@@ -38,6 +39,7 @@ describe("route /webhooks/payment", () => {
   beforeEach(() => {
     verifyMock.mockClear();
     parseMock.mockClear();
+    resolveProviderMock.mockClear();
     runInboundMock.mockClear();
   });
 
@@ -71,6 +73,31 @@ describe("route /webhooks/payment", () => {
       "ref-replay-1",
       "succeeded",
       "manual",
+    );
+  });
+
+  it("detecte automatiquement Notch Pay via x-notch-signature", async () => {
+    const { registerWebhooksPaymentRoutes } = await import("@/server/http/routes/webhooksPayment");
+    const app = new Hono();
+    registerWebhooksPaymentRoutes(app);
+
+    const body = JSON.stringify({ data: { reference: "ref-replay-1", status: "complete" } });
+    const res = await app.request("/webhooks/payment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-notch-signature": "a".repeat(64),
+      },
+      body,
+    });
+
+    expect(res.status).toBe(204);
+    expect(resolveProviderMock).toHaveBeenCalledWith("notch");
+    expect(runInboundMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      "ref-replay-1",
+      "succeeded",
+      "notch",
     );
   });
 

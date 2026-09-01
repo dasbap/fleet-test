@@ -13,6 +13,14 @@ export function useAdminDemoRequests(includeProcessed = false) {
   });
 }
 
+export function useAdminDemoRequestSettings() {
+  return useQuery({
+    queryKey: ["admin-demo-request-settings"],
+    queryFn: () => repository.getSettings(),
+    staleTime: 30_000,
+  });
+}
+
 export function useFinalizeDemoRequest() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -44,6 +52,7 @@ export function useUpdateDemoRequestAutoMode() {
       repository.updateAutoMode(input.enabled, input.decision),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-demo-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-demo-request-settings"] });
       toast({ title: "Automatisation demo mise a jour" });
     },
   });

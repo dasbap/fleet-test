@@ -16,6 +16,8 @@ const root = path.resolve(__dirname, "..");
 const dataPath = path.join(root, "src", "data", "published-use-cases.json");
 const baseUrl =
   (process.env.VITE_APP_URL || "https://www.e-samba.com").replace(/\/$/, "");
+const DEFAULT_LASTMOD = "2026-08-17";
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 async function fetchPublishedFromSupabase() {
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -26,7 +28,7 @@ async function fetchPublishedFromSupabase() {
     );
   }
 
-  const endpoint = `${url.replace(/\/$/, "")}/rest/v1/seo_use_cases?select=slug,title,meta_description&status=eq.published&order=published_at.desc`;
+  const endpoint = `${url.replace(/\/$/, "")}/rest/v1/seo_use_cases?select=slug,title,meta_description,published_at,updated_at&status=eq.published&order=published_at.desc`;
   const res = await fetch(endpoint, {
     headers: {
       apikey: key,
@@ -48,6 +50,38 @@ function readLocalPublished() {
   return JSON.parse(fs.readFileSync(dataPath, "utf-8"));
 }
 
+function toDateOnly(value) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+
+  const raw = value.trim();
+  if (DATE_ONLY_RE.test(raw)) {
+    return raw;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString().slice(0, 10);
+}
+
+function pageLastmod(page) {
+  return (
+    toDateOnly(page.lastmod) ||
+    toDateOnly(page.updated_at) ||
+    toDateOnly(page.published_at) ||
+    DEFAULT_LASTMOD
+  );
+}
+
+function latestLastmod(pages) {
+  const dates = pages.map(pageLastmod).filter(Boolean).sort();
+  return dates.at(-1) || DEFAULT_LASTMOD;
+}
+
 async function main() {
   const shouldFetch = process.argv.includes("--fetch");
   let pages = readLocalPublished();
@@ -64,19 +98,21 @@ async function main() {
     return;
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const useCaseUrls = pages.map(
-    (p) => `  <url>
+  const hubLastmod = latestLastmod(pages);
+  const useCaseUrls = pages.map((p) => {
+    const lastmod = pageLastmod(p);
+
+    return `  <url>
     <loc>${baseUrl}/use-case/${p.slug}</loc>
-    <lastmod>${today}</lastmod>
+    <lastmod>${lastmod}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
-  </url>`
-  );
+  </url>`;
+  });
 
   const hubUrl = `  <url>
     <loc>${baseUrl}/use-case</loc>
-    <lastmod>${today}</lastmod>
+    <lastmod>${hubLastmod}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.75</priority>
   </url>`;

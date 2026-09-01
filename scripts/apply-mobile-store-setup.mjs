@@ -24,7 +24,6 @@ const MOBILE_REDIRECT_URLS = [
   "https://www.e-samba.com/auth/update-password/**",
 ];
 
-/** URLs déjà en prod (ne pas retirer lors du merge config push). */
 const PRODUCTION_REDIRECT_URLS = [
   "https://www.e-samba.com/**",
   "https://e-samba.com/**",
@@ -32,6 +31,13 @@ const PRODUCTION_REDIRECT_URLS = [
   "http://localhost:8080/**",
   "http://smart-fleet-africa.vercel.app/**",
 ];
+
+const DEMO_OTP_TEMPLATE_BLOCK = `[auth.email.template.magic_link]
+subject = "E-Samba — Vérification de votre adresse e-mail"
+content_path = "./supabase/templates/magic_link.html"`;
+
+const DEFAULT_EMAIL_PROVIDER_TEMPLATE_LIMIT =
+  "Email template modification is not available for free tier projects using the default email provider";
 
 function log(msg) {
   console.log(`[mobile-setup] ${msg}`);
@@ -188,22 +194,92 @@ function mergeConfigTomlRedirects() {
     text = text.replace(/additional_redirect_urls\s*=\s*\[[\s\S]*?\]/, block);
   }
 
+  text = text.replaceAll('content_path = "./templates/magic_link.html"', 'content_path = "./supabase/templates/magic_link.html"');
+
+  if (!text.includes("[auth.email.template.magic_link]")) {
+    text = text.replace(
+      /\n\[auth\.sms\]/,
+      `\n${DEMO_OTP_TEMPLATE_BLOCK}\n\n[auth.sms]`,
+    );
+  }
+
   fs.writeFileSync(configPath, text, "utf8");
-  log("supabase/config.toml : site_url + redirect URLs mobile fusionnés.");
+  log("supabase/config.toml : redirects + template OTP E-Samba fusionnés.");
+}
+
+function runSupabaseConfigPush(args = [], globalArgs = []) {
+  const command = ["npx", "supabase", ...globalArgs, "config", "push", "--yes", ...args].join(" ");
+  try {
+    const stdout = execSync(command, {
+      cwd: root,
+      encoding: "utf8",
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (stdout) process.stdout.write(stdout);
+    return { status: 0, stdout, stderr: "" };
+  } catch (error) {
+    const stdout = error.stdout?.toString?.() ?? "";
+    const stderr = error.stderr?.toString?.() ?? "";
+    if (stdout) process.stdout.write(stdout);
+    if (stderr) process.stderr.write(stderr);
+    return { status: error.status ?? 1, stdout, stderr, error };
+  }
+}
+
+function stripMagicLinkTemplateBlock(text) {
+  return text.replace(/\r?\n\[auth\.email\.template\.magic_link\]\r?\n[\s\S]*?(?=\r?\n\[)/, "\n");
+}
+
+function readLinkedProjectRef() {
+  const projectRefPath = path.join(root, "supabase", ".temp", "project-ref");
+  if (!fs.existsSync(projectRefPath)) return null;
+  const projectRef = fs.readFileSync(projectRefPath, "utf8").trim();
+  if (!projectRef) return null;
+  if (!/^[a-z0-9]{20}$/.test(projectRef)) {
+    throw new Error("supabase/.temp/project-ref invalide.");
+  }
+  return projectRef;
+}
+
+function pushSupabaseConfigWithoutEmailTemplate() {
+  const configPath = path.join(root, "supabase", "config.toml");
+  const projectRef = readLinkedProjectRef();
+  const originalConfig = fs.readFileSync(configPath, "utf8");
+  const filteredConfig = stripMagicLinkTemplateBlock(originalConfig);
+  if (filteredConfig === originalConfig) {
+    throw new Error("Bloc auth.email.template.magic_link introuvable pour le retry sans template.");
+  }
+
+  fs.writeFileSync(configPath, filteredConfig, "utf8");
+  try {
+    return runSupabaseConfigPush(projectRef ? ["--project-ref", projectRef] : []);
+  } finally {
+    fs.writeFileSync(configPath, originalConfig, "utf8");
+  }
 }
 
 function pushSupabaseConfig() {
-  try {
-    execSync("npx supabase config push --yes", {
-      cwd: root,
-      stdio: "inherit",
-      env: process.env,
-    });
-    log("Supabase config push : OK (projet lié).");
-  } catch (e) {
-    console.error("[mobile-setup] Supabase config push a échoué.", e.message);
-    process.exitCode = 1;
+  const result = runSupabaseConfigPush();
+  if (result.status === 0) {
+    log("Supabase config push : OK (projet lie).");
+    return;
   }
+
+  const output = `${result.stdout ?? ""}
+${result.stderr ?? ""}`;
+  if (output.includes(DEFAULT_EMAIL_PROVIDER_TEMPLATE_LIMIT)) {
+    log("Template email refuse par le plan/provideur Supabase actuel ; retry des redirects sans template.");
+    const retry = pushSupabaseConfigWithoutEmailTemplate();
+    if (retry.status === 0) {
+      log("Supabase config push : OK sans template email (projet lie).");
+      return;
+    }
+  }
+
+  const error = result.error ? ` ${result.error.message}` : "";
+  console.error(`[mobile-setup] Supabase config push a echoue.${error}`);
+  process.exitCode = 1;
 }
 
 const releaseSha = loadReleaseSha256();

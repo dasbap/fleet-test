@@ -1,5 +1,11 @@
 BEGIN;
 
+DO $$
+BEGIN
+  CREATE TYPE public.access_universe AS ENUM ('internal', 'temporary', 'real');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- Access-universe helpers are used by RLS with the current user. Do not expose
 -- them as arbitrary-user role/profile oracles to ordinary authenticated users.
 CREATE OR REPLACE FUNCTION public.get_user_universe(p_user_id uuid DEFAULT auth.uid())
@@ -142,6 +148,122 @@ BEGIN
 END;
 $$;
 
+CREATE TABLE IF NOT EXISTS public.access_codes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code text NOT NULL UNIQUE,
+  label text,
+  universe public.access_universe NOT NULL DEFAULT 'temporary',
+  role_target text NOT NULL,
+  max_uses int NOT NULL DEFAULT 1 CHECK (max_uses >= 1),
+  used_count int NOT NULL DEFAULT 0 CHECK (used_count >= 0),
+  access_days int NOT NULL DEFAULT 7 CHECK (access_days >= 1),
+  expires_at timestamptz NOT NULL DEFAULT (now() + interval '30 days'),
+  fleet_id uuid REFERENCES public.flottes(id) ON DELETE SET NULL,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  last_used_at timestamptz,
+  CONSTRAINT access_codes_used_lte_max CHECK (used_count <= max_uses),
+  CONSTRAINT access_codes_role_target_check CHECK (
+    role_target IN ('investor', 'prospect', 'commercial', 'dev', 'admin')
+  ),
+  CONSTRAINT access_codes_universe_role_coherence CHECK (
+    (universe = 'temporary' AND role_target IN ('investor', 'prospect'))
+    OR (universe = 'internal' AND role_target IN ('commercial', 'dev', 'admin'))
+  )
+);
+
+CREATE INDEX IF NOT EXISTS idx_access_codes_code
+  ON public.access_codes (code) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_access_codes_universe
+  ON public.access_codes (universe) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_access_codes_expires
+  ON public.access_codes (expires_at) WHERE is_active = true;
+
+ALTER TABLE public.access_codes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS access_codes_admin_only ON public.access_codes;
+CREATE POLICY access_codes_admin_only ON public.access_codes
+  FOR ALL USING (public.is_internal_user());
+GRANT SELECT, INSERT, UPDATE ON public.access_codes TO service_role;
+
+CREATE TABLE IF NOT EXISTS public.access_code_uses (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code_id uuid NOT NULL REFERENCES public.access_codes(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  used_at timestamptz NOT NULL DEFAULT now(),
+  ip_hint text,
+  UNIQUE (code_id, user_id)
+);
+
+ALTER TABLE public.access_code_uses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS access_code_uses_admin_only ON public.access_code_uses;
+CREATE POLICY access_code_uses_admin_only ON public.access_code_uses
+  FOR ALL USING (public.is_internal_user());
+GRANT SELECT, INSERT ON public.access_code_uses TO service_role;
+
+CREATE OR REPLACE FUNCTION public.access_code_validate(p_code text)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row public.access_codes%ROWTYPE;
+BEGIN
+  p_code := upper(trim(p_code));
+
+  SELECT * INTO v_row
+    FROM public.access_codes
+   WHERE code = p_code;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'valid', false,
+      'reason', 'code_not_found',
+      'message', 'Code invalide. Verifiez la saisie ou contactez votre commercial.'
+    );
+  END IF;
+
+  IF NOT v_row.is_active THEN
+    RETURN jsonb_build_object(
+      'valid', false,
+      'reason', 'code_revoked',
+      'message', 'Ce code a ete desactive. Contactez l''equipe E-Samba.'
+    );
+  END IF;
+
+  IF v_row.expires_at < now() THEN
+    RETURN jsonb_build_object(
+      'valid', false,
+      'reason', 'code_expired',
+      'message', 'Ce code a expire le ' || to_char(v_row.expires_at, 'DD/MM/YYYY') || '.'
+    );
+  END IF;
+
+  IF v_row.used_count >= v_row.max_uses THEN
+    RETURN jsonb_build_object(
+      'valid', false,
+      'reason', 'code_exhausted',
+      'message', 'Ce code a atteint son nombre maximum d''utilisations.'
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'valid', true,
+    'code_id', v_row.id,
+    'label', v_row.label,
+    'universe', v_row.universe,
+    'role_target', v_row.role_target,
+    'access_days', v_row.access_days,
+    'fleet_id', v_row.fleet_id,
+    'uses_left', v_row.max_uses - v_row.used_count,
+    'expires_at', v_row.expires_at
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.access_code_validate(text) TO anon, authenticated, service_role;
 -- Generate access codes from cryptographically secure database randomness.
 CREATE OR REPLACE FUNCTION public.access_code_generate(p_prefix text DEFAULT 'SAMBA')
 RETURNS text
