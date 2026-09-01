@@ -14,9 +14,13 @@ on:
           - preview
           - development
 
+permissions:
+  contents: read
+
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -28,7 +32,14 @@ jobs:
       VITE_PROTOMAPS_PM_TILES_URL: ${{ vars.VITE_PROTOMAPS_PM_TILES_URL }}
       VITE_ANDROID_APK_URL: ${{ vars.VITE_ANDROID_APK_URL }}
 
+      # Le BFF Node utilise d'abord les variables serveur. Elles sont volontairement
+      # dérivées de la même source GitHub que les VITE_* pour éviter deux projets
+      # Supabase différents entre le navigateur et les fonctions Vercel.
+      SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
@@ -37,8 +48,20 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
+      - name: Checkout production source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        run: npm install --global vercel@58.4.0
+
       - name: Verify Vercel authentication
         run: vercel whoami --token "$VERCEL_TOKEN"
 
@@ -53,12 +76,15 @@ jobs:
           }
           EOF
 
-      - name: Validate Vercel credentials
+      - name: Validate required source variables
         shell: bash
         run: |
           test -n "$VERCEL_TOKEN"
           test -n "$VERCEL_ORG_ID"
           test -n "$VERCEL_PROJECT_ID"
+          test -n "$VITE_SUPABASE_URL"
+          test -n "$VITE_SUPABASE_ANON_KEY"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
 
       - name: Sync environment variables
         shell: bash
@@ -71,12 +97,15 @@ jobs:
           const publicVars = [
             "VITE_SUPABASE_ANON_KEY",
             "VITE_SUPABASE_URL",
+            "SUPABASE_ANON_KEY",
+            "SUPABASE_URL",
             "VITE_PROTOMAPS_PM_TILES_URL",
             "VITE_ANDROID_APK_URL"
           ]
 
           const sensitiveVars = [
             "SUPABASE_SERVICE_ROLE_KEY",
+            "ADMIN_SECRET",
             "SUPABASE_DB_PASSWORD",
             "SUPABASE_PROJECT_REF",
             "DIRECT_URL",
@@ -108,7 +137,7 @@ jobs:
           }
 
           function syncVariable(key, target, sensitive) {
-            const value = process.env[key]
+            const value = process.env[key]?.trim()
 
             if (!value) {
               console.log(`Skip ${key}: valeur absente`)
@@ -136,15 +165,99 @@ jobs:
           }
 
           for (const target of targets) {
-            for (const key of publicVars) {
-              syncVariable(key, target, false)
-            }
-
-            for (const key of sensitiveVars) {
-              syncVariable(key, target, true)
-            }
+            for (const key of publicVars) syncVariable(key, target, false)
+            for (const key of sensitiveVars) syncVariable(key, target, true)
           }
           NODE
+
+      - name: Audit production Supabase runtime variables
+        if: ${{ inputs.target == 'production' || inputs.target == 'all' }}
+        shell: bash
+        run: |
+          rm -f .vercel/.env.production.audit
+          vercel env pull .vercel/.env.production.audit \
+            --yes \
+            --environment=production \
+            --token "$VERCEL_TOKEN"
+
+          node <<'NODE'
+          const fs = require("node:fs")
+          const path = ".vercel/.env.production.audit"
+          const raw = fs.readFileSync(path, "utf8")
+          const env = {}
+
+          for (const line of raw.split(/\r?\n/)) {
+            const trimmed = line.trim()
+            if (!trimmed || trimmed.startsWith("#")) continue
+            const i = trimmed.indexOf("=")
+            if (i < 1) continue
+            const key = trimmed.slice(0, i)
+            let value = trimmed.slice(i + 1)
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+              value = value.slice(1, -1)
+            }
+            env[key] = value
+          }
+
+          const required = [
+            "VITE_SUPABASE_URL",
+            "VITE_SUPABASE_ANON_KEY",
+            "SUPABASE_URL",
+            "SUPABASE_ANON_KEY",
+            "SUPABASE_SERVICE_ROLE_KEY"
+          ]
+          const missing = required.filter((key) => !env[key]?.trim())
+          if (missing.length) {
+            console.error(`Variables runtime Vercel manquantes: ${missing.join(", ")}`)
+            process.exit(1)
+          }
+
+          if (process.env.ADMIN_SECRET?.trim() && !env.ADMIN_SECRET?.trim()) {
+            console.error("ADMIN_SECRET existe dans GitHub mais est absent de Vercel Production")
+            process.exit(1)
+          }
+
+          function projectRef(url) {
+            try {
+              const host = new URL(url).hostname
+              return host.endsWith(".supabase.co") ? host.slice(0, -".supabase.co".length) : host
+            } catch {
+              return "invalid"
+            }
+          }
+
+          const publicRef = projectRef(env.VITE_SUPABASE_URL)
+          const serverRef = projectRef(env.SUPABASE_URL)
+          if (publicRef === "invalid" || serverRef === "invalid" || publicRef !== serverRef) {
+            console.error(`Projet Supabase incohérent entre VITE_SUPABASE_URL (${publicRef}) et SUPABASE_URL (${serverRef})`)
+            process.exit(1)
+          }
+
+          const expectedRef = process.env.SUPABASE_PROJECT_REF?.trim()
+          if (expectedRef && publicRef !== expectedRef) {
+            console.error(`Projet Supabase Vercel (${publicRef}) différent de SUPABASE_PROJECT_REF GitHub (${expectedRef})`)
+            process.exit(1)
+          }
+
+          console.log(`Audit OK: runtime Vercel aligné sur le projet Supabase ${publicRef}`)
+          NODE
+
+      - name: Pull production Vercel environment for build
+        if: ${{ inputs.target == 'production' || inputs.target == 'all' }}
+        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+
+      - name: Build production with synchronized variables
+        if: ${{ inputs.target == 'production' || inputs.target == 'all' }}
+        run: vercel build --prod --token "$VERCEL_TOKEN"
+
+      - name: Redeploy production with synchronized variables
+        if: ${{ inputs.target == 'production' || inputs.target == 'all' }}
+        run: vercel deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN"
+
+      - name: Remove pulled environment file
+        if: ${{ always() }}
+        shell: bash
+        run: rm -f .vercel/.env.production.audit
 
       - name: Summary
         shell: bash
@@ -153,17 +266,10 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Environnement : \`${{ inputs.target }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Variables publiques :" >> "$GITHUB_STEP_SUMMARY"
-          echo "- VITE_SUPABASE_ANON_KEY" >> "$GITHUB_STEP_SUMMARY"
-          echo "- VITE_SUPABASE_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- VITE_PROTOMAPS_PM_TILES_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- VITE_ANDROID_APK_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Variables sensibles :" >> "$GITHUB_STEP_SUMMARY"
+          echo "Runtime Supabase synchronisé :" >> "$GITHUB_STEP_SUMMARY"
+          echo "- VITE_SUPABASE_URL / SUPABASE_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- VITE_SUPABASE_ANON_KEY / SUPABASE_ANON_KEY" >> "$GITHUB_STEP_SUMMARY"
           echo "- SUPABASE_SERVICE_ROLE_KEY" >> "$GITHUB_STEP_SUMMARY"
-          echo "- SUPABASE_DB_PASSWORD" >> "$GITHUB_STEP_SUMMARY"
-          echo "- SUPABASE_PROJECT_REF" >> "$GITHUB_STEP_SUMMARY"
-          echo "- DIRECT_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- SUPABASE_DB_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- SUPABASE_POOLER_HOST" >> "$GITHUB_STEP_SUMMARY"
-          echo "- DATABASE_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- ADMIN_SECRET (si configuré dans GitHub)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Une sync Production/All audite la cohérence du projet Supabase et redéploie main." >> "$GITHUB_STEP_SUMMARY"

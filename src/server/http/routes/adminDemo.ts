@@ -18,6 +18,8 @@ const validateMagicLinkSchema = z.object({
   token: z.string().uuid(),
 });
 
+const MAGIC_LINK_UPSTREAM_TIMEOUT_MS = 8_000;
+
 function getAdminSecret(): string | undefined {
   return process.env.ADMIN_SECRET?.trim() || undefined;
 }
@@ -113,14 +115,25 @@ async function forwardJson(
     return jsonServerConfigurationError(c);
   }
 
-  const upstream = await fetch(`${getSupabaseUrl()}/functions/v1/${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${adminSecret}`,
-    },
-    body: JSON.stringify(body),
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${getSupabaseUrl()}/functions/v1/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminSecret}`,
+      },
+      body: JSON.stringify(body),
+      signal:
+        typeof AbortSignal.timeout === "function"
+          ? AbortSignal.timeout(MAGIC_LINK_UPSTREAM_TIMEOUT_MS)
+          : undefined,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[admin-demo] ${endpoint} upstream unavailable: ${message}`);
+    return c.json({ ok: false, error: "upstream_unavailable" }, 502);
+  }
 
   let data: Record<string, unknown>;
   try {
@@ -170,18 +183,24 @@ async function handleGenerateMagicLink(c: Context) {
       return c.json({ ok: false, error: "invalid_payload", details: parsed.error.flatten() }, 400);
     }
 
-    const forwardBody = {
+    if (!getAdminSecret()) {
+      return await createMagicLinkLocally(c, parsed.data, auth.user.id);
+    }
+
+    const remote = await forwardJson(c, "demo-magic-link", {
       action: "create",
       user_id: parsed.data.user_id,
       fleet_id: parsed.data.fleet_id ?? null,
       email: parsed.data.email,
       label: parsed.data.label,
-    };
+    });
 
-    if (!getAdminSecret()) {
-      return await createMagicLinkLocally(c, parsed.data, auth.user.id);
-    }
-    return await forwardJson(c, "demo-magic-link", forwardBody);
+    if (remote.ok) return remote;
+
+    console.warn(
+      `[admin-demo] demo-magic-link upstream returned ${remote.status}; falling back to local RPC`,
+    );
+    return await createMagicLinkLocally(c, parsed.data, auth.user.id);
   } catch (error) {
     return jsonInternalServerError(c, error);
   }
