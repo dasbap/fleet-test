@@ -39,14 +39,28 @@ let adminId = "";
 let productUserId = "";
 let requestId = "";
 
+type JsonBody = {
+  ok?: boolean;
+  user_id?: string;
+  fleet_id?: string | null;
+  magic_url?: string;
+  magic_link?: string;
+  [key: string]: unknown;
+};
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
 async function jsonRequest(path: string, options: RequestInit = {}) {
   const response = await app.request(`${appUrl}${path}`, options);
-  let body: any = null;
-  try { body = await response.json(); } catch {}
+  let body: JsonBody | null = null;
+  try {
+    const parsed: unknown = await response.json();
+    if (typeof parsed === "object" && parsed !== null) body = parsed as JsonBody;
+  } catch {
+    // Some failure responses intentionally have no JSON body.
+  }
   return { response, body };
 }
 
@@ -131,7 +145,10 @@ async function acceptRequest(adminClient: ReturnType<typeof anon>, adminToken: s
     p_include_processed: false,
   });
   if (listError) throw new Error(`Admin list requests failed: ${listError.message}`);
-  assert(Array.isArray(pending) && pending.some((r: any) => r.id === requestId), "Pending request not visible to admin");
+  assert(
+    Array.isArray(pending) && pending.some((row: { id?: string }) => row.id === requestId),
+    "Pending request not visible to admin",
+  );
 
   const { response: createResponse, body: createBody } = await jsonRequest("/api/admin/create-prospect", {
     method: "POST",
@@ -174,10 +191,10 @@ async function acceptRequest(adminClient: ReturnType<typeof anon>, adminToken: s
   });
   if (finalizeError) throw new Error(`Demo request finalize failed: ${finalizeError.message}`);
 
-  return linkBody.magic_url as string;
+  return linkBody.magic_url;
 }
 
-async function useMagicLinkAndSetPassword(magicUrl: string) {
+async function activateMagicLinkAndSetPassword(magicUrl: string) {
   const demoToken = new URL(magicUrl).searchParams.get("token");
   assert(demoToken, `Missing demo token in magic URL: ${magicUrl}`);
 
@@ -306,7 +323,9 @@ async function cleanupEverything() {
           [`%${email}%`],
         );
         if (q.rows[0]?.count > 0) remaining.push({ table: row.table_name, count: q.rows[0].count });
-      } catch {}
+      } catch {
+        // Ignore columns that cannot be cast or queried during the cleanup scan.
+      }
     }
   }
   if (remaining.length) throw new Error(`Public traces remain: ${JSON.stringify(remaining)}`);
@@ -319,7 +338,7 @@ try {
   const { token: visitorToken, verificationUserId } = await createVerifiedVisitorSession();
   await submitDemoRequest(visitorToken, verificationUserId);
   const magicUrl = await acceptRequest(adminClient, adminToken);
-  await useMagicLinkAndSetPassword(magicUrl);
+  await activateMagicLinkAndSetPassword(magicUrl);
   console.log(JSON.stringify({ ok: true, request_id: requestId, user_id: productUserId, first_password_verified: true }));
 } catch (error) {
   failure = error;
