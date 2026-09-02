@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   isSupabaseConnectionError,
   isSupabaseSchemaError,
+  isSupabaseTimeoutError,
+  serializeServerError,
   throwIfSupabaseInfrastructureError,
   toSupabaseInfrastructureError,
 } from "@/lib/supabase-runtime-errors";
@@ -41,6 +43,18 @@ describe("supabase runtime infrastructure errors", () => {
     expect(error.statusCode).toBe(500);
     expect(error.publicCode).toBe("SUPABASE_CONNECTION_FAILED");
     expect(error.cause).toBe(cause);
+  });
+
+  it("returns a bounded 504 for Supabase upstream timeouts", () => {
+    const cause = new Error("Supabase upstream request timed out after 4000ms");
+    cause.name = "SupabaseUpstreamTimeoutError";
+
+    expect(isSupabaseTimeoutError(cause)).toBe(true);
+    expect(toSupabaseInfrastructureError(cause, "magic link").publicCode).toBe("SUPABASE_UPSTREAM_TIMEOUT");
+    expect(serializeServerError(cause)).toEqual({
+      statusCode: 504,
+      body: { ok: false, error: "SUPABASE_UPSTREAM_TIMEOUT" },
+    });
   });
 
   it("does not turn authorization or validation errors into infrastructure errors", () => {
