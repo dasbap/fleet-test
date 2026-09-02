@@ -1,6 +1,7 @@
 export type SupabaseInfrastructurePublicCode =
   | "SUPABASE_SCHEMA_MISSING"
   | "SUPABASE_CONNECTION_FAILED"
+  | "SUPABASE_UPSTREAM_TIMEOUT"
   | "SUPABASE_RUNTIME_ERROR";
 
 type ErrorLike = {
@@ -30,6 +31,11 @@ const CONNECTION_PATTERNS = [
   "getaddrinfo",
 ];
 
+const TIMEOUT_PATTERNS = [
+  "supabaseupstreamtimeouterror",
+  "supabase upstream request timed out",
+];
+
 const SCHEMA_PATTERNS = [
   "schema cache",
   "could not find the table",
@@ -57,6 +63,9 @@ function describePublicCode(publicCode: SupabaseInfrastructurePublicCode): strin
   }
   if (publicCode === "SUPABASE_CONNECTION_FAILED") {
     return "Supabase connection failed";
+  }
+  if (publicCode === "SUPABASE_UPSTREAM_TIMEOUT") {
+    return "Supabase upstream request timed out";
   }
   return "Supabase runtime error";
 }
@@ -116,34 +125,48 @@ export function isSupabaseSchemaError(error: unknown): boolean {
   return SCHEMA_PATTERNS.some((pattern) => text.includes(pattern));
 }
 
+export function isSupabaseTimeoutError(error: unknown): boolean {
+  const text = collectErrorText(error).toLowerCase();
+  return TIMEOUT_PATTERNS.some((pattern) => text.includes(pattern));
+}
+
 export function isSupabaseConnectionError(error: unknown): boolean {
   const text = collectErrorText(error).toLowerCase();
   return CONNECTION_PATTERNS.some((pattern) => text.includes(pattern));
 }
 
 export function toSupabaseInfrastructureError(error: unknown, context: string): SupabaseInfrastructureError {
-  const publicCode = isSupabaseConnectionError(error)
-    ? "SUPABASE_CONNECTION_FAILED"
-    : isSupabaseSchemaError(error)
-      ? "SUPABASE_SCHEMA_MISSING"
-      : "SUPABASE_RUNTIME_ERROR";
+  const publicCode = isSupabaseTimeoutError(error)
+    ? "SUPABASE_UPSTREAM_TIMEOUT"
+    : isSupabaseConnectionError(error)
+      ? "SUPABASE_CONNECTION_FAILED"
+      : isSupabaseSchemaError(error)
+        ? "SUPABASE_SCHEMA_MISSING"
+        : "SUPABASE_RUNTIME_ERROR";
 
   return new SupabaseInfrastructureError(publicCode, context, error);
 }
 
 export function throwIfSupabaseInfrastructureError(error: unknown, context: string): void {
-  if (isSupabaseSchemaError(error) || isSupabaseConnectionError(error)) {
+  if (isSupabaseTimeoutError(error) || isSupabaseSchemaError(error) || isSupabaseConnectionError(error)) {
     throw toSupabaseInfrastructureError(error, context);
   }
 }
 
 export function serializeServerError(error: unknown): {
-  statusCode: 500;
+  statusCode: 500 | 504;
   body: { ok: false; error: string };
 } {
+  if (isSupabaseTimeoutError(error)) {
+    return {
+      statusCode: 504,
+      body: { ok: false, error: "SUPABASE_UPSTREAM_TIMEOUT" },
+    };
+  }
+
   if (error instanceof SupabaseInfrastructureError) {
     return {
-      statusCode: 500,
+      statusCode: error.publicCode === "SUPABASE_UPSTREAM_TIMEOUT" ? 504 : 500,
       body: { ok: false, error: error.publicCode },
     };
   }
