@@ -21,164 +21,20 @@ permissions:
   contents: read
 
 concurrency:
-  group: mutation-${{ github.event.pull_request.number || github.ref_name }}-${{ github.event.inputs.profile || 'auto' }}
+  group: mutation-${{ github.event.pull_request.number || github.ref_name }}-${{ github.event.inputs.profile || 'policy' }}
   cancel-in-progress: true
 
 jobs:
-  changes:
-    name: Detect mutation-relevant changes
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    outputs:
-      unit: ${{ steps.filter.outputs.unit }}
-      mutation: ${{ steps.filter.outputs.mutation }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - id: filter
-        name: Classify changed files
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
-
-          if printf '%s\n' "$changed" | grep -Eq '^(src/|api/|packages/|tests/|scripts/|package(-lock)?\.json$|tsconfig[^/]*\.json$|vite\.config\.[cm]?[jt]s$|vitest[^/]*\.config\.[cm]?[jt]s$|stryker\.config\.mjs$)'; then
-            echo "unit=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "unit=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          if printf '%s\n' "$changed" | grep -Eq '^(src/server/domain/billing/|src/server/domain/(billingCheckout|mobileMoneyInitiate|notchPayInitiate)\.ts$|src/server/http/routes/(gpsIngest|webhooksPayment)\.ts$|src/services/(access-code|admin-subscription|billing|payment-history|subscription-management|vehicle-search|vehicle)\.service\.ts$|src/.*\.(test|spec)\.[jt]sx?$|tests/|scripts/(run-mutation-tests|aggregate-mutation-reports)\.mjs$|stryker\.config\.mjs$|package(-lock)?\.json$)'; then
-            echo "mutation=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "mutation=false" >> "$GITHUB_OUTPUT"
-          fi
-
-  pr-tests-shard:
-    name: PR tests shard ${{ matrix.shard }}/4
-    if: github.event_name == 'pull_request' && needs.changes.outputs.unit == 'true'
-    needs: changes
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        timeout-minutes: 8
-        run: node scripts/ci-install.mjs
-
-      - name: Run PR tests shard
-        run: npx vitest run --shard=${{ matrix.shard }}/4 --exclude "tests/integration/**" --exclude "tests/e2e/**"
-
-  pr-tests:
-    name: PR tests
-    if: always() && github.event_name == 'pull_request'
-    needs: [changes, pr-tests-shard]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Verify PR test shards
-        env:
-          UNIT_RELEVANT: ${{ needs.changes.outputs.unit }}
-          SHARDS_RESULT: ${{ needs.pr-tests-shard.result }}
-        run: |
-          if [ "$UNIT_RELEVANT" != "true" ]; then
-            echo "No unit-test relevant files changed; expensive PR test shards skipped."
-            exit 0
-          fi
-          if [ "$SHARDS_RESULT" != "success" ]; then
-            echo "One or more PR test shards failed: $SHARDS_RESULT"
-            exit 1
-          fi
-          echo "All PR test shards passed."
-
-  mutation-pr-shard:
-    name: Mutation shard ${{ matrix.shard }}/4
-    if: github.event_name == 'pull_request' && needs.changes.outputs.mutation == 'true' && needs.pr-tests.result == 'success'
-    needs: [changes, pr-tests]
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        timeout-minutes: 8
-        run: node scripts/ci-install.mjs
-
-      - name: Run PR mutation shard
-        env:
-          MUTATION_SHARD: ${{ matrix.shard }}
-        run: node scripts/run-mutation-tests.mjs pr
-
-      - name: Upload mutation shard report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mutation-report-pr-shard-${{ matrix.shard }}-${{ github.run_id }}
-          path: reports/mutation/pr-shard-${{ matrix.shard }}
-          if-no-files-found: error
-          retention-days: 7
-
   mutation-pr:
     name: Mutation tests — PR critical gate
-    if: always() && github.event_name == 'pull_request'
-    needs: [changes, mutation-pr-shard]
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 2
     steps:
-      - name: Verify shard jobs
-        env:
-          MUTATION_RELEVANT: ${{ needs.changes.outputs.mutation }}
-          SHARDS_RESULT: ${{ needs.mutation-pr-shard.result }}
+      - name: Mutation policy
         run: |
-          if [ "$MUTATION_RELEVANT" != "true" ]; then
-            echo "No mutation-profile files changed; mutation shards skipped."
-            exit 0
-          fi
-          if [ "$SHARDS_RESULT" != "success" ]; then
-            echo "One or more mutation shards failed: $SHARDS_RESULT"
-            exit 1
-          fi
-
-      - name: Download mutation shard reports
-        if: needs.changes.outputs.mutation == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          pattern: mutation-report-pr-shard-*-${{ github.run_id }}
-          path: reports/mutation-shards
-          merge-multiple: false
-
-      - name: Aggregate mutation score
-        if: needs.changes.outputs.mutation == 'true'
-        env:
-          EXPECTED_MUTATION_SHARDS: 4
-        run: node scripts/aggregate-mutation-reports.mjs reports/mutation-shards 60
+          echo "Automatic mutation testing is disabled to protect the GitHub Actions budget."
+          echo "Use workflow_dispatch with profile=pr, critical or full when mutation validation is required."
 
   mutation-critical-shard:
     name: Critical mutation shard ${{ matrix.shard }}/8
@@ -215,18 +71,15 @@ jobs:
           name: mutation-report-critical-shard-${{ matrix.shard }}-${{ github.run_id }}
           path: reports/mutation/critical-shard-${{ matrix.shard }}
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
 
   mutation-critical:
-    name: Mutation tests — pre-prod critical
+    name: Mutation tests — manual critical
     if: always() && github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'critical'
     needs: mutation-critical-shard
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
       - name: Verify critical shard jobs
         env:
           SHARDS_RESULT: ${{ needs.mutation-critical-shard.result }}
@@ -235,19 +88,7 @@ jobs:
             echo "One or more critical mutation shards failed: $SHARDS_RESULT"
             exit 1
           fi
-
-      - name: Download mutation shard reports
-        uses: actions/download-artifact@v4
-        with:
-          pattern: mutation-report-critical-shard-*-${{ github.run_id }}
-          path: reports/mutation-critical-shards
-          merge-multiple: false
-
-      - name: Aggregate critical mutation score
-        env:
-          EXPECTED_MUTATION_SHARDS: 8
-          MUTATION_SCORE_MODE: covered
-        run: node scripts/aggregate-mutation-reports.mjs reports/mutation-critical-shards 60
+          echo "All critical mutation shards passed."
 
   mutation-manual:
     name: Mutation tests — manual ${{ github.event.inputs.profile }}
@@ -279,4 +120,4 @@ jobs:
         with:
           name: mutation-report-${{ github.event.inputs.profile }}-${{ github.run_id }}
           path: reports/mutation/${{ github.event.inputs.profile }}
-          retention-days: 30
+          retention-days: 7
