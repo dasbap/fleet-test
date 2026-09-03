@@ -17,7 +17,8 @@ export function createVercelApiApp() {
     }
 
     url.pathname = url.pathname.slice(4) || "/";
-    response = await bff.fetch(new Request(url, request));
+    const fallbackRequest = new Request(url, request);
+    response = await bff.fetch(fallbackRequest);
     return response;
   });
 
