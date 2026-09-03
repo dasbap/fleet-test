@@ -25,9 +25,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect mutation-relevant changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      unit: ${{ steps.filter.outputs.unit }}
+      mutation: ${{ steps.filter.outputs.mutation }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        name: Classify changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+
+          if printf '%s\n' "$changed" | grep -Eq '^(src/|api/|packages/|tests/|scripts/|package(-lock)?\.json$|tsconfig[^/]*\.json$|vite\.config\.[cm]?[jt]s$|vitest[^/]*\.config\.[cm]?[jt]s$|stryker\.config\.mjs$)'; then
+            echo "unit=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "unit=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if printf '%s\n' "$changed" | grep -Eq '^(src/server/domain/billing/|src/server/domain/(billingCheckout|mobileMoneyInitiate|notchPayInitiate)\.ts$|src/server/http/routes/(gpsIngest|webhooksPayment)\.ts$|src/services/(access-code|admin-subscription|billing|payment-history|subscription-management|vehicle-search|vehicle)\.service\.ts$|src/.*\.(test|spec)\.[jt]sx?$|tests/|scripts/(run-mutation-tests|aggregate-mutation-reports)\.mjs$|stryker\.config\.mjs$|package(-lock)?\.json$)'; then
+            echo "mutation=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "mutation=false" >> "$GITHUB_OUTPUT"
+          fi
+
   pr-tests-shard:
     name: PR tests shard ${{ matrix.shard }}/4
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.unit == 'true'
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -54,13 +90,18 @@ jobs:
   pr-tests:
     name: PR tests
     if: always() && github.event_name == 'pull_request'
-    needs: pr-tests-shard
+    needs: [changes, pr-tests-shard]
     runs-on: ubuntu-latest
     steps:
-      - name: Verify all PR test shards
+      - name: Verify PR test shards
         env:
+          UNIT_RELEVANT: ${{ needs.changes.outputs.unit }}
           SHARDS_RESULT: ${{ needs.pr-tests-shard.result }}
         run: |
+          if [ "$UNIT_RELEVANT" != "true" ]; then
+            echo "No unit-test relevant files changed; expensive PR test shards skipped."
+            exit 0
+          fi
           if [ "$SHARDS_RESULT" != "success" ]; then
             echo "One or more PR test shards failed: $SHARDS_RESULT"
             exit 1
@@ -69,8 +110,8 @@ jobs:
 
   mutation-pr-shard:
     name: Mutation shard ${{ matrix.shard }}/4
-    if: github.event_name == 'pull_request'
-    needs: pr-tests
+    if: github.event_name == 'pull_request' && needs.changes.outputs.mutation == 'true' && needs.pr-tests.result == 'success'
+    needs: [changes, pr-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -108,23 +149,26 @@ jobs:
   mutation-pr:
     name: Mutation tests — PR critical gate
     if: always() && github.event_name == 'pull_request'
-    needs: mutation-pr-shard
+    needs: [changes, mutation-pr-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
       - name: Verify shard jobs
         env:
+          MUTATION_RELEVANT: ${{ needs.changes.outputs.mutation }}
           SHARDS_RESULT: ${{ needs.mutation-pr-shard.result }}
         run: |
+          if [ "$MUTATION_RELEVANT" != "true" ]; then
+            echo "No mutation-profile files changed; mutation shards skipped."
+            exit 0
+          fi
           if [ "$SHARDS_RESULT" != "success" ]; then
             echo "One or more mutation shards failed: $SHARDS_RESULT"
             exit 1
           fi
 
       - name: Download mutation shard reports
+        if: needs.changes.outputs.mutation == 'true'
         uses: actions/download-artifact@v4
         with:
           pattern: mutation-report-pr-shard-*-${{ github.run_id }}
@@ -132,6 +176,7 @@ jobs:
           merge-multiple: false
 
       - name: Aggregate mutation score
+        if: needs.changes.outputs.mutation == 'true'
         env:
           EXPECTED_MUTATION_SHARDS: 4
         run: node scripts/aggregate-mutation-reports.mjs reports/mutation-shards 60
@@ -174,11 +219,8 @@ jobs:
           retention-days: 14
 
   mutation-critical:
-    name: Mutation tests — manual critical
-    if: >
-      always() &&
-      github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.profile == 'critical'
+    name: Mutation tests — pre-prod critical
+    if: always() && github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'critical'
     needs: mutation-critical-shard
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -210,9 +252,7 @@ jobs:
 
   mutation-manual:
     name: Mutation tests — manual ${{ github.event.inputs.profile }}
-    if: >
-      github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.profile != 'critical'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.profile != 'critical'
     runs-on: ubuntu-latest
     timeout-minutes: ${{ github.event.inputs.profile == 'full' && 360 || 60 }}
     steps:
