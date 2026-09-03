@@ -11,13 +11,13 @@ const SUPABASE_OPERATION_TIMEOUT_MS = 5_000;
 
 async function withSupabaseOperationTimeout<T>(
   operation: string,
-  fn: () => Promise<T>,
+  fn: () => PromiseLike<T>,
 ): Promise<T> {
   console.info(`[admin-demo] ${operation}:start`);
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      fn(),
+      Promise.resolve(fn()),
       new Promise<T>((_, reject) => {
         timeout = setTimeout(
           () => reject(new SupabaseUpstreamTimeoutError(SUPABASE_OPERATION_TIMEOUT_MS)),
