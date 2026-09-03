@@ -8,9 +8,11 @@ export function createVercelApiApp() {
   app.all("*", async (c) => {
     const request = c.req.raw;
     const url = new URL(request.url);
+    const shouldRetryWithoutApiPrefix = url.pathname.startsWith("/api/");
+    const primaryRequest = shouldRetryWithoutApiPrefix ? request.clone() : request;
 
-    let response = await bff.fetch(request);
-    if (response.status !== 404 || !url.pathname.startsWith("/api/")) {
+    let response = await bff.fetch(primaryRequest);
+    if (response.status !== 404 || !shouldRetryWithoutApiPrefix) {
       return response;
     }
 
