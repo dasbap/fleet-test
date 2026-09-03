@@ -157,17 +157,22 @@ jobs:
           SQL_FILE="supabase/scripts/verify/verify-migration-status.sql"
 
           if [ -n "$DB_URL" ]; then
-            DB_TARGET="$(
+            DB_AUTHORITY="$(
               printf '%s' "$DB_URL" |
-                sed -E 's#^[^/]+//([^@]+@)?([^/?]+).*#\2#'
+                sed -E 's#^[^/]+//([^/?]+).*#\1#'
             )"
+            DB_TARGET="${DB_AUTHORITY##*@}"
             DB_HOST="${DB_TARGET%%:*}"
 
             if [ "$DB_TARGET" != "$DB_HOST" ]; then
               DB_PORT="${DB_TARGET##*:}"
             fi
 
-            if [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
+            if printf '%s' "$DB_AUTHORITY" | grep -q '@'; then
+              DB_USER_ENCODED="${DB_AUTHORITY%@*}"
+              DB_USER_ENCODED="${DB_USER_ENCODED%%:*}"
+              DB_USER="$(printf '%s' "$DB_USER_ENCODED" | sed 's/%2E/./Ig; s/%40/@/Ig')"
+            elif [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
               DB_USER="postgres"
             fi
           fi
