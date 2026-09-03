@@ -106,25 +106,42 @@ jobs:
             exit 1
           fi
 
-      - name: Check database connectivity
+      - name: Resolve database target
+        id: db
         run: |
           set -euo pipefail
 
           DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"
           DB_HOST="${SUPABASE_POOLER_HOST:-aws-1-eu-west-1.pooler.supabase.com}"
           DB_PORT="5432"
+          DB_USER="postgres.${SUPABASE_PROJECT_REF}"
 
           if [ -n "$DB_URL" ]; then
-            DB_TARGET="$(
-              printf '%s' "$DB_URL" |
-                sed -E 's#^[^/]+//([^@]+@)?([^/?]+).*#\2#'
-            )"
-            DB_HOST="${DB_TARGET%%:*}"
+            DB_HOST="$(DB_URL="$DB_URL" node -e 'const u=new URL(process.env.DB_URL); process.stdout.write(u.hostname)')"
+            DB_PORT="$(DB_URL="$DB_URL" node -e 'const u=new URL(process.env.DB_URL); process.stdout.write(u.port || "5432")')"
+            DB_USER="$(DB_URL="$DB_URL" node -e 'const u=new URL(process.env.DB_URL); process.stdout.write(decodeURIComponent(u.username || ""))')"
 
-            if [ "$DB_TARGET" != "$DB_HOST" ]; then
-              DB_PORT="${DB_TARGET##*:}"
+            if [ -z "$DB_USER" ]; then
+              if [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
+                DB_USER="postgres"
+              else
+                DB_USER="postgres.${SUPABASE_PROJECT_REF}"
+              fi
             fi
           fi
+
+          {
+            echo "host=$DB_HOST"
+            echo "port=$DB_PORT"
+            echo "user=$DB_USER"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check database connectivity
+        run: |
+          set -euo pipefail
+
+          DB_HOST="${{ steps.db.outputs.host }}"
+          DB_PORT="${{ steps.db.outputs.port }}"
 
           DB_ADDRESS="$(
             getent ahosts "$DB_HOST" |
@@ -150,43 +167,15 @@ jobs:
         run: |
           set -euo pipefail
 
-          DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"
-          DB_HOST="${SUPABASE_POOLER_HOST:-aws-1-eu-west-1.pooler.supabase.com}"
-          DB_PORT="5432"
-          DB_USER="postgres.${SUPABASE_PROJECT_REF}"
+          DB_HOST="${{ steps.db.outputs.host }}"
+          DB_PORT="${{ steps.db.outputs.port }}"
+          DB_USER="${{ steps.db.outputs.user }}"
           SQL_FILE="supabase/scripts/verify/verify-migration-status.sql"
-
-          if [ -n "$DB_URL" ]; then
-            DB_TARGET="$(
-              printf '%s' "$DB_URL" |
-                sed -E 's#^[^/]+//([^@]+@)?([^/?]+).*#\2#'
-            )"
-            DB_HOST="${DB_TARGET%%:*}"
-
-            if [ "$DB_TARGET" != "$DB_HOST" ]; then
-              DB_PORT="${DB_TARGET##*:}"
-            fi
-
-            DB_URL_USER="$(
-              node -e '
-                try {
-                  const value = new URL(process.argv[1]).username;
-                  if (value) process.stdout.write(decodeURIComponent(value));
-                } catch {}
-              ' "$DB_URL"
-            )"
-
-            if [ -n "$DB_URL_USER" ]; then
-              DB_USER="$DB_URL_USER"
-            elif [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
-              DB_USER="postgres"
-            fi
-          fi
 
           echo "Executing migration verification script..."
           echo "Database host: ${DB_HOST}"
           echo "Database port: ${DB_PORT}"
-          echo "Database user source: $([ -n "${DB_URL_USER:-}" ] && echo connection-url || echo derived-fallback)"
+          echo "Database user: ${DB_USER}"
 
           set +e
 
