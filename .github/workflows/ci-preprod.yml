@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - pre-prod
-  push:
-    branches:
-      - pre-prod
   workflow_dispatch:
 
 permissions:
