@@ -45,7 +45,6 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
           changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
 
           if printf '%s\n' "$changed" | grep -Eq '^(src/|api/|packages/|tests/|scripts/|package(-lock)?\.json$|tsconfig[^/]*\.json$|vite\.config\.[cm]?[jt]s$|vitest[^/]*\.config\.[cm]?[jt]s$|stryker\.config\.mjs$)'; then
