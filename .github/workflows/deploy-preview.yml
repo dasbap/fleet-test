@@ -53,7 +53,7 @@ jobs:
           test -n "$URL"
           echo "Preview URL: $URL"
 
-          npx --yes vercel@58.4.0 --token "$VERCEL_TOKEN" curl \
+          npx --yes vercel@58.4.0 curl \
             /api/admin/generate-magic-link \
             --deployment "$URL" \
             -X POST \
