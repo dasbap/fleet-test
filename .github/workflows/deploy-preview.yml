@@ -49,13 +49,22 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           set -euo pipefail
-          DEPLOY_OUTPUT="$(npx --yes vercel@58.4.0 deploy --prebuilt --yes --archive=tgz --token "$VERCEL_TOKEN" 2>&1)"
-          printf '%s\n' "$DEPLOY_OUTPUT"
-          URL="$(printf '%s\n' "$DEPLOY_OUTPUT" | grep -Eo 'https://[^ ]+\.vercel\.app' | tail -n 1)"
+          URL="$(npx --yes vercel@58.4.0 deploy --prebuilt --yes --archive=tgz --token "$VERCEL_TOKEN")"
           test -n "$URL"
           echo "Preview URL: $URL"
 
-          code="$(curl -sS -o /tmp/body -w '%{http_code}' --max-time 15 -X POST "$URL/api/admin/generate-magic-link" -H 'Content-Type: application/json' --data '{}')"
+          npx --yes vercel@58.4.0 curl /api/admin/generate-magic-link \
+            --deployment "$URL" \
+            --token "$VERCEL_TOKEN" \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            --data '{}' \
+            --max-time 15 \
+            -sS \
+            -o /tmp/body \
+            -w '%{http_code}' > /tmp/status
+
+          code="$(cat /tmp/status)"
           cat /tmp/body
           test "$code" = "401"
           grep -q 'missing_auth_token' /tmp/body
