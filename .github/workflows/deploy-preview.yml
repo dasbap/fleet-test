@@ -60,7 +60,6 @@ jobs:
             -H 'Content-Type: application/json' \
             --data '{}' \
             --max-time 15 \
-            -sS \
             -o /tmp/body \
             -w '%{http_code}' > /tmp/status
 
