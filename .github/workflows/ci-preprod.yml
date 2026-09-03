@@ -43,7 +43,6 @@ jobs:
             exit 0
           fi
 
-          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
           changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
 
           if printf '%s\n' "$changed" | grep -Eq '^(src/|api/|packages/|scripts/|tests/|package(-lock)?\.json$|tsconfig[^/]*\.json$|vite\.config\.[cm]?[jt]s$|vitest[^/]*\.config\.[cm]?[jt]s$|eslint\.config\.[cm]?[jt]s$|vercel\.json$)'; then
