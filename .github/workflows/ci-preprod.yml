@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-preprod-${{ github.workflow }}-${{ github.ref }}
+  group: ci-preprod-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 env:
