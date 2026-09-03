@@ -1,6 +1,20 @@
 import { Hono } from "hono";
 import { createServerApp } from "./app.js";
 
+const API_PREFIXED_ROUTES = [
+  "/api/admin/",
+  "/api/demo/",
+  "/api/auth/",
+  "/api/terrain/",
+  "/api/payments/",
+  "/api/webhooks/",
+];
+
+function shouldPreserveApiPrefix(pathname: string): boolean {
+  if (pathname === "/api/billing/snapshot") return true;
+  return API_PREFIXED_ROUTES.some((prefix) => pathname.startsWith(prefix));
+}
+
 export function createVercelApiApp() {
   const app = new Hono();
   const bff = createServerApp();
@@ -8,18 +22,13 @@ export function createVercelApiApp() {
   app.all("*", async (c) => {
     const request = c.req.raw;
     const url = new URL(request.url);
-    const shouldRetryWithoutApiPrefix = url.pathname.startsWith("/api/");
-    const primaryRequest = shouldRetryWithoutApiPrefix ? request.clone() : request;
 
-    let response = await bff.fetch(primaryRequest);
-    if (response.status !== 404 || !shouldRetryWithoutApiPrefix) {
-      return response;
+    if (url.pathname.startsWith("/api/") && !shouldPreserveApiPrefix(url.pathname)) {
+      url.pathname = url.pathname.slice(4) || "/";
+      return bff.fetch(new Request(url, request));
     }
 
-    url.pathname = url.pathname.slice(4) || "/";
-    const fallbackRequest = new Request(url, request);
-    response = await bff.fetch(fallbackRequest);
-    return response;
+    return bff.fetch(request);
   });
 
   return app;
