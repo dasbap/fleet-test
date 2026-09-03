@@ -34,12 +34,9 @@ jobs:
 
     env:
       SUPABASE_CLI_VERSION: "2.102.0"
-      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_PROJECT_REF: idsuntuizzpdzlibafdz
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_POOLER_HOST: ${{ secrets.SUPABASE_POOLER_HOST }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PGSSLMODE: require
 
@@ -74,35 +71,18 @@ jobs:
       - name: Validate Supabase configuration
         run: |
           set -euo pipefail
-          test -n "${SUPABASE_PROJECT_REF:-}" || { echo "::error::Le secret SUPABASE_PROJECT_REF est absent ou vide"; exit 1; }
+          test -n "${SUPABASE_PROJECT_REF:-}" || { echo "::error::SUPABASE_PROJECT_REF est absent ou vide"; exit 1; }
           test -n "${SUPABASE_DB_PASSWORD:-}" || { echo "::error::Le secret SUPABASE_DB_PASSWORD est absent ou vide"; exit 1; }
-          printf '%s' "$SUPABASE_PROJECT_REF" | grep -Eq '^[a-z0-9]{20}$' || { echo "::error::SUPABASE_PROJECT_REF doit contenir uniquement la référence du projet"; exit 1; }
+          printf '%s' "$SUPABASE_PROJECT_REF" | grep -Eq '^[a-z0-9]{20}$' || { echo "::error::SUPABASE_PROJECT_REF invalide"; exit 1; }
           test -f "supabase/scripts/verify/verify-migration-status.sql" || { echo "::error::Le fichier supabase/scripts/verify/verify-migration-status.sql est introuvable"; exit 1; }
 
       - name: Resolve database target
         id: db
         run: |
           set -euo pipefail
-          DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"
           DB_HOST="${SUPABASE_POOLER_HOST:-aws-0-eu-central-2.pooler.supabase.com}"
           DB_PORT="5432"
           DB_USER="postgres.${SUPABASE_PROJECT_REF}"
-
-          if [ -n "$DB_URL" ]; then
-            if DB_PARSED="$(DB_URL="$DB_URL" node -e 'try { const u=new URL(process.env.DB_URL); process.stdout.write([u.hostname,u.port||"5432",decodeURIComponent(u.username||"")].join("\n")); } catch { process.exit(2); }')"; then
-              DB_HOST="$(printf '%s\n' "$DB_PARSED" | sed -n '1p')"
-              DB_PORT="$(printf '%s\n' "$DB_PARSED" | sed -n '2p')"
-              DB_URL_USER="$(printf '%s\n' "$DB_PARSED" | sed -n '3p')"
-              if [ -n "$DB_URL_USER" ]; then
-                DB_USER="$DB_URL_USER"
-              elif [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
-                DB_USER="postgres"
-              fi
-            else
-              echo "::warning::URL DB non parseable; utilisation du host pooler et de l'utilisateur dérivé"
-            fi
-          fi
-
           {
             echo "host=$DB_HOST"
             echo "port=$DB_PORT"
