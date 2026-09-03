@@ -29,7 +29,10 @@ defaults:
 jobs:
   verify-migration:
     name: Verify Supabase migration status
-    runs-on: ubuntu-latest
+
+    runs-on:
+      - ubuntu-latest
+
     timeout-minutes: 15
 
     env:
@@ -60,74 +63,119 @@ jobs:
       - name: Validate PostgreSQL client availability
         run: |
           set -euo pipefail
+
           if command -v psql >/dev/null 2>&1; then
             psql --version
             exit 0
           fi
+
           if ! command -v docker >/dev/null 2>&1; then
             echo "::error::psql ou docker est requis sur le runner pour vérifier les migrations"
             exit 1
           fi
+
           timeout 180 docker pull postgres:16-alpine
           docker run --rm postgres:16-alpine psql --version
 
       - name: Validate Supabase configuration
         run: |
           set -euo pipefail
-          test -n "${SUPABASE_PROJECT_REF:-}" || { echo "::error::Le secret SUPABASE_PROJECT_REF est absent ou vide"; exit 1; }
-          test -n "${SUPABASE_DB_PASSWORD:-}" || { echo "::error::Le secret SUPABASE_DB_PASSWORD est absent ou vide"; exit 1; }
-          printf '%s' "$SUPABASE_PROJECT_REF" | grep -Eq '^[a-z0-9]{20}$' || { echo "::error::SUPABASE_PROJECT_REF doit contenir uniquement la référence du projet"; exit 1; }
-          test -f "supabase/scripts/verify/verify-migration-status.sql" || { echo "::error::Le fichier supabase/scripts/verify/verify-migration-status.sql est introuvable"; exit 1; }
 
-      - name: Resolve database target
-        id: db
-        run: |
-          set -euo pipefail
-          DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"
-          DB_HOST="${SUPABASE_POOLER_HOST:-aws-0-eu-central-2.pooler.supabase.com}"
-          DB_PORT="5432"
-          DB_USER="postgres.${SUPABASE_PROJECT_REF}"
-
-          if [ -n "$DB_URL" ]; then
-            if DB_PARSED="$(DB_URL="$DB_URL" node -e 'try { const u=new URL(process.env.DB_URL); process.stdout.write([u.hostname,u.port||"5432",decodeURIComponent(u.username||"")].join("\n")); } catch { process.exit(2); }')"; then
-              DB_HOST="$(printf '%s\n' "$DB_PARSED" | sed -n '1p')"
-              DB_PORT="$(printf '%s\n' "$DB_PARSED" | sed -n '2p')"
-              DB_URL_USER="$(printf '%s\n' "$DB_PARSED" | sed -n '3p')"
-              if [ -n "$DB_URL_USER" ]; then
-                DB_USER="$DB_URL_USER"
-              elif [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
-                DB_USER="postgres"
-              fi
-            else
-              echo "::warning::URL DB non parseable; utilisation du host pooler et de l'utilisateur dérivé"
-            fi
+          if [ -z "${SUPABASE_PROJECT_REF:-}" ]; then
+            echo "::error::Le secret SUPABASE_PROJECT_REF est absent ou vide"
+            exit 1
           fi
 
-          {
-            echo "host=$DB_HOST"
-            echo "port=$DB_PORT"
-            echo "user=$DB_USER"
-          } >> "$GITHUB_OUTPUT"
+          if [ -z "${SUPABASE_DB_PASSWORD:-}" ]; then
+            echo "::error::Le secret SUPABASE_DB_PASSWORD est absent ou vide"
+            exit 1
+          fi
+
+          if ! printf '%s' "$SUPABASE_PROJECT_REF" | grep -Eq '^[a-z0-9]{20}$'; then
+            echo "::error::SUPABASE_PROJECT_REF doit contenir uniquement la référence du projet"
+            exit 1
+          fi
+
+          if [ ! -f "supabase/scripts/verify/verify-migration-status.sql" ]; then
+            echo "::error::Le fichier supabase/scripts/verify/verify-migration-status.sql est introuvable"
+            exit 1
+          fi
+
+          if ! command -v psql >/dev/null 2>&1 && ! command -v docker >/dev/null 2>&1; then
+            echo "::error::Le client PostgreSQL psql est introuvable et docker n'est pas disponible"
+            exit 1
+          fi
 
       - name: Check database connectivity
         run: |
           set -euo pipefail
-          DB_HOST="${{ steps.db.outputs.host }}"
-          DB_PORT="${{ steps.db.outputs.port }}"
-          DB_ADDRESS="$(getent ahosts "$DB_HOST" | awk '{ print $1; exit }')"
-          test -n "$DB_ADDRESS" || { echo "::error::Aucune adresse trouvée pour ${DB_HOST}"; exit 1; }
+
+          DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"
+          DB_HOST="${SUPABASE_POOLER_HOST:-aws-1-eu-west-1.pooler.supabase.com}"
+          DB_PORT="5432"
+
+          if [ -n "$DB_URL" ]; then
+            DB_TARGET="$(
+              printf '%s' "$DB_URL" |
+                sed -E 's#^[^/]+//([^@]+@)?([^/?]+).*#\2#'
+            )"
+            DB_HOST="${DB_TARGET%%:*}"
+
+            if [ "$DB_TARGET" != "$DB_HOST" ]; then
+              DB_PORT="${DB_TARGET##*:}"
+            fi
+          fi
+
+          DB_ADDRESS="$(
+            getent ahosts "$DB_HOST" |
+              awk '{ print $1; exit }'
+          )"
+
+          if [ -z "$DB_ADDRESS" ]; then
+            echo "::error::Aucune adresse trouvée pour ${DB_HOST}"
+            exit 1
+          fi
+
           echo "Adresse Supabase database : ${DB_ADDRESS}"
-          timeout 10 bash -c "exec 3<>/dev/tcp/${DB_HOST}/${DB_PORT}" || { echo "::error::Le runner ne peut pas joindre ${DB_HOST}:${DB_PORT}"; exit 1; }
+
+          if ! timeout 10 bash -c "exec 3<>/dev/tcp/${DB_HOST}/${DB_PORT}"; then
+            echo "::error::Le runner ne peut pas joindre ${DB_HOST}:${DB_PORT}"
+            exit 1
+          fi
+
           echo "Connexion TCP vers Supabase disponible."
 
       - name: Execute migration verification
         id: migration
         run: |
           set -euo pipefail
-          DB_HOST="${{ steps.db.outputs.host }}"
-          DB_PORT="${{ steps.db.outputs.port }}"
-          DB_USER="${{ steps.db.outputs.user }}"
+
+          DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"
+          DB_HOST="${SUPABASE_POOLER_HOST:-aws-1-eu-west-1.pooler.supabase.com}"
+          DB_PORT="5432"
+          DB_USER="postgres.${SUPABASE_PROJECT_REF}"
           SQL_FILE="supabase/scripts/verify/verify-migration-status.sql"
+
+          if [ -n "$DB_URL" ]; then
+            DB_AUTHORITY="$(
+              printf '%s' "$DB_URL" |
+                sed -E 's#^[^/]+//([^/?]+).*#\1#'
+            )"
+            DB_TARGET="${DB_AUTHORITY##*@}"
+            DB_HOST="${DB_TARGET%%:*}"
+
+            if [ "$DB_TARGET" != "$DB_HOST" ]; then
+              DB_PORT="${DB_TARGET##*:}"
+            fi
+
+            if printf '%s' "$DB_AUTHORITY" | grep -q '@'; then
+              DB_USER_ENCODED="${DB_AUTHORITY%@*}"
+              DB_USER_ENCODED="${DB_USER_ENCODED%%:*}"
+              DB_USER="$(printf '%s' "$DB_USER_ENCODED" | sed 's/%2E/./Ig; s/%40/@/Ig')"
+            elif [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
+              DB_USER="postgres"
+            fi
+          fi
 
           echo "Executing migration verification script..."
           echo "Database host: ${DB_HOST}"
@@ -135,20 +183,48 @@ jobs:
           echo "Database user: ${DB_USER}"
 
           set +e
-          psql \
-            --host="$DB_HOST" \
-            --port="$DB_PORT" \
-            --username="$DB_USER" \
-            --dbname="postgres" \
-            --file="$SQL_FILE" \
-            --set=ON_ERROR_STOP=1 \
-            --no-password \
-            > migration-report.txt 2>&1
+
+          if command -v psql >/dev/null 2>&1; then
+            psql \
+              --host="$DB_HOST" \
+              --port="$DB_PORT" \
+              --username="$DB_USER" \
+              --dbname="postgres" \
+              --file="$SQL_FILE" \
+              --set=ON_ERROR_STOP=1 \
+              --no-password \
+              > migration-report.txt 2>&1
+          else
+            docker run \
+              --rm \
+              --network host \
+              -e PGPASSWORD \
+              -e PGSSLMODE \
+              -v "$PWD/$SQL_FILE:/verify-migration-status.sql:ro" \
+              postgres:16-alpine \
+              psql \
+                --host="$DB_HOST" \
+                --port="$DB_PORT" \
+                --username="$DB_USER" \
+                --dbname="postgres" \
+                --file="/verify-migration-status.sql" \
+                --set=ON_ERROR_STOP=1 \
+                --no-password \
+              > migration-report.txt 2>&1
+          fi
+
           STATUS=$?
+
           set -e
 
           echo "=== MIGRATION VERIFICATION REPORT ==="
-          cat migration-report.txt || true
+
+          if [ -f migration-report.txt ]; then
+            cat migration-report.txt
+          else
+            echo "Aucun rapport n'a été généré."
+          fi
+
           echo "status=${STATUS}" >> "$GITHUB_OUTPUT"
 
           if [ "$STATUS" -ne 0 ]; then
@@ -156,7 +232,10 @@ jobs:
             exit "$STATUS"
           fi
 
-          if grep -Eqi "❌ ERREURS|failed to connect|connection refused|network is unreachable|no route to host|password authentication failed|FATAL:|ERROR:" migration-report.txt; then
+          if grep -Eqi \
+            "❌ ERREURS|failed to connect|connection refused|network is unreachable|no route to host|password authentication failed|FATAL:|ERROR:" \
+            migration-report.txt
+          then
             echo "::error::Des erreurs critiques ont été détectées dans le rapport"
             exit 1
           fi
@@ -173,3 +252,88 @@ jobs:
           path: migration-report.txt
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Log PR comment skip reason
+        if: >
+          always() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "Commentaire ignoré : la pull request provient d'un fork."
+
+      - name: Comment PR with results
+        if: >
+          always() &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          retries: 4
+          retry-exempt-status-codes: 400,401,403,404,422
+          script: |
+            const fs = require("fs");
+
+            const marker = "<!-- migration-verification-report -->";
+            const reportPath = "migration-report.txt";
+
+            let report = fs.existsSync(reportPath)
+              ? fs.readFileSync(reportPath, "utf8")
+              : "Rapport indisponible.";
+
+            if (report.length > 60000) {
+              report =
+                report.slice(0, 60000) +
+                "\n\n... rapport tronqué. Consultez l’artifact complet.";
+            }
+
+            const body = `${marker}
+            ## Vérification des migrations Supabase
+
+            **Résultat du job :** \`${{ job.status }}\`
+
+            <details>
+            <summary>Afficher le rapport</summary>
+
+            \`\`\`text
+            ${report}
+            \`\`\`
+
+            </details>`;
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner,
+                repo,
+                issue_number,
+                per_page: 100
+              }
+            );
+
+            const existingComment = comments.find(
+              comment =>
+                comment.user?.type === "Bot" &&
+                typeof comment.body === "string" &&
+                comment.body.includes(marker)
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body
+              });
+            }
