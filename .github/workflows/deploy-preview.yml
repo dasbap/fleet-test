@@ -24,7 +24,7 @@ jobs:
           ref: fix/vercel-magic-link-timeouts
           persist-credentials: false
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820021
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
 
@@ -36,27 +36,27 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Build Vercel preview artifact
-        run: npx --yes vercel@58.4.0 build --target=preview --token "$VERCEL_TOKEN"
+        run: npx --yes vercel@58.4.0 build --token "$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Deploy Vercel preview
-        run: npx --yes vercel@58.4.0 deploy --prebuilt --yes --target=preview --archive=tgz --token "$VERCEL_TOKEN"
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Smoke test admin magic-link route
+      - name: Deploy Vercel preview and smoke test
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           set -euo pipefail
-          URL="$(npx --yes vercel@58.4.0 ls --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --json | node -e 'let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{const a=JSON.parse(s); const d=(a.deployments||a).find(x=>x.target==="preview"||x.meta?.githubCommitRef==="fix/vercel-magic-link-timeouts"); if(!d) process.exit(2); console.log(d.url?.startsWith("http")?d.url:"https://"+d.url)})')"
+          DEPLOY_OUTPUT="$(npx --yes vercel@58.4.0 deploy --prebuilt --yes --archive=tgz --token "$VERCEL_TOKEN" 2>&1)"
+          printf '%s\n' "$DEPLOY_OUTPUT"
+          URL="$(printf '%s\n' "$DEPLOY_OUTPUT" | grep -Eo 'https://[^ ]+\.vercel\.app' | tail -n 1)"
+          test -n "$URL"
+          echo "Preview URL: $URL"
+
           code="$(curl -sS -o /tmp/body -w '%{http_code}' --max-time 15 -X POST "$URL/api/admin/generate-magic-link" -H 'Content-Type: application/json' --data '{}')"
-          test "$code" = "401" || test "$code" = "403"
-          echo "Preview smoke test passed: HTTP $code"
+          cat /tmp/body
+          test "$code" = "401"
+          grep -q 'missing_auth_token' /tmp/body
+          echo "Preview magic-link route smoke test passed: HTTP $code"
