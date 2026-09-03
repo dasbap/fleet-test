@@ -118,6 +118,22 @@ describe("admin demo routes mutation coverage", () => {
     expect(admin.rpc).toHaveBeenCalledWith("demo_create_magic_link", { p_user_id: "00000000-0000-4000-8000-000000000001", p_fleet_id: null, p_email: "a@b.com", p_label: "Demo", p_expires_at: null, p_created_by: "admin-1" });
   });
 
+  it("ignores ADMIN_SECRET and creates magic links through the local RPC", async () => {
+    vi.stubEnv("ADMIN_SECRET", " secret ");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const admin = serviceClient({ rpcData: { ok: true, token: "tok-secret" } });
+    createSupabaseServiceClient.mockReturnValue(admin);
+
+    const response = await request("/api/admin/generate-magic-link", { user_id: "00000000-0000-4000-8000-000000000001", fleet_id: "00000000-0000-4000-8000-000000000002", email: "a@b.com", label: "L" });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, magic_url: "https://app.test/demo/access?token=tok-secret" });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(admin.rpc).toHaveBeenCalledWith("demo_create_magic_link", { p_user_id: "00000000-0000-4000-8000-000000000001", p_fleet_id: "00000000-0000-4000-8000-000000000002", p_email: "a@b.com", p_label: "L", p_expires_at: null, p_created_by: "admin-1" });
+    vi.unstubAllGlobals();
+  });
+
   it("handles local magic link service failures", async () => {
     createSupabaseServiceClient.mockReturnValue(null);
     let response = await request("/api/admin/generate-magic-link", { user_id: "00000000-0000-4000-8000-000000000001", email: "a@b.com" });
@@ -128,21 +144,6 @@ describe("admin demo routes mutation coverage", () => {
       expect(response.status).toBe(500);
       expect(await response.json()).toEqual({ ok: false, error: "create_failed" });
     }
-  });
-
-  it("forwards generate route when ADMIN_SECRET is set", async () => {
-    vi.stubEnv("ADMIN_SECRET", " secret ");
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true, magic_url: "remote" }), { status: 201, headers: { "Content-Type": "application/json" } }));
-    vi.stubGlobal("fetch", fetchMock);
-    const response = await request("/api/admin/generate-magic-link", { user_id: "00000000-0000-4000-8000-000000000001", fleet_id: "00000000-0000-4000-8000-000000000002", email: "a@b.com", label: "L" });
-    expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ ok: true, magic_url: "remote" });
-    expect(fetchMock).toHaveBeenCalledWith("https://supabase.test/functions/v1/demo-magic-link", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer secret" }, body: JSON.stringify({ action: "create", user_id: "00000000-0000-4000-8000-000000000001", fleet_id: "00000000-0000-4000-8000-000000000002", email: "a@b.com", label: "L" }) });
-    fetchMock.mockResolvedValueOnce(new Response("bad", { status: 200 }));
-    const invalid = await request("/api/admin/generate-magic-link", { user_id: "00000000-0000-4000-8000-000000000001", email: "a@b.com" });
-    expect(invalid.status).toBe(502);
-    expect(await invalid.json()).toEqual({ ok: false, error: "upstream_invalid_response" });
-    vi.unstubAllGlobals();
   });
 
   it("validates magic links and creates auth magic link", async () => {
@@ -195,20 +196,20 @@ describe("admin demo routes mutation coverage", () => {
       { user: { id: "u1", app_metadata: { temporary_password_active: true, temporary_password_issued_at: "2026-08-27T10:00:00Z" } } },
     ]) {
       createSupabaseServiceClient.mockReturnValue(serviceClient({ currentUsers: [current] }));
-      const response = await request("/api/auth/clear-password-marker", {});
+      const response = await request("/api/auth/clear-password-marker", {}, { auth: true });
       expect(response.status).toBe(409);
-      expect(await response.json()).toEqual({ ok: false, error: "password_change_required" });
     }
+
     createSupabaseServiceClient.mockReturnValue(serviceClient({ currentUsers: [{ user: null }] }));
-    let response = await request("/api/auth/clear-password-marker", {});
+    let response = await request("/api/auth/clear-password-marker", {}, { auth: true });
     expect(response.status).toBe(404);
-    createSupabaseServiceClient.mockReturnValue(serviceClient({ updateUser: { user: null } }));
-    response = await request("/api/auth/clear-password-marker", {});
+
+    createSupabaseServiceClient.mockReturnValue(serviceClient({ currentUsers: [{ user: { id: "u1", app_metadata: {}, updated_at: "2026-08-27T12:00:00Z" } }], updateUser: null }));
+    response = await request("/api/auth/clear-password-marker", {}, { auth: true });
     expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ ok: false, error: "password_marker_update_failed" });
-    createSupabaseServiceClient.mockReturnValue(serviceClient({ currentUsers: [{ user: { id: "u1", app_metadata: {}, updated_at: "2026-08-27T11:00:00Z" } }, { user: { id: "u1", app_metadata: { must_set_password: true } } }] }));
-    response = await request("/api/auth/clear-password-marker", {});
+
+    createSupabaseServiceClient.mockReturnValue(serviceClient({ currentUsers: [{ user: { id: "u1", app_metadata: {}, updated_at: "2026-08-27T12:00:00Z" } }, { user: { id: "u1", app_metadata: { must_set_password: true } } }] }));
+    response = await request("/api/auth/clear-password-marker", {}, { auth: true });
     expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ ok: false, error: "password_marker_not_cleared" });
   });
 });

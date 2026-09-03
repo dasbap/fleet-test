@@ -1,25 +1,35 @@
 import { Hono } from "hono";
 import { createServerApp } from "./app.js";
 
-function withStrippedApiPrefix(input: Request): Request {
-  const url = new URL(input.url);
-  url.pathname = url.pathname.replace(/^\/api(?=\/|$)/, "") || "/";
-  return new Request(url, input);
+const API_PREFIXED_ROUTES = [
+  "/api/admin/",
+  "/api/demo/",
+  "/api/auth/",
+  "/api/terrain/",
+  "/api/payments/",
+  "/api/webhooks/",
+];
+
+function shouldPreserveApiPrefix(pathname: string): boolean {
+  if (pathname === "/api/billing/snapshot") return true;
+  return API_PREFIXED_ROUTES.some((prefix) => pathname.startsWith(prefix));
 }
 
 export function createVercelApiApp() {
   const app = new Hono();
   const bff = createServerApp();
 
-  app.all("/api/*", async (c) => {
-    const strippedResponse = await bff.fetch(withStrippedApiPrefix(c.req.raw));
-    if (strippedResponse.status !== 404) {
-      return strippedResponse;
-    }
-    return bff.fetch(c.req.raw);
-  });
+  app.all("*", async (c) => {
+    const request = c.req.raw;
+    const url = new URL(request.url);
 
-  app.all("*", (c) => bff.fetch(c.req.raw));
+    if (url.pathname.startsWith("/api/") && !shouldPreserveApiPrefix(url.pathname)) {
+      url.pathname = url.pathname.slice(4) || "/";
+      return bff.fetch(new Request(url, request));
+    }
+
+    return bff.fetch(request);
+  });
 
   return app;
 }

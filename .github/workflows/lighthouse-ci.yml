@@ -1,20 +1,5 @@
 # Garde-fou Lighthouse sans secrets GitHub (VITE_* factices, forks OK).
 # Audite les mêmes URLs que lighthouserc après preview sur le port 4173.
-#
-# Pour un audit complet (secrets réels, budget JS, commentaire PR, treosh) :
-# voir .github/workflows/lighthouse.yml
-#
-# Politique assertions (JSON strict dans lighthouserc — pas de // dans le fichier ; détails ici).
-# Voir aussi scripts/lighthouse-ci-local.mjs.
-# Blocage CI (failOnSeverity par défaut = error) : CLS médiane ≤ 0,1 uniquement.
-# Avertissements (warn, n’échouent pas le job) : scores perf/a11y, LCP, INP, FCP, SI, TBT,
-# audits opportunités (maxLength > 0 pour éviter zéro tolérance), unused JS/CSS (seuils bytes généreux).
-# SEO : seconde passe lighthouserc-seo.json sur / uniquement (voir .github/lighthouse/README.md).
-# Profil strict (perf+LCP en error) : lighthouserc.strict.json — npm run lighthouse:ci:strict ; CI sur demande.
-#
-# Doublon possible : un push sur main (etc.) qui modifie p.ex. src/** peut lancer ce workflow
-# et lighthouse.yml en parallèle (intention : garde-fou sans secrets vs audit complet). Pour
-# n’en garder qu’un, désactiver l’un des deux sur certaines branches ou via conditions — non imposé ici.
 name: Lighthouse CI — garde-fou
 
 on:
@@ -47,7 +32,8 @@ jobs:
       - id: filter
         name: Check changed files
         env:
-          BASE_REF: ${{ github.base_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
@@ -55,8 +41,8 @@ jobs:
             exit 0
           fi
 
-          git fetch --no-tags --depth=1 origin "$BASE_REF"
-          changed="$(git diff --name-only "origin/$BASE_REF"...HEAD)"
+          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
           if echo "$changed" | grep -Eq '^(src/|index\.html$|vite\.config\.ts$|package(-lock)?\.json$|\.github/lighthouse/|\.github/workflows/lighthouse-ci\.yml$|scripts/check-inp-interactions\.mjs$|scripts/check-.*bundle.*\.mjs$)'; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
           else

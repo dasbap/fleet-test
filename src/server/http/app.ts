@@ -24,6 +24,8 @@ import {
 } from "./routes/webhooksPayment.js";
 import { registerGpsIngestRoutes } from "./routes/gpsIngest.js";
 
+const VERCEL_TEST_ORIGIN = "https://fleet-test-gamma.vercel.app";
+
 function isAllowedLocalOrigin(origin: string): boolean {
   try {
     const url = new URL(origin);
@@ -45,6 +47,7 @@ export function createServerApp() {
     appOrigin,
     "https://www.e-samba.com",
     "https://app.e-samba.com",
+    VERCEL_TEST_ORIGIN,
   ]);
   const allowLocalDevelopmentOrigins = process.env.NODE_ENV !== "production";
 

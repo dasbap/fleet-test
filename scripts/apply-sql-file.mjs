@@ -23,8 +23,6 @@ function asValidDatabaseUrl(value) {
 
 export function resolveDatabaseUrls(env = process.env) {
   const candidates = [
-    // Supabase's pooler (Supavisor) is IPv4-compatible and is the right
-    // endpoint for GitHub-hosted ubuntu runners, including Free projects.
     asValidDatabaseUrl(env.SUPABASE_DB_URL),
     asValidDatabaseUrl(env.DATABASE_URL),
     asValidDatabaseUrl(env.DIRECT_URL),
@@ -35,8 +33,6 @@ export function resolveDatabaseUrls(env = process.env) {
   if (dbPassword && supabaseUrl) {
     const ref = supabaseUrl.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1];
     if (ref) {
-      // Last-resort direct endpoint. Free Supabase projects may expose this
-      // endpoint over IPv6 only, which GitHub-hosted runners cannot reach.
       candidates.push(
         `postgresql://postgres:${encodeURIComponent(dbPassword)}@db.${ref}.supabase.co:5432/postgres`,
       );
@@ -126,7 +122,6 @@ export function splitSqlStatements(sql) {
       if (char === '\n') inLineComment = false;
       continue;
     }
-
     if (inBlockComment) {
       current += char;
       if (char === '*' && next === '/') {
@@ -136,61 +131,49 @@ export function splitSqlStatements(sql) {
       }
       continue;
     }
-
     if (dollarTag) {
       if (sql.startsWith(dollarTag, index)) {
         current += dollarTag;
         index += dollarTag.length - 1;
         dollarTag = null;
-      } else {
-        current += char;
-      }
+      } else current += char;
       continue;
     }
-
     if (inSingleQuote) {
       current += char;
       if (char === "'" && next === "'") {
         current += next;
         index += 1;
-      } else if (char === "'") {
-        inSingleQuote = false;
-      }
+      } else if (char === "'") inSingleQuote = false;
       continue;
     }
-
     if (inDoubleQuote) {
       current += char;
       if (char === '"') inDoubleQuote = false;
       continue;
     }
-
     if (char === '-' && next === '-') {
       current += char + next;
       index += 1;
       inLineComment = true;
       continue;
     }
-
     if (char === '/' && next === '*') {
       current += char + next;
       index += 1;
       inBlockComment = true;
       continue;
     }
-
     if (char === "'") {
       current += char;
       inSingleQuote = true;
       continue;
     }
-
     if (char === '"') {
       current += char;
       inDoubleQuote = true;
       continue;
     }
-
     if (char === '$') {
       const match = sql.slice(index).match(/^\$[A-Za-z0-9_]*\$/);
       if (match) {
@@ -200,14 +183,12 @@ export function splitSqlStatements(sql) {
         continue;
       }
     }
-
     if (char === ';') {
       const statement = `${current};`;
       if (statement.trim()) statements.push(statement);
       current = '';
       continue;
     }
-
     current += char;
   }
 
@@ -217,16 +198,13 @@ export function splitSqlStatements(sql) {
 
 export function prepareSqlForExecution(sql, env = process.env) {
   if (env.SKIP_DIRECT_DATA_MUTATIONS !== '1') return sql;
-
   return splitSqlStatements(sql)
     .filter((statement) => !DIRECT_DATA_MUTATION_PATTERN.test(statement))
     .join('\n');
 }
 
 export async function applySqlFiles(files, env = process.env) {
-  if (files.length === 0) {
-    throw new Error('Usage: node scripts/apply-sql-file.mjs <fichier.sql> [...]');
-  }
+  if (files.length === 0) throw new Error('Usage: node scripts/apply-sql-file.mjs <fichier.sql> [...]');
 
   const databaseUrls = resolveDatabaseUrls(env);
   if (databaseUrls.length === 0) {
@@ -282,6 +260,4 @@ async function runCli() {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  await runCli();
-}
+if (process.argv[1] === fileURLToPath(import.meta.url)) await runCli();

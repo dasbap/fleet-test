@@ -1,10 +1,44 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
-import { getAppUrl, getSupabaseUrl } from "../../env.js";
+import { getAppUrl } from "../../env.js";
 import { getBearerToken } from "../auth.js";
 import { jsonInternalServerError } from "../errorResponse.js";
+import { SupabaseUpstreamTimeoutError } from "../../infra/fetchWithTimeout.js";
 import { createSupabaseServiceClient } from "../../infra/supabaseServiceClient.js";
 import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
+
+const SUPABASE_OPERATION_TIMEOUT_MS = 5_000;
+
+async function withSupabaseOperationTimeout<T>(
+  operation: string,
+  fn: () => PromiseLike<T>,
+): Promise<T> {
+  console.info(`[admin-demo] ${operation}:start`);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(fn()),
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new SupabaseUpstreamTimeoutError(SUPABASE_OPERATION_TIMEOUT_MS)),
+          SUPABASE_OPERATION_TIMEOUT_MS,
+        );
+      }),
+    ]).then((result) => {
+      console.info(`[admin-demo] ${operation}:done`);
+      return result;
+    });
+  } catch (error) {
+    if (error instanceof SupabaseUpstreamTimeoutError) {
+      console.error(`[admin-demo] ${operation}:timeout`);
+    } else {
+      console.error(`[admin-demo] ${operation}:error`);
+    }
+    throw error;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
 
 const generateMagicLinkSchema = z.object({
   user_id: z.string().uuid(),
@@ -17,10 +51,6 @@ const validateMagicLinkSchema = z.object({
   action: z.literal("validate"),
   token: z.string().uuid(),
 });
-
-function getAdminSecret(): string | undefined {
-  return process.env.ADMIN_SECRET?.trim() || undefined;
-}
 
 function hasSupabaseAuthConfig(): boolean {
   const url =
@@ -82,15 +112,19 @@ async function requireLocalPlatformAdmin(c: Context) {
   const {
     data: { user },
     error: authError,
-  } = await client.auth.getUser(token);
+  } = await withSupabaseOperationTimeout("auth.getUser", () => client.auth.getUser(token));
   if (authError || !user) {
     return { response: c.json({ ok: false, error: "invalid_token" }, 401) };
   }
 
-  const [{ data: isAdmin }, { data: isSuperAdmin }] = await Promise.all([
-    client.rpc("is_platform_admin"),
-    client.rpc("is_platform_super_admin"),
-  ]);
+  const [{ data: isAdmin }, { data: isSuperAdmin }] = await withSupabaseOperationTimeout(
+    "admin-rpc-check",
+    () =>
+      Promise.all([
+        client.rpc("is_platform_admin"),
+        client.rpc("is_platform_super_admin"),
+      ]),
+  );
   if (!isAdmin) {
     return {
       response: c.json(
@@ -103,34 +137,6 @@ async function requireLocalPlatformAdmin(c: Context) {
   return { token, user, isSuperAdmin: Boolean(isSuperAdmin) };
 }
 
-async function forwardJson(
-  c: Context,
-  endpoint: "demo-magic-link",
-  body: Record<string, unknown>,
-) {
-  const adminSecret = getAdminSecret();
-  if (!adminSecret) {
-    return jsonServerConfigurationError(c);
-  }
-
-  const upstream = await fetch(`${getSupabaseUrl()}/functions/v1/${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${adminSecret}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  let data: Record<string, unknown>;
-  try {
-    data = (await upstream.json()) as Record<string, unknown>;
-  } catch {
-    return c.json({ ok: false, error: "upstream_invalid_response" }, 502);
-  }
-  return c.json(data, upstream.status as Parameters<typeof c.json>[1]);
-}
-
 async function createMagicLinkLocally(
   c: Context,
   body: z.infer<typeof generateMagicLinkSchema>,
@@ -139,14 +145,18 @@ async function createMagicLinkLocally(
   const admin = createSupabaseServiceClient();
   if (!admin) return jsonServerConfigurationError(c);
 
-  const { data, error } = await admin.rpc("demo_create_magic_link", {
-    p_user_id: body.user_id,
-    p_fleet_id: body.fleet_id ?? null,
-    p_email: body.email,
-    p_label: body.label ?? null,
-    p_expires_at: null,
-    p_created_by: createdBy,
-  });
+  const { data, error } = await withSupabaseOperationTimeout(
+    "demo_create_magic_link",
+    () =>
+      admin.rpc("demo_create_magic_link", {
+        p_user_id: body.user_id,
+        p_fleet_id: body.fleet_id ?? null,
+        p_email: body.email,
+        p_label: body.label ?? null,
+        p_expires_at: null,
+        p_created_by: createdBy,
+      }),
+  );
 
   const result = data as { ok?: boolean; token?: string } | null;
   if (error || !result?.ok || !result.token) {
@@ -170,18 +180,7 @@ async function handleGenerateMagicLink(c: Context) {
       return c.json({ ok: false, error: "invalid_payload", details: parsed.error.flatten() }, 400);
     }
 
-    const forwardBody = {
-      action: "create",
-      user_id: parsed.data.user_id,
-      fleet_id: parsed.data.fleet_id ?? null,
-      email: parsed.data.email,
-      label: parsed.data.label,
-    };
-
-    if (!getAdminSecret()) {
-      return await createMagicLinkLocally(c, parsed.data, auth.user.id);
-    }
-    return await forwardJson(c, "demo-magic-link", forwardBody);
+    return await createMagicLinkLocally(c, parsed.data, auth.user.id);
   } catch (error) {
     return jsonInternalServerError(c, error);
   }
@@ -197,9 +196,10 @@ async function handleValidateMagicLink(c: Context) {
     const admin = createSupabaseServiceClient();
     if (!admin) return jsonServerConfigurationError(c);
 
-    const { data, error } = await admin.rpc("demo_validate_magic_link", {
-      p_token: parsed.data.token,
-    });
+    const { data, error } = await withSupabaseOperationTimeout(
+      "demo_validate_magic_link",
+      () => admin.rpc("demo_validate_magic_link", { p_token: parsed.data.token }),
+    );
     if (error) return c.json({ ok: false, error: "validation_error" }, 500);
 
     const result = data as { ok?: boolean; email?: string; fleet_id?: string } | null;
@@ -208,11 +208,15 @@ async function handleValidateMagicLink(c: Context) {
     }
 
     const appUrl = resolveAppUrlFromOrigin(c.req.header("Origin"));
-    const { data: otpData, error: otpError } = await admin.auth.admin.generateLink({
-      type: "magiclink",
-      email: result.email,
-      options: { redirectTo: `${appUrl}/demo/onboarding` },
-    });
+    const { data: otpData, error: otpError } = await withSupabaseOperationTimeout(
+      "auth.admin.generateLink",
+      () =>
+        admin.auth.admin.generateLink({
+          type: "magiclink",
+          email: result.email,
+          options: { redirectTo: `${appUrl}/demo/onboarding` },
+        }),
+    );
 
     if (otpError || !otpData?.properties?.action_link) {
       return c.json({ ok: false, error: "auth_link_failed" }, 500);
@@ -238,14 +242,14 @@ async function handleClearPasswordMarker(c: Context) {
     const {
       data: { user },
       error: authError,
-    } = await userClient.auth.getUser(token);
+    } = await withSupabaseOperationTimeout("clear.auth.getUser", () => userClient.auth.getUser(token));
     if (authError || !user) return c.json({ ok: false, error: "invalid_token" }, 401);
 
     const admin = createSupabaseServiceClient();
     if (!admin) return jsonServerConfigurationError(c);
 
     const { data: currentUserData, error: currentUserError } =
-      await admin.auth.admin.getUserById(user.id);
+      await withSupabaseOperationTimeout("clear.auth.getUserById", () => admin.auth.admin.getUserById(user.id));
     if (currentUserError || !currentUserData.user) {
       return c.json({ ok: false, error: "user_not_found" }, 404);
     }
@@ -270,13 +274,17 @@ async function handleClearPasswordMarker(c: Context) {
     }
 
     const { data: updatedUserData, error: updateError } =
-      await admin.auth.admin.updateUserById(user.id, {
-        app_metadata: {
-          ...appMetadata,
-          must_set_password: false,
-          temporary_password_active: false,
-        },
-      });
+      await withSupabaseOperationTimeout(
+        "clear.auth.updateUserById",
+        () =>
+          admin.auth.admin.updateUserById(user.id, {
+            app_metadata: {
+              ...appMetadata,
+              must_set_password: false,
+              temporary_password_active: false,
+            },
+          }),
+      );
 
     if (updateError || !updatedUserData.user) {
       console.error("[admin-demo] password marker update failed:", updateError?.message);
@@ -284,7 +292,10 @@ async function handleClearPasswordMarker(c: Context) {
     }
 
     const { data: verifiedUserData, error: verificationError } =
-      await admin.auth.admin.getUserById(user.id);
+      await withSupabaseOperationTimeout(
+        "clear.auth.verifyUserById",
+        () => admin.auth.admin.getUserById(user.id),
+      );
     if (
       verificationError ||
       !verifiedUserData.user ||

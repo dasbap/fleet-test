@@ -94,3 +94,5 @@ releases/
 .vercel
 .env*
 public/.well-known/assetlinks.json
+
+.vercel

@@ -18,6 +18,10 @@ node_modules
 /releases
 *.zip
 *.log
+coverage
+playwright-report
+blob-report
+.stryker-tmp
 /coverage
 **/coverage
 /playwright-report
