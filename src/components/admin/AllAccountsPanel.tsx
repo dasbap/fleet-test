@@ -528,7 +528,7 @@ export function AllAccountsPanel() {
                     {account.expiration_source ? (
                       <p className="mt-1 text-xs text-muted-foreground">
                         {account.expiration_source === "demo"
-                          ? "Période démo"
+                          ? "Accès temporaire"
                           : "Abonnement flotte"}
                       </p>
                     ) : null}
