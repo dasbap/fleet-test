@@ -94,13 +94,14 @@ export function validateVehicleRegistrationForCountry(
   countryCode: string | null | undefined,
 ): string | null {
   const rule = getVehicleRegistrationRule(countryCode);
+  const rawNormalized = value.toUpperCase().replace(/\s+/g, " ").trim();
   const normalized = normalizeVehicleRegistration(value);
   const compact = compactVehicleRegistration(value);
 
-  if (!normalized.trim()) {
+  if (!rawNormalized) {
     return "L'immatriculation est requise.";
   }
-  if (!/^[A-Z0-9 -]+$/.test(normalized)) {
+  if (!/^[A-Z0-9 -]+$/.test(rawNormalized)) {
     return "Utilisez uniquement des lettres, chiffres, espaces ou tirets.";
   }
   if (
