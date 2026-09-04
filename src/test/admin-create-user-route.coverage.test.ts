@@ -344,7 +344,7 @@ describe("admin create-user route", () => {
       }),
     );
     expect(clients.publicClient.auth.resetPasswordForEmail).toHaveBeenCalledWith("user@example.com", {
-      redirectTo: "https://app.example/set-password",
+      redirectTo: "https://app.example/auth/update-password",
     });
     expectJson(res, 201, {
       ok: true,

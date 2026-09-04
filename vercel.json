@@ -7,6 +7,9 @@
   "functions": {
     "api/admin/generate-magic-link.ts": {
       "maxDuration": 15
+    },
+    "api/admin/user-security.ts": {
+      "maxDuration": 15
     }
   },
   "redirects": [

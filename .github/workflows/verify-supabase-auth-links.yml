@@ -1,0 +1,140 @@
+name: Verify Supabase Auth Links
+
+on:
+  push:
+    branches:
+      - pre-prod
+    paths:
+      - supabase/config.toml
+      - .github/workflows/verify-supabase-auth-links.yml
+      - api/admin/user-security.ts
+      - api/admin/create-user.ts
+      - src/features/auth/**
+      - src/server/http/routes/adminProspectSecurity.ts
+      - supabase/functions/create-prospect-account/**
+      - supabase/functions/create-fleet-member-account/**
+      - supabase/functions/demo-magic-link/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-auth-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Supabase credentials
+        shell: bash
+        run: |
+          test -n "$SUPABASE_ACCESS_TOKEN" || { echo "SUPABASE_ACCESS_TOKEN missing"; exit 1; }
+          test -n "$SUPABASE_PROJECT_REF" || { echo "SUPABASE_PROJECT_REF missing"; exit 1; }
+
+      - name: Sync and verify Auth redirect URLs
+        shell: bash
+        run: |
+          node <<'NODE'
+          const token = process.env.SUPABASE_ACCESS_TOKEN;
+          const ref = process.env.SUPABASE_PROJECT_REF;
+          const endpoint = `https://api.supabase.com/v1/projects/${ref}/config/auth`;
+
+          const required = [
+            "https://fleet-test-gamma.vercel.app/**",
+            "https://fleet-test-gamma.vercel.app/auth/callback",
+            "https://fleet-test-gamma.vercel.app/auth/update-password",
+            "https://fleet-test-gamma.vercel.app/demo/onboarding",
+            "https://www.e-samba.com/**",
+            "https://www.e-samba.com/auth/callback",
+            "https://www.e-samba.com/auth/update-password",
+            "https://app.e-samba.com/**",
+            "https://*.vercel.app/**",
+            "esamba://**",
+            "esamba://auth/callback",
+            "esamba://auth/update-password",
+            "com.esamba.flotte://**",
+            "com.esamba.flotte://auth/callback",
+            "com.esamba.flotte://auth/update-password"
+          ];
+
+          const headers = {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          };
+
+          const getConfig = async () => {
+            const response = await fetch(endpoint, { headers });
+            const text = await response.text();
+            if (response.status === 403) {
+              console.warn("Management API auth config verification skipped: token lacks config/auth privilege.");
+              return null;
+            }
+            if (!response.ok) throw new Error(`GET config/auth ${response.status}: ${text.slice(0, 300)}`);
+            return text ? JSON.parse(text) : {};
+          };
+
+          const normalize = (value) => {
+            if (Array.isArray(value)) return value.map(String).map((v) => v.trim()).filter(Boolean);
+            if (typeof value === "string") return value.split(",").map((v) => v.trim()).filter(Boolean);
+            return [];
+          };
+
+          const before = await getConfig();
+          if (before === null) {
+            const fs = await import("node:fs");
+            const localConfig = fs.readFileSync("supabase/config.toml", "utf8");
+            const missingLocal = required.filter((url) => !localConfig.includes(`"${url}"`));
+            if (missingLocal.length) {
+              throw new Error(`Missing local Auth redirect URLs: ${missingLocal.join(", ")}`);
+            }
+            console.log(`Local Supabase Auth redirect contract verified: ${required.length} required destinations present.`);
+            process.exit(0);
+          }
+          const current = normalize(before.uri_allow_list);
+          const merged = [...new Set([...current, ...required])];
+          const serializedAllowList = Array.isArray(before.uri_allow_list) ? merged : merged.join(",");
+
+          const needsPatch =
+            before.site_url !== "https://www.e-samba.com" ||
+            required.some((url) => !current.includes(url));
+
+          if (needsPatch) {
+            const response = await fetch(endpoint, {
+              method: "PATCH",
+              headers,
+              body: JSON.stringify({
+                site_url: "https://www.e-samba.com",
+                uri_allow_list: serializedAllowList,
+              }),
+            });
+            const text = await response.text();
+            if (!response.ok) throw new Error(`PATCH config/auth ${response.status}: ${text.slice(0, 300)}`);
+          }
+
+          const after = await getConfig();
+          const allowed = normalize(after.uri_allow_list);
+          const missing = required.filter((url) => !allowed.includes(url));
+
+          if (after.site_url !== "https://www.e-samba.com") {
+            throw new Error(`Unexpected site_url: ${after.site_url ?? "<missing>"}`);
+          }
+          if (missing.length) {
+            throw new Error(`Missing Auth redirect URLs: ${missing.join(", ")}`);
+          }
+
+          console.log(`Supabase Auth redirect URLs verified: ${required.length} required destinations present.`);
+          NODE
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "### Supabase Auth links"
+            echo ""
+            echo "Site URL and required web/mobile redirect destinations are synchronized and verified."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -8,6 +8,7 @@ describe("admin subscription grant module", () => {
     const routePaths = readFileSync("src/navigation/routePaths.ts", "utf8");
     const adminDashboard = readFileSync("src/pages/admin/AdminDashboardPage.tsx", "utf8");
     const page = readFileSync("src/pages/admin/AdminSubscriptionsPage.tsx", "utf8");
+    const demoPanel = readFileSync("src/components/admin/DemoSessionsPanel.tsx", "utf8");
 
     expect(routePaths).toContain('dashboardAdminSubscriptions: "/dashboard/admin/subscriptions"');
     expect(routes).toContain('path="admin/subscriptions"');
@@ -21,5 +22,10 @@ describe("admin subscription grant module", () => {
     expect(page).toContain("max={selectedPlan?.maxVehicles ?? undefined}");
     expect(page).toContain("Date d'expiration");
     expect(page).toContain("Permanent");
+    expect(page).toContain('searchParams.get("fleet")');
+    expect(page).toContain("Seul le super administrateur peut gérer les abonnements");
+    expect(demoPanel).toContain("isSuperAdmin");
+    expect(demoPanel).toContain("Super admin requis");
+    expect(demoPanel).toContain("dashboardAdminSubscriptions}?fleet=");
   });
 });

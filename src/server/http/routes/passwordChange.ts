@@ -60,10 +60,6 @@ async function handlePasswordChange(c: Context) {
     appMetadata.temporary_password_active === true ||
     userMetadata.temporary_password_active === true;
 
-  if (!mustSetPassword && !temporaryPasswordActive) {
-    return c.json({ ok: true, must_set_password: false });
-  }
-
   const { error: passwordUpdateError } = await admin.auth.admin.updateUserById(
     user.id,
     { password: parsed.data.password },
@@ -83,6 +79,15 @@ async function handlePasswordChange(c: Context) {
   }
 
   const passwordSetAt = new Date().toISOString();
+
+  if (!mustSetPassword && !temporaryPasswordActive) {
+    return c.json({
+      ok: true,
+      must_set_password: false,
+      password_set_at: passwordSetAt,
+    });
+  }
+
   let markerUpdated = false;
 
   for (let attempt = 0; attempt < MARKER_UPDATE_ATTEMPTS; attempt += 1) {

@@ -187,7 +187,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     global: { fetch: (input, init) => fetchWithTimeout(input, init, 5_000) },
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/set-password`;
+  const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/auth/update-password`;
   const { error: resetError } = await publicAuth.auth.resetPasswordForEmail(email, { redirectTo });
   if (resetError) {
     await admin.auth.admin.deleteUser(userId);
