@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -27,8 +28,16 @@ import { useCreateVehicle } from "@/hooks/useVehicles";
 import { useActivation } from "@/hooks/useActivation";
 import { useFleetSubscriptions } from "@/hooks/useSubscriptionManagement";
 import type { SubscriptionSummary } from "@/services/subscription-management.service";
+import { FleetRepository } from "@/repositories/fleet.repository";
+import {
+  getVehicleRegistrationRule,
+  normalizeVehicleRegistration,
+  sanitizeVehicleRegistrationInput,
+  validateVehicleRegistrationForCountry,
+} from "@/domain/vehicleRegistration";
 
 const vehicleFormSchema = vehicleCreateFormSchema;
+const fleetRepository = new FleetRepository();
 type VehicleFormValues = VehicleCreateFormValues;
 
 interface VehicleFormDialogProps {
@@ -48,6 +57,13 @@ function availableSlotsForCreation(subscription: SubscriptionSummary): number {
 
 const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFormDialogProps) => {
   const createVehicle = useCreateVehicle();
+  const { data: countryCode = "CM" } = useQuery({
+    queryKey: ["fleet-country", fleetId],
+    queryFn: () => fleetRepository.findCountryCodeById(fleetId),
+    enabled: Boolean(fleetId),
+    staleTime: 5 * 60_000,
+  });
+  const registrationRule = getVehicleRegistrationRule(countryCode);
   const { data: subscriptions = [], isLoading: subscriptionsLoading } = useFleetSubscriptions(fleetId);
   const { completeStep } = useActivation();
   const subscriptionOptions = useMemo(
@@ -75,10 +91,20 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
   });
 
   const onSubmit = async (data: VehicleFormValues) => {
+    const normalizedRegistration = normalizeVehicleRegistration(data.registration);
+    const registrationError = validateVehicleRegistrationForCountry(
+      normalizedRegistration,
+      countryCode,
+    );
+    if (registrationError) {
+      form.setError("registration", { type: "manual", message: registrationError });
+      return;
+    }
+
     await createVehicle.mutateAsync({
       fleet_id: fleetId,
       subscription_id: data.subscription_id,
-      registration: data.registration,
+      registration: normalizedRegistration,
       brand: data.brand,
       model: data.model,
       year: data.year,
@@ -110,8 +136,38 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
                 <FormItem>
                   <FormLabel>Immatriculation</FormLabel>
                   <FormControl>
-                    <Input placeholder="LT 1234 A" {...field} />
+                    <Input
+                      {...field}
+                      placeholder={registrationRule.placeholder}
+                      maxLength={registrationRule.maxInputLength}
+                      autoCapitalize="characters"
+                      spellCheck={false}
+                      onChange={(event) => {
+                        const next = sanitizeVehicleRegistrationInput(event.target.value).slice(
+                          0,
+                          registrationRule.maxInputLength,
+                        );
+                        field.onChange(next);
+                        const error = next
+                          ? validateVehicleRegistrationForCountry(next, countryCode)
+                          : null;
+                        if (error) {
+                          form.setError("registration", { type: "manual", message: error });
+                        } else {
+                          form.clearErrors("registration");
+                        }
+                      }}
+                      onBlur={(event) => {
+                        const normalized = normalizeVehicleRegistration(event.target.value);
+                        field.onChange(normalized);
+                        field.onBlur();
+                      }}
+                    />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Règle {countryCode} · {registrationRule.minCompactLength} à{" "}
+                    {registrationRule.maxCompactLength} caractères alphanumériques. Une plaque ne peut être utilisée qu'une seule fois.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

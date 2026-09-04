@@ -44,7 +44,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.codex/
+
 # Vercel
 .vercel
 
@@ -90,9 +90,4 @@ android/.github-android-secrets.local.txt
 
 scripts/android-release.env.ps1
 releases/
-
-.vercel
-.env*
 public/.well-known/assetlinks.json
-
-.vercel

@@ -119,13 +119,34 @@ export default function UpdatePasswordPage() {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
 
-      if (error) {
-        setFormError(error.message);
+      if (sessionError || !token) {
+        setFormError("Votre session de récupération a expiré. Demandez un nouveau lien.");
         return;
       }
 
+      const response = await fetch("/api/auth/clear-password-marker", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password }),
+      });
+      const result = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        details?: string;
+      };
+
+      if (!response.ok || result.ok !== true) {
+        setFormError(result.details ?? result.error ?? "Impossible de modifier le mot de passe.");
+        return;
+      }
+
+      await supabase.auth.refreshSession();
       setPageState("success");
 
       // Redirection après 2s : dashboard si flotte existante, sinon /start.

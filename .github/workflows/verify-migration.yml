@@ -37,11 +37,9 @@ jobs:
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_POOLER_HOST: ${{ secrets.SUPABASE_POOLER_HOST }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PGSSLMODE: require
+      PGCONNECT_TIMEOUT: "8"
 
     steps:
       - name: Checkout code
@@ -74,33 +72,67 @@ jobs:
       - name: Validate Supabase configuration
         run: |
           set -euo pipefail
-          test -n "${SUPABASE_PROJECT_REF:-}" || { echo "::error::Le secret SUPABASE_PROJECT_REF est absent ou vide"; exit 1; }
+          test -n "${SUPABASE_PROJECT_REF:-}" || { echo "::error::SUPABASE_PROJECT_REF est absent ou vide"; exit 1; }
           test -n "${SUPABASE_DB_PASSWORD:-}" || { echo "::error::Le secret SUPABASE_DB_PASSWORD est absent ou vide"; exit 1; }
-          printf '%s' "$SUPABASE_PROJECT_REF" | grep -Eq '^[a-z0-9]{20}$' || { echo "::error::SUPABASE_PROJECT_REF doit contenir uniquement la référence du projet"; exit 1; }
+          printf '%s' "$SUPABASE_PROJECT_REF" | grep -Eq '^[a-z0-9]{20}$' || { echo "::error::SUPABASE_PROJECT_REF invalide"; exit 1; }
           test -f "supabase/scripts/verify/verify-migration-status.sql" || { echo "::error::Le fichier supabase/scripts/verify/verify-migration-status.sql est introuvable"; exit 1; }
 
       - name: Resolve database target
         id: db
         run: |
           set -euo pipefail
-          DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"
-          DB_HOST="${SUPABASE_POOLER_HOST:-aws-0-eu-central-2.pooler.supabase.com}"
           DB_PORT="5432"
           DB_USER="postgres.${SUPABASE_PROJECT_REF}"
+          CANDIDATES=""
+          if [ -n "${SUPABASE_POOLER_HOST:-}" ]; then
+            CANDIDATES="${SUPABASE_POOLER_HOST}"
+          fi
+          for HOST in \
+            aws-0-eu-central-2.pooler.supabase.com \
+            aws-1-eu-central-2.pooler.supabase.com
+          do
+            case " $CANDIDATES " in
+              *" $HOST "*) ;;
+              *) CANDIDATES="${CANDIDATES:+$CANDIDATES }$HOST" ;;
+            esac
+          done
 
-          if [ -n "$DB_URL" ]; then
-            if DB_PARSED="$(DB_URL="$DB_URL" node -e 'try { const u=new URL(process.env.DB_URL); process.stdout.write([u.hostname,u.port||"5432",decodeURIComponent(u.username||"")].join("\n")); } catch { process.exit(2); }')"; then
-              DB_HOST="$(printf '%s\n' "$DB_PARSED" | sed -n '1p')"
-              DB_PORT="$(printf '%s\n' "$DB_PARSED" | sed -n '2p')"
-              DB_URL_USER="$(printf '%s\n' "$DB_PARSED" | sed -n '3p')"
-              if [ -n "$DB_URL_USER" ]; then
-                DB_USER="$DB_URL_USER"
-              elif [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
-                DB_USER="postgres"
-              fi
-            else
-              echo "::warning::URL DB non parseable; utilisation du host pooler et de l'utilisateur dérivé"
+          DB_HOST=""
+          LAST_ERROR=""
+          for HOST in $CANDIDATES; do
+            echo "Test du pooler Supabase: ${HOST}:${DB_PORT}"
+            set +e
+            psql \
+              --host="$HOST" \
+              --port="$DB_PORT" \
+              --username="$DB_USER" \
+              --dbname="postgres" \
+              --command="select 1;" \
+              --no-password \
+              > /tmp/pooler-probe.txt 2>&1
+            STATUS=$?
+            set -e
+            if [ "$STATUS" -eq 0 ]; then
+              DB_HOST="$HOST"
+              break
             fi
+            LAST_ERROR="$(cat /tmp/pooler-probe.txt || true)"
+            if printf '%s' "$LAST_ERROR" | grep -Eqi 'password authentication failed'; then
+              echo "::error::Le pooler ${HOST} reconnaît le tenant mais le mot de passe DB GitHub est invalide"
+              cat /tmp/pooler-probe.txt
+              exit 1
+            fi
+            if printf '%s' "$LAST_ERROR" | grep -Eqi 'ENOTFOUND|tenant/user .* not found'; then
+              echo "Pooler ${HOST}: tenant absent, essai du suivant."
+              continue
+            fi
+            echo "Pooler ${HOST}: connexion indisponible, essai du suivant."
+          done
+
+          if [ -z "$DB_HOST" ]; then
+            echo "::error::Aucun pooler Supabase candidat ne reconnaît le projet ${SUPABASE_PROJECT_REF}"
+            printf '%s\n' "$LAST_ERROR"
+            exit 1
           fi
 
           {
@@ -108,6 +140,7 @@ jobs:
             echo "port=$DB_PORT"
             echo "user=$DB_USER"
           } >> "$GITHUB_OUTPUT"
+          echo "Pooler sélectionné: ${DB_HOST}:${DB_PORT}"
 
       - name: Check database connectivity
         run: |

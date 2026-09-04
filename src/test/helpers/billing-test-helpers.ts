@@ -66,9 +66,10 @@ export async function seedVehicles(
   tag: string,
   vehicleCount: number,
 ): Promise<string[]> {
+  const registrationRun = Date.now().toString(36).slice(-5).toUpperCase();
   const vehicleRows = Array.from({ length: vehicleCount }, (_, i) => ({
     fleet_id: fleetId,
-    registration: `LT-${tag}-${i + 1}`,
+    registration: `LT${registrationRun}${i + 1}`,
     brand: "Toyota",
     model: "Hilux",
     status: "ok",

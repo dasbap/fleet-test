@@ -59,10 +59,7 @@ async function handlePasswordChange(c: Context) {
   const temporaryPasswordActive =
     appMetadata.temporary_password_active === true ||
     userMetadata.temporary_password_active === true;
-
-  if (!mustSetPassword && !temporaryPasswordActive) {
-    return c.json({ ok: true, must_set_password: false });
-  }
+  const markerNeedsClearing = mustSetPassword || temporaryPasswordActive;
 
   const { error: passwordUpdateError } = await admin.auth.admin.updateUserById(
     user.id,
@@ -71,18 +68,32 @@ async function handlePasswordChange(c: Context) {
 
   if (passwordUpdateError) {
     const code = passwordUpdateError.code ?? "password_update_failed";
-    const status = code === "same_password" || code === "weak_password" ? 400 : 409;
-    return c.json(
-      {
-        ok: false,
-        error: code,
-        details: passwordUpdateError.message,
-      },
-      status,
-    );
+    const isRetryAfterSuccessfulPasswordUpdate =
+      markerNeedsClearing && code === "same_password";
+
+    if (!isRetryAfterSuccessfulPasswordUpdate) {
+      const status = code === "same_password" || code === "weak_password" ? 400 : 409;
+      return c.json(
+        {
+          ok: false,
+          error: code,
+          details: passwordUpdateError.message,
+        },
+        status,
+      );
+    }
   }
 
   const passwordSetAt = new Date().toISOString();
+
+  if (!markerNeedsClearing) {
+    return c.json({
+      ok: true,
+      must_set_password: false,
+      password_set_at: passwordSetAt,
+    });
+  }
+
   let markerUpdated = false;
 
   for (let attempt = 0; attempt < MARKER_UPDATE_ATTEMPTS; attempt += 1) {

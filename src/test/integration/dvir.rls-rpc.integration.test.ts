@@ -179,24 +179,43 @@ describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
       });
     expect(guardMembershipError).toBeNull();
 
-    const { error: trialError } = await supabaseAdmin.rpc("billing_start_trial", {
-      p_fleet_id: testFleetId,
-      p_trial_days: 30,
-    });
+    const { data: trialSubscriptionId, error: trialError } =
+      await supabaseAdmin.rpc("billing_start_trial", {
+        p_fleet_id: testFleetId,
+        p_trial_days: 30,
+      });
     expect(trialError).toBeNull();
+    expect(trialSubscriptionId).toBeDefined();
 
-    const { error: trialSlotsError } = await supabaseAdmin
+    const { data: trialSubscription, error: trialSubscriptionError } =
+      await supabaseAdmin
+        .from("abonnements")
+        .select("plan_id, starts_at, ends_at, trial_ends_at")
+        .eq("id", trialSubscriptionId as string)
+        .single();
+    expect(trialSubscriptionError).toBeNull();
+    expect(trialSubscription?.plan_id).toBeDefined();
+
+    const { error: secondTrialError } = await supabaseAdmin
       .from("abonnements")
-      .update({ vehicle_slots: 2 })
-      .eq("fleet_id", testFleetId)
-      .eq("status", "trial");
-    expect(trialSlotsError).toBeNull();
+      .insert({
+        fleet_id: testFleetId,
+        plan_id: trialSubscription!.plan_id,
+        payment_id: null,
+        starts_at: trialSubscription!.starts_at,
+        ends_at: trialSubscription!.ends_at,
+        status: "trial",
+        trial_ends_at: trialSubscription!.trial_ends_at,
+        vehicle_slots: 1,
+      });
+    expect(secondTrialError).toBeNull();
 
+    const registrationRun = unique.toString(36).slice(-6).toUpperCase();
     const { data: vehicleIdA, error: vehicleAError } = await supabase.rpc(
       "create_esamba_vehicle",
       {
         p_fleet_id: testFleetId,
-        p_registration: `DVIR-A-${unique}`,
+        p_registration: `DA${registrationRun}`,
         p_brand: "Toyota",
         p_model: "Corolla",
         p_year: 2021,
@@ -211,7 +230,7 @@ describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
       "create_esamba_vehicle",
       {
         p_fleet_id: testFleetId,
-        p_registration: `DVIR-B-${unique}`,
+        p_registration: `DB${registrationRun}`,
         p_brand: "Honda",
         p_model: "Civic",
         p_year: 2022,

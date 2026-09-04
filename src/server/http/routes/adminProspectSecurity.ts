@@ -140,7 +140,7 @@ async function handleSecureLocalProspect(c: Context) {
   }
 
   const publicAuth = createClient(getSupabaseUrl(), getSupabaseAnonKey(), { auth: { persistSession: false, autoRefreshToken: false } });
-  const { error: resetError } = await publicAuth.auth.resetPasswordForEmail(email, { redirectTo: `${getAppUrl()}/set-password` });
+  const { error: resetError } = await publicAuth.auth.resetPasswordForEmail(email, { redirectTo: `${getAppUrl()}/auth/update-password` });
   if (resetError) {
     if (createdNewUser) await admin.auth.admin.deleteUser(userId);
     return c.json({ ok: false, error: "password_setup_email_failed" }, 502);

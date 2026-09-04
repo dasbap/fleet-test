@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { Navigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { CalendarClock, CreditCard, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { ROUTE_PATHS } from "@/navigation/routePaths";
 import {
   AdminSubscriptionService,
   type AdminSubscriptionGrantOptions,
@@ -35,6 +34,8 @@ function dateToEndOfDayIso(value: string): string | null {
 export default function AdminSubscriptionsPage() {
   const { toast } = useToast();
   const { isLoading, isSuperAdmin } = useRoleAccess();
+  const [searchParams] = useSearchParams();
+  const requestedFleetId = searchParams.get("fleet")?.trim() ?? "";
   const [options, setOptions] = useState<AdminSubscriptionGrantOptions>({
     fleets: [],
     plans: [],
@@ -71,7 +72,13 @@ export default function AdminSubscriptionsPage() {
         const data = await adminSubscriptionService.listGrantOptions();
         if (cancelled) return;
         setOptions(data);
-        setFleetId((current) => current || data.fleets[0]?.id || "");
+        setFleetId((current) => {
+          if (current) return current;
+          if (requestedFleetId && data.fleets.some((fleet) => fleet.id === requestedFleetId)) {
+            return requestedFleetId;
+          }
+          return data.fleets[0]?.id || "";
+        });
         setPlanCode((current) => current || data.plans[0]?.code || "");
       } catch (loadError) {
         if (cancelled) return;
@@ -85,11 +92,22 @@ export default function AdminSubscriptionsPage() {
     return () => {
       cancelled = true;
     };
-  }, [isLoading, isSuperAdmin]);
+  }, [isLoading, isSuperAdmin, requestedFleetId]);
 
   if (isLoading) return null;
   if (!isSuperAdmin) {
-    return <Navigate to={ROUTE_PATHS.dashboardAdmin} replace />;
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+        <Alert variant="destructive">
+          <AlertDescription>
+            Seul le super administrateur peut gérer les abonnements. Cette page ne modifie aucun accès pour un administrateur standard.
+          </AlertDescription>
+        </Alert>
+        <Button type="button" variant="outline" onClick={() => window.history.back()}>
+          Retour
+        </Button>
+      </div>
+    );
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

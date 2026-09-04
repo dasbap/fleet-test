@@ -1,0 +1,128 @@
+name: Verify Supabase Auth Links
+
+on:
+  push:
+    branches:
+      - pre-prod
+    paths:
+      - supabase/config.toml
+      - .github/workflows/verify-supabase-auth-links.yml
+      - api/admin/user-security.ts
+      - api/admin/create-user.ts
+      - src/features/auth/**
+      - src/server/http/routes/adminProspectSecurity.ts
+      - supabase/functions/create-prospect-account/**
+      - supabase/functions/create-fleet-member-account/**
+      - supabase/functions/demo-magic-link/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-auth-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Validate Supabase credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || { echo "SUPABASE_ACCESS_TOKEN missing"; exit 1; }
+          test -n "$SUPABASE_PROJECT_REF" || { echo "SUPABASE_PROJECT_REF missing"; exit 1; }
+
+      - name: Verify Auth redirect URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const token = process.env.SUPABASE_ACCESS_TOKEN;
+          const ref = process.env.SUPABASE_PROJECT_REF;
+          const endpoint = `https://api.supabase.com/v1/projects/${ref}/config/auth`;
+          const expectedSiteUrl = "https://www.e-samba.com";
+
+          const required = [
+            "https://fleet-test-gamma.vercel.app/**",
+            "https://fleet-test-gamma.vercel.app/auth/callback",
+            "https://fleet-test-gamma.vercel.app/auth/update-password",
+            "https://fleet-test-gamma.vercel.app/demo/onboarding",
+            "https://www.e-samba.com/**",
+            "https://www.e-samba.com/auth/callback",
+            "https://www.e-samba.com/auth/update-password",
+            "https://app.e-samba.com/**",
+            "esamba://**",
+            "esamba://auth/callback",
+            "esamba://auth/update-password",
+            "com.esamba.flotte://**",
+            "com.esamba.flotte://auth/callback",
+            "com.esamba.flotte://auth/update-password"
+          ];
+
+          const forbidden = ["https://*.vercel.app/**"];
+
+          const normalize = (value) => {
+            if (Array.isArray(value)) return value.map(String).map((v) => v.trim()).filter(Boolean);
+            if (typeof value === "string") return value.split(",").map((v) => v.trim()).filter(Boolean);
+            return [];
+          };
+
+          const localConfig = fs.readFileSync("supabase/config.toml", "utf8");
+          const missingLocal = required.filter((url) => !localConfig.includes(`"${url}"`));
+          const forbiddenLocal = forbidden.filter((url) => localConfig.includes(`"${url}"`));
+          if (!localConfig.includes(`site_url = "${expectedSiteUrl}"`)) {
+            throw new Error(`Unexpected local site_url; expected ${expectedSiteUrl}`);
+          }
+          if (missingLocal.length) {
+            throw new Error(`Missing local Auth redirect URLs: ${missingLocal.join(", ")}`);
+          }
+          if (forbiddenLocal.length) {
+            throw new Error(`Forbidden local Auth redirect URLs: ${forbiddenLocal.join(", ")}`);
+          }
+
+          const response = await fetch(endpoint, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+          const text = await response.text();
+          if (!response.ok) {
+            throw new Error(`GET config/auth ${response.status}: ${text.slice(0, 300)}`);
+          }
+
+          const config = text ? JSON.parse(text) : {};
+          const allowed = normalize(config.uri_allow_list);
+          const missing = required.filter((url) => !allowed.includes(url));
+          const forbiddenRemote = forbidden.filter((url) => allowed.includes(url));
+
+          if (config.site_url !== expectedSiteUrl) {
+            throw new Error(`Unexpected site_url: ${config.site_url ?? "<missing>"}`);
+          }
+          if (missing.length) {
+            throw new Error(`Missing Auth redirect URLs: ${missing.join(", ")}`);
+          }
+          if (forbiddenRemote.length) {
+            throw new Error(`Forbidden Auth redirect URLs: ${forbiddenRemote.join(", ")}`);
+          }
+
+          console.log(`Supabase Auth redirect contract verified: ${required.length} required destinations present.`);
+          NODE
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "### Supabase Auth links"
+            echo ""
+            echo "Site URL and required web/mobile redirect destinations are verified without mutating remote configuration."
+          } >> "$GITHUB_STEP_SUMMARY"

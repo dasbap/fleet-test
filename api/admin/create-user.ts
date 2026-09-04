@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { applyCors, handlePreflight, requireAuthenticatedUser } from "../_lib/vercel-api.js";
+import { applyCors, fetchWithTimeout, handlePreflight, requireAuthenticatedUser } from "../_lib/vercel-api.js";
 
 const VALID_FLEET_ROLES = new Set(["organizer", "manager", "driver", "mechanic"]);
 const CENTRAL_AFRICA_COUNTRY_CODES = new Set(["CM", "CF", "TD", "CG", "GA", "GQ"]);
@@ -114,7 +114,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
   }
 
-  const admin = createClient(auth.env.url, auth.env.serviceRoleKey, { auth: { persistSession: false } });
+  const admin = createClient(auth.env.url, auth.env.serviceRoleKey, {
+    global: { fetch: (input, init) => fetchWithTimeout(input, init, 5_000) },
+    auth: { persistSession: false },
+  });
   const provisionerKey = createHash("sha256").update(auth.user.id).digest("hex").slice(0, 32);
   const { data: rateLimitData, error: rateLimitError } = await admin.rpc("demo_check_rate_limit", { p_key: `admin_create_user:${provisionerKey}`, p_max_count: MAX_PROVISIONING_REQUESTS });
   const rateLimit = rateLimitData as { ok?: boolean; reset_at?: string } | null;
@@ -180,8 +183,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
   }
 
-  const publicAuth = createClient(auth.env.url, auth.env.anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/set-password`;
+  const publicAuth = createClient(auth.env.url, auth.env.anonKey, {
+    global: { fetch: (input, init) => fetchWithTimeout(input, init, 5_000) },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/auth/update-password`;
   const { error: resetError } = await publicAuth.auth.resetPasswordForEmail(email, { redirectTo });
   if (resetError) {
     await admin.auth.admin.deleteUser(userId);

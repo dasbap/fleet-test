@@ -111,10 +111,6 @@ describe("catch-all Hono routes", () => {
           destination: "/api/[...path]",
         },
         {
-          source: "/api/admin/generate-magic-link",
-          destination: "/api/[...path]",
-        },
-        {
           source: "/api/demo/magic-link",
           destination: "/api/[...path]",
         },
@@ -181,6 +177,29 @@ describe("Vercel Hobby function budget", () => {
 });
 
 describe("direct Vercel admin routes", () => {
+  it("garde generate-magic-link en fonction dediee avec timeout borne", () => {
+    const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
+      functions?: Record<string, { maxDuration?: number }>;
+      rewrites?: Array<{ source?: string; destination?: string }>;
+    };
+    const directHandler = readFileSync("api/admin/generate-magic-link.ts", "utf8");
+
+    expect(directHandler).not.toContain("createServerApp");
+    expect(directHandler).toContain("fetchWithTimeout");
+    expect(directHandler).toContain("req.body");
+    expect(directHandler).toContain("is_platform_admin");
+    expect(directHandler).toContain("demo_create_magic_link");
+    expect(config.functions?.["api/admin/generate-magic-link.ts"]?.maxDuration).toBe(15);
+    expect(config.rewrites ?? []).not.toEqual(
+      expect.arrayContaining([
+        {
+          source: "/api/admin/generate-magic-link",
+          destination: "/api/[...path]",
+        },
+      ]),
+    );
+  });
+
   it("garde create-prospect direct pour son fallback ADMIN_SECRET specifique", () => {
     const createProspect = readFileSync("api/admin/create-prospect.ts", "utf8");
 

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { Shield, UserPlus, UsersRound } from "lucide-react";
+import { KeyRound, Link2, RefreshCw, Shield, UserPlus, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,21 @@ const CENTRAL_AFRICA_COUNTRIES = [
 
 interface CreateUserResult { ok: boolean; user_id?: string; email?: string; error?: string; }
 interface FleetOption { fleetId: string; label: string; }
+interface ManagedUser {
+  id: string;
+  email: string;
+  full_name: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  must_set_password: boolean;
+  is_platform_admin: boolean;
+}
+interface ManagedUsersResponse {
+  ok: boolean;
+  users?: ManagedUser[];
+  recovery_link?: string;
+  error?: string;
+}
 
 export function buildProvisionableFleetOptions(memberships: FleetMembership[], tenantOptions: TenantOption[]): FleetOption[] {
   const seenFleetIds = new Set<string>();
@@ -61,12 +76,23 @@ export default function AdminUsersPage() {
   const [role, setRole] = useState<ProvisionRole>("driver");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [created, setCreated] = useState<CreateUserResult | null>(null);
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
+  const [managedUsersLoading, setManagedUsersLoading] = useState(false);
+  const [managedUserBusy, setManagedUserBusy] = useState<string | null>(null);
+  const [userSearch, setUserSearch] = useState("");
 
   const fleetOptions = useMemo(() => buildProvisionableFleetOptions(memberships, tenantOptions), [memberships, tenantOptions]);
   const canProvisionAccounts = isAdmin || fleetOptions.length > 0;
   const provisionableRoles = useMemo<ProvisionRole[]>(() => isSuperAdmin ? [...FLEET_ROLES, "admin"] : FLEET_ROLES, [isSuperAdmin]);
   const requiresFleet = role !== "admin" && (!isAdmin || role !== "organizer");
   const isNewClientOrganizer = isAdmin && role === "organizer" && !requiresFleet;
+  const filteredManagedUsers = useMemo(() => {
+    const query = userSearch.trim().toLowerCase();
+    if (!query) return managedUsers;
+    return managedUsers.filter((user) =>
+      [user.email, user.full_name].some((value) => value.toLowerCase().includes(query)),
+    );
+  }, [managedUsers, userSearch]);
 
   useEffect(() => {
     if (!provisionableRoles.includes(role)) {
@@ -81,6 +107,84 @@ export default function AdminUsersPage() {
     const defaultFleetId = fleetOptions.find((option) => option.fleetId === userFleetId)?.fleetId ?? fleetOptions[0]?.fleetId ?? "";
     if (defaultFleetId) setFleetId(defaultFleetId);
   }, [fleetId, fleetOptions, provisionableRoles, requiresFleet, role, userFleetId]);
+
+  const getAccessToken = useCallback(async (): Promise<string> => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("session_expiree");
+    return token;
+  }, []);
+
+  const loadManagedUsers = useCallback(async () => {
+    if (!isAdmin) return;
+    setManagedUsersLoading(true);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch("/api/admin/user-security", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = (await response.json()) as ManagedUsersResponse;
+      if (!response.ok || !result.ok) throw new Error(result.error ?? "list_users_failed");
+      setManagedUsers(result.users ?? []);
+    } catch (error) {
+      toast({
+        title: "Comptes indisponibles",
+        description: error instanceof Error ? error.message : "Erreur inconnue",
+        variant: "destructive",
+      });
+    } finally {
+      setManagedUsersLoading(false);
+    }
+  }, [getAccessToken, isAdmin, toast]);
+
+  useEffect(() => {
+    if (isAdmin) void loadManagedUsers();
+  }, [isAdmin, loadManagedUsers]);
+
+  async function runUserSecurityAction(
+    user: ManagedUser,
+    action: "force_password_change" | "create_recovery_link",
+  ) {
+    setManagedUserBusy(`${user.id}:${action}`);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch("/api/admin/user-security", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ user_id: user.id, action }),
+      });
+      const result = (await response.json()) as ManagedUsersResponse;
+      if (!response.ok || !result.ok) throw new Error(result.error ?? "action_failed");
+
+      if (action === "force_password_change") {
+        setManagedUsers((current) =>
+          current.map((item) =>
+            item.id === user.id ? { ...item, must_set_password: true } : item,
+          ),
+        );
+        toast({
+          title: "Changement de mot de passe impose",
+          description: `${user.email} devra definir un nouveau mot de passe a sa prochaine connexion.`,
+        });
+        return;
+      }
+
+      if (!result.recovery_link) throw new Error("recovery_link_missing");
+      await navigator.clipboard.writeText(result.recovery_link);
+      toast({
+        title: "Lien de recuperation copie",
+        description: `Envoyez ce lien a ${user.email}. Il ouvre le flux de nouveau mot de passe.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Action impossible",
+        description: error instanceof Error ? error.message : "Erreur inconnue",
+        variant: "destructive",
+      });
+    } finally {
+      setManagedUserBusy(null);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -129,6 +233,7 @@ export default function AdminUsersPage() {
       setCompanyIdentifier("");
       setCountryCode("");
       toast({ title: "Compte cree", description: "Le compte utilisateur est pret." });
+      if (isAdmin) void loadManagedUsers();
     } catch (error) {
       toast({ title: "Creation impossible", description: error instanceof Error ? error.message : "Erreur inconnue", variant: "destructive" });
     } finally {
@@ -143,7 +248,7 @@ export default function AdminUsersPage() {
     <div className="mx-auto max-w-5xl px-4 py-6">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"><UsersRound className="h-5 w-5" aria-hidden /></div><div><h1 className="text-2xl font-bold tracking-tight">Creer un compte</h1><p className="text-sm text-muted-foreground">Ajoutez un compte flotte ou créez un nouveau client organisateur.</p></div></div>
-        {isAdmin ? <Button asChild variant="outline"><Link to={ROUTE_PATHS.dashboardAdminDemo}>Comptes demo</Link></Button> : null}
+        {isAdmin ? <Button asChild variant="outline"><Link to={ROUTE_PATHS.dashboardAdminDemo}>Utilisateurs</Link></Button> : null}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 rounded-lg border bg-card p-5">
@@ -173,6 +278,106 @@ export default function AdminUsersPage() {
       </form>
 
       {created ? <div className="mt-5 rounded-lg border bg-muted/30 p-4 text-sm"><p className="font-medium">Compte créé</p><p>{created.email}</p></div> : null}
+
+      {isAdmin ? (
+        <section className="mt-8 space-y-4 rounded-lg border bg-card p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Tous les comptes</h2>
+              <p className="text-sm text-muted-foreground">
+                Imposez un nouveau mot de passe ou creez un lien de recuperation.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={managedUsersLoading}
+              onClick={() => void loadManagedUsers()}
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Actualiser
+            </Button>
+          </div>
+
+          <Input
+            value={userSearch}
+            onChange={(event) => setUserSearch(event.target.value)}
+            placeholder="Rechercher par email ou nom"
+            aria-label="Rechercher un compte"
+          />
+
+          {managedUsersLoading ? (
+            <p className="text-sm text-muted-foreground">Chargement des comptes...</p>
+          ) : filteredManagedUsers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucun compte trouve.</p>
+          ) : (
+            <div className="divide-y rounded-md border">
+              {filteredManagedUsers.map((managedUser) => {
+                const forceBusy =
+                  managedUserBusy === `${managedUser.id}:force_password_change`;
+                const linkBusy =
+                  managedUserBusy === `${managedUser.id}:create_recovery_link`;
+                const protectedAdmin = managedUser.is_platform_admin && !isSuperAdmin;
+
+                return (
+                  <div
+                    key={managedUser.id}
+                    className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {managedUser.full_name || managedUser.email || managedUser.id}
+                      </p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {managedUser.email || "Email indisponible"}
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {managedUser.is_platform_admin ? <span>Admin plateforme</span> : null}
+                        {managedUser.must_set_password ? (
+                          <span className="font-medium text-destructive">
+                            Changement de mot de passe requis
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        disabled={Boolean(managedUserBusy) || protectedAdmin}
+                        onClick={() =>
+                          void runUserSecurityAction(managedUser, "force_password_change")
+                        }
+                      >
+                        <KeyRound className="h-4 w-4" aria-hidden />
+                        {forceBusy ? "Application..." : "Changer au prochain login"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        disabled={Boolean(managedUserBusy) || protectedAdmin}
+                        onClick={() =>
+                          void runUserSecurityAction(managedUser, "create_recovery_link")
+                        }
+                      >
+                        <Link2 className="h-4 w-4" aria-hidden />
+                        {linkBusy ? "Creation..." : "Lien mot de passe oublie"}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -46,6 +46,7 @@ interface RegistrationResult {
 const ALLOWED_ORIGINS = [
   "https://www.e-samba.com",
   "https://app.e-samba.com",
+  "https://fleet-test-gamma.vercel.app",
   "capacitor://localhost",
   "http://localhost:5173",
   "http://localhost:8080",
@@ -93,7 +94,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== "POST") return jsonResponse(req, { ok: false, error: "method_not_allowed" }, 405);
-  if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !ADMIN_SECRET) return jsonResponse(req, { ok: false, error: "missing_server_configuration" }, 500);
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return jsonResponse(req, { ok: false, error: "missing_server_configuration" }, 500);
 
   let body: CreateProspectBody;
   try {
@@ -104,7 +105,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const authorization = req.headers.get("Authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  if (!timingSafeEqual(token, ADMIN_SECRET)) return jsonResponse(req, { ok: false, error: "unauthorized" }, 401);
+  const authorized =
+    (ADMIN_SECRET && timingSafeEqual(token, ADMIN_SECRET)) ||
+    timingSafeEqual(token, SERVICE_ROLE_KEY);
+  if (!authorized) return jsonResponse(req, { ok: false, error: "unauthorized" }, 401);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
   const encoder = new TextEncoder();
@@ -179,7 +183,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const registration = registrationData as RegistrationResult | null;
     if (registrationError || !registration?.ok) throw new Error("prospect_registration_failed");
 
-    const { error: resetError } = await admin.auth.resetPasswordForEmail(email, { redirectTo: `${APP_URL.replace(/\/$/, "")}/set-password` });
+    const { error: resetError } = await admin.auth.resetPasswordForEmail(email, { redirectTo: `${APP_URL.replace(/\/$/, "")}/auth/update-password` });
     if (resetError) throw new Error("password_setup_email_failed");
 
     if (body.send_email) {

@@ -17,6 +17,7 @@ interface CreateFleetMemberAccountBody {
 const ALLOWED_ORIGINS = [
   "https://www.e-samba.com",
   "https://app.e-samba.com",
+  "https://fleet-test-gamma.vercel.app",
   "capacitor://localhost",
   "http://localhost:5173",
   "http://localhost:8080",
@@ -308,7 +309,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   if (!existingAuthUserAttached) {
     const { error: resetError } = await admin.auth.resetPasswordForEmail(email, {
-      redirectTo: `${APP_URL.replace(/\/$/, "")}/set-password`,
+      redirectTo: `${APP_URL.replace(/\/$/, "")}/auth/update-password`,
     });
 
     if (resetError) {
