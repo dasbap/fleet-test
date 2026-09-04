@@ -5,7 +5,7 @@ describe("ROUTE_PATHS", () => {
   it("expose les chemins dashboard rôles et géofencing", () => {
     expect(ROUTE_PATHS.dashboardRoles).toBe("/dashboard/roles");
     expect(ROUTE_PATHS.dashboardAdmin).toBe("/dashboard/admin");
-    expect(ROUTE_PATHS.dashboardAdminDemo).toBe("/dashboard/admin/demo");
+    expect(ROUTE_PATHS.dashboardAdminDemo).toBe("/dashboard/admin/utilisateurs");
     expect(ROUTE_PATHS.dashboardGeofencing).toBe("/dashboard/geofencing");
     expect(ROUTE_PATHS.dashboardTracking).toBe("/dashboard/tracking");
     expect(ROUTE_PATHS.dashboardSubscriptions).toBe("/dashboard/subscriptions");
