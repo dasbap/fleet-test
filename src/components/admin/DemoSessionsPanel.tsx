@@ -158,8 +158,11 @@ export function DemoSessionsPanel({
   const [expirationDraft, setExpirationDraft] = useState("");
 
   const filtered = sessions.filter((s) => {
-    if (filter === "active" && !s.is_active) return false;
-    if (filter === "inactive" && s.is_active) return false;
+    const effectivelyActive =
+      s.is_active &&
+      (!s.expires_at || new Date(s.expires_at).getTime() > Date.now());
+    if (filter === "active" && !effectivelyActive) return false;
+    if (filter === "inactive" && effectivelyActive) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -221,7 +224,11 @@ export function DemoSessionsPanel({
     );
   }
 
-  const activeCount = sessions.filter((s) => s.is_active).length;
+  const activeCount = sessions.filter(
+    (s) =>
+      s.is_active &&
+      (!s.expires_at || new Date(s.expires_at).getTime() > Date.now()),
+  ).length;
 
   return (
     <div className="space-y-4">
@@ -315,16 +322,20 @@ export function DemoSessionsPanel({
             )}
 
             {filtered.map((session) => {
+              const effectivelyActive =
+                session.is_active &&
+                (!session.expires_at ||
+                  new Date(session.expires_at).getTime() > Date.now());
               const expiry = formatExpiry(
                 session.expires_at,
-                session.is_active
+                effectivelyActive
               );
               const busy = actionInProgress === session.user_id;
 
               return (
                 <TableRow
                   key={session.user_id}
-                  className={cn(!session.is_active && "opacity-60")}
+                  className={cn(!effectivelyActive && "opacity-60")}
                 >
                   <TableCell className="font-mono text-xs max-w-[160px] truncate">
                     {session.email}
@@ -433,12 +444,14 @@ export function DemoSessionsPanel({
                           </DropdownMenuItem>
                         )}
 
-                        <DropdownMenuItem
-                          onClick={() => void handleGenerateLink(session)}
-                        >
-                          <Link2 className="h-4 w-4 mr-2" />
-                          Nouveau magic link
-                        </DropdownMenuItem>
+                        {effectivelyActive && (
+                          <DropdownMenuItem
+                            onClick={() => void handleGenerateLink(session)}
+                          >
+                            <Link2 className="h-4 w-4 mr-2" />
+                            Nouveau magic link
+                          </DropdownMenuItem>
+                        )}
 
                         <DropdownMenuSeparator />
 
@@ -499,7 +512,7 @@ export function DemoSessionsPanel({
                           </AlertDialogContent>
                         </AlertDialog>
 
-                        {session.is_active ? (
+                        {effectivelyActive ? (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <DropdownMenuItem
