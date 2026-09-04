@@ -182,7 +182,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const registration = registrationData as RegistrationResult | null;
     if (registrationError || !registration?.ok) throw new Error("prospect_registration_failed");
 
-    const { error: resetError } = await admin.auth.resetPasswordForEmail(email, { redirectTo: `${APP_URL.replace(/\/$/, "")}/set-password` });
+    const { error: resetError } = await admin.auth.resetPasswordForEmail(email, { redirectTo: `${APP_URL.replace(/\/$/, "")}/auth/update-password` });
     if (resetError) throw new Error("password_setup_email_failed");
 
     if (body.send_email) {
