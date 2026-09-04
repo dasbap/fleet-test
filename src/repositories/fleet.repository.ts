@@ -6,30 +6,25 @@ export interface FleetInfo {
   orgId?: string;
   country_code?: string;
   async findCountryCodeById(fleetId: string): Promise<string> {
-    const { data: fleet, error: fleetError } = await supabase
-      .from('flottes')
-      .select('org_id')
-      .eq('id', fleetId)
-      .maybeSingle();
+    const rpcClient = supabase as unknown as {
+      rpc: (
+        fn: string,
+        params: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+    };
 
-    if (fleetError) {
-      throw new Error(fleetError.message);
-    }
-    if (!fleet?.org_id) {
-      return 'CM';
-    }
+    const { data, error } = await rpcClient.rpc(
+      'get_fleet_vehicle_country_code',
+      { p_fleet_id: fleetId },
+    );
 
-    const { data: org, error: orgError } = await supabase
-      .from('organisations')
-      .select('country_code')
-      .eq('id', fleet.org_id)
-      .maybeSingle();
-
-    if (orgError) {
-      throw new Error(orgError.message);
+    if (error) {
+      throw new Error(error.message);
     }
 
-    return org?.country_code?.trim().toUpperCase() || 'CM';
+    return typeof data === 'string' && data.trim()
+      ? data.trim().toUpperCase()
+      : 'CM';
   }
 
 }
