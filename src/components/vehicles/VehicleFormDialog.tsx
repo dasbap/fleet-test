@@ -32,6 +32,7 @@ import { FleetRepository } from "@/repositories/fleet.repository";
 import {
   getVehicleRegistrationRule,
   normalizeVehicleRegistration,
+  sanitizeVehicleRegistrationInput,
   validateVehicleRegistrationForCountry,
 } from "@/domain/vehicleRegistration";
 
@@ -90,8 +91,9 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
   });
 
   const onSubmit = async (data: VehicleFormValues) => {
+    const normalizedRegistration = normalizeVehicleRegistration(data.registration);
     const registrationError = validateVehicleRegistrationForCountry(
-      data.registration,
+      normalizedRegistration,
       countryCode,
     );
     if (registrationError) {
@@ -102,7 +104,7 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
     await createVehicle.mutateAsync({
       fleet_id: fleetId,
       subscription_id: data.subscription_id,
-      registration: data.registration,
+      registration: normalizedRegistration,
       brand: data.brand,
       model: data.model,
       year: data.year,
@@ -141,23 +143,30 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
                       autoCapitalize="characters"
                       spellCheck={false}
                       onChange={(event) => {
-                        const next = normalizeVehicleRegistration(event.target.value).slice(
+                        const next = sanitizeVehicleRegistrationInput(event.target.value).slice(
                           0,
                           registrationRule.maxInputLength,
                         );
                         field.onChange(next);
-                        const error = validateVehicleRegistrationForCountry(next, countryCode);
+                        const error = next
+                          ? validateVehicleRegistrationForCountry(next, countryCode)
+                          : null;
                         if (error) {
                           form.setError("registration", { type: "manual", message: error });
                         } else {
                           form.clearErrors("registration");
                         }
                       }}
+                      onBlur={(event) => {
+                        const normalized = normalizeVehicleRegistration(event.target.value);
+                        field.onChange(normalized);
+                        field.onBlur();
+                      }}
                     />
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
-                    Format {countryCode} · {registrationRule.minCompactLength} à{" "}
-                    {registrationRule.maxCompactLength} caractères utiles. Une plaque ne peut être utilisée qu'une seule fois.
+                    Règle {countryCode} · {registrationRule.minCompactLength} à{" "}
+                    {registrationRule.maxCompactLength} caractères alphanumériques. Une plaque ne peut être utilisée qu'une seule fois.
                   </p>
                   <FormMessage />
                 </FormItem>
