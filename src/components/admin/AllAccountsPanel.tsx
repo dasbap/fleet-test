@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -7,6 +8,7 @@ import {
   Loader2,
   RefreshCw,
   Search,
+  Send,
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
@@ -24,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface AdminAccount {
   user_id: string;
@@ -101,6 +104,35 @@ function isIntegrationTestAccount(account: Pick<AdminAccount, "email" | "full_na
     /^integration-[a-z0-9-]+@esamba\.test$/.test(email) ||
     fullName === "integration test user"
   );
+}
+
+async function sendPasswordReset(account: AdminAccount): Promise<void> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+
+  if (!token) {
+    throw new Error("Session administrateur expirée. Reconnectez-vous.");
+  }
+
+  const response = await fetch("/api/admin/user-security", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      user_id: account.user_id,
+      action: "send_password_reset",
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | { ok?: boolean; error?: string }
+    | null;
+
+  if (!response.ok || payload?.ok !== true) {
+    throw new Error(payload?.error ?? "password_reset_failed");
+  }
 }
 
 async function loadAllAccounts(): Promise<AdminAccount[]> {
@@ -202,6 +234,32 @@ function roleLabel(role: string | null): string {
 
 export function AllAccountsPanel() {
   const [search, setSearch] = useState("");
+  const [resettingUserId, setResettingUserId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: sendPasswordReset,
+    onMutate: (account) => setResettingUserId(account.user_id),
+    onSuccess: (_data, account) => {
+      toast({
+        title: "Email envoyé",
+        description: `Un lien de réinitialisation a été envoyé à ${account.email}.`,
+      });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "all-accounts"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Envoi impossible",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Impossible d'envoyer l'email de réinitialisation.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => setResettingUserId(null),
+  });
 
   const accountsQuery = useQuery({
     queryKey: ["admin", "all-accounts"],
@@ -345,6 +403,7 @@ export function AllAccountsPanel() {
               <TableHead>Flotte</TableHead>
               <TableHead>Expiration</TableHead>
               <TableHead>État</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -352,7 +411,7 @@ export function AllAccountsPanel() {
             {filteredAccounts.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="h-28 text-center text-muted-foreground"
                 >
                   Aucun compte trouvé.
@@ -439,6 +498,26 @@ export function AllAccountsPanel() {
                         </Badge>
                       ) : null}
                     </div>
+                  </TableCell>
+
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={
+                        !account.is_active ||
+                        resetPasswordMutation.isPending
+                      }
+                      onClick={() => resetPasswordMutation.mutate(account)}
+                    >
+                      {resettingUserId === account.user_id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="mr-2 h-4 w-4" />
+                      )}
+                      Réinitialiser le MDP
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
