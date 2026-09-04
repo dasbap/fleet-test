@@ -77,12 +77,16 @@ export function getVehicleRegistrationRule(
   };
 }
 
-export function normalizeVehicleRegistration(value: string): string {
+export function sanitizeVehicleRegistrationInput(value: string): string {
   return value
     .toUpperCase()
     .replace(/[^A-Z0-9 -]/g, "")
     .replace(/\s+/g, " ")
-    .trim();
+    .replace(/^\s+/, "");
+}
+
+export function normalizeVehicleRegistration(value: string): string {
+  return sanitizeVehicleRegistrationInput(value).trim();
 }
 
 export function compactVehicleRegistration(value: string): string {
@@ -107,7 +111,7 @@ export function validateVehicleRegistrationForCountry(
     compact.length < rule.minCompactLength ||
     compact.length > rule.maxCompactLength
   ) {
-    return `Pour ${rule.countryCode}, l'immatriculation doit contenir entre ${rule.minCompactLength} et ${rule.maxCompactLength} caractères utiles.`;
+    return `Pour ${rule.countryCode}, l'immatriculation doit contenir entre ${rule.minCompactLength} et ${rule.maxCompactLength} caractères alphanumériques.`;
   }
   return null;
 }
