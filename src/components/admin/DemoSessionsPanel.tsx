@@ -245,7 +245,7 @@ export function DemoSessionsPanel({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Sessions demo</h2>
+          <h2 className="text-lg font-semibold">Sessions utilisateurs</h2>
           <p className="text-sm text-muted-foreground">
             {sessions.length} compte{sessions.length > 1 ? "s" : ""} -{" "}
             {activeCount} actif{activeCount > 1 ? "s" : ""}
@@ -327,7 +327,7 @@ export function DemoSessionsPanel({
                   colSpan={9}
                   className="text-center text-muted-foreground py-10"
                 >
-                  {search ? "Aucun resultat" : "Aucune session demo"}
+                  {search ? "Aucun resultat" : "Aucune session utilisateur"}
                 </TableCell>
               </TableRow>
             )}
