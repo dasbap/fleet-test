@@ -192,11 +192,12 @@ describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
       .eq("status", "trial");
     expect(trialSlotsError).toBeNull();
 
+    const registrationRun = unique.toString(36).slice(-6).toUpperCase();
     const { data: vehicleIdA, error: vehicleAError } = await supabase.rpc(
       "create_esamba_vehicle",
       {
         p_fleet_id: testFleetId,
-        p_registration: `DVIR-A-${unique}`,
+        p_registration: `DA${registrationRun}`,
         p_brand: "Toyota",
         p_model: "Corolla",
         p_year: 2021,
@@ -211,7 +212,7 @@ describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
       "create_esamba_vehicle",
       {
         p_fleet_id: testFleetId,
-        p_registration: `DVIR-B-${unique}`,
+        p_registration: `DB${registrationRun}`,
         p_brand: "Honda",
         p_model: "Civic",
         p_year: 2022,
