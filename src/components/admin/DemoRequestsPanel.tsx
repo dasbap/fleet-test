@@ -69,10 +69,10 @@ export function DemoRequestsPanel({ onCreateAccess, onReloadSessions }: DemoRequ
         country_code: countryCode,
         account_type: "prospect",
         trial_days: 7,
-        label: `Demande demo ${request.full_name}`,
+        label: `Demande utilisateur ${request.full_name}`,
         send_email: false,
       });
-      if (!result.ok) throw new Error(result.error ?? "Creation demo impossible.");
+      if (!result.ok) throw new Error(result.error ?? "Création utilisateur impossible.");
       await finalizeRequest.mutateAsync({
         requestId: request.id,
         status: "accepted",
@@ -93,7 +93,7 @@ export function DemoRequestsPanel({ onCreateAccess, onReloadSessions }: DemoRequ
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader><CardTitle className="text-base">Demandes de demo</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Demandes utilisateurs</CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{pendingCount} demande{pendingCount > 1 ? "s" : ""} en attente.</p>
@@ -106,7 +106,7 @@ export function DemoRequestsPanel({ onCreateAccess, onReloadSessions }: DemoRequ
           </div>
         </CardContent>
       </Card>
-      {isSchemaMissing ? <Alert><AlertDescription>La migration des demandes demo n'est pas appliquee sur cette base.</AlertDescription></Alert> : isLoading ? <p className="text-sm text-muted-foreground">Chargement...</p> : requests.length === 0 ? <p className="text-sm text-muted-foreground">Aucune demande demo.</p> : (
+      {isSchemaMissing ? <Alert><AlertDescription>La migration des demandes utilisateurs n'est pas appliquée sur cette base.</AlertDescription></Alert> : isLoading ? <p className="text-sm text-muted-foreground">Chargement...</p> : requests.length === 0 ? <p className="text-sm text-muted-foreground">Aucune demande utilisateur.</p> : (
         <div className="grid gap-3">
           {requests.map((request) => (
             <Card key={request.id}><CardContent className="space-y-3 py-4">
