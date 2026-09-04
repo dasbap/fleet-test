@@ -196,8 +196,27 @@ export default async function handler(
         ? (rpc.body as { ok?: boolean; token?: string })
         : null;
 
-    if (!rpc.response.ok || result?.ok !== true || !result.token) {
-      res.status(500).json({ ok: false, error: "create_failed" });
+    if (!rpc.response.ok) {
+      res.status(502).json({ ok: false, error: "create_failed" });
+      return;
+    }
+
+    if (result?.ok !== true || !result.token) {
+      const businessError =
+        result && "error" in result && typeof (result as { error?: unknown }).error === "string"
+          ? (result as { error: string }).error
+          : "create_failed";
+
+      const status =
+        businessError === "account_inactive"
+          ? 409
+          : businessError === "identity_mismatch" || businessError === "fleet_mismatch"
+            ? 400
+            : businessError === "invalid_expiration"
+              ? 409
+              : 500;
+
+      res.status(status).json({ ok: false, error: businessError });
       return;
     }
 

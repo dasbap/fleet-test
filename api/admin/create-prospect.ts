@@ -52,15 +52,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     res.status(403).json({ ok: false, error: "forbidden_super_admin_required" });
     return;
   }
-  if (!auth.env.adminSecret || !auth.env.url) {
-    res.status(500).json({ ok: false, error: "server_configuration_error" });
+  const upstreamToken = auth.env.serviceRoleKey || auth.env.adminSecret;
+  if (!upstreamToken || !auth.env.url) {
+    console.error("[create-prospect] missing upstream configuration", {
+      hasUrl: Boolean(auth.env.url),
+      hasServiceRole: Boolean(auth.env.serviceRoleKey),
+      hasAdminSecret: Boolean(auth.env.adminSecret),
+    });
+    res.status(503).json({ ok: false, error: "server_configuration_error" });
     return;
   }
 
   try {
+    console.info("[create-prospect] upstream:start");
     const upstream = await fetchWithTimeout(`${auth.env.url}/functions/v1/create-prospect-account`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.env.adminSecret}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${upstreamToken}` },
       body: JSON.stringify({
         email,
         full_name: fullName,
@@ -77,6 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       }),
     });
     const data = (await upstream.json()) as Record<string, unknown>;
+    console.info("[create-prospect] upstream:done", { status: upstream.status });
     if (upstream.status === 429) {
       res.status(429).json(data);
       return;
@@ -92,6 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return;
     }
     const message = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ ok: false, error: message });
+    console.error("[create-prospect] upstream:error", message);
+    res.status(502).json({ ok: false, error: "upstream_error" });
   }
 }
