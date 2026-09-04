@@ -15,6 +15,7 @@ import handler from "../../api/admin/user-security";
 
 const makeResponse = () => {
   const res: Record<string, unknown> = {};
+  res.setHeader = vi.fn(() => res);
   res.status = vi.fn(() => res);
   res.json = vi.fn(() => res);
   return res as never;
@@ -166,8 +167,27 @@ describe("admin user-security route", () => {
     expectJson(res, 200, { ok: true, must_set_password: true });
   });
 
-  it("cree un lien recovery vers la page de nouveau mot de passe", async () => {
-    const { generateLink } = setup();
+  it("reserve la creation d'un lien recovery au super-admin", async () => {
+    const { generateLink } = setup({ callerSuperAdmin: false });
+    const res = makeResponse();
+    await handler(
+      {
+        method: "POST",
+        headers: {},
+        body: { user_id: "user-1", action: "create_recovery_link" },
+      } as never,
+      res,
+    );
+
+    expect(generateLink).not.toHaveBeenCalled();
+    expectJson(res, 403, {
+      ok: false,
+      error: "forbidden_super_admin_required",
+    });
+  });
+
+  it("cree un lien recovery pour le super-admin", async () => {
+    const { generateLink } = setup({ callerSuperAdmin: true });
     const res = makeResponse();
     await handler(
       {
