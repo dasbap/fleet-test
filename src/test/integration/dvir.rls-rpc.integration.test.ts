@@ -179,18 +179,23 @@ describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
       });
     expect(guardMembershipError).toBeNull();
 
-    const { error: trialError } = await supabaseAdmin.rpc("billing_start_trial", {
-      p_fleet_id: testFleetId,
-      p_trial_days: 30,
-    });
+    const { data: trialSubscriptionId, error: trialError } =
+      await supabaseAdmin.rpc("billing_start_trial", {
+        p_fleet_id: testFleetId,
+        p_trial_days: 30,
+      });
     expect(trialError).toBeNull();
+    expect(trialSubscriptionId).toBeDefined();
 
-    const { error: trialSlotsError } = await supabaseAdmin
-      .from("abonnements")
-      .update({ vehicle_slots: 2 })
-      .eq("fleet_id", testFleetId)
-      .eq("status", "trial");
+    const { data: trialSubscription, error: trialSlotsError } =
+      await supabaseAdmin
+        .from("abonnements")
+        .update({ vehicle_slots: 2 })
+        .eq("id", trialSubscriptionId as string)
+        .select("vehicle_slots")
+        .single();
     expect(trialSlotsError).toBeNull();
+    expect(trialSubscription?.vehicle_slots).toBe(2);
 
     const registrationRun = unique.toString(36).slice(-6).toUpperCase();
     const { data: vehicleIdA, error: vehicleAError } = await supabase.rpc(
