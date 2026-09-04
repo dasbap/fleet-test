@@ -82,7 +82,7 @@ export function normalizeVehicleRegistration(value: string): string {
     .toUpperCase()
     .replace(/[^A-Z0-9 -]/g, "")
     .replace(/\s+/g, " ")
-    .trimStart();
+    .trim();
 }
 
 export function compactVehicleRegistration(value: string): string {
