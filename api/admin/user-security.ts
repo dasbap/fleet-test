@@ -32,6 +32,7 @@ export default async function handler(
   res: VercelResponse,
 ): Promise<void> {
   applyCors(req, res);
+  res.setHeader("Cache-Control", "no-store");
   if (handlePreflight(req, res)) return;
 
   const auth = await requirePlatformAdmin(req, res);
@@ -46,40 +47,53 @@ export default async function handler(
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: callerSuperAdminData } = await auth.client.rpc(
-    "is_platform_super_admin",
-  );
-  const callerIsSuperAdmin = callerSuperAdminData === true;
+  const { data: callerSuperAdminData, error: callerSuperAdminError } =
+    await auth.client.rpc("is_platform_super_admin");
+  const callerIsSuperAdmin = !callerSuperAdminError && callerSuperAdminData === true;
 
   if (req.method === "GET") {
-    const { data, error } = await admin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    if (error) {
-      res.status(502).json({ ok: false, error: "list_users_failed" });
-      return;
+    const allUsers = [];
+    const perPage = 1000;
+
+    for (let page = 1; ; page += 1) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+      if (error) {
+        res.status(502).json({ ok: false, error: "list_users_failed" });
+        return;
+      }
+
+      allUsers.push(...data.users);
+      if (data.users.length < perPage) break;
+      if (page >= 100) {
+        res.status(502).json({ ok: false, error: "list_users_limit_exceeded" });
+        return;
+      }
     }
 
-    const userIds = data.users.map((user) => user.id);
-    const { data: adminProfiles, error: adminProfilesError } = userIds.length
-      ? await admin
-          .from("admin_profiles")
-          .select("user_id")
-          .in("user_id", userIds)
-          .eq("is_active", true)
-      : { data: [], error: null };
+    const userIds = allUsers.map((user) => user.id);
+    const platformAdminIds = new Set<string>();
 
-    if (adminProfilesError) {
-      res.status(502).json({ ok: false, error: "admin_profiles_lookup_failed" });
-      return;
+    for (let offset = 0; offset < userIds.length; offset += 500) {
+      const chunk = userIds.slice(offset, offset + 500);
+      if (chunk.length === 0) continue;
+
+      const { data: adminProfiles, error: adminProfilesError } = await admin
+        .from("admin_profiles")
+        .select("user_id")
+        .in("user_id", chunk)
+        .eq("is_active", true);
+
+      if (adminProfilesError) {
+        res.status(502).json({ ok: false, error: "admin_profiles_lookup_failed" });
+        return;
+      }
+
+      for (const row of adminProfiles ?? []) {
+        platformAdminIds.add(String(row.user_id));
+      }
     }
 
-    const platformAdminIds = new Set(
-      (adminProfiles ?? []).map((row) => String(row.user_id)),
-    );
-
-    const users: AdminUserSummary[] = data.users.map((user) => ({
+    const users: AdminUserSummary[] = allUsers.map((user) => ({
       id: user.id,
       email: user.email ?? "",
       full_name:
@@ -111,6 +125,19 @@ export default async function handler(
   const action = asString(body.action);
   if (!userId) {
     res.status(400).json({ ok: false, error: "user_id_required" });
+    return;
+  }
+  if (
+    action !== "force_password_change" &&
+    action !== "send_password_reset" &&
+    action !== "create_recovery_link"
+  ) {
+    res.status(400).json({ ok: false, error: "invalid_action" });
+    return;
+  }
+
+  if (action === "create_recovery_link" && !callerIsSuperAdmin) {
+    res.status(403).json({ ok: false, error: "forbidden_super_admin_required" });
     return;
   }
 
@@ -197,33 +224,28 @@ export default async function handler(
     return;
   }
 
-  if (action === "create_recovery_link") {
-    const email = target.email?.trim().toLowerCase() ?? "";
-    if (!email) {
-      res.status(400).json({ ok: false, error: "user_email_missing" });
-      return;
-    }
-
-    const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/auth/update-password`;
-    const { data, error } = await admin.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: { redirectTo },
-    });
-
-    const actionLink = data?.properties?.action_link;
-    if (error || !actionLink) {
-      res.status(502).json({ ok: false, error: "recovery_link_failed" });
-      return;
-    }
-
-    res.status(200).json({
-      ok: true,
-      recovery_link: actionLink,
-      email,
-    });
+  const email = target.email?.trim().toLowerCase() ?? "";
+  if (!email) {
+    res.status(400).json({ ok: false, error: "user_email_missing" });
     return;
   }
 
-  res.status(400).json({ ok: false, error: "invalid_action" });
+  const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/auth/update-password`;
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: { redirectTo },
+  });
+
+  const actionLink = data?.properties?.action_link;
+  if (error || !actionLink) {
+    res.status(502).json({ ok: false, error: "recovery_link_failed" });
+    return;
+  }
+
+  res.status(200).json({
+    ok: true,
+    recovery_link: actionLink,
+    email,
+  });
 }
