@@ -4,7 +4,7 @@ const currentYear = new Date().getFullYear();
 
 /** Formulaire d'ajout véhicule (dashboard). */
 export const vehicleCreateFormSchema = z.object({
-  registration: z.string().min(1, "L'immatriculation est requise"),
+  registration: z.string().min(1, "L'immatriculation est requise").max(15, "Immatriculation trop longue"),
   subscription_id: z.string().min(1, "L'abonnement est requis"),
   brand: z.string().min(1, 'La marque est requise'),
   model: z.string().min(1, 'Le modèle est requis'),
@@ -21,7 +21,7 @@ export type VehicleCreateFormValues = z.infer<typeof vehicleCreateFormSchema>;
 export const vehicleInsertSchema = z.object({
   fleet_id: z.string().min(1, "L'ID de la flotte est requis"),
   subscription_id: z.string().trim().min(1, "L'abonnement est requis").optional(),
-  registration: z.string().trim().min(1, "Le numéro d'immatriculation est requis"),
+  registration: z.string().trim().min(1, "Le numéro d'immatriculation est requis").max(15, "Immatriculation trop longue"),
   brand: z.string().trim().min(1, 'La marque est requise').optional(),
   model: z.string().trim().min(1, 'Le modèle est requis').optional(),
   year: z.number().min(1990).max(currentYear + 1).optional(),
