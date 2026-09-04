@@ -93,7 +93,7 @@ BEGIN
   PERFORM public.billing_start_trial(v_fleet_id, 30);
 
   INSERT INTO vehicules (fleet_id, registration, brand, model, current_km, status)
-  VALUES (v_fleet_id, 'TEST-FERM-01', 'Toyota', 'Corolla', v_km_before, 'ok')
+  VALUES (v_fleet_id, 'TF123456', 'Toyota', 'Corolla', v_km_before, 'ok')
   RETURNING id INTO v_vehicle_id;
 
   INSERT INTO affectations_vehicules (
