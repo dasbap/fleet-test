@@ -102,6 +102,19 @@ export class VehicleService {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (
+        msg.includes('vehicle_registration_already_used') ||
+        msg.includes('vehicules_registration_global_unique_idx') ||
+        msg.includes('duplicate key value')
+      ) {
+        throw new Error("Cette immatriculation est déjà utilisée par un autre véhicule.");
+      }
+      if (msg.includes('vehicle_registration_invalid_length')) {
+        throw new Error("Le format de l'immatriculation ne correspond pas au pays de la flotte.");
+      }
+      if (msg.includes('vehicle_registration_invalid_characters')) {
+        throw new Error("L'immatriculation contient des caractères non autorisés.");
+      }
+      if (
         msg.includes('limite_vehicules_plan_atteinte') ||
         msg.includes('limite_vehicules_abonnements_atteinte') ||
         msg.includes('limite_vehicules_abonnement_atteinte')
