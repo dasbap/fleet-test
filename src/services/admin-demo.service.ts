@@ -102,6 +102,9 @@ export class AdminDemoService {
         label: payload.label,
       });
       if (linkData.rateLimited) return { ok: false, error: "Limite de génération de liens atteinte." };
+      if (!linkData.ok || !linkData.magic_url) {
+        return { ok: false, user_id: prospectData.user_id, error: formatCreateAccessError(linkData.error) };
+      }
       return { ok: true, user_id: prospectData.user_id, magic_url: linkData.magic_url };
     } catch (err) {
       return { ok: false, error: String(err) };
@@ -111,39 +114,45 @@ export class AdminDemoService {
   async suspendAccount(userId: string, adminId: string): Promise<boolean> {
     if (!userId || !adminId) throw new Error("Identifiants utilisateur requis");
     const result = await this.repository.deactivateAccount(userId, adminId, "suspension manuelle depuis admin UI");
-    return result.ok;
+    if (!result.ok) throw new Error(result.error ?? "suspension_echouee");
+    return true;
   }
 
   async reactivateAccount(userId: string, adminId: string, extendHours?: number): Promise<boolean> {
     if (!userId || !adminId) throw new Error("Identifiants utilisateur requis");
     if (extendHours !== undefined && extendHours > MAX_DEMO_EXTENSION_HOURS) throw new Error("Une demo ne peut pas depasser un mois depuis sa creation");
     const result = await this.repository.reactivateAccount(userId, adminId, extendHours ?? null);
-    return result.ok;
+    if (!result.ok) throw new Error(result.error ?? "reactivation_echouee");
+    return true;
   }
 
   async updateAccountExpiration(userId: string, adminId: string, expiresAt: string | null): Promise<{ ok: boolean; expires_at?: string; max_expires_at?: string }> {
     if (!userId || !adminId) throw new Error("Identifiants utilisateur requis");
     if (expiresAt !== null && Number.isNaN(new Date(expiresAt).getTime())) throw new Error("Date d'expiration invalide");
     const result = await this.repository.updateAccountExpiration(userId, adminId, expiresAt);
-    return { ok: result.ok, expires_at: result.expires_at, max_expires_at: result.max_expires_at };
+    if (!result.ok) throw new Error(result.error ?? "mise_a_jour_expiration_echouee");
+    return { ok: true, expires_at: result.expires_at, max_expires_at: result.max_expires_at };
   }
 
   async deleteAccount(userId: string, adminId: string): Promise<{ ok: boolean }> {
     if (!userId || !adminId) throw new Error("Identifiants utilisateur requis");
     const result = await this.repository.deleteAccount(userId, adminId, "suppression manuelle depuis admin UI");
-    return { ok: result.ok };
+    if (!result.ok) throw new Error(result.error ?? "suppression_echouee");
+    return { ok: true };
   }
 
   async resetFleet(fleetId: string): Promise<{ ok: boolean; vehiclesDeleted: number }> {
     if (!fleetId) throw new Error("L'identifiant de flotte est requis");
     const result = await this.repository.resetDemoFleet(fleetId);
-    return { ok: result.ok, vehiclesDeleted: result.vehicles_deleted ?? 0 };
+    if (!result.ok) throw new Error(result.error ?? "reset_flotte_echoue");
+    return { ok: true, vehiclesDeleted: result.vehicles_deleted ?? 0 };
   }
 
   async setFleetPlan(fleetId: string, adminId: string, planCode: string): Promise<{ ok: boolean; plan_code?: string }> {
     if (!fleetId || !adminId || !planCode) throw new Error("Identifiants flotte, admin et plan requis");
     const result = await this.repository.setFleetPlan(fleetId, adminId, planCode);
-    return { ok: result.ok, plan_code: result.plan_code };
+    if (!result.ok) throw new Error(result.error ?? "changement_plan_echoue");
+    return { ok: true, plan_code: result.plan_code };
   }
 
   async generateMagicLink(accessToken: string | null | undefined, userId: string, email: string, fleetId?: string | null, label?: string): Promise<string | null> {
