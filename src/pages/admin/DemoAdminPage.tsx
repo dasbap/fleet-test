@@ -1,9 +1,10 @@
 import { Link, Navigate } from "react-router-dom";
-import { Inbox, ListFilter, Plus, Users } from "lucide-react";
+import { Inbox, ListFilter, Plus, Truck, Users } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { AllAccountsPanel } from "@/components/admin/AllAccountsPanel";
+import { AdminVehicleCreationPanel } from "@/components/admin/AdminVehicleCreationPanel";
 import { CreateDemoForm } from "@/components/admin/CreateDemoForm";
 import { DemoRequestsPanel } from "@/components/admin/DemoRequestsPanel";
 import { DemoSessionsPanel } from "@/components/admin/DemoSessionsPanel";
@@ -75,6 +76,11 @@ export default function DemoAdminPage() {
             Tous les comptes
           </TabsTrigger>
 
+          <TabsTrigger value="vehicles" className="gap-1.5">
+            <Truck className="h-4 w-4" />
+            Véhicules
+          </TabsTrigger>
+
           <TabsTrigger value="create" className="gap-1.5">
             <Plus className="h-4 w-4" />
             Créer un accès
@@ -104,6 +110,10 @@ export default function DemoAdminPage() {
 
         <TabsContent value="all-accounts" className="mt-6">
           <AllAccountsPanel />
+        </TabsContent>
+
+        <TabsContent value="vehicles" className="mt-6">
+          <AdminVehicleCreationPanel />
         </TabsContent>
 
         <TabsContent value="create" className="mt-6">
