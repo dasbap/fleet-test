@@ -308,7 +308,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   if (!existingAuthUserAttached) {
     const { error: resetError } = await admin.auth.resetPasswordForEmail(email, {
-      redirectTo: `${APP_URL.replace(/\/$/, "")}/set-password`,
+      redirectTo: `${APP_URL.replace(/\/$/, "")}/auth/update-password`,
     });
 
     if (resetError) {
