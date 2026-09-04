@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Car,
   Loader2,
@@ -10,22 +10,26 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getVehicleRegistrationRule,
   normalizeVehicleRegistration,
+  sanitizeVehicleRegistrationInput,
   validateVehicleRegistrationForCountry,
 } from "@/domain/vehicleRegistration";
 
@@ -109,7 +113,7 @@ function mapVehicleError(message: string): string {
     return "Cette immatriculation est réservée à une autre flotte.";
   }
   if (message.includes("vehicle_registration_invalid_length")) {
-    return "Le format de l'immatriculation ne correspond pas au pays de la flotte.";
+    return "La longueur de l'immatriculation ne correspond pas à la règle du pays de la flotte.";
   }
   if (message.includes("vehicle_registration_invalid_characters")) {
     return "L'immatriculation contient des caractères non autorisés.";
@@ -131,6 +135,8 @@ export function AdminFleetManagementPanel() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [currentKm, setCurrentKm] = useState("0");
   const [registrationError, setRegistrationError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminVehicle | null>(null);
+  const [unlockTarget, setUnlockTarget] = useState<RegistrationLock | null>(null);
 
   const fleetsQuery = useQuery({
     queryKey: ["admin", "vehicle-fleets"],
@@ -150,8 +156,20 @@ export function AdminFleetManagementPanel() {
     );
   }, [fleetSearch, fleets]);
 
-  const selectedFleet =
-    fleets.find((fleet) => fleet.id === fleetId) ?? filteredFleets[0] ?? null;
+  useEffect(() => {
+    if (filteredFleets.length === 0) {
+      if (fleetId) setFleetId("");
+      return;
+    }
+
+    if (!filteredFleets.some((fleet) => fleet.id === fleetId)) {
+      setFleetId(filteredFleets[0].id);
+      setRegistration("");
+      setRegistrationError(null);
+    }
+  }, [filteredFleets, fleetId]);
+
+  const selectedFleet = filteredFleets.find((fleet) => fleet.id === fleetId) ?? null;
   const selectedFleetId = selectedFleet?.id ?? "";
 
   const vehiclesQuery = useQuery({
@@ -185,8 +203,9 @@ export function AdminFleetManagementPanel() {
     mutationFn: async () => {
       if (!selectedFleet) throw new Error("Sélectionnez une flotte.");
 
+      const normalizedRegistration = normalizeVehicleRegistration(registration);
       const validationError = validateVehicleRegistrationForCountry(
-        registration,
+        normalizedRegistration,
         selectedFleet.country_code,
       );
       if (validationError) {
@@ -210,7 +229,7 @@ export function AdminFleetManagementPanel() {
 
       const { data, error } = await rpcClient.rpc("admin_create_vehicle", {
         p_fleet_id: selectedFleet.id,
-        p_registration: normalizeVehicleRegistration(registration),
+        p_registration: normalizedRegistration,
         p_brand: brand.trim() || null,
         p_model: model.trim() || null,
         p_year: parsedYear,
@@ -254,6 +273,7 @@ export function AdminFleetManagementPanel() {
       return vehicle;
     },
     onSuccess: (vehicle) => {
+      setDeleteTarget(null);
       toast({
         title: "Véhicule supprimé",
         description: `${vehicle.registration} reste réservé à cette flotte et peut y être recréé.`,
@@ -281,6 +301,7 @@ export function AdminFleetManagementPanel() {
       return lock;
     },
     onSuccess: (lock) => {
+      setUnlockTarget(null);
       toast({
         title: "Immatriculation libérée",
         description: `${lock.normalized_registration} pourra être réattribuée à une autre flotte lorsque plus aucun véhicule actif ne l'utilise.`,
@@ -297,309 +318,392 @@ export function AdminFleetManagementPanel() {
   });
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-      <aside className="space-y-4 rounded-xl border bg-card p-4">
-        <div>
-          <h2 className="font-semibold">Flottes</h2>
-          <p className="text-sm text-muted-foreground">
-            Sélectionnez une flotte pour gérer ses véhicules.
-          </p>
-        </div>
+    <>
+      <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <aside className="space-y-4 rounded-xl border bg-card p-4">
+          <div>
+            <h2 className="font-semibold">Flottes</h2>
+            <p className="text-sm text-muted-foreground">
+              Sélectionnez une flotte pour gérer ses véhicules.
+            </p>
+          </div>
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={fleetSearch}
-            onChange={(event) => setFleetSearch(event.target.value)}
-            placeholder="Rechercher une flotte"
-            className="pl-9"
-          />
-        </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={fleetSearch}
+              onChange={(event) => setFleetSearch(event.target.value)}
+              placeholder="Rechercher une flotte"
+              className="pl-9"
+              aria-label="Rechercher une flotte"
+            />
+          </div>
 
-        <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
-          {filteredFleets.map((fleet) => {
-            const active = fleet.id === selectedFleetId;
-            return (
-              <button
-                key={fleet.id}
-                type="button"
-                onClick={() => {
-                  setFleetId(fleet.id);
-                  setRegistration("");
-                  setRegistrationError(null);
-                }}
-                className={
-                  "w-full rounded-lg border p-3 text-left transition " +
-                  (active
-                    ? "border-primary bg-primary/5"
-                    : "hover:border-muted-foreground/40 hover:bg-muted/40")
-                }
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{fleet.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {fleet.org_name || "Organisation inconnue"}
+          <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
+            {filteredFleets.map((fleet) => {
+              const active = fleet.id === selectedFleetId;
+              return (
+                <button
+                  key={fleet.id}
+                  type="button"
+                  onClick={() => {
+                    setFleetId(fleet.id);
+                    setRegistration("");
+                    setRegistrationError(null);
+                  }}
+                  aria-pressed={active}
+                  className={
+                    "w-full rounded-lg border p-3 text-left transition " +
+                    (active
+                      ? "border-primary bg-primary/5"
+                      : "hover:border-muted-foreground/40 hover:bg-muted/40")
+                  }
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{fleet.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {fleet.org_name || "Organisation inconnue"}
+                      </p>
+                    </div>
+                    <Badge variant="secondary">{fleet.country_code}</Badge>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {fleet.vehicle_count} véhicule{fleet.vehicle_count > 1 ? "s" : ""}
+                  </p>
+                </button>
+              );
+            })}
+            {!fleetsQuery.isLoading && filteredFleets.length === 0 ? (
+              <p className="py-4 text-sm text-muted-foreground">
+                Aucune flotte ne correspond à cette recherche.
+              </p>
+            ) : null}
+          </div>
+        </aside>
+
+        <main className="min-w-0 space-y-6">
+          {selectedFleet ? (
+            <>
+              <section className="rounded-xl border bg-card p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl font-semibold">{selectedFleet.name}</h2>
+                      <Badge variant="outline">{selectedFleet.country_code}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedFleet.org_name || "Organisation inconnue"} ·{" "}
+                      {vehiclesQuery.data?.length ?? selectedFleet.vehicle_count} véhicule
+                      {(vehiclesQuery.data?.length ?? selectedFleet.vehicle_count) > 1 ? "s" : ""}
                     </p>
                   </div>
-                  <Badge variant="secondary">{fleet.country_code}</Badge>
+                  <Button type="button" variant="outline" onClick={refreshFleet}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Actualiser
+                  </Button>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {fleet.vehicle_count} véhicule{fleet.vehicle_count > 1 ? "s" : ""}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </aside>
+              </section>
 
-      <main className="min-w-0 space-y-6">
-        {selectedFleet ? (
-          <>
-            <section className="rounded-xl border bg-card p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-xl font-semibold">{selectedFleet.name}</h2>
-                    <Badge variant="outline">{selectedFleet.country_code}</Badge>
-                  </div>
+              <section className="rounded-xl border bg-card p-5">
+                <div className="mb-4">
+                  <h3 className="font-semibold">Ajouter un véhicule</h3>
                   <p className="text-sm text-muted-foreground">
-                    {selectedFleet.org_name || "Organisation inconnue"} ·{" "}
-                    {vehiclesQuery.data?.length ?? selectedFleet.vehicle_count} véhicule
-                    {(vehiclesQuery.data?.length ?? selectedFleet.vehicle_count) > 1 ? "s" : ""}
+                    L'admin peut dépasser les limites d'abonnement. La plaque reste protégée.
                   </p>
                 </div>
-                <Button type="button" variant="outline" onClick={refreshFleet}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Actualiser
-                </Button>
-              </div>
-            </section>
 
-            <section className="rounded-xl border bg-card p-5">
-              <div className="mb-4">
-                <h3 className="font-semibold">Ajouter un véhicule</h3>
-                <p className="text-sm text-muted-foreground">
-                  L'admin peut dépasser les limites d'abonnement. La plaque reste protégée.
-                </p>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>{registrationRule.label}</Label>
-                  <Input
-                    value={registration}
-                    placeholder={registrationRule.placeholder}
-                    maxLength={registrationRule.maxInputLength}
-                    autoCapitalize="characters"
-                    spellCheck={false}
-                    onChange={(event) => {
-                      const next = normalizeVehicleRegistration(
-                        event.target.value,
-                      ).slice(0, registrationRule.maxInputLength);
-                      setRegistration(next);
-                      setRegistrationError(
-                        next
-                          ? validateVehicleRegistrationForCountry(
-                              next,
-                              selectedFleet.country_code,
-                            )
-                          : null,
-                      );
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {registrationRule.minCompactLength} à{" "}
-                    {registrationRule.maxCompactLength} caractères utiles.
-                  </p>
-                  {registrationError ? (
-                    <p className="text-xs text-destructive">{registrationError}</p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Marque</Label>
-                  <Input
-                    value={brand}
-                    onChange={(event) => setBrand(event.target.value)}
-                    placeholder="Toyota"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Modèle</Label>
-                  <Input
-                    value={model}
-                    onChange={(event) => setModel(event.target.value)}
-                    placeholder="Hilux"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Année</Label>
-                  <Input
-                    type="number"
-                    min={1990}
-                    max={new Date().getFullYear() + 1}
-                    value={year}
-                    onChange={(event) => setYear(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Kilométrage</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={currentKm}
-                    onChange={(event) => setCurrentKm(event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4 flex justify-end">
-                <Button
-                  type="button"
-                  disabled={
-                    createMutation.isPending ||
-                    Boolean(registrationError) ||
-                    !registration.trim()
-                  }
-                  onClick={() => createMutation.mutate()}
-                >
-                  {createMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Car className="mr-2 h-4 w-4" />
-                  )}
-                  Créer le véhicule
-                </Button>
-              </div>
-            </section>
-
-            <section className="rounded-xl border bg-card">
-              <div className="border-b p-5">
-                <h3 className="font-semibold">Véhicules de la flotte</h3>
-                <p className="text-sm text-muted-foreground">
-                  Une plaque supprimée reste réservée à cette flotte et peut y être réutilisée.
-                </p>
-              </div>
-
-              <div className="divide-y">
-                {(vehiclesQuery.data ?? []).map((vehicle) => (
-                  <div
-                    key={vehicle.id}
-                    className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono font-semibold">
-                          {vehicle.registration}
-                        </span>
-                        <Badge variant={vehicle.status === "ok" ? "secondary" : "outline"}>
-                          {vehicle.status}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {[vehicle.brand, vehicle.model, vehicle.year]
-                          .filter(Boolean)
-                          .join(" · ") || "Informations véhicule non renseignées"}
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="admin-vehicle-registration">{registrationRule.label}</Label>
+                    <Input
+                      id="admin-vehicle-registration"
+                      value={registration}
+                      placeholder={registrationRule.placeholder}
+                      maxLength={registrationRule.maxInputLength}
+                      autoCapitalize="characters"
+                      spellCheck={false}
+                      onChange={(event) => {
+                        const next = sanitizeVehicleRegistrationInput(
+                          event.target.value,
+                        ).slice(0, registrationRule.maxInputLength);
+                        setRegistration(next);
+                        setRegistrationError(
+                          next
+                            ? validateVehicleRegistrationForCountry(
+                                next,
+                                selectedFleet.country_code,
+                              )
+                            : null,
+                        );
+                      }}
+                      onBlur={() => setRegistration(normalizeVehicleRegistration(registration))}
+                      aria-invalid={Boolean(registrationError)}
+                      aria-describedby="admin-vehicle-registration-help"
+                    />
+                    <p id="admin-vehicle-registration-help" className="text-xs text-muted-foreground">
+                      Règle {selectedFleet.country_code} · {registrationRule.minCompactLength} à{" "}
+                      {registrationRule.maxCompactLength} caractères alphanumériques.
+                    </p>
+                    {registrationError ? (
+                      <p className="text-xs text-destructive" role="alert">
+                        {registrationError}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {vehicle.current_km.toLocaleString("fr-FR")} km
-                      </p>
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={deleteMutation.isPending}
-                      onClick={() => deleteMutation.mutate(vehicle)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Supprimer
-                    </Button>
+                    ) : null}
                   </div>
-                ))}
 
-                {!vehiclesQuery.isLoading && (vehiclesQuery.data ?? []).length === 0 ? (
-                  <p className="p-5 text-sm text-muted-foreground">
-                    Aucun véhicule dans cette flotte.
-                  </p>
-                ) : null}
-              </div>
-            </section>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-vehicle-brand">Marque</Label>
+                    <Input
+                      id="admin-vehicle-brand"
+                      value={brand}
+                      onChange={(event) => setBrand(event.target.value)}
+                      placeholder="Toyota"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-vehicle-model">Modèle</Label>
+                    <Input
+                      id="admin-vehicle-model"
+                      value={model}
+                      onChange={(event) => setModel(event.target.value)}
+                      placeholder="Hilux"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-vehicle-year">Année</Label>
+                    <Input
+                      id="admin-vehicle-year"
+                      type="number"
+                      min={1990}
+                      max={new Date().getFullYear() + 1}
+                      value={year}
+                      onChange={(event) => setYear(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-vehicle-km">Kilométrage</Label>
+                    <Input
+                      id="admin-vehicle-km"
+                      type="number"
+                      min={0}
+                      value={currentKm}
+                      onChange={(event) => setCurrentKm(event.target.value)}
+                    />
+                  </div>
+                </div>
 
-            <section className="rounded-xl border bg-card">
-              <div className="border-b p-5">
-                <h3 className="font-semibold">Réservations d'immatriculation</h3>
-                <p className="text-sm text-muted-foreground">
-                  Une réservation empêche une autre flotte de récupérer une plaque déjà utilisée ici.
-                </p>
-              </div>
-
-              <div className="divide-y">
-                {(locksQuery.data ?? []).map((lock) => (
-                  <div
-                    key={lock.normalized_registration}
-                    className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    type="button"
+                    disabled={
+                      createMutation.isPending ||
+                      Boolean(registrationError) ||
+                      !registration.trim()
+                    }
+                    onClick={() => createMutation.mutate()}
                   >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-semibold">
-                          {lock.active_registration || lock.normalized_registration}
-                        </span>
-                        {lock.locked ? (
-                          <Badge variant="outline" className="gap-1">
-                            <LockKeyhole className="h-3 w-3" />
-                            Réservée
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="gap-1">
-                            <UnlockKeyhole className="h-3 w-3" />
-                            Libérée
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {lock.active_vehicle_id
-                          ? "Véhicule actif : la plaque reste de toute façon unique."
-                          : "Aucun véhicule actif avec cette plaque."}
-                      </p>
-                    </div>
+                    {createMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Car className="mr-2 h-4 w-4" />
+                    )}
+                    Créer le véhicule
+                  </Button>
+                </div>
+              </section>
 
-                    {lock.locked ? (
+              <section className="rounded-xl border bg-card">
+                <div className="border-b p-5">
+                  <h3 className="font-semibold">Véhicules de la flotte</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Une plaque supprimée reste réservée à cette flotte et peut y être réutilisée.
+                  </p>
+                </div>
+
+                <div className="divide-y">
+                  {(vehiclesQuery.data ?? []).map((vehicle) => (
+                    <div
+                      key={vehicle.id}
+                      className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono font-semibold">
+                            {vehicle.registration}
+                          </span>
+                          <Badge variant={vehicle.status === "ok" ? "secondary" : "outline"}>
+                            {vehicle.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {[vehicle.brand, vehicle.model, vehicle.year]
+                            .filter(Boolean)
+                            .join(" · ") || "Informations véhicule non renseignées"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {vehicle.current_km.toLocaleString("fr-FR")} km
+                        </p>
+                      </div>
+
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={unlockMutation.isPending}
-                        onClick={() => unlockMutation.mutate(lock)}
+                        disabled={deleteMutation.isPending}
+                        onClick={() => setDeleteTarget(vehicle)}
                       >
-                        <UnlockKeyhole className="mr-2 h-4 w-4" />
-                        Enlever le verrou
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Supprimer
                       </Button>
-                    ) : null}
-                  </div>
-                ))}
+                    </div>
+                  ))}
 
-                {!locksQuery.isLoading && (locksQuery.data ?? []).length === 0 ? (
-                  <p className="p-5 text-sm text-muted-foreground">
-                    Aucune immatriculation réservée pour cette flotte.
+                  {!vehiclesQuery.isLoading && (vehiclesQuery.data ?? []).length === 0 ? (
+                    <p className="p-5 text-sm text-muted-foreground">
+                      Aucun véhicule dans cette flotte.
+                    </p>
+                  ) : null}
+                </div>
+              </section>
+
+              <section className="rounded-xl border bg-card">
+                <div className="border-b p-5">
+                  <h3 className="font-semibold">Réservations d'immatriculation</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Une réservation empêche une autre flotte de récupérer une plaque déjà utilisée ici.
                   </p>
-                ) : null}
-              </div>
-            </section>
-          </>
-        ) : fleetsQuery.isLoading ? (
-          <div className="flex items-center gap-2 rounded-xl border p-6 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Chargement des flottes...
-          </div>
-        ) : (
-          <div className="rounded-xl border p-6 text-sm text-muted-foreground">
-            Aucune flotte disponible.
-          </div>
-        )}
-      </main>
-    </div>
+                </div>
+
+                <div className="divide-y">
+                  {(locksQuery.data ?? []).map((lock) => (
+                    <div
+                      key={lock.normalized_registration}
+                      className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-semibold">
+                            {lock.active_registration || lock.normalized_registration}
+                          </span>
+                          {lock.locked ? (
+                            <Badge variant="outline" className="gap-1">
+                              <LockKeyhole className="h-3 w-3" />
+                              Réservée
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="gap-1">
+                              <UnlockKeyhole className="h-3 w-3" />
+                              Libérée
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {lock.active_vehicle_id
+                            ? "Véhicule actif : la plaque reste de toute façon unique."
+                            : "Aucun véhicule actif avec cette plaque."}
+                        </p>
+                      </div>
+
+                      {lock.locked ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={unlockMutation.isPending}
+                          onClick={() => setUnlockTarget(lock)}
+                        >
+                          <UnlockKeyhole className="mr-2 h-4 w-4" />
+                          Enlever le verrou
+                        </Button>
+                      ) : null}
+                    </div>
+                  ))}
+
+                  {!locksQuery.isLoading && (locksQuery.data ?? []).length === 0 ? (
+                    <p className="p-5 text-sm text-muted-foreground">
+                      Aucune immatriculation réservée pour cette flotte.
+                    </p>
+                  ) : null}
+                </div>
+              </section>
+            </>
+          ) : fleetsQuery.isLoading ? (
+            <div className="flex items-center gap-2 rounded-xl border p-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Chargement des flottes...
+            </div>
+          ) : fleetSearch.trim() ? (
+            <div className="rounded-xl border p-6 text-sm text-muted-foreground">
+              Aucune flotte ne correspond à cette recherche.
+            </div>
+          ) : (
+            <div className="rounded-xl border p-6 text-sm text-muted-foreground">
+              Aucune flotte disponible.
+            </div>
+          )}
+        </main>
+      </div>
+
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce véhicule ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget
+                ? `${deleteTarget.registration} sera supprimé. Son immatriculation restera réservée à cette flotte et pourra y être réutilisée.`
+                : "Le véhicule sera supprimé."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteMutation.isPending || !deleteTarget}
+              onClick={(event) => {
+                event.preventDefault();
+                if (deleteTarget) deleteMutation.mutate(deleteTarget);
+              }}
+            >
+              {deleteMutation.isPending ? "Suppression..." : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(unlockTarget)}
+        onOpenChange={(open) => {
+          if (!open && !unlockMutation.isPending) setUnlockTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Libérer cette immatriculation ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {unlockTarget
+                ? `${unlockTarget.normalized_registration} pourra être attribuée à une autre flotte dès qu'aucun véhicule actif ne l'utilise.`
+                : "Cette réservation sera libérée."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unlockMutation.isPending}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={unlockMutation.isPending || !unlockTarget}
+              onClick={(event) => {
+                event.preventDefault();
+                if (unlockTarget) unlockMutation.mutate(unlockTarget);
+              }}
+            >
+              {unlockMutation.isPending ? "Libération..." : "Libérer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
