@@ -4,7 +4,7 @@ import { Inbox, ListFilter, Plus, Truck, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { AllAccountsPanel } from "@/components/admin/AllAccountsPanel";
-import { AdminVehicleCreationPanel } from "@/components/admin/AdminVehicleCreationPanel";
+import { AdminFleetManagementPanel } from "@/components/admin/AdminFleetManagementPanel";
 import { CreateDemoForm } from "@/components/admin/CreateDemoForm";
 import { DemoRequestsPanel } from "@/components/admin/DemoRequestsPanel";
 import { DemoSessionsPanel } from "@/components/admin/DemoSessionsPanel";
@@ -76,9 +76,9 @@ export default function DemoAdminPage() {
             Tous les comptes
           </TabsTrigger>
 
-          <TabsTrigger value="vehicles" className="gap-1.5">
+          <TabsTrigger value="fleets" className="gap-1.5">
             <Truck className="h-4 w-4" />
-            Véhicules
+            Flottes
           </TabsTrigger>
 
           <TabsTrigger value="create" className="gap-1.5">
@@ -112,8 +112,8 @@ export default function DemoAdminPage() {
           <AllAccountsPanel />
         </TabsContent>
 
-        <TabsContent value="vehicles" className="mt-6">
-          <AdminVehicleCreationPanel />
+        <TabsContent value="fleets" className="mt-6">
+          <AdminFleetManagementPanel />
         </TabsContent>
 
         <TabsContent value="create" className="mt-6">
