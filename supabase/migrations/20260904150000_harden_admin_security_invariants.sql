@@ -120,10 +120,8 @@ revoke all on function public.enforce_demo_expiration_log_actor() from public, a
 do $$
 begin
   if to_regclass('public.demo_expiration_log') is not null then
-    drop trigger if exists trg_enforce_demo_expiration_log_actor on public.demo_expiration_log;
-    create trigger trg_enforce_demo_expiration_log_actor
-    before insert or update of performed_by on public.demo_expiration_log
-    for each row execute function public.enforce_demo_expiration_log_actor();
+    execute 'drop trigger if exists trg_enforce_demo_expiration_log_actor on public.demo_expiration_log';
+    execute 'create trigger trg_enforce_demo_expiration_log_actor before insert or update of performed_by on public.demo_expiration_log for each row execute function public.enforce_demo_expiration_log_actor()';
   end if;
 end;
 $$;
