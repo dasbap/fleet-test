@@ -136,27 +136,24 @@ describe("GitHub workflow dependency install policy", () => {
       "utf8"
     );
 
-    expect(workflow).toContain("DATABASE_URL: ${{ secrets.DATABASE_URL }}");
-    expect(workflow).toContain(
-      'DB_URL="${SUPABASE_DB_URL:-${DATABASE_URL:-${DIRECT_URL:-}}}"'
-    );
     expect(workflow).toContain('DB_PORT="5432"');
-    expect(workflow).toContain('u.port||"5432"');
-    expect(workflow).toContain("new URL(process.env.DB_URL)");
     expect(workflow).toContain("psql \\");
-    expect(workflow).toContain('--host="$DB_HOST" \\');
+    expect(workflow).toContain('--host="$HOST" \\');
     expect(workflow).toContain('--port="$DB_PORT" \\');
     expect(workflow).toContain('--username="$DB_USER" \\');
-    expect(workflow).not.toContain('"$DB_URL" \\');
     expect(workflow).toContain("SUPABASE_POOLER_HOST");
     expect(workflow).toContain("aws-0-eu-central-2.pooler.supabase.com");
+    expect(workflow).toContain("aws-1-eu-central-2.pooler.supabase.com");
     expect(workflow).toContain('DB_USER="postgres.${SUPABASE_PROJECT_REF}"');
-    expect(workflow).toContain('DB_USER="postgres"');
+    expect(workflow).toContain('DB_HOST=""');
+    expect(workflow).toContain('DB_HOST="$HOST"');
+    expect(workflow).toContain("PGCONNECT_TIMEOUT");
+    expect(workflow).not.toContain("DATABASE_URL: ${{ secrets.DATABASE_URL }}");
+    expect(workflow).not.toContain("SUPABASE_DB_URL:");
+    expect(workflow).not.toContain("DIRECT_URL:");
+    expect(workflow).not.toContain("new URL(process.env.DB_URL)");
     expect(workflow).not.toContain(
       'DB_HOST="db.${SUPABASE_PROJECT_REF}.supabase.co"'
-    );
-    expect(workflow).not.toContain(
-      "Le runner ne possède aucune adresse IPv6 globale"
     );
   });
 
