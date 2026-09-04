@@ -160,6 +160,43 @@ export default async function handler(
     return;
   }
 
+  if (action === "send_password_reset") {
+    const email = target.email?.trim().toLowerCase() ?? "";
+    if (!email) {
+      res.status(400).json({ ok: false, error: "user_email_missing" });
+      return;
+    }
+
+    const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/auth/update-password`;
+    const { error } = await admin.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+
+    if (error) {
+      res.status(502).json({ ok: false, error: "password_reset_email_failed" });
+      return;
+    }
+
+    const appMetadata = target.app_metadata ?? {};
+    const { error: markerError } = await admin.auth.admin.updateUserById(userId, {
+      app_metadata: {
+        ...appMetadata,
+        must_set_password: true,
+        temporary_password_active: false,
+        password_change_required_at: new Date().toISOString(),
+        password_change_required_by: auth.user.id,
+      },
+    });
+
+    if (markerError) {
+      res.status(502).json({ ok: false, error: "password_marker_update_failed" });
+      return;
+    }
+
+    res.status(200).json({ ok: true, email, must_set_password: true });
+    return;
+  }
+
   if (action === "create_recovery_link") {
     const email = target.email?.trim().toLowerCase() ?? "";
     if (!email) {
