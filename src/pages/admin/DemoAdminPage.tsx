@@ -48,7 +48,7 @@ export default function DemoAdminPage() {
           </h1>
 
           <p className="text-sm text-muted-foreground">
-            Gestion des demandes, comptes démo, membres de flotte et accès
+            Gestion des demandes, utilisateurs, membres de flotte et accès
             internes.
           </p>
         </div>
@@ -109,7 +109,7 @@ export default function DemoAdminPage() {
         <TabsContent value="create" className="mt-6">
           <div className="max-w-md">
             <div className="space-y-2 rounded-lg border p-6">
-              <h2 className="text-base font-semibold">Nouvel accès démo</h2>
+              <h2 className="text-base font-semibold">Nouvel accès utilisateur</h2>
 
               <p className="mb-4 text-sm text-muted-foreground">
                 Crée un compte prospect et génère un accès à partager.
