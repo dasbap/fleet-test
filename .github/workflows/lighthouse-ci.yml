@@ -1,12 +1,16 @@
-# Lighthouse est coûteux (Chrome + build + plusieurs audits).
-# Il reste disponible à la demande, mais ne consomme plus de minutes sur chaque PR/push.
+# Garde-fou Lighthouse sans secrets GitHub (VITE_* factices, forks OK).
+# Audite les mêmes URLs que lighthouserc après preview sur le port 4173.
 name: Lighthouse CI — garde-fou
 
 on:
+  push:
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
+  pull_request:
+    branches: [main, master, develop, PRINCIPALE, fix/ci-green-main, release/**]
   workflow_dispatch:
 
 concurrency:
-  group: lighthouse-guard-${{ github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
@@ -14,8 +18,41 @@ defaults:
     shell: bash
 
 jobs:
+  changes:
+    name: Detect Lighthouse changes
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          clean: false
+          fetch-depth: 0
+
+      - id: filter
+        name: Check changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          if echo "$changed" | grep -Eq '^(src/|index\.html$|vite\.config\.ts$|package(-lock)?\.json$|\.github/lighthouse/|\.github/workflows/lighthouse-ci\.yml$|scripts/check-inp-interactions\.mjs$|scripts/check-.*bundle.*\.mjs$)'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
   lighthouse:
     name: Lighthouse CI (placeholders)
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -23,39 +60,56 @@ jobs:
       VITE_SUPABASE_ANON_KEY: placeholder-anon-key-ci-build-only
     steps:
       - uses: actions/checkout@v5
+        with:
+          clean: false
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: "22"
-          cache: npm
+
       - name: Install dependencies
         timeout-minutes: 8
         run: node scripts/ci-install.mjs
-      - name: Install Playwright Chromium
+
+      - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+
       - name: Build
         run: npm run build
-      - name: Check critical bundle budget
+
+      - name: Vérifier budget JS initial (routes critiques)
         run: npm run check:bundle-budget:critical
-      - name: Start preview
+
+      - name: Démarrer le serveur preview
         run: npm run preview &
-      - name: Wait for preview
+
+      - name: Attendre le serveur
         run: npx wait-on http://localhost:4173 --timeout 60000
-      - name: Setup Chrome 124
+
+      - name: Setup Chrome 124 (compatible Lighthouse 11)
         uses: browser-actions/setup-chrome@v1
         id: setup-chrome
         with:
           chrome-version: "124"
-      - name: Run Lighthouse CI
+
+      - name: Run Lighthouse CI (perf, a11y)
         run: npx lhci autorun --config=.github/lighthouse/lighthouserc.json
         env:
           CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
-      - name: Run critical Lighthouse CI
+
+      - name: Run Lighthouse CI (critical routes only)
         run: npx lhci autorun --config=.github/lighthouse/lighthouserc.critical.json
         env:
           CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+
       - name: Run INP interaction audit
         run: node scripts/check-inp-interactions.mjs
         env:
           PERF_BASE_URL: http://127.0.0.1:4173
           INP_MAX_MS: 200
+
+      - name: Run Lighthouse CI (SEO — page d’accueil)
+        run: npx lhci autorun --config=.github/lighthouse/lighthouserc-seo.json
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}

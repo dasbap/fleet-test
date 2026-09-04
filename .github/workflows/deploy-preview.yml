@@ -1,0 +1,70 @@
+name: Deploy Vercel Preview
+
+on:
+  push:
+    branches:
+      - fix/vercel-magic-link-timeouts
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-preview-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: fix/vercel-magic-link-timeouts
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+
+      - name: Pull Vercel preview environment
+        run: npx --yes vercel@58.4.0 pull --yes --environment=preview --token "$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build Vercel preview artifact
+        run: npx --yes vercel@58.4.0 build --token "$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy Vercel preview and smoke test
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          URL="$(npx --yes vercel@58.4.0 deploy --prebuilt --yes --archive=tgz --token "$VERCEL_TOKEN")"
+          test -n "$URL"
+          echo "Preview URL: $URL"
+
+          npx --yes vercel@58.4.0 curl \
+            /api/admin/generate-magic-link \
+            --deployment "$URL" \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            --data '{}' \
+            --max-time 15 \
+            -o /tmp/body \
+            -w '%{http_code}' > /tmp/status
+
+          code="$(cat /tmp/status)"
+          cat /tmp/body
+          test "$code" = "401"
+          grep -q 'missing_auth_token' /tmp/body
+          echo "Preview magic-link route smoke test passed: HTTP $code"

@@ -69,7 +69,11 @@ async function handleNotchPayReconcile(c: Context) {
 
   try {
     const supabase = createSupabaseUserClient(token);
-    const result = await reconcileNotchPayPayment(supabase, parsed.data);
+    const result = await reconcileNotchPayPayment(supabase, {
+      orgId: parsed.data.orgId,
+      fleetId: parsed.data.fleetId,
+      merchantRef: parsed.data.merchantRef,
+    });
     return c.json(result, 200);
   } catch (e) {
     return jsonInternalServerError(c, e);

@@ -4,63 +4,25 @@ on:
   pull_request:
     branches:
       - pre-prod
+  push:
+    branches:
+      - pre-prod
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-preprod-${{ github.event.pull_request.number || github.ref_name }}
+  group: ci-preprod-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   NODE_OPTIONS: --max-old-space-size=2048
 
 jobs:
-  changes:
-    name: Detect relevant changes
-    runs-on: ubuntu-latest
-    outputs:
-      app: ${{ steps.filter.outputs.app }}
-      db: ${{ steps.filter.outputs.db }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - id: filter
-        name: Classify changed files
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "app=true" >> "$GITHUB_OUTPUT"
-            echo "db=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
-
-          if printf '%s\n' "$changed" | grep -Eq '^(src/|api/|packages/|scripts/|tests/|package(-lock)?\.json$|tsconfig[^/]*\.json$|vite\.config\.[cm]?[jt]s$|vitest[^/]*\.config\.[cm]?[jt]s$|eslint\.config\.[cm]?[jt]s$|vercel\.json$)'; then
-            echo "app=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "app=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          if printf '%s\n' "$changed" | grep -Eq '^(supabase/|scripts/prepare-local-supabase-ports\.mjs$|package(-lock)?\.json$)'; then
-            echo "db=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "db=false" >> "$GITHUB_OUTPUT"
-          fi
-
   db-migrations:
     name: Supabase migrations (fresh DB)
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.db == 'true'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -90,8 +52,6 @@ jobs:
 
   build:
     name: TypeScript build
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -118,8 +78,6 @@ jobs:
 
   lint:
     name: ESLint
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -136,12 +94,15 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
-  tests:
-    name: Vitest
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.app == 'true'
+  tests-shard:
+    name: Vitest shard ${{ matrix.shard }}/4
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -153,5 +114,21 @@ jobs:
       - name: Install dependencies
         timeout-minutes: 8
         run: node scripts/ci-install.mjs
-      - name: Run unit tests
-        run: npx vitest run --exclude "tests/integration/**" --exclude "tests/e2e/**"
+      - name: Run unit tests shard
+        run: npx vitest run --shard=${{ matrix.shard }}/4 --exclude "tests/integration/**" --exclude "tests/e2e/**"
+
+  tests:
+    name: Vitest
+    if: always() && github.event_name != 'pull_request'
+    needs: tests-shard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all shards
+        env:
+          SHARDS_RESULT: ${{ needs.tests-shard.result }}
+        run: |
+          if [ "$SHARDS_RESULT" != "success" ]; then
+            echo "One or more Vitest shards failed: $SHARDS_RESULT"
+            exit 1
+          fi
+          echo "All Vitest shards passed."
