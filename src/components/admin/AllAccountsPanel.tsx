@@ -106,6 +106,35 @@ function isIntegrationTestAccount(account: Pick<AdminAccount, "email" | "full_na
   );
 }
 
+async function forcePasswordChange(account: AdminAccount): Promise<void> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+
+  if (!token) {
+    throw new Error("Session administrateur expirée. Reconnectez-vous.");
+  }
+
+  const response = await fetch("/api/admin/user-security", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      user_id: account.user_id,
+      action: "force_password_change",
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | { ok?: boolean; error?: string }
+    | null;
+
+  if (!response.ok || payload?.ok !== true) {
+    throw new Error(payload?.error ?? "force_password_change_failed");
+  }
+}
+
 async function sendPasswordReset(account: AdminAccount): Promise<void> {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
@@ -235,8 +264,32 @@ function roleLabel(role: string | null): string {
 export function AllAccountsPanel() {
   const [search, setSearch] = useState("");
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
+  const [forcingUserId, setForcingUserId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const forcePasswordMutation = useMutation({
+    mutationFn: forcePasswordChange,
+    onMutate: (account) => setForcingUserId(account.user_id),
+    onSuccess: (_data, account) => {
+      toast({
+        title: "Changement imposé",
+        description: `${account.email} devra changer son mot de passe à sa prochaine connexion.`,
+      });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "all-accounts"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Action impossible",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Impossible d'imposer le changement de mot de passe.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => setForcingUserId(null),
+  });
 
   const resetPasswordMutation = useMutation({
     mutationFn: sendPasswordReset,
@@ -501,23 +554,46 @@ export function AllAccountsPanel() {
                   </TableCell>
 
                   <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={
-                        !account.is_active ||
-                        resetPasswordMutation.isPending
-                      }
-                      onClick={() => resetPasswordMutation.mutate(account)}
-                    >
-                      {resettingUserId === account.user_id ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="mr-2 h-4 w-4" />
-                      )}
-                      Réinitialiser le MDP
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          !account.is_active ||
+                          forcePasswordMutation.isPending ||
+                          resetPasswordMutation.isPending ||
+                          account.must_set_password
+                        }
+                        onClick={() => forcePasswordMutation.mutate(account)}
+                      >
+                        {forcingUserId === account.user_id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <KeyRound className="mr-2 h-4 w-4" />
+                        )}
+                        À changer au prochain login
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          !account.is_active ||
+                          resetPasswordMutation.isPending ||
+                          forcePasswordMutation.isPending
+                        }
+                        onClick={() => resetPasswordMutation.mutate(account)}
+                      >
+                        {resettingUserId === account.user_id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="mr-2 h-4 w-4" />
+                        )}
+                        Réinitialiser le MDP
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
