@@ -5,6 +5,33 @@ export interface FleetInfo {
   name: string;
   orgId?: string;
   country_code?: string;
+  async findCountryCodeById(fleetId: string): Promise<string> {
+    const { data: fleet, error: fleetError } = await supabase
+      .from('flottes')
+      .select('org_id')
+      .eq('id', fleetId)
+      .maybeSingle();
+
+    if (fleetError) {
+      throw new Error(fleetError.message);
+    }
+    if (!fleet?.org_id) {
+      return 'CM';
+    }
+
+    const { data: org, error: orgError } = await supabase
+      .from('organisations')
+      .select('country_code')
+      .eq('id', fleet.org_id)
+      .maybeSingle();
+
+    if (orgError) {
+      throw new Error(orgError.message);
+    }
+
+    return org?.country_code?.trim().toUpperCase() || 'CM';
+  }
+
 }
 
 /**
