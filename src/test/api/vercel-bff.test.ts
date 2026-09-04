@@ -184,7 +184,11 @@ describe("direct Vercel admin routes", () => {
     };
     const directHandler = readFileSync("api/admin/generate-magic-link.ts", "utf8");
 
-    expect(directHandler).toContain("createServerApp");
+    expect(directHandler).not.toContain("createServerApp");
+    expect(directHandler).toContain("fetchWithTimeout");
+    expect(directHandler).toContain("req.body");
+    expect(directHandler).toContain("is_platform_admin");
+    expect(directHandler).toContain("demo_create_magic_link");
     expect(config.functions?.["api/admin/generate-magic-link.ts"]?.maxDuration).toBe(15);
     expect(config.rewrites ?? []).not.toEqual(
       expect.arrayContaining([
