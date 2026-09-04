@@ -10,8 +10,18 @@ describe("admin demo lifecycle invariants", () => {
   it("autorise uniquement le bypass admin des organisateurs demo", () => {
     expect(sql).toContain("current_setting('app.demo_lifecycle_bypass', true) = 'on'");
     expect(sql).toContain("public.is_platform_admin()");
-    expect(sql).toContain("f.is_demo = true");
     expect(sql).toContain("set_config('app.demo_lifecycle_bypass', 'on', true)");
+    expect(sql).toContain("set_config('app.demo_lifecycle_bypass', 'on', true)");
+  });
+
+  it("borne le bypass a la flotte rattachee au profil demo", () => {
+    const assignedFleetMigration = readFileSync(
+      "supabase/migrations/20260904115500_fix_demo_lifecycle_assigned_fleet_bypass.sql",
+      "utf8",
+    );
+    expect(assignedFleetMigration).toContain("dp.user_id = old.user_id");
+    expect(assignedFleetMigration).toContain("dp.fleet_id = old.fleet_id");
+    expect(assignedFleetMigration).toContain("public.is_platform_admin()");
   });
 
   it("restaure l'adhesion lors d'une reactivation", () => {
