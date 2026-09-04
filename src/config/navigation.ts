@@ -229,7 +229,7 @@ export const DASHBOARD_NAV = {
     { label: "Administration", href: ROUTE_PATHS.dashboardAdmin },
     { label: "Admin comptes", href: ROUTE_PATHS.dashboardAdminUsers },
     { label: "Abonnements", href: ROUTE_PATHS.dashboardAdminSubscriptions },
-    { label: "Comptes demo", href: ROUTE_PATHS.dashboardAdminDemo },
+    { label: "Utilisateurs", href: ROUTE_PATHS.dashboardAdminDemo },
     { label: "FAQ publique", href: ROUTE_PATHS.dashboardAdminFaq },
     { label: "Aide admin", href: ROUTE_PATHS.dashboardHelpAdmin },
   ],

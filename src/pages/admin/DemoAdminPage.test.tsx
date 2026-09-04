@@ -62,9 +62,9 @@ describe("DemoAdminPage", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/dashboard/admin/demo"]}>
+      <MemoryRouter initialEntries={["/dashboard/admin/utilisateurs"]}>
         <Routes>
-          <Route path="/dashboard/admin/demo" element={<DemoAdminPage />} />
+          <Route path="/dashboard/admin/utilisateurs" element={<DemoAdminPage />} />
           <Route
             path="/dashboard"
             element={<div data-testid="dashboard-page">Dashboard</div>}
