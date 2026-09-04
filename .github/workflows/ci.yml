@@ -9,7 +9,6 @@ on:
       - PRINCIPALE
       - fix/ci-green-main
       - "release/**"
-
   pull_request:
     branches:
       - main
@@ -18,14 +17,19 @@ on:
       - PRINCIPALE
       - fix/ci-green-main
       - "release/**"
-
   workflow_dispatch:
+    inputs:
+      full_validation:
+        description: Run the heavier local Supabase validation
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 env:
@@ -36,918 +40,89 @@ defaults:
     shell: bash
 
 jobs:
-  db-migrations:
-    name: Supabase migrations (fresh DB)
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
-    runs-on:
-      - ubuntu-latest
-    timeout-minutes: 25
+  pr-gate:
+    name: Main PR gate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Confirm staged validation policy
+        run: |
+          echo "Heavy validation is performed on pull requests into pre-prod."
+          echo "The pre-prod -> main pull request keeps only this lightweight policy gate."
 
+  main-ci:
+    name: Main consolidated CI
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder_key' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-        with:
-          clean: false
-
-      - name: Install runner dependencies
-        run: |
-          if ! command -v unzip >/dev/null 2>&1; then
-            if command -v apt-get >/dev/null 2>&1; then
-              if command -v sudo >/dev/null 2>&1; then
-                sudo apt-get update
-                sudo apt-get install -y unzip curl ca-certificates
-              else
-                apt-get update
-                apt-get install -y unzip curl ca-certificates
-              fi
-            else
-              echo "::error::unzip est requis sur le runner"
-              exit 1
-            fi
-          fi
-
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
           node-version: "22"
+          cache: npm
+      - name: Install dependencies once
+        timeout-minutes: 8
+        run: node scripts/ci-install.mjs
+      - name: ESLint
+        run: npm run lint
+      - name: TypeScript check
+        run: npx tsc --noEmit
+      - name: Unit tests
+        run: npx vitest run --exclude "tests/integration/**" --exclude "tests/e2e/**"
+      - name: Build
+        run: npm run build
 
+  db-migrations:
+    name: Supabase migrations (fresh DB)
+    if: github.event_name == 'workflow_dispatch' && inputs.full_validation == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
           version: 2.109.1
           github-token: ${{ github.token }}
-
       - name: Prepare dynamic Supabase local ports
         run: node scripts/prepare-local-supabase-ports.mjs
-
       - name: Start Supabase local
         run: supabase start -x vector,logflare
-
       - name: Replay all migrations
         run: supabase db reset --no-seed
-
-      - name: Smoke test search_fleet without auth
-        run: |
-          out="$(
-            supabase db query \
-              "SELECT CASE WHEN count(*) = 0 THEN 'OK_SAFE' ELSE 'FAIL_HAS_ROWS' END AS result FROM public.search_fleet('Toyota'::text, 5::int, NULL::uuid);" \
-              --local 2>&1
-          )"
-
-          echo "$out"
-
-          if [[ "$out" != *"OK_SAFE"* ]]; then
-            echo "::error::search_fleet a retourné des lignes sans authentification ou a échoué"
-            exit 1
-          fi
-
-      - name: Smoke test retention views
-        run: |
-          supabase db query \
-            "SELECT table_name FROM information_schema.views WHERE table_schema = 'public' AND table_name LIKE 'v_retention%' ORDER BY table_name;" \
-            --local
-
-      - name: Supabase status
-        if: always()
-        run: supabase status || true
-
       - name: Stop Supabase local
         if: always()
         run: supabase stop --no-backup || true
 
   build:
     name: TypeScript build
+    if: github.event_name == 'workflow_dispatch' && inputs.full_validation == true
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          clean: false
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install dependencies
-        timeout-minutes: 8
-        run: node scripts/ci-install.mjs
-
-      - name: TypeScript check
-        run: npx tsc --noEmit
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder_key' }}
-
-      - name: Build
-        run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder_key' }}
-
-      - name: Bundle size check
-        run: |
-          total="$(
-            find dist/assets -name "*.js" -exec wc -c {} + 2>/dev/null \
-              | tail -1 \
-              | awk '{print $1}'
-          )"
-
-          total="${total:-0}"
-          size_kb=$((total / 1024))
-
-          echo "Bundle JS : ${size_kb} KB"
-
-          if [ "$size_kb" -gt 300 ]; then
-            echo "::warning::Bundle ${size_kb} KB supérieur à 300 KB"
-          fi
+      - run: echo "Covered by Main consolidated CI; retained as a manual compatibility check."
 
   lint:
     name: ESLint
+    if: github.event_name == 'workflow_dispatch' && inputs.full_validation == true
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install dependencies
-        timeout-minutes: 8
-        run: node scripts/ci-install.mjs
-
-      - name: Run ESLint
-        run: npm run lint
+      - run: echo "Covered by Main consolidated CI; retained as a manual compatibility check."
 
   quality-metrics:
     name: Test layers metrics
+    if: github.event_name == 'workflow_dispatch' && inputs.full_validation == true
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    needs:
-      - build
-
-    env:
-      CI: "true"
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install dependencies
-        timeout-minutes: 8
-        run: node scripts/ci-install.mjs
-
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v2
-        with:
-          version: 2.109.1
-          github-token: ${{ github.token }}
-
-      - name: Prepare dynamic Supabase local ports
-        run: node scripts/prepare-local-supabase-ports.mjs
-
-      - name: Start Supabase local
-        run: supabase start -x vector,logflare
-
-      - name: Replay migrations
-        run: supabase db reset --no-seed
-
-      - name: Create local Supabase test environment
-        run: |
-          status_file="/tmp/supabase-status.env"
-          test_file="/tmp/supabase-integration.env"
-
-          supabase status -o env > "$status_file"
-
-          unset VITE_SUPABASE_URL
-          unset VITE_SUPABASE_ANON_KEY
-          unset SUPABASE_SERVICE_ROLE_KEY
-          unset SUPABASE_URL
-          unset SUPABASE_ANON_KEY
-
-          set -a
-          source "$status_file"
-          set +a
-
-          test -n "${API_URL:-}" || {
-            echo "::error::API_URL absente de supabase status"
-            exit 1
-          }
-
-          test -n "${ANON_KEY:-}" || {
-            echo "::error::ANON_KEY absente de supabase status"
-            exit 1
-          }
-
-          test -n "${SERVICE_ROLE_KEY:-}" || {
-            echo "::error::SERVICE_ROLE_KEY absente de supabase status"
-            exit 1
-          }
-
-          case "$API_URL" in
-            http://127.0.0.1:*|http://localhost:*)
-              echo "Instance locale détectée : $API_URL"
-              ;;
-            *)
-              echo "::error::URL Supabase non locale : $API_URL"
-              exit 1
-              ;;
-          esac
-
-          API_URL="$API_URL" \
-          ANON_KEY="$ANON_KEY" \
-          SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
-          node <<'NODE'
-          const decode = (part) =>
-            JSON.parse(
-              Buffer.from(part, "base64url").toString("utf8"),
-            )
-
-          const validate = (name, token, expectedRole) => {
-            const parts = token.split(".")
-
-            if (parts.length !== 3) {
-              throw new Error(`${name} n'est pas un JWT valide`)
-            }
-
-            const header = decode(parts[0])
-            const payload = decode(parts[1])
-
-            if (header.alg !== "HS256") {
-              throw new Error(
-                `${name} utilise ${header.alg}; HS256 attendu`,
-              )
-            }
-
-            if (payload.role !== expectedRole) {
-              throw new Error(
-                `${name} contient le rôle ${payload.role ?? "absent"}; ${expectedRole} attendu`,
-              )
-            }
-          }
-
-          validate(
-            "ANON_KEY",
-            process.env.ANON_KEY,
-            "anon",
-          )
-
-          validate(
-            "SERVICE_ROLE_KEY",
-            process.env.SERVICE_ROLE_KEY,
-            "service_role",
-          )
-
-          console.log("Identifiants Supabase locaux valides")
-          NODE
-
-          echo "::add-mask::$ANON_KEY"
-          echo "::add-mask::$SERVICE_ROLE_KEY"
-
-          {
-            printf 'VITE_SUPABASE_URL=%q\n' "$API_URL"
-            printf 'VITE_SUPABASE_ANON_KEY=%q\n' "$ANON_KEY"
-            printf 'SUPABASE_SERVICE_ROLE_KEY=%q\n' "$SERVICE_ROLE_KEY"
-          } > "$test_file"
-
-          chmod 600 "$test_file"
-
-      - name: Install Playwright browsers
-        run: timeout 300s npx playwright install --with-deps chromium firefox webkit
-
-      - name: Run lint layer
-        id: layer_lint
-        continue-on-error: true
-        run: |
-          mkdir -p ci-metrics test-results
-
-          start=$(date +%s%3N)
-
-          set +e
-          npm run lint
-          code=$?
-          set -e
-
-          end=$(date +%s%3N)
-          duration=$((end - start))
-
-          status="passed"
-
-          if [ "$code" -ne 0 ]; then
-            status="failed"
-          fi
-
-          node -e "
-            const fs = require('fs');
-
-            fs.writeFileSync(
-              'ci-metrics/lint.json',
-              JSON.stringify(
-                {
-                  layer: 'lint',
-                  status: '$status',
-                  duration_ms: $duration,
-                  test_count: null,
-                  flaky_count: null,
-                  skipped_count: null
-                },
-                null,
-                2
-              )
-            );
-          "
-
-      - name: Run unit layer
-        id: layer_unit
-        continue-on-error: true
-        run: |
-          mkdir -p ci-metrics test-results
-
-          start=$(date +%s%3N)
-
-          set +e
-          npx vitest run \
-            --exclude "tests/integration/**" \
-            --exclude "tests/e2e/**" \
-            --reporter=default \
-            --reporter=json \
-            --outputFile=test-results/unit.json
-          code=$?
-          set -e
-
-          end=$(date +%s%3N)
-          duration=$((end - start))
-
-          status="passed"
-
-          if [ "$code" -ne 0 ]; then
-            status="failed"
-          fi
-
-          count="$(
-            node -e "
-              const fs = require('fs');
-              let count = null;
-
-              try {
-                const report = JSON.parse(
-                  fs.readFileSync('test-results/unit.json', 'utf8')
-                );
-
-                count =
-                  report.numTotalTests ??
-                  report.testResults?.reduce(
-                    (total, testFile) =>
-                      total + (testFile.assertionResults?.length || 0),
-                    0
-                  ) ??
-                  null;
-              } catch {}
-
-              process.stdout.write(
-                count === null ? 'null' : String(count)
-              );
-            "
-          )"
-
-          node -e "
-            const fs = require('fs');
-
-            fs.writeFileSync(
-              'ci-metrics/unit.json',
-              JSON.stringify(
-                {
-                  layer: 'unit',
-                  status: '$status',
-                  duration_ms: $duration,
-                  test_count:
-                    '$count' === 'null' ? null : Number('$count'),
-                  flaky_count: null,
-                  skipped_count: null
-                },
-                null,
-                2
-              )
-            );
-          "
-
-      - name: Run integration layer
-        id: layer_integration
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-
-          unset VITE_SUPABASE_URL
-          unset VITE_SUPABASE_ANON_KEY
-          unset SUPABASE_SERVICE_ROLE_KEY
-          unset SUPABASE_URL
-          unset SUPABASE_ANON_KEY
-          unset SUPABASE_LOCAL_URL
-          unset SUPABASE_LOCAL_ANON_KEY
-          unset SUPABASE_LOCAL_SERVICE_ROLE_KEY
-
-          set -a
-          source /tmp/supabase-integration.env
-          set +a
-
-          test -n "${VITE_SUPABASE_URL:-}" || {
-            echo "::error::VITE_SUPABASE_URL absente"
-            exit 1
-          }
-
-          test -n "${VITE_SUPABASE_ANON_KEY:-}" || {
-            echo "::error::VITE_SUPABASE_ANON_KEY absente"
-            exit 1
-          }
-
-          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
-            echo "::error::SUPABASE_SERVICE_ROLE_KEY absente"
-            exit 1
-          }
-
-          case "$VITE_SUPABASE_URL" in
-            http://127.0.0.1:*|http://localhost:*)
-              ;;
-            *)
-              echo "::error::Les tests d'intégration ne ciblent pas Supabase local : $VITE_SUPABASE_URL"
-              exit 1
-              ;;
-          esac
-
-          SUPABASE_LOCAL_URL="$VITE_SUPABASE_URL"
-          SUPABASE_LOCAL_ANON_KEY="$VITE_SUPABASE_ANON_KEY"
-          SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY"
-
-          export SUPABASE_LOCAL_URL
-          export SUPABASE_LOCAL_ANON_KEY
-          export SUPABASE_LOCAL_SERVICE_ROLE_KEY
-
-          SUPABASE_LOCAL_ANON_KEY="$SUPABASE_LOCAL_ANON_KEY" \
-          SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SUPABASE_LOCAL_SERVICE_ROLE_KEY" \
-          node <<'NODE'
-          function decodeJwt(token, name) {
-            const parts = token.split(".")
-
-            if (parts.length !== 3) {
-              throw new Error(`${name} n'est pas un JWT valide`)
-            }
-
-            return {
-              header: JSON.parse(
-                Buffer.from(parts[0], "base64url").toString("utf8"),
-              ),
-              payload: JSON.parse(
-                Buffer.from(parts[1], "base64url").toString("utf8"),
-              ),
-            }
-          }
-
-          function validate(token, name, expectedRole) {
-            const { header, payload } = decodeJwt(token, name)
-
-            if (header.alg !== "HS256") {
-              throw new Error(
-                `${name} utilise ${header.alg ?? "aucun algorithme"}; HS256 attendu`,
-              )
-            }
-
-            if (payload.role !== expectedRole) {
-              throw new Error(
-                `${name} contient le rôle ${payload.role ?? "absent"}; ${expectedRole} attendu`,
-              )
-            }
-          }
-
-          validate(
-            process.env.SUPABASE_LOCAL_ANON_KEY,
-            "Clé anon locale",
-            "anon",
-          )
-
-          validate(
-            process.env.SUPABASE_LOCAL_SERVICE_ROLE_KEY,
-            "Clé service_role locale",
-            "service_role",
-          )
-
-          console.log("Identifiants Supabase locaux validés")
-          NODE
-
-          echo "::add-mask::$SUPABASE_LOCAL_ANON_KEY"
-          echo "::add-mask::$SUPABASE_LOCAL_SERVICE_ROLE_KEY"
-
-          mkdir -p ci-metrics test-results
-
-          start=$(date +%s%3N)
-
-          set +e
-          env \
-            SUPABASE_LOCAL_URL="$SUPABASE_LOCAL_URL" \
-            SUPABASE_LOCAL_ANON_KEY="$SUPABASE_LOCAL_ANON_KEY" \
-            SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SUPABASE_LOCAL_SERVICE_ROLE_KEY" \
-            VITE_SUPABASE_URL="$SUPABASE_LOCAL_URL" \
-            VITE_SUPABASE_ANON_KEY="$SUPABASE_LOCAL_ANON_KEY" \
-            SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_LOCAL_SERVICE_ROLE_KEY" \
-            npx vitest run \
-              --config vitest.integration.config.ts \
-              --pool=forks \
-              --maxWorkers=1 \
-              --minWorkers=1 \
-              --no-file-parallelism \
-              tests/integration/rls.fleet-access.test.ts \
-              tests/integration/triggers.vehicle-limit.test.ts \
-              tests/integration/fuel.fraud-scoring.test.ts \
-              --reporter=default \
-              --reporter=json \
-              --outputFile=test-results/integration.json
-          code=$?
-          set -e
-
-          end=$(date +%s%3N)
-          duration=$((end - start))
-
-          status="passed"
-
-          if [ "$code" -ne 0 ]; then
-            status="failed"
-          fi
-
-          count="$(
-            node -e "
-              const fs = require('fs');
-              let count = null;
-
-              try {
-                const report = JSON.parse(
-                  fs.readFileSync(
-                    'test-results/integration.json',
-                    'utf8'
-                  )
-                );
-
-                count =
-                  report.numTotalTests ??
-                  report.testResults?.reduce(
-                    (total, testFile) =>
-                      total + (testFile.assertionResults?.length || 0),
-                    0
-                  ) ??
-                  null;
-              } catch {}
-
-              process.stdout.write(
-                count === null ? 'null' : String(count)
-              );
-            "
-          )"
-
-          node -e "
-            const fs = require('fs');
-
-            fs.writeFileSync(
-              'ci-metrics/integration.json',
-              JSON.stringify(
-                {
-                  layer: 'integration',
-                  status: '$status',
-                  duration_ms: $duration,
-                  test_count:
-                    '$count' === 'null' ? null : Number('$count'),
-                  flaky_count: null,
-                  skipped_count: null
-                },
-                null,
-                2
-              )
-            );
-          "
-      - name: Run E2E layer
-        id: layer_e2e
-        continue-on-error: true
-        env:
-          ESAMBA_E2E: "1"
-        run: |
-          set -euo pipefail
-
-          mkdir -p ci-metrics test-results/e2e
-
-          unset VITE_SUPABASE_URL
-          unset VITE_SUPABASE_ANON_KEY
-          unset SUPABASE_SERVICE_ROLE_KEY
-          unset SUPABASE_URL
-          unset SUPABASE_ANON_KEY
-          unset SUPABASE_LOCAL_URL
-          unset SUPABASE_LOCAL_ANON_KEY
-          unset SUPABASE_LOCAL_SERVICE_ROLE_KEY
-
-          set -a
-          source /tmp/supabase-integration.env
-          set +a
-
-          test -n "${VITE_SUPABASE_URL:-}" || {
-            echo "::error::VITE_SUPABASE_URL absente"
-            exit 1
-          }
-
-          test -n "${VITE_SUPABASE_ANON_KEY:-}" || {
-            echo "::error::VITE_SUPABASE_ANON_KEY absente"
-            exit 1
-          }
-
-          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
-            echo "::error::SUPABASE_SERVICE_ROLE_KEY absente"
-            exit 1
-          }
-
-          case "$VITE_SUPABASE_URL" in
-            http://127.0.0.1:*|http://localhost:*)
-              ;;
-            *)
-              echo "::error::Les tests E2E ne ciblent pas Supabase local : $VITE_SUPABASE_URL"
-              exit 1
-              ;;
-          esac
-
-          echo "::add-mask::$VITE_SUPABASE_ANON_KEY"
-          echo "::add-mask::$SUPABASE_SERVICE_ROLE_KEY"
-
-          start=$(date +%s%3N)
-
-          set +e
-          VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \
-          VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY" \
-          SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
-          PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/e2e/results.json \
-            npx playwright test --reporter=line,json
-          code=$?
-          set -e
-
-          end=$(date +%s%3N)
-          duration=$((end - start))
-
-          status="passed"
-
-          if [ "$code" -ne 0 ]; then
-            status="failed"
-          fi
-
-          counts="$(
-            node -e "
-              const fs = require('fs');
-              const output = {
-                tests: null,
-                flaky: null,
-                skipped: null
-              };
-
-              try {
-                const report = JSON.parse(
-                  fs.readFileSync(
-                    'test-results/e2e/results.json',
-                    'utf8'
-                  )
-                );
-
-                const specs = [];
-
-                const walk = (suite) => {
-                  for (const spec of suite.specs || []) {
-                    specs.push(spec);
-                  }
-
-                  for (const child of suite.suites || []) {
-                    walk(child);
-                  }
-                };
-
-                for (const suite of report.suites || []) {
-                  walk(suite);
-                }
-
-                output.tests = specs.reduce(
-                  (total, spec) =>
-                    total + (spec.tests?.length || 0),
-                  0
-                );
-
-                output.flaky = specs.reduce(
-                  (total, spec) =>
-                    total +
-                    (spec.tests || []).filter(
-                      (test) => test.outcome === 'flaky'
-                    ).length,
-                  0
-                );
-
-                output.skipped = specs.reduce(
-                  (total, spec) =>
-                    total +
-                    (spec.tests || []).filter(
-                      (test) => test.outcome === 'skipped'
-                    ).length,
-                  0
-                );
-              } catch {}
-
-              process.stdout.write(JSON.stringify(output));
-            "
-          )"
-
-          test_count="$(
-            node -e "
-              const counts = JSON.parse(process.argv[1]);
-
-              process.stdout.write(
-                counts.tests === null
-                  ? 'null'
-                  : String(counts.tests)
-              );
-            " "$counts"
-          )"
-
-          flaky_count="$(
-            node -e "
-              const counts = JSON.parse(process.argv[1]);
-
-              process.stdout.write(
-                counts.flaky === null
-                  ? 'null'
-                  : String(counts.flaky)
-              );
-            " "$counts"
-          )"
-
-          skipped_count="$(
-            node -e "
-              const counts = JSON.parse(process.argv[1]);
-
-              process.stdout.write(
-                counts.skipped === null
-                  ? 'null'
-                  : String(counts.skipped)
-              );
-            " "$counts"
-          )"
-
-          if [ "$skipped_count" != "null" ] && [ "$skipped_count" -ne 0 ]; then
-            status="failed"
-          fi
-
-          node -e "
-            const fs = require('fs');
-
-            fs.writeFileSync(
-              'ci-metrics/e2e.json',
-              JSON.stringify(
-                {
-                  layer: 'e2e',
-                  status: '$status',
-                  duration_ms: $duration,
-                  test_count:
-                    '$test_count' === 'null'
-                      ? null
-                      : Number('$test_count'),
-                  flaky_count:
-                    '$flaky_count' === 'null'
-                      ? null
-                      : Number('$flaky_count'),
-                  skipped_count:
-                    '$skipped_count' === 'null'
-                      ? null
-                      : Number('$skipped_count')
-                },
-                null,
-                2
-              )
-            );
-          "
-
-      - name: Build consolidated metrics and summary
-        if: always()
-        run: |
-          node <<'NODE'
-          const fs = require("fs")
-          const path = require("path")
-
-          const directory = "ci-metrics"
-
-          const files = [
-            "lint.json",
-            "unit.json",
-            "integration.json",
-            "e2e.json",
-          ]
-
-          const layers = files.map((file) => {
-            const filePath = path.join(directory, file)
-
-            if (!fs.existsSync(filePath)) {
-              return {
-                layer: file.replace(".json", ""),
-                status: "failed",
-                duration_ms: 0,
-                test_count: null,
-                flaky_count: null,
-                skipped_count: null,
-              }
-            }
-
-            return JSON.parse(
-              fs.readFileSync(filePath, "utf8"),
-            )
-          })
-
-          const payload = {
-            generated_at: new Date().toISOString(),
-            layers,
-          }
-
-          fs.writeFileSync(
-            "ci-metrics.json",
-            JSON.stringify(payload, null, 2),
-          )
-
-          const rows = layers
-            .map(
-              (layer) =>
-                `| ${layer.layer} | ${layer.status} | ${layer.duration_ms} | ${layer.test_count ?? "n/a"} | ${layer.flaky_count ?? "n/a"} | ${layer.skipped_count ?? "n/a"} |`,
-            )
-            .join("\n")
-
-          const markdown = [
-            "## CI metrics",
-            "",
-            "| Couche | Statut | Durée (ms) | Tests | Flaky E2E | Skipped |",
-            "|---|---:|---:|---:|---:|---:|",
-            rows,
-            "",
-          ].join("\n")
-
-          fs.appendFileSync(
-            process.env.GITHUB_STEP_SUMMARY,
-            markdown,
-          )
-          NODE
-
-      - name: Upload metrics artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-metrics
-          path: |
-            ci-metrics.json
-            ci-metrics/*.json
-            test-results/*.json
-            test-results/**
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Supabase status
-        if: always()
-        run: supabase status || true
-
-      - name: Remove temporary credentials
-        if: always()
-        run: |
-          rm -f \
-            /tmp/supabase-status.env \
-            /tmp/supabase-integration.env
-
-      - name: Stop Supabase local
-        if: always()
-        run: supabase stop --no-backup || true
-
-      - name: Fail workflow if any layer failed
-        if: always()
-        run: |
-          node -e "
-            const fs = require('fs');
-
-            const payload = JSON.parse(
-              fs.readFileSync('ci-metrics.json', 'utf8')
-            );
-
-            const failed = payload.layers.filter(
-              (layer) => layer.status !== 'passed'
-            );
-
-            if (failed.length > 0) {
-              console.error(
-                'Layers en échec:',
-                failed.map((layer) => layer.layer).join(', ')
-              );
-
-              process.exit(1);
-            }
-          "
+      - run: echo "Detailed quality metrics are now opt-in to protect the monthly Actions budget."

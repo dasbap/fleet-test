@@ -1,6 +1,6 @@
 import type { Context, Hono } from "hono";
 import { z } from "zod";
-import { getAppUrl, getSupabaseUrl } from "../../env.js";
+import { getAppUrl } from "../../env.js";
 import { getBearerToken } from "../auth.js";
 import { jsonInternalServerError } from "../errorResponse.js";
 import { createSupabaseServiceClient } from "../../infra/supabaseServiceClient.js";
@@ -17,12 +17,6 @@ const validateMagicLinkSchema = z.object({
   action: z.literal("validate"),
   token: z.string().uuid(),
 });
-
-const MAGIC_LINK_UPSTREAM_TIMEOUT_MS = 8_000;
-
-function getAdminSecret(): string | undefined {
-  return process.env.ADMIN_SECRET?.trim() || undefined;
-}
 
 function hasSupabaseAuthConfig(): boolean {
   const url =
@@ -105,45 +99,6 @@ async function requireLocalPlatformAdmin(c: Context) {
   return { token, user, isSuperAdmin: Boolean(isSuperAdmin) };
 }
 
-async function forwardJson(
-  c: Context,
-  endpoint: "demo-magic-link",
-  body: Record<string, unknown>,
-) {
-  const adminSecret = getAdminSecret();
-  if (!adminSecret) {
-    return jsonServerConfigurationError(c);
-  }
-
-  let upstream: Response;
-  try {
-    upstream = await fetch(`${getSupabaseUrl()}/functions/v1/${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${adminSecret}`,
-      },
-      body: JSON.stringify(body),
-      signal:
-        typeof AbortSignal.timeout === "function"
-          ? AbortSignal.timeout(MAGIC_LINK_UPSTREAM_TIMEOUT_MS)
-          : undefined,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn(`[admin-demo] ${endpoint} upstream unavailable: ${message}`);
-    return c.json({ ok: false, error: "upstream_unavailable" }, 502);
-  }
-
-  let data: Record<string, unknown>;
-  try {
-    data = (await upstream.json()) as Record<string, unknown>;
-  } catch {
-    return c.json({ ok: false, error: "upstream_invalid_response" }, 502);
-  }
-  return c.json(data, upstream.status as Parameters<typeof c.json>[1]);
-}
-
 async function createMagicLinkLocally(
   c: Context,
   body: z.infer<typeof generateMagicLinkSchema>,
@@ -183,23 +138,6 @@ async function handleGenerateMagicLink(c: Context) {
       return c.json({ ok: false, error: "invalid_payload", details: parsed.error.flatten() }, 400);
     }
 
-    if (!getAdminSecret()) {
-      return await createMagicLinkLocally(c, parsed.data, auth.user.id);
-    }
-
-    const remote = await forwardJson(c, "demo-magic-link", {
-      action: "create",
-      user_id: parsed.data.user_id,
-      fleet_id: parsed.data.fleet_id ?? null,
-      email: parsed.data.email,
-      label: parsed.data.label,
-    });
-
-    if (remote.ok) return remote;
-
-    console.warn(
-      `[admin-demo] demo-magic-link upstream returned ${remote.status}; falling back to local RPC`,
-    );
     return await createMagicLinkLocally(c, parsed.data, auth.user.id);
   } catch (error) {
     return jsonInternalServerError(c, error);

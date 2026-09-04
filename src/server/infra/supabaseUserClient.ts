@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAnonKey, getSupabaseUrl } from "../env.js";
+import { fetchWithSupabaseTimeout } from "./fetchWithTimeout.js";
 
 function decodeBase64UrlJson(segment: string): Record<string, unknown> | null {
   try {
@@ -65,6 +66,7 @@ export function createSupabaseUserClient(accessToken: string): SupabaseClient {
   return createClient(url, anon, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     global: {
+      fetch: fetchWithSupabaseTimeout,
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "x-client-info": "smart-fleet-africa-bff@1.0.0",

@@ -167,7 +167,18 @@ jobs:
               DB_PORT="${DB_TARGET##*:}"
             fi
 
-            if [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
+            DB_URL_USER="$(
+              node -e '
+                try {
+                  const value = new URL(process.argv[1]).username;
+                  if (value) process.stdout.write(decodeURIComponent(value));
+                } catch {}
+              ' "$DB_URL"
+            )"
+
+            if [ -n "$DB_URL_USER" ]; then
+              DB_USER="$DB_URL_USER"
+            elif [ "$DB_HOST" = "db.${SUPABASE_PROJECT_REF}.supabase.co" ]; then
               DB_USER="postgres"
             fi
           fi
@@ -175,7 +186,7 @@ jobs:
           echo "Executing migration verification script..."
           echo "Database host: ${DB_HOST}"
           echo "Database port: ${DB_PORT}"
-          echo "Database user: ${DB_USER}"
+          echo "Database user source: $([ -n "${DB_URL_USER:-}" ] && echo connection-url || echo derived-fallback)"
 
           set +e
 

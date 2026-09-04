@@ -118,6 +118,22 @@ describe("admin demo routes mutation coverage", () => {
     expect(admin.rpc).toHaveBeenCalledWith("demo_create_magic_link", { p_user_id: "00000000-0000-4000-8000-000000000001", p_fleet_id: null, p_email: "a@b.com", p_label: "Demo", p_expires_at: null, p_created_by: "admin-1" });
   });
 
+  it("ignores ADMIN_SECRET and creates magic links through the local RPC", async () => {
+    vi.stubEnv("ADMIN_SECRET", " secret ");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const admin = serviceClient({ rpcData: { ok: true, token: "tok-secret" } });
+    createSupabaseServiceClient.mockReturnValue(admin);
+
+    const response = await request("/api/admin/generate-magic-link", { user_id: "00000000-0000-4000-8000-000000000001", fleet_id: "00000000-0000-4000-8000-000000000002", email: "a@b.com", label: "L" });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, magic_url: "https://app.test/demo/access?token=tok-secret" });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(admin.rpc).toHaveBeenCalledWith("demo_create_magic_link", { p_user_id: "00000000-0000-4000-8000-000000000001", p_fleet_id: "00000000-0000-4000-8000-000000000002", p_email: "a@b.com", p_label: "L", p_expires_at: null, p_created_by: "admin-1" });
+    vi.unstubAllGlobals();
+  });
+
   it("handles local magic link service failures", async () => {
     createSupabaseServiceClient.mockReturnValue(null);
     let response = await request("/api/admin/generate-magic-link", { user_id: "00000000-0000-4000-8000-000000000001", email: "a@b.com" });
@@ -128,22 +144,6 @@ describe("admin demo routes mutation coverage", () => {
       expect(response.status).toBe(500);
       expect(await response.json()).toEqual({ ok: false, error: "create_failed" });
     }
-  });
-
-  it("forwards generate route when ADMIN_SECRET is set", async () => {
-    vi.stubEnv("ADMIN_SECRET", " secret ");
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true, magic_url: "remote" }), { status: 201, headers: { "Content-Type": "application/json" } }));
-    vi.stubGlobal("fetch", fetchMock);
-    const response = await request("/api/admin/generate-magic-link", { user_id: "00000000-0000-4000-8000-000000000001", fleet_id: "00000000-0000-4000-8000-000000000002", email: "a@b.com", label: "L" });
-    expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ ok: true, magic_url: "remote" });
-    expect(fetchMock).toHaveBeenCalledWith("https://supabase.test/functions/v1/demo-magic-link", expect.objectContaining({ method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer secret" }, body: JSON.stringify({ action: "create", user_id: "00000000-0000-4000-8000-000000000001", fleet_id: "00000000-0000-4000-8000-000000000002", email: "a@b.com", label: "L" }) }));
-    fetchMock.mockResolvedValueOnce(new Response("bad", { status: 200 }));
-    createSupabaseServiceClient.mockReturnValue(serviceClient({ rpcData: { ok: true, token: "fallback-token" } }));
-    const invalid = await request("/api/admin/generate-magic-link", { user_id: "00000000-0000-4000-8000-000000000001", email: "a@b.com" });
-    expect(invalid.status).toBe(200);
-    expect(await invalid.json()).toEqual({ ok: true, magic_url: "https://app.test/demo/access?token=fallback-token" });
-    vi.unstubAllGlobals();
   });
 
   it("validates magic links and creates auth magic link", async () => {
