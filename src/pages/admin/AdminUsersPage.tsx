@@ -95,10 +95,6 @@ export default function AdminUsersPage() {
   }, [managedUsers, userSearch]);
 
   useEffect(() => {
-    if (isAdmin) void loadManagedUsers();
-  }, [isAdmin, loadManagedUsers]);
-
-  useEffect(() => {
     if (!provisionableRoles.includes(role)) {
       setRole("driver");
       return;
@@ -140,6 +136,10 @@ export default function AdminUsersPage() {
       setManagedUsersLoading(false);
     }
   }, [getAccessToken, isAdmin, toast]);
+
+  useEffect(() => {
+    if (isAdmin) void loadManagedUsers();
+  }, [isAdmin, loadManagedUsers]);
 
   async function runUserSecurityAction(
     user: ManagedUser,
