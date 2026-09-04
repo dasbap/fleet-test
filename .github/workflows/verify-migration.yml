@@ -34,7 +34,7 @@ jobs:
 
     env:
       SUPABASE_CLI_VERSION: "2.102.0"
-      SUPABASE_PROJECT_REF: idsuntuizzpdzlibafdz
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_POOLER_HOST: ${{ secrets.SUPABASE_POOLER_HOST }}
       PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
