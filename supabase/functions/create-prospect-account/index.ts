@@ -46,6 +46,7 @@ interface RegistrationResult {
 const ALLOWED_ORIGINS = [
   "https://www.e-samba.com",
   "https://app.e-samba.com",
+  "https://fleet-test-gamma.vercel.app",
   "capacitor://localhost",
   "http://localhost:5173",
   "http://localhost:8080",
