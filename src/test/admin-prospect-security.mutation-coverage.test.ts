@@ -122,7 +122,7 @@ describe("admin prospect security mutation coverage", () => {
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual(expect.objectContaining({ ok: true, user_id: "prospect-1", email: "user@example.com", fleet_id: "fleet-1", permanent_access: false, must_set_password: true }));
     expect(admin.rpc).toHaveBeenCalledWith("prospect_create_account", expect.objectContaining({ p_email: "user@example.com", p_company_name: "Acme", p_trial_days: 7, p_account_type: "prospect", p_permanent_access: false }));
-    expect(resetPasswordForEmail).toHaveBeenCalledWith("user@example.com", { redirectTo: "https://app.test/set-password" });
+    expect(resetPasswordForEmail).toHaveBeenCalledWith("user@example.com", { redirectTo: "https://app.test/auth/update-password" });
   });
 
   it("handles auth creation and registration failures with rollback", async () => {
