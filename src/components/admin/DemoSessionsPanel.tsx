@@ -174,8 +174,11 @@ export function DemoSessionsPanel({
 
   async function withBusy(userId: string, action: () => Promise<unknown>) {
     setActionInProgress(userId);
-    await action();
-    setActionInProgress(null);
+    try {
+      await action();
+    } finally {
+      setActionInProgress(null);
+    }
   }
 
   async function handleGenerateLink(session: DemoSession) {
@@ -190,6 +193,12 @@ export function DemoSessionsPanel({
         toast({
           title: "Lien genere et copie",
           description: `${url.slice(0, 60)}...`,
+        });
+      } else {
+        toast({
+          title: "Lien non genere",
+          description: "Le compte doit etre actif et non expire.",
+          variant: "destructive",
         });
       }
     });
@@ -330,6 +339,9 @@ export function DemoSessionsPanel({
                 session.expires_at,
                 effectivelyActive
               );
+              const maxReactivateAt = new Date(session.created_at);
+              maxReactivateAt.setMonth(maxReactivateAt.getMonth() + 1);
+              const canReactivate = maxReactivateAt.getTime() > Date.now();
               const busy = actionInProgress === session.user_id;
 
               return (
@@ -548,7 +560,7 @@ export function DemoSessionsPanel({
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                        ) : (
+                        ) : canReactivate ? (
                           <DropdownMenuItem
                             onClick={() =>
                               void withBusy(session.user_id, () =>
@@ -558,6 +570,11 @@ export function DemoSessionsPanel({
                           >
                             <UserCheck className="h-4 w-4 mr-2" />
                             Reactiver
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem disabled>
+                            <UserX className="h-4 w-4 mr-2" />
+                            Periode maximale atteinte
                           </DropdownMenuItem>
                         )}
 
