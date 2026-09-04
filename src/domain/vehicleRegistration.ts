@@ -95,7 +95,6 @@ export function validateVehicleRegistrationForCountry(
 ): string | null {
   const rule = getVehicleRegistrationRule(countryCode);
   const rawNormalized = value.toUpperCase().replace(/\s+/g, " ").trim();
-  const normalized = normalizeVehicleRegistration(value);
   const compact = compactVehicleRegistration(value);
 
   if (!rawNormalized) {
