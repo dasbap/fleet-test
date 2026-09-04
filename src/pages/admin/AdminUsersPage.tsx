@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { KeyRound, Link2, RefreshCw, Shield, UserPlus, UsersRound } from "lucide-react";
@@ -96,7 +96,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     if (isAdmin) void loadManagedUsers();
-  }, [isAdmin]);
+  }, [isAdmin, loadManagedUsers]);
 
   useEffect(() => {
     if (!provisionableRoles.includes(role)) {
@@ -112,14 +112,14 @@ export default function AdminUsersPage() {
     if (defaultFleetId) setFleetId(defaultFleetId);
   }, [fleetId, fleetOptions, provisionableRoles, requiresFleet, role, userFleetId]);
 
-  async function getAccessToken(): Promise<string> {
+  const getAccessToken = useCallback(async (): Promise<string> => {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) throw new Error("session_expiree");
     return token;
-  }
+  }, []);
 
-  async function loadManagedUsers() {
+  const loadManagedUsers = useCallback(async () => {
     if (!isAdmin) return;
     setManagedUsersLoading(true);
     try {
@@ -139,7 +139,7 @@ export default function AdminUsersPage() {
     } finally {
       setManagedUsersLoading(false);
     }
-  }
+  }, [getAccessToken, isAdmin, toast]);
 
   async function runUserSecurityAction(
     user: ManagedUser,
