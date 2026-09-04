@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -27,8 +28,15 @@ import { useCreateVehicle } from "@/hooks/useVehicles";
 import { useActivation } from "@/hooks/useActivation";
 import { useFleetSubscriptions } from "@/hooks/useSubscriptionManagement";
 import type { SubscriptionSummary } from "@/services/subscription-management.service";
+import { FleetRepository } from "@/repositories/fleet.repository";
+import {
+  getVehicleRegistrationRule,
+  normalizeVehicleRegistration,
+  validateVehicleRegistrationForCountry,
+} from "@/domain/vehicleRegistration";
 
 const vehicleFormSchema = vehicleCreateFormSchema;
+const fleetRepository = new FleetRepository();
 type VehicleFormValues = VehicleCreateFormValues;
 
 interface VehicleFormDialogProps {
@@ -48,6 +56,13 @@ function availableSlotsForCreation(subscription: SubscriptionSummary): number {
 
 const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFormDialogProps) => {
   const createVehicle = useCreateVehicle();
+  const { data: countryCode = "CM" } = useQuery({
+    queryKey: ["fleet-country", fleetId],
+    queryFn: () => fleetRepository.findCountryCodeById(fleetId),
+    enabled: Boolean(fleetId),
+    staleTime: 5 * 60_000,
+  });
+  const registrationRule = getVehicleRegistrationRule(countryCode);
   const { data: subscriptions = [], isLoading: subscriptionsLoading } = useFleetSubscriptions(fleetId);
   const { completeStep } = useActivation();
   const subscriptionOptions = useMemo(
@@ -75,6 +90,15 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
   });
 
   const onSubmit = async (data: VehicleFormValues) => {
+    const registrationError = validateVehicleRegistrationForCountry(
+      data.registration,
+      countryCode,
+    );
+    if (registrationError) {
+      form.setError("registration", { type: "manual", message: registrationError });
+      return;
+    }
+
     await createVehicle.mutateAsync({
       fleet_id: fleetId,
       subscription_id: data.subscription_id,
@@ -110,8 +134,31 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
                 <FormItem>
                   <FormLabel>Immatriculation</FormLabel>
                   <FormControl>
-                    <Input placeholder="LT 1234 A" {...field} />
+                    <Input
+                      {...field}
+                      placeholder={registrationRule.placeholder}
+                      maxLength={registrationRule.maxInputLength}
+                      autoCapitalize="characters"
+                      spellCheck={false}
+                      onChange={(event) => {
+                        const next = normalizeVehicleRegistration(event.target.value).slice(
+                          0,
+                          registrationRule.maxInputLength,
+                        );
+                        field.onChange(next);
+                        const error = validateVehicleRegistrationForCountry(next, countryCode);
+                        if (error) {
+                          form.setError("registration", { type: "manual", message: error });
+                        } else {
+                          form.clearErrors("registration");
+                        }
+                      }}
+                    />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Format {countryCode} · {registrationRule.minCompactLength} à{" "}
+                    {registrationRule.maxCompactLength} caractères utiles. Une plaque ne peut être utilisée qu'une seule fois.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
