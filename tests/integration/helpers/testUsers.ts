@@ -185,9 +185,9 @@ export async function createVehicleForFleet(
   registrationPrefix = "IT"
 ): Promise<string> {
   const runId = createTestRunId("vh");
-  const registration = `${registrationPrefix}-${runId}`
-    .slice(0, 30)
-    .toUpperCase();
+  const compactPrefix = registrationPrefix.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 3);
+  const compactRunId = runId.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  const registration = `${compactPrefix}${compactRunId.slice(-6)}`;
   const { data, error } = await admin.rpc("creer_vehicule_esamba", {
     p_fleet_id: fleetId,
     p_registration: registration,
