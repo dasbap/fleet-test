@@ -100,3 +100,5 @@ public/.well-known/assetlinks.json
 .vercel
 
 .vercel
+.vercel
+.env*

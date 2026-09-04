@@ -4,6 +4,11 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": "vite",
+  "functions": {
+    "api/admin/generate-magic-link.ts": {
+      "maxDuration": 15
+    }
+  },
   "redirects": [
     {
       "source": "/:path*",
@@ -75,10 +80,6 @@
     },
     {
       "source": "/api/gps/ingest",
-      "destination": "/api/[...path]"
-    },
-    {
-      "source": "/api/admin/generate-magic-link",
       "destination": "/api/[...path]"
     },
     {
