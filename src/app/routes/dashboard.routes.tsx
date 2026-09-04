@@ -312,7 +312,11 @@ export const dashboardRoutes = (
       />
       <Route
         path="admin/demo"
-        element={<Navigate to={ROUTE_PATHS.dashboardAdminDemo} replace />}
+        element={
+          <AdminGuard redirectIfDenied showLoadingState>
+            <Navigate to={ROUTE_PATHS.dashboardAdminDemo} replace />
+          </AdminGuard>
+        }
       />
       <Route
         path="admin/users"
