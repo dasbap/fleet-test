@@ -27,6 +27,7 @@ export interface DemoSession {
 
 export interface DemoRpcActionResult {
   ok: boolean;
+  error?: string;
   expires_at?: string;
   max_expires_at?: string;
   vehicles_deleted?: number;
