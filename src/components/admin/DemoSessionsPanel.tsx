@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import type { DemoSession } from "@/hooks/useAdminDemoAccounts";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
@@ -152,6 +153,7 @@ export function DemoSessionsPanel({
   onGenerateMagicLink,
 }: DemoSessionsPanelProps) {
   const { toast } = useToast();
+  const { isSuperAdmin, isLoading: isRoleLoading } = useRoleAccess();
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
@@ -386,12 +388,27 @@ export function DemoSessionsPanel({
 
                   <TableCell>
                     {session.fleet_id ? (
-                      <Button asChild variant="outline" size="sm" className="gap-2">
-                        <Link to={ROUTE_PATHS.dashboardAdminSubscriptions}>
-                          <CreditCard className="h-4 w-4" aria-hidden />
-                          Gérer
-                        </Link>
-                      </Button>
+                      isRoleLoading ? (
+                        <Button variant="outline" size="sm" disabled>
+                          Chargement...
+                        </Button>
+                      ) : isSuperAdmin ? (
+                        <Button asChild variant="outline" size="sm" className="gap-2">
+                          <Link
+                            to={`${ROUTE_PATHS.dashboardAdminSubscriptions}?fleet=${encodeURIComponent(session.fleet_id)}`}
+                          >
+                            <CreditCard className="h-4 w-4" aria-hidden />
+                            Gérer
+                          </Link>
+                        </Button>
+                      ) : (
+                        <span
+                          className="text-xs text-muted-foreground"
+                          title="Seul le super administrateur peut attribuer un abonnement."
+                        >
+                          Super admin requis
+                        </span>
+                      )
                     ) : (
                       <span className="text-muted-foreground">
                         Après création flotte
