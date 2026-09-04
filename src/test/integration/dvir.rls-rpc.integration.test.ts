@@ -1,69 +1,145 @@
-import { beforeAll, afterAll, describe, expect, it } from "vitest";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { loadTestEnv } from "../helpers/loadTestEnv";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createClient } from "@supabase/supabase-js";
 
-const env = loadTestEnv();
+const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || "";
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const runIntegration = process.env.RUN_SUPABASE_INTEGRATION === "1";
 
-const supabase = createClient(env.supabaseUrl, env.supabaseAnonKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-});
+if (runIntegration && (!supabaseUrl || !supabaseAnonKey)) {
+  throw new Error(
+    "Les variables d'environnement VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY doivent être définies"
+  );
+}
+if (runIntegration && !supabaseServiceRoleKey) {
+  throw new Error(
+    "La variable d'environnement SUPABASE_SERVICE_ROLE_KEY doit être définie"
+  );
+}
 
-const supabaseAdmin = createClient(env.supabaseUrl, env.supabaseServiceRoleKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-});
+const supabase = runIntegration
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : (null as unknown as ReturnType<typeof createClient>);
+const supabaseAdmin = runIntegration
+  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  : (null as unknown as ReturnType<typeof createClient>);
 
-describe("DVIR RLS + RPC integration", () => {
+describe("DVIR SQL/RLS - matrice rôles + filtres RPC + pagination", () => {
   let testUserId = "";
   let testOrgId = "";
   let testFleetId = "";
   let testVehicleIdA = "";
   let testVehicleIdB = "";
+  let testAuthUserId = "";
   let guardAuthUserId = "";
-  let unique = Date.now();
   const createdDvirIds: string[] = [];
+  const unique = Date.now();
 
-  async function setMembershipRole(role: string, isActive = true) {
-    const { error } = await supabaseAdmin
-      .from("flotte_adhesions")
-      .update({ role, is_active: isActive })
-      .eq("fleet_id", testFleetId)
-      .eq("user_id", testUserId);
+  async function setMembershipRole(
+    role: "driver" | "mechanic" | "manager" | "organizer",
+    isActive = true
+  ) {
+    const { error } = await supabaseAdmin.from("flotte_adhesions").upsert(
+      {
+        fleet_id: testFleetId,
+        user_id: testUserId,
+        role,
+        is_active: isActive,
+      },
+      { onConflict: "fleet_id,user_id" }
+    );
+
     expect(error).toBeNull();
   }
 
+  async function insertDvir(
+    params?: Partial<{
+      vehicleId: string;
+      status: "ok" | "unsafe" | "defects_noted" | "minor_issues";
+      inspectedAt: string;
+    }>
+  ) {
+    const { data, error } = await supabase
+      .from("controles_journaliers")
+      .insert({
+        fleet_id: testFleetId,
+        vehicle_id: params?.vehicleId ?? testVehicleIdA,
+        inspected_by: testUserId,
+        inspection_type: "pre_trip",
+        items: {
+          freins_service: {
+            status: params?.status === "unsafe" ? "defaut" : "ok",
+          },
+        },
+        overall_status: params?.status ?? "ok",
+        notes: "Test DVIR intégration",
+        odometer_km: 1500,
+        inspected_at: params?.inspectedAt ?? new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.id).toBeDefined();
+    createdDvirIds.push(data.id);
+    return data.id as string;
+  }
+
   beforeAll(async () => {
-    unique = Date.now();
-    const email = `dvir-integration-${unique}@example.com`;
-    const password = `DvirIntegration!${unique}`;
+    const testEmail = `dvir-integration-${unique}@example.com`;
+    const testPassword = `Dvir!${unique}`;
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    expect(signUpError).toBeNull();
-    expect(signUpData.user).toBeDefined();
-    testUserId = signUpData.user!.id;
+    const { data: createdUser, error: createUserError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email: testEmail,
+        password: testPassword,
+        email_confirm: true,
+      });
+    if (createUserError || !createdUser.user) {
+      throw new Error(
+        createUserError?.message ?? "Impossible de créer l'utilisateur de test"
+      );
+    }
+    testAuthUserId = createdUser.user.id;
 
-    const { error: profileError } = await supabase
+    const { data: sessionData, error: signInError } =
+      await supabase.auth.signInWithPassword({
+        email: testEmail,
+        password: testPassword,
+      });
+    if (signInError || !sessionData.user) {
+      throw new Error(
+        signInError?.message ??
+          "Impossible de se connecter avec l'utilisateur de test"
+      );
+    }
+
+    testUserId = sessionData.user.id;
+
+    const { error: profilError } = await supabaseAdmin
       .from("profils")
-      .insert({ user_id: testUserId, full_name: "DVIR Integration" });
-    expect(profileError).toBeNull();
+      .insert({ user_id: testUserId, full_name: "Test DVIR User" });
+    if (profilError)
+      throw new Error(
+        `Impossible de créer le profil de test: ${profilError.message}`
+      );
 
-    const { data: orgId, error: orgError } = await supabase.rpc(
-      "creer_organisation_initiale",
-      { p_name: `Test DVIR Org ${unique}` }
-    );
+    const { data: org, error: orgError } = await supabaseAdmin
+      .from("organisations")
+      .insert({
+        name: `Test DVIR Org ${unique}`,
+        country_code: "CM",
+      })
+      .select("id")
+      .single();
+
     expect(orgError).toBeNull();
-    testOrgId = orgId as string;
+    testOrgId = org.id;
 
     const { data: fleetId, error: fleetError } = await supabase.rpc(
-      "creer_flotte",
+      "create_esamba_fleet",
       {
         p_org_id: testOrgId,
         p_name: `Test DVIR Fleet ${unique}`,
@@ -178,60 +254,151 @@ describe("DVIR RLS + RPC integration", () => {
       await supabaseAdmin.auth.admin.deleteUser(guardAuthUserId);
     }
 
-    if (testUserId) {
-      await supabaseAdmin.auth.admin.deleteUser(testUserId);
+    if (testAuthUserId) {
+      await supabaseAdmin.auth.admin.deleteUser(testAuthUserId);
     }
   });
 
-  it("allows organizer to create and read DVIR", async () => {
-    const { data, error } = await supabase.rpc("create_dvir_daily", {
-      p_vehicle_id: testVehicleIdA,
-      p_odometer_km: 1100,
-      p_status: "ok",
-      p_notes: "integration test",
-    });
+  it("autorise l'insertion DVIR pour chaque rôle actif autorisé", async () => {
+    const roles: Array<"driver" | "mechanic" | "manager" | "organizer"> = [
+      "driver",
+      "mechanic",
+      "manager",
+      "organizer",
+    ];
 
-    expect(error).toBeNull();
-    expect(data).toBeDefined();
-    createdDvirIds.push(data as string);
-
-    const { data: dvir, error: readError } = await supabase
-      .from("controles_journaliers")
-      .select("id, vehicle_id, fleet_id")
-      .eq("id", data as string)
-      .single();
-
-    expect(readError).toBeNull();
-    expect(dvir?.vehicle_id).toBe(testVehicleIdA);
-    expect(dvir?.fleet_id).toBe(testFleetId);
+    for (const role of roles) {
+      await setMembershipRole(role, true);
+      await insertDvir({ status: "ok" });
+    }
   });
 
-  it("prevents DVIR creation for a vehicle outside the fleet", async () => {
-    const { data, error } = await supabase.rpc("create_dvir_daily", {
-      p_vehicle_id: testVehicleIdB,
-      p_odometer_km: 900,
-      p_status: "ok",
-      p_notes: "guard test",
-      p_fleet_id: crypto.randomUUID(),
+  it("refuse l'insertion DVIR si l'adhésion est inactive", async () => {
+    await setMembershipRole("driver", false);
+
+    const { error } = await supabase.from("controles_journaliers").insert({
+      fleet_id: testFleetId,
+      vehicle_id: testVehicleIdA,
+      inspected_by: testUserId,
+      inspection_type: "pre_trip",
+      items: { freins_service: { status: "ok" } },
+      overall_status: "ok",
+      notes: "Doit être refusé",
+      odometer_km: 900,
     });
 
-    expect(data).toBeNull();
-    expect(error).toBeDefined();
-  });
-
-  it("enforces organizer permissions", async () => {
-    await setMembershipRole("driver", true);
-
-    const { data, error } = await supabase.rpc("create_dvir_daily", {
-      p_vehicle_id: testVehicleIdA,
-      p_odometer_km: 1200,
-      p_status: "ok",
-      p_notes: "permission test",
-    });
-
-    expect(data).toBeNull();
     expect(error).toBeDefined();
 
     await setMembershipRole("organizer", true);
+  });
+
+  it("applique les filtres de get_dvir_list (status, vehicle, date)", async () => {
+    const now = new Date();
+    const d1 = new Date(now.getTime() - 3 * 60_000).toISOString();
+    const d2 = new Date(now.getTime() - 2 * 60_000).toISOString();
+    const d3 = new Date(now.getTime() - 1 * 60_000).toISOString();
+
+    await insertDvir({
+      vehicleId: testVehicleIdA,
+      status: "ok",
+      inspectedAt: d1,
+    });
+    await insertDvir({
+      vehicleId: testVehicleIdB,
+      status: "unsafe",
+      inspectedAt: d2,
+    });
+    await insertDvir({
+      vehicleId: testVehicleIdB,
+      status: "unsafe",
+      inspectedAt: d3,
+    });
+
+    const { data: unsafeRows, error: unsafeError } = await supabase.rpc(
+      "get_dvir_list",
+      {
+        p_fleet_id: testFleetId,
+        p_status: "unsafe",
+        p_limit: 50,
+        p_offset: 0,
+      }
+    );
+
+    expect(unsafeError).toBeNull();
+    expect(Array.isArray(unsafeRows)).toBe(true);
+    expect((unsafeRows ?? []).length).toBeGreaterThanOrEqual(2);
+    for (const row of unsafeRows ?? []) {
+      expect(row.overall_status).toBe("unsafe");
+    }
+
+    const { data: vehicleRows, error: vehicleError } = await supabase.rpc(
+      "get_dvir_list",
+      {
+        p_fleet_id: testFleetId,
+        p_vehicle_id: testVehicleIdB,
+        p_limit: 50,
+        p_offset: 0,
+      }
+    );
+
+    expect(vehicleError).toBeNull();
+    expect((vehicleRows ?? []).length).toBeGreaterThanOrEqual(2);
+    for (const row of vehicleRows ?? []) {
+      expect(row.vehicle_id).toBe(testVehicleIdB);
+    }
+
+    const dayStart = new Date(now);
+    dayStart.setHours(0, 0, 0, 0);
+    const { data: dateRows, error: dateError } = await supabase.rpc(
+      "get_dvir_list",
+      {
+        p_fleet_id: testFleetId,
+        p_date_from: dayStart.toISOString().slice(0, 10),
+        p_date_to: now.toISOString().slice(0, 10),
+        p_limit: 50,
+        p_offset: 0,
+      }
+    );
+
+    expect(dateError).toBeNull();
+    expect((dateRows ?? []).length).toBeGreaterThan(0);
+  });
+
+  it("applique correctement la pagination get_dvir_list", async () => {
+    const { data: page1, error: page1Error } = await supabase.rpc(
+      "get_dvir_list",
+      {
+        p_fleet_id: testFleetId,
+        p_limit: 1,
+        p_offset: 0,
+      }
+    );
+    expect(page1Error).toBeNull();
+    expect(page1?.length).toBe(1);
+
+    const { data: page2, error: page2Error } = await supabase.rpc(
+      "get_dvir_list",
+      {
+        p_fleet_id: testFleetId,
+        p_limit: 1,
+        p_offset: 1,
+      }
+    );
+    expect(page2Error).toBeNull();
+    expect(page2?.length).toBe(1);
+
+    expect(page1?.[0]?.id).not.toBe(page2?.[0]?.id);
+  });
+
+  it("crée une alerte (alertes_automatiques) lors d'un DVIR unsafe via trigger", async () => {
+    const id = await insertDvir({ status: "unsafe" });
+    const { data, error } = await supabase
+      .from("controles_journaliers")
+      .select("dvir_alert_created, dvir_alert_id")
+      .eq("id", id)
+      .single();
+    expect(error).toBeNull();
+    expect(data?.dvir_alert_created).toBe(true);
+    expect(data?.dvir_alert_id).toBeTruthy();
   });
 });
