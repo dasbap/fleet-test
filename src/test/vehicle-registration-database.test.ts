@@ -15,6 +15,16 @@ describe("vehicle registration database invariants", () => {
     );
   });
 
+  it("reserve aussi les plaques apres suppression", () => {
+    const registryMigration = readFileSync(
+      "supabase/migrations/20260904135500_vehicle_registration_permanent_registry.sql",
+      "utf8",
+    );
+    expect(registryMigration).toContain("vehicle_registration_registry");
+    expect(registryMigration).toContain("first_vehicle_id");
+    expect(registryMigration).toContain("vehicle_registration_already_used");
+  });
+
   it("valide l'immatriculation selon le pays de la flotte", () => {
     expect(migration).toContain("validate_vehicle_registration");
     expect(migration).toContain("o.country_code");
