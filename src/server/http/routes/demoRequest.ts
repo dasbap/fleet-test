@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getBearerToken } from "../auth.js";
 import { createSupabaseServiceClient } from "../../infra/supabaseServiceClient.js";
 import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
+import { getAppUrl } from "../../env.js";
 
 const submitDemoRequestSchema = z.object({
   full_name: z.string().trim().min(1).max(160),
@@ -56,6 +57,21 @@ async function withVerificationStepTimeout<T>(
   } finally {
     if (timeout) clearTimeout(timeout);
   }
+}
+
+function resolveDemoVerificationRedirect(c: Context): string {
+  const origin = c.req.header("Origin")?.trim();
+  if (origin) {
+    try {
+      const url = new URL(origin);
+      if ((url.protocol === "https:" || url.protocol === "http:") && !url.username && !url.password) {
+        return `${url.origin}/auth/callback?intent=demo`;
+      }
+    } catch {
+      // fall through
+    }
+  }
+  return `${getAppUrl()}/auth/callback?intent=demo`;
 }
 
 async function handleVerificationEmail(c: Context) {
@@ -122,11 +138,13 @@ async function handleVerificationEmail(c: Context) {
       return c.json({ ok: false, error: "reservation_failed" }, 500);
     }
 
-    const { error: sendError } = await withVerificationStepTimeout("send-otp", () =>
+    const emailRedirectTo = resolveDemoVerificationRedirect(c);
+    const { error: sendError } = await withVerificationStepTimeout("send-link", () =>
       admin.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
+          emailRedirectTo,
           data: { demo_verification_pending: true },
         },
       }),
@@ -189,7 +207,7 @@ async function handleSubmitDemoRequest(c: Context) {
     error: authError,
   } = await userClient.auth.getUser(token);
 
-  if (authError || !user?.email) {
+  if (authError || !user?.email || !user.email_confirmed_at) {
     return c.json({ ok: false, error: "invalid_token" }, 401);
   }
 
