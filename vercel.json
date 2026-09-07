@@ -73,11 +73,67 @@
       "destination": "/ressources/index.html"
     },
     {
-      "source": "/api/gps/ingest",
+      "source": "/api/health",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/billing/checkout",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/billing/subscriptions",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/billing/mobile-money/initiate",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/billing/notch/initiate",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/billing/notch/reconcile",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/billing/snapshot",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/payments/mobile-money/initiate",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/webhooks/payment",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/webhooks/payments/inbound",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/auth/clear-password-marker",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/demo/magic-link",
       "destination": "/api/[...path]"
     },
     {
       "source": "/api/demo/verification-email",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/demo/request",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/terrain/shift-close",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/gps/ingest",
       "destination": "/api/[...path]"
     },
     {
