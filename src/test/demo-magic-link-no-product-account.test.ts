@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-describe("Demo magic-link verification", () => {
+describe("Demo email verification", () => {
   const callbackSource = readFileSync(
     "src/features/auth/screens/AuthCallbackPage.tsx",
     "utf8",
@@ -15,7 +15,7 @@ describe("Demo magic-link verification", () => {
     "utf8",
   );
 
-  it("échange explicitement le code PKCE et finalise la demande hors onboarding", () => {
+  it("échange explicitement le code PKCE legacy et finalise la demande hors onboarding", () => {
     expect(callbackSource).toContain("exchangeCodeForSession(code)");
     expect(callbackSource).toContain('fetch("/api/demo/request"');
     expect(callbackSource).toContain("demo_request_sent=1");
@@ -34,10 +34,10 @@ describe("Demo magic-link verification", () => {
     );
   });
 
-  it("conserve les données du formulaire avant d'envoyer le magic link", () => {
+  it("conserve les données du formulaire avant de demander le code OTP", () => {
     expect(formSource).toContain("DEMO_VERIFICATION_DRAFT_KEY");
-    expect(formSource).toContain("emailRedirectTo: redirectTo");
-    expect(formSource).toContain("demo_verification_pending: true");
+    expect(formSource).toContain('fetch("/api/demo/verification-email"');
+    expect(formSource).toContain('verifyOtp({ email, token, type: "email" })');
     expect(formSource).toContain(
       "Aucun compte E-Samba n'est créé à ce stade",
     );
