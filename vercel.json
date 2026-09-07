@@ -73,6 +73,10 @@
       "destination": "/ressources/index.html"
     },
     {
+      "source": "/api/gps/ingest",
+      "destination": "/api/[...path]"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
