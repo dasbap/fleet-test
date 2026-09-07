@@ -52,6 +52,7 @@ const ProtectedRoute = lazy(() =>
     default: m.ProtectedRoute,
   }))
 );
+const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
 const TerrainLayout = lazy(() => import("@/layouts/TerrainLayout"));
 const TerrainPage = lazy(
   () => import("@/features/terrain/screens/TerrainPage")
@@ -149,20 +150,6 @@ export const appRoutes = (
     </Route>
     <Route path="/aide" element={<Navigate to="/help" replace />} />
     <Route path="/aide/*" element={<Navigate to="/help" replace />} />
-    <Route path="/fuel" element={<FuelMonitoringPage />} />
-    <Route path="/inspections/nouveau" element={<DvirChecklistPage />} />
-    <Route
-      path="/inspections/:dvirId/modifier"
-      element={<DvirChecklistPage />}
-    />
-    <Route path="/inspections" element={<DvirInspectionsPage />} />
-    <Route path="/inspections/*" element={<DvirDetailPage />} />
-    <Route path="/transit" element={<TransitCemacPage />} />
-    <Route path="/transit/*" element={<TransitDetailPage />} />
-    <Route
-      path="/maintenance/predictive"
-      element={<PredictiveMaintenancePage />}
-    />
     <Route
       path="/aide/videos"
       element={<Navigate to="/dashboard/tutorials" replace />}
@@ -270,6 +257,24 @@ export const appRoutes = (
                 <Scan />
               </RoleGuard>
             }
+          />
+        </Route>
+      </Route>
+      <Route element={<ProtectedRoute />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="/fuel" element={<FuelMonitoringPage />} />
+          <Route path="/inspections/nouveau" element={<DvirChecklistPage />} />
+          <Route
+            path="/inspections/:dvirId/modifier"
+            element={<DvirChecklistPage />}
+          />
+          <Route path="/inspections" element={<DvirInspectionsPage />} />
+          <Route path="/inspections/*" element={<DvirDetailPage />} />
+          <Route path="/transit" element={<TransitCemacPage />} />
+          <Route path="/transit/*" element={<TransitDetailPage />} />
+          <Route
+            path="/maintenance/predictive"
+            element={<PredictiveMaintenancePage />}
           />
         </Route>
       </Route>
