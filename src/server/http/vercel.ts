@@ -7,11 +7,15 @@ const API_PREFIXED_ROUTES = [
   "/api/auth/",
   "/api/terrain/",
   "/api/payments/",
-  "/api/webhooks/",
 ];
 
+const API_PREFIXED_EXACT_ROUTES = new Set([
+  "/api/billing/snapshot",
+  "/api/webhooks/payments/inbound",
+]);
+
 function shouldPreserveApiPrefix(pathname: string): boolean {
-  if (pathname === "/api/billing/snapshot") return true;
+  if (API_PREFIXED_EXACT_ROUTES.has(pathname)) return true;
   return API_PREFIXED_ROUTES.some((prefix) => pathname.startsWith(prefix));
 }
 
