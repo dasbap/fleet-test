@@ -1,18 +1,17 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { verifyOtp, signOut, getSession, mutateAsync, createEphemeralSupabaseClient, fetchMock } = vi.hoisted(() => ({
-  verifyOtp: vi.fn(),
+const { signOut, getSession, onAuthStateChange, mutateAsync, fetchMock, authState } = vi.hoisted(() => ({
   signOut: vi.fn(),
   getSession: vi.fn(),
+  onAuthStateChange: vi.fn(),
   mutateAsync: vi.fn(),
-  createEphemeralSupabaseClient: vi.fn(),
   fetchMock: vi.fn(),
+  authState: { callback: null as null | ((event: string, session: unknown) => void), unsubscribe: vi.fn() },
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
-  createEphemeralSupabaseClient,
-  supabase: { auth: { signOut, getSession } },
+  supabase: { auth: { signOut, getSession, onAuthStateChange } },
 }));
 vi.mock("@/hooks/useSubmitDemoRequest", () => ({
   useSubmitDemoRequest: () => ({ mutateAsync, isPending: false }),
@@ -29,12 +28,24 @@ vi.mock("@/components/ui/select", () => ({
 
 import { ContactDemoForm } from "@/components/landing/ContactDemoForm";
 
+const verifiedSession = {
+  access_token: "verified-token",
+  user: {
+    id: "user-1",
+    email: "contact@transcam.cm",
+    email_confirmed_at: "2026-09-07T12:00:00.000Z",
+    user_metadata: { demo_verification_pending: true },
+  },
+};
+
 describe("ContactDemoForm user flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal("fetch", fetchMock);
     window.localStorage.clear();
     window.history.replaceState({}, "", "/contact");
+    authState.callback = null;
+    authState.unsubscribe.mockReset();
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
@@ -42,22 +53,14 @@ describe("ContactDemoForm user flow", () => {
     });
     signOut.mockResolvedValue({ error: null });
     getSession.mockResolvedValue({ data: { session: null }, error: null });
-    verifyOtp.mockResolvedValue({
-      data: {
-        user: {
-          id: "user-1",
-          email: "contact@transcam.cm",
-          user_metadata: { demo_verification_pending: true },
-        },
-        session: { access_token: "verified-token" },
-      },
-      error: null,
+    onAuthStateChange.mockImplementation((callback) => {
+      authState.callback = callback;
+      return { data: { subscription: { unsubscribe: authState.unsubscribe } } };
     });
-    createEphemeralSupabaseClient.mockReturnValue({ auth: { verifyOtp } });
     mutateAsync.mockResolvedValue(undefined);
   });
 
-  it("verifie l'email puis soumet toutes les informations client", async () => {
+  it("attend le clic magic-link puis soumet toutes les informations client", async () => {
     render(<ContactDemoForm />);
 
     fireEvent.change(screen.getByLabelText("Nom complet *"), { target: { value: "Jean Dupont" } });
@@ -73,8 +76,9 @@ describe("ContactDemoForm user flow", () => {
       body: JSON.stringify({ email: "contact@transcam.cm" }),
     })));
 
-    fireEvent.change(await screen.findByLabelText("Code de vérification E-Samba"), { target: { value: "123456" } });
-    fireEvent.click(screen.getByRole("button", { name: "Valider" }));
+    expect(await screen.findByText("En attente de votre confirmation")).toBeInTheDocument();
+    await waitFor(() => expect(authState.callback).not.toBeNull());
+    authState.callback?.("SIGNED_IN", verifiedSession);
 
     await screen.findByText("Adresse e-mail vérifiée par E-Samba.");
     fireEvent.click(screen.getByRole("button", { name: "Demander ma démo" }));
@@ -110,7 +114,7 @@ describe("ContactDemoForm user flow", () => {
 
     expect(await screen.findByText("Demande placée en liste d'attente")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "En attente" })).toBeDisabled();
-    expect(screen.getByLabelText("Code de vérification E-Samba")).toBeInTheDocument();
+    expect(screen.getByText(/recevra automatiquement son lien de vérification/)).toBeInTheDocument();
   });
 
   it("affiche une erreur utilisateur quand l'environnement Supabase n'est pas synchronise", async () => {
@@ -124,8 +128,8 @@ describe("ContactDemoForm user flow", () => {
     fireEvent.change(screen.getByLabelText("Numéro d'identifiant entreprise *"), { target: { value: "RCCM-123" } });
     fireEvent.change(screen.getByRole("combobox", { name: "Pays *" }), { target: { value: "CM" } });
     fireEvent.click(screen.getByRole("button", { name: "Vérifier" }));
-    fireEvent.change(await screen.findByLabelText("Code de vérification E-Samba"), { target: { value: "123456" } });
-    fireEvent.click(screen.getByRole("button", { name: "Valider" }));
+    await waitFor(() => expect(authState.callback).not.toBeNull());
+    authState.callback?.("SIGNED_IN", verifiedSession);
     await screen.findByText("Adresse e-mail vérifiée par E-Samba.");
     fireEvent.click(screen.getByRole("button", { name: "Demander ma démo" }));
 
