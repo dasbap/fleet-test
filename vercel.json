@@ -5,6 +5,9 @@
   "installCommand": "npm install",
   "framework": "vite",
   "functions": {
+    "api/[...path].ts": {
+      "maxDuration": 15
+    },
     "api/admin/generate-magic-link.ts": {
       "maxDuration": 15
     },
