@@ -222,6 +222,13 @@ export const appRoutes = (
       <Route path="/" element={<Index />} />
       <Route path="/faq" element={<FaqPage />} />
       <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/fonctionnalites" element={<FonctionnalitesPage />} />
+      <Route
+        path="/fonctionnalites/piloter-flotte"
+        element={<FonctionnaliteSectionPage slug="piloter-flotte" />}
+      />
+      <Route path="/modules" element={<ModulesPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route
         path="/tarif"
         element={<Navigate to={ROUTE_PATHS.pricing} replace />}
@@ -231,13 +238,6 @@ export const appRoutes = (
         element={<Navigate to={ROUTE_PATHS.pricing} replace />}
       />
       <Route element={<AuthenticatedDashboardLayout />}>
-        <Route path="/fonctionnalites" element={<FonctionnalitesPage />} />
-        <Route
-          path="/fonctionnalites/piloter-flotte"
-          element={<FonctionnaliteSectionPage slug="piloter-flotte" />}
-        />
-        <Route path="/modules" element={<ModulesPage />} />
-        <Route path="/contact" element={<ContactPage />} />
         <Route path="/fuel" element={<FuelMonitoringPage />} />
         <Route path="/inspections/nouveau" element={<DvirChecklistPage />} />
         <Route

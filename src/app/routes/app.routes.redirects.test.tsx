@@ -61,6 +61,14 @@ vi.mock("@/app/routes/dashboard.routes", () => ({
   ),
 }));
 
+vi.mock("@/components/dashboard/AuthenticatedDashboardLayout", () => ({
+  AuthenticatedDashboardLayout: () => (
+    <div data-testid="authenticated-dashboard-layout">
+      <Outlet />
+    </div>
+  ),
+}));
+
 vi.mock("@/components/layout/ProtectedRoute", () => ({
   ProtectedRoute: () => <Outlet />,
 }));
@@ -158,6 +166,10 @@ vi.mock("@/pages/Pricing", () => ({
 
 vi.mock("@/pages/public/FonctionnalitesPage", () => ({
   default: () => <div data-testid="fonctionnalites-page">Fonctionnalites</div>,
+}));
+
+vi.mock("@/pages/public/ModulesPage", () => ({
+  default: () => <div data-testid="modules-page">Modules</div>,
 }));
 
 vi.mock("@/pages/public/FonctionnaliteSectionPage", () => ({
@@ -337,6 +349,31 @@ describe("app.routes routes métier racine", () => {
     expect(
       await screen.findByTestId("fonctionnalites-section-piloter-flotte")
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    ["/faq", "faq-page"],
+    ["/pricing", "pricing-page"],
+    ["/contact", "contact-page"],
+    ["/modules", "modules-page"],
+    ["/fonctionnalites", "fonctionnalites-page"],
+    [
+      "/fonctionnalites/piloter-flotte",
+      "fonctionnalites-section-piloter-flotte",
+    ],
+  ])("rend %s sans layout dashboard connecte", async (path, testId) => {
+    mockUseAuth.mockReturnValue({
+      user: { id: "user-1", email: "demo@esamba.test" },
+      isLoading: false,
+    });
+
+    renderRoutes(path);
+
+    expect(await screen.findByTestId(testId)).toBeInTheDocument();
+    expect(screen.getByTestId("auth-provider-layout")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("authenticated-dashboard-layout")
+    ).not.toBeInTheDocument();
   });
 
   it("rend /fuel", async () => {

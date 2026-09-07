@@ -50,11 +50,6 @@
       "permanent": true
     },
     {
-      "source": "/fonctionnalites/:path*",
-      "destination": "https://marketing.e-samba.com/fonctionnalites/:path*",
-      "permanent": true
-    },
-    {
       "source": "/solutions/:path*",
       "destination": "https://marketing.e-samba.com/solutions/:path*",
       "permanent": true
