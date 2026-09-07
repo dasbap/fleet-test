@@ -56,10 +56,10 @@ describe("Supabase auth link contract", () => {
       "https://fleet-test-gamma.vercel.app/demo/onboarding",
       "https://www.e-samba.com/**",
       "https://app.e-samba.com/**",
-      "https://*.vercel.app/**",
     ]) {
       expect(config).toContain(`"${url}"`);
     }
+    expect(config).not.toContain('"https://*.vercel.app/**"');
   });
 
   it("autorise gamma dans les Edge Functions qui peuvent repondre au navigateur", () => {
