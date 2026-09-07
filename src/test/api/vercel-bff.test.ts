@@ -4,6 +4,25 @@ import { globSync } from "glob";
 import { extractBearerToken } from "../../../api/_lib/vercel-api";
 import { createVercelApiApp } from "../../server/http/vercel";
 
+const CATCH_ALL_API_ROUTES = [
+  "/api/health",
+  "/api/billing/checkout",
+  "/api/billing/subscriptions",
+  "/api/billing/mobile-money/initiate",
+  "/api/billing/notch/initiate",
+  "/api/billing/notch/reconcile",
+  "/api/billing/snapshot",
+  "/api/payments/mobile-money/initiate",
+  "/api/webhooks/payment",
+  "/api/webhooks/payments/inbound",
+  "/api/auth/clear-password-marker",
+  "/api/demo/magic-link",
+  "/api/demo/verification-email",
+  "/api/demo/request",
+  "/api/terrain/shift-close",
+  "/api/gps/ingest",
+] as const;
+
 describe("extractBearerToken", () => {
   it("extrait un token Bearer valide", () => {
     const token = extractBearerToken({
@@ -43,8 +62,8 @@ describe("health handler", () => {
   });
 });
 
-describe("native Vercel API routing", () => {
-  it("laisse les routes API au filesystem Vercel sauf l'exception GPS explicite", () => {
+describe("Vercel catch-all API routing", () => {
+  it("route explicitement toutes les routes Hono sans fonction dediee", () => {
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
       rewrites?: Array<{ source?: string; destination?: string }>;
     };
@@ -53,12 +72,12 @@ describe("native Vercel API routing", () => {
       route.source?.startsWith("/api/"),
     );
 
-    expect(apiRewrites).toEqual([
-      {
-        source: "/api/gps/ingest",
+    expect(apiRewrites).toEqual(
+      CATCH_ALL_API_ROUTES.map((source) => ({
+        source,
         destination: "/api/[...path]",
-      },
-    ]);
+      })),
+    );
     expect(readFileSync("api/[...path].ts", "utf8")).toContain("createVercelApiApp");
   });
 
@@ -71,6 +90,60 @@ describe("native Vercel API routing", () => {
       source: "/((?!api/).*)",
       destination: "/index.html",
     });
+  });
+
+  it("fait matcher chaque route Hono via son URL publique Vercel", async () => {
+    const app = createVercelApiApp();
+    const uuidA = "00000000-0000-4000-8000-000000000001";
+    const uuidB = "00000000-0000-4000-8000-000000000002";
+    const cases: Array<{
+      path: string;
+      init?: RequestInit;
+      expectedStatus: number;
+      expectedBody?: unknown;
+    }> = [
+      { path: "/api/health", expectedStatus: 200 },
+      { path: "/api/billing/checkout", init: { method: "POST", body: "{}" }, expectedStatus: 401 },
+      {
+        path: `/api/billing/subscriptions?org_id=${uuidA}&fleet_id=${uuidB}`,
+        expectedStatus: 401,
+      },
+      { path: "/api/billing/mobile-money/initiate", init: { method: "POST", body: "{}" }, expectedStatus: 401 },
+      { path: "/api/billing/notch/initiate", init: { method: "POST", body: "{}" }, expectedStatus: 401 },
+      { path: "/api/billing/notch/reconcile", init: { method: "POST", body: "{}" }, expectedStatus: 401 },
+      { path: "/api/billing/snapshot", expectedStatus: 400 },
+      { path: "/api/payments/mobile-money/initiate", init: { method: "POST", body: "{}" }, expectedStatus: 401 },
+      { path: "/api/webhooks/payment", init: { method: "POST", body: "{}" }, expectedStatus: 401 },
+      { path: "/api/webhooks/payments/inbound", init: { method: "POST", body: "{}" }, expectedStatus: 401 },
+      { path: "/api/auth/clear-password-marker", init: { method: "POST", body: "{}" }, expectedStatus: 401 },
+      {
+        path: "/api/demo/magic-link",
+        init: { method: "POST", body: JSON.stringify({ action: "validate", token: "not-a-uuid" }) },
+        expectedStatus: 404,
+        expectedBody: { ok: false, error: "token_not_found" },
+      },
+      {
+        path: "/api/demo/verification-email",
+        init: { method: "POST", body: JSON.stringify({ email: "invalid" }) },
+        expectedStatus: 400,
+      },
+      { path: "/api/demo/request", init: { method: "POST", body: "{}" }, expectedStatus: 401 },
+      { path: "/api/terrain/shift-close", init: { method: "POST", body: "{}" }, expectedStatus: 401 },
+      { path: "/api/gps/ingest", init: { method: "POST", body: "{}" }, expectedStatus: 401 },
+    ];
+
+    for (const testCase of cases) {
+      const response = await app.fetch(
+        new Request(`https://fleet.test${testCase.path}`, {
+          headers: { "Content-Type": "application/json" },
+          ...testCase.init,
+        }),
+      );
+      expect(response.status, testCase.path).toBe(testCase.expectedStatus);
+      if (testCase.expectedBody !== undefined) {
+        expect(await response.json()).toEqual(testCase.expectedBody);
+      }
+    }
   });
 });
 
