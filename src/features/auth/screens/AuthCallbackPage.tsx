@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import {
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/button";
 
 const DEMO_VERIFICATION_DRAFT_KEY = "esamba_demo_verification_draft";
 const DEMO_VERIFICATION_INTENT_KEY = "esamba_demo_verification_intent";
+const DEMO_VERIFICATION_EMAIL_STATE_KEY = "esamba_demo_verification_email_state";
 
 type CallbackState = "processing" | "error";
 
@@ -53,30 +55,28 @@ function readDemoDraft(): DemoVerificationDraft | null {
   }
 }
 
-function mapDemoSubmitError(status: number, error?: string): string {
-  if (status === 409 && error === "demo_email_already_used") {
-    return "Cette adresse e-mail a déjà été utilisée pour une demande E-Samba.";
+async function resolveCallbackSession(code: string | null): Promise<Session | null> {
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error && data.session) return data.session;
   }
-  if (status === 409 && error === "email_already_registered") {
-    return "Cette adresse e-mail est déjà associée à un compte E-Samba.";
+
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const accessToken = hash.get("access_token");
+  const refreshToken = hash.get("refresh_token");
+  if (accessToken && refreshToken) {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (!error && data.session) return data.session;
   }
-  if (status === 401) {
-    return "La vérification e-mail a expiré. Demandez un nouveau lien depuis le formulaire de démo.";
-  }
-  if (status === 403 && error === "verified_email_mismatch") {
-    return "L'adresse vérifiée ne correspond pas à celle du formulaire.";
-  }
-  return "Votre e-mail a été vérifié, mais la demande de démo n'a pas pu être enregistrée. Réessayez depuis le formulaire.";
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) return null;
+  return data.session;
 }
 
-/**
- * Callback Supabase Auth — PKCE.
- *
- * Pour une demande de démo, l'utilisateur Auth créé par Supabase est purement
- * transitoire : le callback échange le code, envoie immédiatement la demande au
- * BFF avec le JWT vérifié, puis le BFF supprime cet utilisateur Auth. Aucun
- * onboarding produit (/post-login, /start) n'est déclenché.
- */
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -104,12 +104,6 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    if (!code) {
-      setErrorMessage("Paramètre de vérification manquant. Réessayez depuis l'e-mail.");
-      setState("error");
-      return;
-    }
-
     let cancelled = false;
 
     void (async () => {
@@ -121,9 +115,9 @@ export default function AuthCallbackPage() {
       }, 12_000);
 
       try {
-        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeError || !data.session) {
-          throw exchangeError ?? new Error("verification_session_missing");
+        const session = await resolveCallbackSession(code);
+        if (!session?.user?.email || !session.user.email_confirmed_at) {
+          throw new Error("verification_session_missing");
         }
         if (cancelled) return;
 
@@ -135,56 +129,23 @@ export default function AuthCallbackPage() {
 
         const draft = readDemoDraft();
         if (!draft) {
-          await supabase.auth.signOut({ scope: "local" });
           throw new Error("demo_draft_missing");
         }
 
-        if (data.session.user.user_metadata?.demo_verification_pending !== true) {
-          await supabase.auth.signOut({ scope: "local" });
+        if (session.user.email.toLowerCase() !== draft.email.trim().toLowerCase()) {
+          throw new Error("demo_email_mismatch");
+        }
+
+        if (session.user.user_metadata?.demo_verification_pending !== true) {
           window.clearTimeout(timeout);
           setErrorMessage("Cette adresse e-mail est déjà associée à un compte E-Samba.");
           setState("error");
           return;
         }
 
-        const response = await fetch("/api/demo/request", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${data.session.access_token}`,
-          },
-          body: JSON.stringify({
-            full_name: draft.name,
-            email: draft.email,
-            company: draft.company,
-            phone: draft.phone,
-            company_identifier: draft.company_identifier,
-            country_code: draft.country_code,
-          }),
-        });
-
-        let body: { ok?: boolean; error?: string } = {};
-        try {
-          body = (await response.json()) as { ok?: boolean; error?: string };
-        } catch {
-          // Le statut HTTP reste suffisant pour l'UX.
-        }
-
-        // Le BFF supprime l'utilisateur Auth transitoire après l'insert. On ne
-        // conserve donc aucune session locale qui pourrait déclencher /start.
-        await supabase.auth.signOut({ scope: "local" });
+        window.localStorage.setItem(DEMO_VERIFICATION_EMAIL_STATE_KEY, "verified");
         window.clearTimeout(timeout);
-
-        if (!response.ok || body.ok !== true) {
-          window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
-          setErrorMessage(mapDemoSubmitError(response.status, body.error));
-          setState("error");
-          return;
-        }
-
-        window.localStorage.removeItem(DEMO_VERIFICATION_DRAFT_KEY);
-        window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
-        navigate(`${ROUTE_PATHS.contact}?demo_request_sent=1`, { replace: true });
+        navigate(`${ROUTE_PATHS.contact}?demo_email_verified=1`, { replace: true });
       } catch (callbackError) {
         window.clearTimeout(timeout);
         console.error("[auth-callback] verification failed:", callbackError);
@@ -192,7 +153,9 @@ export default function AuthCallbackPage() {
           const message =
             callbackError instanceof Error && callbackError.message === "demo_draft_missing"
               ? "Les informations de votre demande ne sont plus disponibles dans ce navigateur. Revenez au formulaire et recommencez la vérification."
-              : "Le lien de vérification est invalide ou expiré. Demandez un nouveau lien depuis le formulaire.";
+              : callbackError instanceof Error && callbackError.message === "demo_email_mismatch"
+                ? "L'adresse vérifiée ne correspond pas à celle du formulaire de démo."
+                : "Le lien de vérification est invalide ou expiré. Demandez un nouveau lien depuis le formulaire.";
           setErrorMessage(message);
           setState("error");
         }
@@ -233,7 +196,7 @@ export default function AuthCallbackPage() {
         <CardHeader className="text-center">
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary mb-2" />
           <CardTitle>Vérification en cours…</CardTitle>
-          <CardDescription>Validation de votre e-mail et envoi de votre demande de démo.</CardDescription>
+          <CardDescription>Validation de votre adresse e-mail dans Supabase puis retour vers votre demande de démo.</CardDescription>
         </CardHeader>
       </Card>
     </div>
