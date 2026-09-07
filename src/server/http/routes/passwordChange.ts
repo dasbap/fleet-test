@@ -68,20 +68,15 @@ async function handlePasswordChange(c: Context) {
 
   if (passwordUpdateError) {
     const code = passwordUpdateError.code ?? "password_update_failed";
-    const isRetryAfterSuccessfulPasswordUpdate =
-      markerNeedsClearing && code === "same_password";
-
-    if (!isRetryAfterSuccessfulPasswordUpdate) {
-      const status = code === "same_password" || code === "weak_password" ? 400 : 409;
-      return c.json(
-        {
-          ok: false,
-          error: code,
-          details: passwordUpdateError.message,
-        },
-        status,
-      );
-    }
+    const status = code === "same_password" || code === "weak_password" ? 400 : 409;
+    return c.json(
+      {
+        ok: false,
+        error: code,
+        details: passwordUpdateError.message,
+      },
+      status,
+    );
   }
 
   const passwordSetAt = new Date().toISOString();
