@@ -77,6 +77,10 @@
       "destination": "/api/[...path]"
     },
     {
+      "source": "/api/demo/verification-email",
+      "destination": "/api/[...path]"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
