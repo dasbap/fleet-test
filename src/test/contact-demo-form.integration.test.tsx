@@ -1,18 +1,18 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { signInWithOtp, verifyOtp, signOut, getSession, mutateAsync, createEphemeralSupabaseClient } = vi.hoisted(() => ({
-  signInWithOtp: vi.fn(),
+const { verifyOtp, signOut, getSession, mutateAsync, createEphemeralSupabaseClient, fetchMock } = vi.hoisted(() => ({
   verifyOtp: vi.fn(),
   signOut: vi.fn(),
   getSession: vi.fn(),
   mutateAsync: vi.fn(),
   createEphemeralSupabaseClient: vi.fn(),
+  fetchMock: vi.fn(),
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
   createEphemeralSupabaseClient,
-  supabase: { auth: { signInWithOtp, signOut, getSession } },
+  supabase: { auth: { signOut, getSession } },
 }));
 vi.mock("@/hooks/useSubmitDemoRequest", () => ({
   useSubmitDemoRequest: () => ({ mutateAsync, isPending: false }),
@@ -32,9 +32,14 @@ import { ContactDemoForm } from "@/components/landing/ContactDemoForm";
 describe("ContactDemoForm user flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal("fetch", fetchMock);
     window.localStorage.clear();
     window.history.replaceState({}, "", "/contact");
-    signInWithOtp.mockResolvedValue({ error: null });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({ ok: true, queued: false }),
+    });
     signOut.mockResolvedValue({ error: null });
     getSession.mockResolvedValue({ data: { session: null }, error: null });
     verifyOtp.mockResolvedValue({
@@ -63,7 +68,10 @@ describe("ContactDemoForm user flow", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Pays *" }), { target: { value: "CM" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Vérifier" }));
-    await waitFor(() => expect(signInWithOtp).toHaveBeenCalledWith(expect.objectContaining({ email: "contact@transcam.cm" })));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/demo/verification-email", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ email: "contact@transcam.cm" }),
+    })));
 
     fireEvent.change(await screen.findByLabelText("Code de vérification E-Samba"), { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Valider" }));
@@ -82,6 +90,27 @@ describe("ContactDemoForm user flow", () => {
     }));
     expect(signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(await screen.findByText("Demande envoyée !")).toBeInTheDocument();
+  });
+
+  it("affiche la liste d'attente lorsque le quota quotidien est atteint", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 202,
+      json: vi.fn().mockResolvedValue({ ok: true, queued: true }),
+    });
+    render(<ContactDemoForm />);
+
+    fireEvent.change(screen.getByLabelText("Nom complet *"), { target: { value: "Jean Dupont" } });
+    fireEvent.change(screen.getByLabelText("Entreprise *"), { target: { value: "TransCam" } });
+    fireEvent.change(screen.getByLabelText("Adresse mail *"), { target: { value: "contact@transcam.cm" } });
+    fireEvent.change(screen.getByLabelText("Téléphone *"), { target: { value: "+237600000000" } });
+    fireEvent.change(screen.getByLabelText("Numéro d'identifiant entreprise *"), { target: { value: "RCCM-123" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Pays *" }), { target: { value: "CM" } });
+    fireEvent.click(screen.getByRole("button", { name: "Vérifier" }));
+
+    expect(await screen.findByText("Demande placée en liste d'attente")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "En attente" })).toBeDisabled();
+    expect(screen.getByLabelText("Code de vérification E-Samba")).toBeInTheDocument();
   });
 
   it("affiche une erreur utilisateur quand l'environnement Supabase n'est pas synchronise", async () => {
