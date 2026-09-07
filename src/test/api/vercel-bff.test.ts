@@ -43,23 +43,33 @@ describe("health handler", () => {
   });
 });
 
-describe("billing subscriptions handler", () => {
-  it("route la facturation vers la fonction catch-all pour rester sous la limite Hobby", () => {
+describe("native Vercel API routing", () => {
+  it("laisse toutes les routes API au filesystem Vercel", () => {
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
       rewrites?: Array<{ source?: string; destination?: string }>;
     };
 
-    expect(config.rewrites).toEqual(
-      expect.arrayContaining([
-        {
-          source: "/api/billing/subscriptions",
-          destination: "/api/[...path]",
-        },
-      ]),
+    const apiRewrites = (config.rewrites ?? []).filter((route) =>
+      route.source?.startsWith("/api/"),
     );
+
+    expect(apiRewrites).toEqual([]);
     expect(readFileSync("api/[...path].ts", "utf8")).toContain("createVercelApiApp");
   });
 
+  it("exclut /api du fallback SPA", () => {
+    const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
+      rewrites?: Array<{ source?: string; destination?: string }>;
+    };
+
+    expect(config.rewrites).toContainEqual({
+      source: "/((?!api/).*)",
+      destination: "/index.html",
+    });
+  });
+});
+
+describe("billing subscriptions handler", () => {
   it("atteint le BFF Vercel et renvoie du JSON quand le Bearer manque", async () => {
     const app = createVercelApiApp();
     const response = await app.fetch(
@@ -74,52 +84,6 @@ describe("billing subscriptions handler", () => {
     expect(await response.json()).toEqual({
       error: "Authorization Bearer requis",
     });
-  });
-});
-
-describe("billing Notch Pay handler", () => {
-  it("route Notch Pay vers la fonction catch-all pour accepter POST sans fallback 405", () => {
-    const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
-      rewrites?: Array<{ source?: string; destination?: string }>;
-    };
-
-    expect(config.rewrites).toEqual(
-      expect.arrayContaining([
-        {
-          source: "/api/billing/notch/initiate",
-          destination: "/api/[...path]",
-        },
-      ]),
-    );
-  });
-});
-
-describe("catch-all Hono routes", () => {
-  it("route les wrappers Hono redondants vers la fonction catch-all", () => {
-    const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
-      rewrites?: Array<{ source?: string; destination?: string }>;
-    };
-
-    expect(config.rewrites).toEqual(
-      expect.arrayContaining([
-        {
-          source: "/api/health",
-          destination: "/api/[...path]",
-        },
-        {
-          source: "/api/gps/ingest",
-          destination: "/api/[...path]",
-        },
-        {
-          source: "/api/demo/magic-link",
-          destination: "/api/[...path]",
-        },
-        {
-          source: "/api/auth/clear-password-marker",
-          destination: "/api/[...path]",
-        },
-      ]),
-    );
   });
 });
 
@@ -192,10 +156,7 @@ describe("direct Vercel admin routes", () => {
     expect(config.functions?.["api/admin/generate-magic-link.ts"]?.maxDuration).toBe(15);
     expect(config.rewrites ?? []).not.toEqual(
       expect.arrayContaining([
-        {
-          source: "/api/admin/generate-magic-link",
-          destination: "/api/[...path]",
-        },
+        expect.objectContaining({ source: "/api/admin/generate-magic-link" }),
       ]),
     );
   });
