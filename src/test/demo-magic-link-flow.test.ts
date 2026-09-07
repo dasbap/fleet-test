@@ -3,31 +3,37 @@ import fs from "node:fs";
 
 const formSource = fs.readFileSync("src/components/landing/ContactDemoForm.tsx", "utf8");
 const callbackSource = fs.readFileSync("src/features/auth/screens/AuthCallbackPage.tsx", "utf8");
+const routeSource = fs.readFileSync("src/server/http/routes/demoRequest.ts", "utf8");
+const templateSource = fs.readFileSync("supabase/templates/magic_link.html", "utf8");
 
 describe("demo email verification flow", () => {
   it("envoie la demande de verification via le BFF et conserve le brouillon", () => {
     expect(formSource).toContain('fetch("/api/demo/verification-email"');
-    expect(formSource).toContain('esamba_demo_verification_draft');
+    expect(formSource).toContain("esamba_demo_verification_draft");
     expect(formSource).toContain('body: JSON.stringify({ email })');
+    expect(formSource).toContain('window.localStorage.setItem(DEMO_VERIFICATION_INTENT_KEY, "demo")');
   });
 
-  it("verifie le code OTP a 6 chiffres cote client", () => {
-    expect(formSource).toContain('verifyOtp({ email, token, type: "email" })');
-    expect(formSource).toContain('/^\\d{6}$/');
-    expect(formSource).toContain('setEmailVerificationToken(data.session.access_token)');
+  it("envoie un magic link avec redirect vers le callback", () => {
+    expect(routeSource).toContain("emailRedirectTo");
+    expect(routeSource).toContain("/auth/callback?intent=demo");
+    expect(templateSource).toContain("{{ .ConfirmationURL }}");
+    expect(templateSource).not.toContain("{{ .Token }}");
   });
 
-  it("redirige une verification demo legacy vers contact et non post-login", () => {
-    expect(callbackSource).toContain('demo_verification_pending !== true');
-    expect(callbackSource).toContain('ROUTE_PATHS.contact}?demo_request_sent=1');
-    expect(callbackSource).toContain('DEMO_VERIFICATION_INTENT_KEY');
-    expect(callbackSource).toContain('await supabase.auth.signOut({ scope: "local" })');
+  it("le callback valide la session puis revient au formulaire sans soumettre automatiquement", () => {
+    expect(callbackSource).toContain("exchangeCodeForSession(code)");
+    expect(callbackSource).toContain("setSession({");
+    expect(callbackSource).toContain("demo_email_verified=1");
+    expect(callbackSource).not.toContain('fetch("/api/demo/request"');
+    expect(callbackSource).not.toContain("demo_request_sent=1");
   });
 
-  it("reprend une session verifiee et restaure le formulaire", () => {
-    expect(formSource).toContain('supabase.auth.getSession()');
-    expect(formSource).toContain('setEmailVerificationToken(data.session.access_token)');
-    expect(formSource).toContain('setForm(draft)');
-    expect(formSource).toContain('await supabase.auth.signOut({ scope: "local" })');
+  it("le formulaire attend la session Supabase verifiee", () => {
+    expect(formSource).toContain("supabase.auth.onAuthStateChange");
+    expect(formSource).toContain("supabase.auth.getSession()");
+    expect(formSource).toContain("email_confirmed_at");
+    expect(formSource).toContain("setEmailVerificationToken(session.access_token)");
+    expect(formSource).toContain("Cette page détectera automatiquement la confirmation Supabase");
   });
 });
