@@ -17,6 +17,8 @@ const verificationEmailSchema = z.object({
   email: z.string().trim().email().max(320),
 });
 
+const VERIFICATION_STEP_TIMEOUT_MS = 6_000;
+
 type VerificationReservation = {
   ok?: boolean;
   action?: "send" | "queued" | "cooldown";
@@ -26,90 +28,141 @@ type VerificationReservation = {
   error?: string;
 };
 
-async function handleVerificationEmail(c: Context) {
-  let rawBody: unknown;
+class VerificationStepTimeoutError extends Error {
+  constructor(readonly step: string) {
+    super(`verification email step timed out: ${step}`);
+    this.name = "VerificationStepTimeoutError";
+  }
+}
+
+async function withVerificationStepTimeout<T>(
+  step: string,
+  operation: () => PromiseLike<T>,
+): Promise<T> {
+  console.info(`[demo-verification-email] ${step}:start`);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
-    rawBody = await c.req.json();
-  } catch {
-    return c.json({ ok: false, error: "invalid_json" }, 400);
+    const result = await Promise.race([
+      Promise.resolve(operation()),
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new VerificationStepTimeoutError(step)),
+          VERIFICATION_STEP_TIMEOUT_MS,
+        );
+      }),
+    ]);
+    console.info(`[demo-verification-email] ${step}:done`);
+    return result;
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
+}
 
-  const parsed = verificationEmailSchema.safeParse(rawBody);
-  if (!parsed.success) {
-    return c.json({ ok: false, error: "invalid_payload", details: parsed.error.flatten() }, 400);
-  }
+async function handleVerificationEmail(c: Context) {
+  const startedAt = Date.now();
+  console.info("[demo-verification-email] request:start");
 
-  const admin = createSupabaseServiceClient();
-  if (!admin) {
-    return c.json({ ok: false, error: "server_configuration_error" }, 503);
-  }
+  try {
+    let rawBody: unknown;
+    try {
+      rawBody = await c.req.json();
+    } catch {
+      return c.json({ ok: false, error: "invalid_json" }, 400);
+    }
 
-  const email = parsed.data.email.toLowerCase();
-  const { data: reservationData, error: reservationError } = await admin.rpc(
-    "demo_reserve_verification_email",
-    { p_email: email },
-  );
+    const parsed = verificationEmailSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: "invalid_payload", details: parsed.error.flatten() }, 400);
+    }
 
-  if (reservationError) {
-    console.error("[demo-verification-email] reservation failed:", reservationError.message);
-    return c.json({ ok: false, error: "reservation_failed" }, 500);
-  }
+    const admin = createSupabaseServiceClient();
+    if (!admin) {
+      return c.json({ ok: false, error: "server_configuration_error" }, 503);
+    }
 
-  const reservation = reservationData as VerificationReservation | null;
-  if (!reservation?.ok) {
-    return c.json({ ok: false, error: reservation?.error ?? "reservation_failed" }, 400);
-  }
+    const email = parsed.data.email.toLowerCase();
+    const { data: reservationData, error: reservationError } =
+      await withVerificationStepTimeout("reserve", () =>
+        admin.rpc("demo_reserve_verification_email", { p_email: email }),
+      );
 
-  if (reservation.action === "cooldown") {
-    return c.json(
-      {
-        ok: false,
-        error: "email_cooldown",
-        retry_after_seconds: reservation.retry_after_seconds ?? 180,
-      },
-      429,
+    if (reservationError) {
+      console.error("[demo-verification-email] reservation failed:", reservationError.message);
+      return c.json({ ok: false, error: "reservation_failed" }, 500);
+    }
+
+    const reservation = reservationData as VerificationReservation | null;
+    if (!reservation?.ok) {
+      return c.json({ ok: false, error: reservation?.error ?? "reservation_failed" }, 400);
+    }
+
+    if (reservation.action === "cooldown") {
+      return c.json(
+        {
+          ok: false,
+          error: "email_cooldown",
+          retry_after_seconds: reservation.retry_after_seconds ?? 180,
+        },
+        429,
+      );
+    }
+
+    if (reservation.action === "queued") {
+      return c.json(
+        {
+          ok: true,
+          queued: true,
+          available_at: reservation.available_at ?? null,
+        },
+        202,
+      );
+    }
+
+    if (reservation.action !== "send" || !reservation.reservation_id) {
+      return c.json({ ok: false, error: "reservation_failed" }, 500);
+    }
+
+    const { error: sendError } = await withVerificationStepTimeout("send-otp", () =>
+      admin.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+          data: { demo_verification_pending: true },
+        },
+      }),
     );
-  }
 
-  if (reservation.action === "queued") {
-    return c.json(
-      {
-        ok: true,
-        queued: true,
-        available_at: reservation.available_at ?? null,
-      },
-      202,
+    const { error: completionError } = await withVerificationStepTimeout("complete", () =>
+      admin.rpc("demo_complete_verification_email", {
+        p_reservation_id: reservation.reservation_id,
+        p_success: !sendError,
+        p_error: sendError?.message ?? null,
+      }),
     );
+
+    if (completionError) {
+      console.error("[demo-verification-email] completion failed:", completionError.message);
+    }
+
+    if (sendError) {
+      console.error("[demo-verification-email] send failed, queued:", sendError.message);
+      return c.json({ ok: true, queued: true }, 202);
+    }
+
+    return c.json({ ok: true, queued: false });
+  } catch (error) {
+    if (error instanceof VerificationStepTimeoutError) {
+      console.error(`[demo-verification-email] ${error.step}:timeout`);
+      return c.json(
+        { ok: false, error: "verification_email_upstream_timeout", step: error.step },
+        504,
+      );
+    }
+    console.error("[demo-verification-email] unexpected failure:", error);
+    return c.json({ ok: false, error: "verification_email_failed" }, 500);
+  } finally {
+    console.info(`[demo-verification-email] request:done ${Date.now() - startedAt}ms`);
   }
-
-  if (reservation.action !== "send" || !reservation.reservation_id) {
-    return c.json({ ok: false, error: "reservation_failed" }, 500);
-  }
-
-  const { error: sendError } = await admin.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: true,
-      data: { demo_verification_pending: true },
-    },
-  });
-
-  const { error: completionError } = await admin.rpc("demo_complete_verification_email", {
-    p_reservation_id: reservation.reservation_id,
-    p_success: !sendError,
-    p_error: sendError?.message ?? null,
-  });
-
-  if (completionError) {
-    console.error("[demo-verification-email] completion failed:", completionError.message);
-  }
-
-  if (sendError) {
-    console.error("[demo-verification-email] send failed, queued:", sendError.message);
-    return c.json({ ok: true, queued: true }, 202);
-  }
-
-  return c.json({ ok: true, queued: false });
 }
 
 async function handleSubmitDemoRequest(c: Context) {
