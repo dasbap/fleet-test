@@ -44,7 +44,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
+.codex/
 # Vercel
 .vercel
 

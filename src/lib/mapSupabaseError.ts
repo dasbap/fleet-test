@@ -72,6 +72,23 @@ export function mapSupabaseErrorToFrench(message: string): string {
   if (m.includes("could not find the function") || (m.includes("function") && m.includes("does not exist")) || m.includes("42883")) {
     return "Fonction serveur introuvable ou migrations non appliquées. Déployez les migrations Supabase du dépôt ou vérifiez VITE_SUPABASE_URL dans .env.local.";
   }
+  if (m.includes("nom_organisation_requis")) {
+    return "Le nom de l'organisation est requis.";
+  }
+  if (m.includes("nom_flotte_requis")) {
+    return "Le nom de la flotte est requis.";
+  }
+  if (m.includes("utilisateur non connecté")) {
+    return "Vous devez être connecté pour créer une flotte.";
+  }
+
+  // PostgREST / Supabase client
+  if (m.includes("cannot coerce") || m.includes("single json object") || m.includes("pgrst116")) {
+    return "Donnée introuvable ou action non autorisée. Réessayez ou contactez votre superviseur.";
+  }
+  if (m.includes("statement timeout") || m.includes("canceling statement")) {
+    return "Le serveur met trop de temps à répondre. Réessayez dans quelques instants.";
+  }
 
   if (m.includes("querying schema") || (m.includes("database error") && m.includes("schema"))) return "Problème côté base de données. Vérifiez que le projet Supabase est actif et que les migrations sont appliquées.";
   if (m.includes("database error") || m.includes("connection error")) return "Impossible de joindre la base de données. Vérifiez l’URL et la clé Supabase (.env.local).";
