@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2, MailCheck } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSubmitDemoRequest } from "@/hooks/useSubmitDemoRequest";
-import { createEphemeralSupabaseClient, supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 const CENTRAL_AFRICA_COUNTRIES = [
   { code: "CM", label: "Cameroun" },
@@ -45,7 +46,7 @@ function mapVerificationError(error: unknown): string {
     return "Trop d'e-mails de vérification ont été demandés. Attendez quelques minutes avant de réessayer.";
   }
   if (normalized.includes("expired") || normalized.includes("invalid") || normalized.includes("token")) {
-    return "Le lien ou le code de vérification est invalide ou expiré. Demandez un nouvel e-mail E-Samba.";
+    return "Le lien de vérification est invalide ou expiré. Demandez un nouvel e-mail E-Samba.";
   }
   if (normalized.includes("fetch") || normalized.includes("network")) {
     return "Impossible de joindre le service de vérification E-Samba. Vérifiez votre connexion et réessayez.";
@@ -73,10 +74,14 @@ function readSavedDraft(): DemoFormState | null {
   }
 }
 
+function isMatchingVerifiedDemoSession(session: Session | null, email: string): session is Session {
+  if (!session?.user?.email || !session.user.email_confirmed_at) return false;
+  if (session.user.email.toLowerCase() !== email.trim().toLowerCase()) return false;
+  return session.user.user_metadata?.demo_verification_pending === true;
+}
+
 export function ContactDemoForm({ className }: ContactDemoFormProps) {
-  const verificationClientRef = useRef<ReturnType<typeof createEphemeralSupabaseClient> | null>(null);
   const [form, setForm] = useState<DemoFormState>({ name: "", email: "", company: "", phone: "", company_identifier: "", country_code: "" });
-  const [otp, setOtp] = useState("");
   const [verificationEmailSent, setVerificationEmailSent] = useState(false);
   const [verificationQueued, setVerificationQueued] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
@@ -101,49 +106,52 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     if (savedDraft) {
       setForm(savedDraft);
       const savedEmailState = window.localStorage.getItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
-      if (savedEmailState === "sent" || savedEmailState === "queued") {
+      if (savedEmailState === "sent" || savedEmailState === "queued" || savedEmailState === "verified") {
         setVerificationEmailSent(true);
         setVerificationQueued(savedEmailState === "queued");
       }
     }
 
-    const shouldResumeVerification = params.get("demo_email_verified") === "1";
-    if (!shouldResumeVerification) return;
+    if (params.get("demo_email_verified") === "1") {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!verificationEmailSent || emailVerified || !form.email.trim()) return;
 
     let cancelled = false;
-    void (async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (cancelled || error || !data.session?.user?.email) return;
+    const email = form.email.trim().toLowerCase();
 
-      const draft = savedDraft ?? readSavedDraft();
-      const sessionEmail = data.session.user.email.toLowerCase();
-      if (!draft || draft.email.trim().toLowerCase() !== sessionEmail) return;
-
-      if (data.session.user.user_metadata?.demo_verification_pending !== true) {
-        setFormError("Cette adresse e-mail est déjà associée à un compte E-Samba.");
-        return;
-      }
-
-      setForm(draft);
-      setEmailVerificationToken(data.session.access_token);
+    const applySession = (session: Session | null) => {
+      if (cancelled || !isMatchingVerifiedDemoSession(session, email)) return;
+      setEmailVerificationToken(session.access_token);
       setEmailVerified(true);
       setVerificationEmailSent(true);
       setVerificationQueued(false);
       setFormError(null);
       window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
-      window.localStorage.setItem(DEMO_VERIFICATION_EMAIL_STATE_KEY, "sent");
-      window.history.replaceState({}, "", window.location.pathname);
-    })();
+      window.localStorage.setItem(DEMO_VERIFICATION_EMAIL_STATE_KEY, "verified");
+    };
+
+    const refreshSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (!error) applySession(data.session);
+    };
+
+    void refreshSession();
+    const interval = window.setInterval(() => void refreshSession(), 1500);
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => applySession(session));
 
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [emailVerified, form.email, verificationEmailSent]);
 
   function updateEmail(email: string) {
     setForm((current) => ({ ...current, email }));
-    verificationClientRef.current = null;
-    setOtp("");
     setVerificationEmailSent(false);
     setVerificationQueued(false);
     setEmailVerified(false);
@@ -166,6 +174,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     setVerificationPending(true);
     try {
       window.localStorage.setItem(DEMO_VERIFICATION_DRAFT_KEY, JSON.stringify({ ...form, email }));
+      window.localStorage.setItem(DEMO_VERIFICATION_INTENT_KEY, "demo");
 
       const response = await fetch("/api/demo/verification-email", {
         method: "POST",
@@ -209,50 +218,11 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     }
   }
 
-  async function verifyEmailCode() {
-    setFormError(null);
-    const email = form.email.trim().toLowerCase();
-    const token = otp.trim();
-    if (!/^\d{6}$/.test(token)) {
-      setFormError("Saisissez le code E-Samba à 6 chiffres reçu par e-mail.");
-      return;
-    }
-
-    setVerificationPending(true);
-    try {
-      const verificationClient = createEphemeralSupabaseClient();
-      verificationClientRef.current = verificationClient;
-      const { data, error } = await verificationClient.auth.verifyOtp({ email, token, type: "email" });
-      if (error) throw error;
-      if (!data.user || data.user.email?.toLowerCase() !== email || !data.session?.access_token) {
-        throw new Error("invalid_verification_session");
-      }
-      if (data.user.user_metadata?.demo_verification_pending !== true) {
-        throw new Error("Cette adresse e-mail est déjà associée à un compte E-Samba.");
-      }
-      setEmailVerificationToken(data.session.access_token);
-      setEmailVerified(true);
-      setVerificationQueued(false);
-      window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
-      window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
-    } catch (error) {
-      setEmailVerified(false);
-      setEmailVerificationToken("");
-      if (error instanceof Error && error.message.includes("déjà associée")) {
-        setFormError(error.message);
-      } else {
-        setFormError(mapVerificationError(error));
-      }
-    } finally {
-      setVerificationPending(false);
-    }
-  }
-
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setFormError(null);
     if (!emailVerified || !emailVerificationToken) {
-      setFormError("Vérifiez votre adresse e-mail depuis l'e-mail E-Samba avant d'envoyer la demande.");
+      setFormError("Cliquez sur le lien reçu par e-mail et attendez la confirmation E-Samba avant d'envoyer la demande.");
       return;
     }
     try {
@@ -265,7 +235,6 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
         countryCode: form.country_code,
         emailVerificationToken,
       });
-      verificationClientRef.current = null;
       setEmailVerificationToken("");
       window.localStorage.removeItem(DEMO_VERIFICATION_DRAFT_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
@@ -297,16 +266,9 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
         </div>
 
         {verificationEmailSent && !emailVerified ? (
-          <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-3">
-            <p className="font-medium">{verificationQueued ? "Demande placée en liste d'attente" : "Vérifiez votre boîte mail"}</p>
-            <p className="text-xs text-muted-foreground">{verificationQueued ? `Le quota quotidien d'e-mails est atteint. ${form.email.trim()} recevra automatiquement son code dès que le quota sera de nouveau disponible.` : `E-Samba a envoyé un e-mail à ${form.email.trim()}. Saisissez ci-dessous le code à 6 chiffres reçu.`}</p>
-            <div className="border-t pt-3 space-y-2">
-              <p className="text-xs text-muted-foreground">Code de vérification E-Samba :</p>
-              <div className="flex gap-2">
-                <Input id="demo-email-otp" aria-label="Code de vérification E-Samba" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="123456" />
-                <Button type="button" onClick={() => void verifyEmailCode()} disabled={verificationPending || otp.length !== 6}>Valider</Button>
-              </div>
-            </div>
+          <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-2">
+            <p className="font-medium">{verificationQueued ? "Demande placée en liste d'attente" : "En attente de votre confirmation"}</p>
+            <p className="text-xs text-muted-foreground">{verificationQueued ? `Le quota quotidien d'e-mails est atteint. ${form.email.trim()} recevra automatiquement son lien de vérification dès que le quota sera de nouveau disponible.` : `E-Samba a envoyé un lien à ${form.email.trim()}. Cliquez sur ce lien pour vérifier l'adresse. Cette page détectera automatiquement la confirmation Supabase.`}</p>
           </div>
         ) : null}
 
