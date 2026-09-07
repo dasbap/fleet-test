@@ -10,6 +10,84 @@ as $$
   select upper(regexp_replace(trim(p_registration), '[^A-Za-z0-9]', '', 'g'));
 $$;
 
+create table if not exists public.vehicle_registration_duplicate_archive (
+  vehicle_id uuid primary key,
+  fleet_id uuid not null,
+  original_registration text not null,
+  original_normalized_registration text not null,
+  replacement_registration text not null,
+  archived_at timestamptz not null default now()
+);
+
+revoke all on table public.vehicle_registration_duplicate_archive from public, anon, authenticated;
+grant select, insert on table public.vehicle_registration_duplicate_archive to service_role;
+
+with normalized_vehicles as (
+  select
+    v.id,
+    v.fleet_id,
+    v.registration,
+    public.normalize_vehicle_registration(v.registration) as normalized_registration,
+    row_number() over (
+      partition by public.normalize_vehicle_registration(v.registration)
+      order by v.created_at nulls first, v.id
+    ) as normalized_rank,
+    count(*) over (
+      partition by public.normalize_vehicle_registration(v.registration)
+    ) as normalized_count
+  from public.vehicules v
+  where nullif(public.normalize_vehicle_registration(v.registration), '') is not null
+),
+duplicate_replacements as (
+  select
+    id,
+    fleet_id,
+    registration,
+    normalized_registration,
+    upper('D' || left(replace(id::text, '-', ''), 8)) as replacement_registration
+  from normalized_vehicles
+  where normalized_count > 1
+    and normalized_rank > 1
+)
+insert into public.vehicle_registration_duplicate_archive (
+  vehicle_id,
+  fleet_id,
+  original_registration,
+  original_normalized_registration,
+  replacement_registration
+)
+select
+  id,
+  fleet_id,
+  registration,
+  normalized_registration,
+  replacement_registration
+from duplicate_replacements
+on conflict (vehicle_id) do nothing;
+
+with archived_replacements as (
+  select vehicle_id, replacement_registration
+  from public.vehicle_registration_duplicate_archive
+)
+update public.vehicules v
+set registration = ar.replacement_registration
+from archived_replacements ar
+where v.id = ar.vehicle_id
+  and public.normalize_vehicle_registration(v.registration) <> ar.replacement_registration;
+
+do $$
+begin
+  if exists (
+    select 1
+    from public.vehicules v
+    where nullif(public.normalize_vehicle_registration(v.registration), '') is not null
+    group by public.normalize_vehicle_registration(v.registration)
+    having count(*) > 1
+  ) then
+    raise exception 'vehicle_registration_duplicate_remediation_failed';
+  end if;
+end $$;
+
 create unique index if not exists vehicules_registration_global_unique_idx
 on public.vehicules (public.normalize_vehicle_registration(registration));
 

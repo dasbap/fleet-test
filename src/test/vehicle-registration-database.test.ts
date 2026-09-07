@@ -9,6 +9,9 @@ const migration = readFileSync(
 describe("vehicle registration database invariants", () => {
   it("rend l'immatriculation unique globalement apres normalisation", () => {
     expect(migration).toContain("normalize_vehicle_registration");
+    expect(migration).toContain("vehicle_registration_duplicate_archive");
+    expect(migration).toContain("duplicate_replacements");
+    expect(migration).toContain("vehicle_registration_duplicate_remediation_failed");
     expect(migration).toContain("vehicules_registration_global_unique_idx");
     expect(migration).toContain(
       "on public.vehicules (public.normalize_vehicle_registration(registration))",
