@@ -3,6 +3,9 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
+const DEMO_VERIFICATION_REDIRECT_URL =
+  Deno.env.get("DEMO_VERIFICATION_REDIRECT_URL") ??
+  "https://fleet-test-gamma.vercel.app/auth/callback?intent=demo";
 
 function timingSafeEqual(a: string, b: string): boolean {
   const encoder = new TextEncoder();
@@ -51,6 +54,7 @@ Deno.serve(async (req) => {
           email,
           options: {
             shouldCreateUser: true,
+            emailRedirectTo: DEMO_VERIFICATION_REDIRECT_URL,
             data: { demo_verification_pending: true },
           },
         });
