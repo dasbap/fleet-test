@@ -17,8 +17,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
-  const auth = req.headers.get("Authorization") ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const token = req.headers.get("x-cron-secret")?.trim() ?? "";
   if (!CRON_SECRET || !timingSafeEqual(token, CRON_SECRET)) {
     return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
