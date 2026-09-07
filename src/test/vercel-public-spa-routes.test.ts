@@ -37,10 +37,15 @@ describe("Vercel public SPA routes", () => {
     }
   });
 
-  it("conserve le fallback SPA pour les hard refresh de routes publiques", () => {
+  it("conserve le fallback SPA sans intercepter les fonctions API", () => {
     expect(config.rewrites).toContainEqual({
-      source: "/:path*",
+      source: "/((?!api/).*)",
       destination: "/index.html",
     });
+    expect(config.rewrites ?? []).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: expect.stringMatching(/^\/api\//) }),
+      ]),
+    );
   });
 });
