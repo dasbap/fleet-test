@@ -13,6 +13,105 @@ const submitDemoRequestSchema = z.object({
   country_code: z.enum(["CM", "CF", "TD", "CG", "GA", "GQ"]),
 });
 
+const verificationEmailSchema = z.object({
+  email: z.string().trim().email().max(320),
+});
+
+type VerificationReservation = {
+  ok?: boolean;
+  action?: "send" | "queued" | "cooldown";
+  reservation_id?: string;
+  retry_after_seconds?: number;
+  available_at?: string;
+  error?: string;
+};
+
+async function handleVerificationEmail(c: Context) {
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "invalid_json" }, 400);
+  }
+
+  const parsed = verificationEmailSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return c.json({ ok: false, error: "invalid_payload", details: parsed.error.flatten() }, 400);
+  }
+
+  const admin = createSupabaseServiceClient();
+  if (!admin) {
+    return c.json({ ok: false, error: "server_configuration_error" }, 503);
+  }
+
+  const email = parsed.data.email.toLowerCase();
+  const { data: reservationData, error: reservationError } = await admin.rpc(
+    "demo_reserve_verification_email",
+    { p_email: email },
+  );
+
+  if (reservationError) {
+    console.error("[demo-verification-email] reservation failed:", reservationError.message);
+    return c.json({ ok: false, error: "reservation_failed" }, 500);
+  }
+
+  const reservation = reservationData as VerificationReservation | null;
+  if (!reservation?.ok) {
+    return c.json({ ok: false, error: reservation?.error ?? "reservation_failed" }, 400);
+  }
+
+  if (reservation.action === "cooldown") {
+    return c.json(
+      {
+        ok: false,
+        error: "email_cooldown",
+        retry_after_seconds: reservation.retry_after_seconds ?? 180,
+      },
+      429,
+    );
+  }
+
+  if (reservation.action === "queued") {
+    return c.json(
+      {
+        ok: true,
+        queued: true,
+        available_at: reservation.available_at ?? null,
+      },
+      202,
+    );
+  }
+
+  if (reservation.action !== "send" || !reservation.reservation_id) {
+    return c.json({ ok: false, error: "reservation_failed" }, 500);
+  }
+
+  const { error: sendError } = await admin.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: true,
+      data: { demo_verification_pending: true },
+    },
+  });
+
+  const { error: completionError } = await admin.rpc("demo_complete_verification_email", {
+    p_reservation_id: reservation.reservation_id,
+    p_success: !sendError,
+    p_error: sendError?.message ?? null,
+  });
+
+  if (completionError) {
+    console.error("[demo-verification-email] completion failed:", completionError.message);
+  }
+
+  if (sendError) {
+    console.error("[demo-verification-email] send failed, queued:", sendError.message);
+    return c.json({ ok: true, queued: true }, 202);
+  }
+
+  return c.json({ ok: true, queued: false });
+}
+
 async function handleSubmitDemoRequest(c: Context) {
   const token = getBearerToken(c.req.header("Authorization"));
   if (!token) {
@@ -46,9 +145,6 @@ async function handleSubmitDemoRequest(c: Context) {
     return c.json({ ok: false, error: "verified_email_mismatch" }, 403);
   }
 
-  // Important: seuls les comptes Auth créés spécifiquement pour la vérification
-  // d'une demande de démo peuvent emprunter ce chemin. Un compte produit normal
-  // ne doit jamais être supprimé par cette route.
   if (user.user_metadata?.demo_verification_pending !== true) {
     return c.json({ ok: false, error: "email_already_registered" }, 409);
   }
@@ -69,7 +165,6 @@ async function handleSubmitDemoRequest(c: Context) {
   });
 
   if (insertError) {
-    // Même en cas de doublon, ce compte n'avait d'autre rôle que la vérification.
     const { error: cleanupError } = await admin.auth.admin.deleteUser(user.id);
     if (cleanupError) {
       console.error("[demo-request] transient auth cleanup failed after insert error:", cleanupError.message);
@@ -84,8 +179,6 @@ async function handleSubmitDemoRequest(c: Context) {
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
   if (deleteError) {
-    // La demande est déjà enregistrée. Ne pas transformer un succès métier en
-    // faux échec utilisateur ; le nettoyage peut être repris côté administration.
     console.error("[demo-request] transient auth user cleanup failed:", deleteError.message);
   }
 
@@ -93,5 +186,6 @@ async function handleSubmitDemoRequest(c: Context) {
 }
 
 export function registerDemoRequestRoutes(app: Hono) {
+  app.post("/api/demo/verification-email", handleVerificationEmail);
   app.post("/api/demo/request", handleSubmitDemoRequest);
 }
