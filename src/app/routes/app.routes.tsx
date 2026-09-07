@@ -2,6 +2,7 @@ import { lazy } from "react";
 import { Route, Navigate } from "react-router-dom";
 import { RootLayout } from "@/app/RootLayout";
 import AuthProviderLayout from "@/components/auth/AuthProviderLayout";
+import { AuthenticatedDashboardLayout } from "@/components/dashboard/AuthenticatedDashboardLayout";
 import { dashboardRoutes } from "@/app/routes/dashboard.routes";
 import { authPublicRoutes } from "@/features/auth/routes";
 import { AdminGuard } from "@/components/auth/RoleGuard";
@@ -52,7 +53,6 @@ const ProtectedRoute = lazy(() =>
     default: m.ProtectedRoute,
   }))
 );
-const DashboardLayout = lazy(() => import("@/components/dashboard/DashboardLayout"));
 const TerrainLayout = lazy(() => import("@/layouts/TerrainLayout"));
 const TerrainPage = lazy(
   () => import("@/features/terrain/screens/TerrainPage")
@@ -159,12 +159,6 @@ export const appRoutes = (
       element={<LegacyAideVideoRedirect />}
     />
     <Route path="/securite" element={<SecuritePage />} />
-    <Route path="/fonctionnalites" element={<FonctionnalitesPage />} />
-    <Route
-      path="/fonctionnalites/piloter-flotte"
-      element={<FonctionnaliteSectionPage slug="piloter-flotte" />}
-    />
-    <Route path="/modules" element={<ModulesPage />} />
     <Route
       path="/guides"
       element={<Navigate to={ROUTE_PATHS.help} replace />}
@@ -173,7 +167,6 @@ export const appRoutes = (
       path="/features"
       element={<Navigate to={ROUTE_PATHS.fonctionnalites} replace />}
     />
-    <Route path="/contact" element={<ContactPage />} />
     <Route path="/demo" element={<Navigate to={PUBLIC_DEMO_HREF} replace />} />
     <Route path="/cookies" element={<CookiesPage />} />
     <Route
@@ -237,6 +230,29 @@ export const appRoutes = (
         path="/tarifs"
         element={<Navigate to={ROUTE_PATHS.pricing} replace />}
       />
+      <Route element={<AuthenticatedDashboardLayout />}>
+        <Route path="/fonctionnalites" element={<FonctionnalitesPage />} />
+        <Route
+          path="/fonctionnalites/piloter-flotte"
+          element={<FonctionnaliteSectionPage slug="piloter-flotte" />}
+        />
+        <Route path="/modules" element={<ModulesPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/fuel" element={<FuelMonitoringPage />} />
+        <Route path="/inspections/nouveau" element={<DvirChecklistPage />} />
+        <Route
+          path="/inspections/:dvirId/modifier"
+          element={<DvirChecklistPage />}
+        />
+        <Route path="/inspections" element={<DvirInspectionsPage />} />
+        <Route path="/inspections/*" element={<DvirDetailPage />} />
+        <Route path="/transit" element={<TransitCemacPage />} />
+        <Route path="/transit/*" element={<TransitDetailPage />} />
+        <Route
+          path="/maintenance/predictive"
+          element={<PredictiveMaintenancePage />}
+        />
+      </Route>
       {authPublicRoutes}
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/start" element={<TenantBootstrapRoute />} />
@@ -260,24 +276,6 @@ export const appRoutes = (
           />
         </Route>
       </Route>
-      <Route element={<ProtectedRoute />}>
-        <Route element={<DashboardLayout />}>
-          <Route path="/fuel" element={<FuelMonitoringPage />} />
-          <Route path="/inspections/nouveau" element={<DvirChecklistPage />} />
-          <Route
-            path="/inspections/:dvirId/modifier"
-            element={<DvirChecklistPage />}
-          />
-          <Route path="/inspections" element={<DvirInspectionsPage />} />
-          <Route path="/inspections/*" element={<DvirDetailPage />} />
-          <Route path="/transit" element={<TransitCemacPage />} />
-          <Route path="/transit/*" element={<TransitDetailPage />} />
-          <Route
-            path="/maintenance/predictive"
-            element={<PredictiveMaintenancePage />}
-          />
-        </Route>
-      </Route>
       <Route
         path="/maintenance"
         element={<Navigate to={ROUTE_PATHS.dashboardMaintenance} replace />}
@@ -285,7 +283,6 @@ export const appRoutes = (
       <Route path="/upgrade" element={<Upgrade />} />
       <Route path="/post-login" element={<PostLoginGate />} />
       <Route path="/confidentialite" element={<ConfidentialitePage />} />
-      {/* Flux commercial démo — pas de ProtectedRoute (auth via magic link) */}
       {DEMO_MAGIC_LINK_ENABLED && DemoMagicLinkPage && ProspectOnboarding ? (
         <>
           <Route path="/demo/access" element={<DemoMagicLinkPage />} />
@@ -303,7 +300,6 @@ export const appRoutes = (
           />
         </>
       )}
-      {/* Flux reset password — session temporaire PASSWORD_RECOVERY, sans RequireGuest */}
       <Route path="/auth/update-password" element={<UpdatePasswordPage />} />
       <Route
         path={ROUTE_PATHS.setPassword}
@@ -313,7 +309,6 @@ export const appRoutes = (
           </RequireAuth>
         }
       />
-      {/* Callback Supabase PKCE — magic link, confirmation email */}
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       {dashboardRoutes}
     </Route>
