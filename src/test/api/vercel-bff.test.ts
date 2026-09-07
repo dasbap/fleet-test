@@ -44,7 +44,7 @@ describe("health handler", () => {
 });
 
 describe("native Vercel API routing", () => {
-  it("laisse toutes les routes API au filesystem Vercel", () => {
+  it("laisse les routes API au filesystem Vercel sauf l'exception GPS explicite", () => {
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
       rewrites?: Array<{ source?: string; destination?: string }>;
     };
@@ -53,7 +53,12 @@ describe("native Vercel API routing", () => {
       route.source?.startsWith("/api/"),
     );
 
-    expect(apiRewrites).toEqual([]);
+    expect(apiRewrites).toEqual([
+      {
+        source: "/api/gps/ingest",
+        destination: "/api/[...path]",
+      },
+    ]);
     expect(readFileSync("api/[...path].ts", "utf8")).toContain("createVercelApiApp");
   });
 
