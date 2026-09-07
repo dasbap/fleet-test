@@ -107,6 +107,10 @@
   ],
   "crons": [
     {
+      "path": "/api/crons/process-demo-verification-queue",
+      "schedule": "5 0 * * *"
+    },
+    {
       "path": "/api/crons/expire-demo-accounts",
       "schedule": "0 2 * * *"
     }
