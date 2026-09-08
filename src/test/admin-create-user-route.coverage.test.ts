@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMock = vi.hoisted(() => ({
   applyCors: vi.fn(),
+  fetchWithTimeout: vi.fn(),
   handlePreflight: vi.fn(),
   requireAuthenticatedUser: vi.fn(),
 }));
@@ -71,7 +72,7 @@ const makeClients = (options: {
   resetError?: unknown;
 } = {}) => {
   const deleteUser = vi.fn(async () => ({ error: null }));
-  const upsert = vi.fn(async (table: string) => ({ error: null }));
+  const upsert = vi.fn(async (_table: string) => ({ error: null }));
   const admin = {
     rpc: vi.fn(async () => options.rateLimit ?? { data: { ok: true }, error: null }),
     auth: {
@@ -91,14 +92,11 @@ const makeClients = (options: {
       }),
     })),
   };
-  const publicClient = {
-    auth: {
-      resetPasswordForEmail: vi.fn(async () => ({ error: options.resetError ?? null })),
-    },
-  };
+  const publicClient = { auth: {} };
   supabaseMock.createClient.mockImplementation((_url: string, key: string) =>
     key === "service-role" ? admin : publicClient,
   );
+  apiMock.fetchWithTimeout.mockResolvedValue({ ok: options.resetError == null });
   return { admin, publicClient, deleteUser, upsert };
 };
 
@@ -325,7 +323,7 @@ describe("admin create-user route", () => {
     expectJson(res, 502, { ok: false, error: "password_setup_email_failed" });
   });
 
-  it("crée un utilisateur de flotte et envoie le reset password", async () => {
+  it("crée un utilisateur de flotte et envoie le reset scanner-safe", async () => {
     const clients = makeClients();
     const res = makeResponse();
     await handler(makeRequest(validBody()) as never, res);
@@ -343,9 +341,22 @@ describe("admin create-user route", () => {
         },
       }),
     );
-    expect(clients.publicClient.auth.resetPasswordForEmail).toHaveBeenCalledWith("user@example.com", {
-      redirectTo: "https://app.example/auth/update-password",
-    });
+    expect(apiMock.fetchWithTimeout).toHaveBeenCalledWith(
+      "https://supabase.example/functions/v1/request-password-reset",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: "anon-key",
+          Authorization: "Bearer anon-key",
+        },
+        body: JSON.stringify({
+          email: "user@example.com",
+          redirectTo: "https://app.example/auth/update-password",
+        }),
+      }),
+      8_000,
+    );
     expectJson(res, 201, {
       ok: true,
       user_id: "new-user-1",
