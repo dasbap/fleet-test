@@ -37,7 +37,7 @@ describe("Demo email verification", () => {
 
   it("conserve les données du formulaire avant de demander le magic link", () => {
     expect(formSource).toContain("DEMO_VERIFICATION_DRAFT_KEY");
-    expect(formSource).toContain('fetch("/api/demo/verification-email"');
+    expect(formSource).toContain("supabase.auth.signInWithOtp");
     expect(formSource).toContain("supabase.auth.onAuthStateChange");
     expect(formSource).toContain(
       "Aucun compte E-Samba n'est créé à ce stade",
