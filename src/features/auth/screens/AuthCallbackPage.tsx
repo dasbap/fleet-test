@@ -9,14 +9,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const DEMO_VERIFICATION_DRAFT_KEY = "esamba_demo_verification_draft";
 const DEMO_VERIFICATION_INTENT_KEY = "esamba_demo_verification_intent";
 const DEMO_VERIFICATION_EMAIL_STATE_KEY = "esamba_demo_verification_email_state";
+const DEMO_VERIFICATION_BROADCAST_CHANNEL = "esamba_demo_verification";
 
-type CallbackState = "processing" | "error";
+type CallbackState = "processing" | "success" | "error";
 
 type DemoVerificationDraft = {
   name: string;
@@ -77,10 +78,24 @@ async function resolveCallbackSession(code: string | null): Promise<Session | nu
   return data.session;
 }
 
+function broadcastDemoVerified(email: string) {
+  window.localStorage.setItem(DEMO_VERIFICATION_EMAIL_STATE_KEY, "verified");
+  window.localStorage.setItem(
+    `${DEMO_VERIFICATION_EMAIL_STATE_KEY}_event`,
+    JSON.stringify({ email, verifiedAt: Date.now() }),
+  );
+  if (typeof BroadcastChannel !== "undefined") {
+    const channel = new BroadcastChannel(DEMO_VERIFICATION_BROADCAST_CHANNEL);
+    channel.postMessage({ type: "verified", email });
+    channel.close();
+  }
+}
+
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [state, setState] = useState<CallbackState>("processing");
+  const [verifiedEmail, setVerifiedEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const handled = useRef(false);
 
@@ -128,11 +143,7 @@ export default function AuthCallbackPage() {
         }
 
         const draft = readDemoDraft();
-        if (!draft) {
-          throw new Error("demo_draft_missing");
-        }
-
-        if (session.user.email.toLowerCase() !== draft.email.trim().toLowerCase()) {
+        if (draft && session.user.email.toLowerCase() !== draft.email.trim().toLowerCase()) {
           throw new Error("demo_email_mismatch");
         }
 
@@ -143,19 +154,19 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        window.localStorage.setItem(DEMO_VERIFICATION_EMAIL_STATE_KEY, "verified");
+        broadcastDemoVerified(session.user.email);
+        window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
         window.clearTimeout(timeout);
-        navigate(`${ROUTE_PATHS.contact}?demo_email_verified=1`, { replace: true });
+        setVerifiedEmail(session.user.email);
+        setState("success");
       } catch (callbackError) {
         window.clearTimeout(timeout);
         console.error("[auth-callback] verification failed:", callbackError);
         if (!cancelled) {
           const message =
-            callbackError instanceof Error && callbackError.message === "demo_draft_missing"
-              ? "Les informations de votre demande ne sont plus disponibles dans ce navigateur. Revenez au formulaire et recommencez la vérification."
-              : callbackError instanceof Error && callbackError.message === "demo_email_mismatch"
-                ? "L'adresse vérifiée ne correspond pas à celle du formulaire de démo."
-                : "Le lien de vérification est invalide ou expiré. Demandez un nouveau lien depuis le formulaire.";
+            callbackError instanceof Error && callbackError.message === "demo_email_mismatch"
+              ? "L'adresse vérifiée ne correspond pas à celle du formulaire de démo."
+              : "Le lien de vérification est invalide ou expiré. Demandez un nouveau lien depuis le formulaire.";
           setErrorMessage(message);
           setState("error");
         }
@@ -166,6 +177,35 @@ export default function AuthCallbackPage() {
       cancelled = true;
     };
   }, [navigate, searchParams]);
+
+  if (state === "success") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CheckCircle2 className="mx-auto h-12 w-12 text-primary mb-3" />
+            <CardTitle>Votre adresse a été vérifiée</CardTitle>
+            <CardDescription>
+              {verifiedEmail
+                ? `${verifiedEmail} est maintenant confirmée. Vous pouvez revenir à votre demande et demander votre compte E-Samba.`
+                : "Votre adresse est maintenant confirmée. Vous pouvez revenir à votre demande et demander votre compte E-Samba."}
+            </CardDescription>
+          </CardHeader>
+          <div className="px-6 pb-6 space-y-3">
+            <Button
+              className="w-full"
+              onClick={() => navigate(`${ROUTE_PATHS.contact}?demo_email_verified=1`, { replace: true })}
+            >
+              Retourner sur /contact et demander mon compte
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Si /contact est déjà ouvert dans un autre onglet, il se met à jour automatiquement.
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   if (state === "error") {
     return (
@@ -196,7 +236,7 @@ export default function AuthCallbackPage() {
         <CardHeader className="text-center">
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary mb-2" />
           <CardTitle>Vérification en cours…</CardTitle>
-          <CardDescription>Validation de votre adresse e-mail dans Supabase puis retour vers votre demande de démo.</CardDescription>
+          <CardDescription>Validation de votre adresse e-mail dans Supabase.</CardDescription>
         </CardHeader>
       </Card>
     </div>
