@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -42,7 +42,7 @@ export function RoleChangeRequestsPanel() {
     [memberships, userFleetId],
   );
 
-  async function reload() {
+  const reload = useCallback(async () => {
     if (!user || !userFleetId) return;
     setLoading(true);
     const query = supabase
@@ -66,11 +66,11 @@ export function RoleChangeRequestsPanel() {
       }
     }
     setLoading(false);
-  }
+  }, [isAdmin, isSuperAdmin, toast, user, userFleetId]);
 
   useEffect(() => {
     void reload();
-  }, [user?.id, userFleetId, isAdmin, isSuperAdmin]);
+  }, [reload]);
 
   async function submitRequest() {
     if (!userFleetId || !requestedRole) return;
