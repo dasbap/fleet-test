@@ -10,7 +10,6 @@
  *   - reactivateAccount(userId)  → réactive le compte
  *   - resetFleet(fleetId)        → remet à zéro la flotte démo
  *   - generateMagicLink(userId)  → génère un nouveau lien d'accès (via BFF)
- *   - demoFleets                 → flottes is_demo disponibles
  *
  * Sécurité : ADMIN_SECRET n'est JAMAIS exposé côté client.
  * Les appels sensibles passent par les routes BFF Vercel (/api/admin/*)
@@ -20,6 +19,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { AdminDemoRepository } from "@/repositories/admin-demo.repository";
 import { AdminDemoBffRepository } from "@/repositories/admin-demo-bff.repository";
 import { AdminDemoService } from "@/services/admin-demo.service";
@@ -56,11 +56,19 @@ const adminDemoRepository = new AdminDemoRepository();
 const adminDemoBffRepository = new AdminDemoBffRepository();
 const adminDemoService = new AdminDemoService(adminDemoRepository, adminDemoBffRepository);
 
+interface DeleteUserResponse {
+  ok: boolean;
+  error?: string;
+  fleet_ids?: string[];
+  can_delete_demo_fleets?: boolean;
+}
+
 export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
   const [sessions, setSessions] = useState<DemoSession[]>([]);
   const [isLoading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, session } = useAuth();
+  const { isSuperAdmin } = useRoleAccess();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,162 +90,136 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
   const createAccess = useCallback(
     async (payload: CreateDemoPayload) => {
       const result = await adminDemoService.createAccess(session?.access_token, payload);
-      if (result.ok) {
-        await load();
-      }
+      if (result.ok) await load();
       return result;
     },
     [load, session?.access_token],
   );
 
-  const suspendAccount = useCallback(
-    async (userId: string): Promise<boolean> => {
-      const adminId = user?.id ?? "";
-      if (!adminId) {
-        toast({ title: "Session expirée", variant: "destructive" });
-        return false;
-      }
+  const suspendAccount = useCallback(async (userId: string): Promise<boolean> => {
+    const adminId = user?.id ?? "";
+    if (!adminId) {
+      toast({ title: "Session expirée", variant: "destructive" });
+      return false;
+    }
+    try {
+      const ok = await adminDemoService.suspendAccount(userId, adminId);
+      if (!ok) return false;
+      toast({ title: "Compte suspendu" });
+      await load();
+      return true;
+    } catch (error) {
+      toast({ title: "Erreur suspension", description: error instanceof Error ? error.message : "Erreur inconnue", variant: "destructive" });
+      return false;
+    }
+  }, [load, toast, user?.id]);
 
-      try {
-        const ok = await adminDemoService.suspendAccount(userId, adminId);
-        if (!ok) {
-          toast({ title: "Erreur suspension", variant: "destructive" });
+  const reactivateAccount = useCallback(async (userId: string, extendHours?: number): Promise<boolean> => {
+    const adminId = user?.id ?? "";
+    if (!adminId) {
+      toast({ title: "Session expirée", variant: "destructive" });
+      return false;
+    }
+    try {
+      const ok = await adminDemoService.reactivateAccount(userId, adminId, extendHours);
+      if (!ok) return false;
+      toast({ title: "Compte réactivé" });
+      await load();
+      return true;
+    } catch (error) {
+      toast({ title: "Erreur réactivation", description: error instanceof Error ? error.message : "Erreur inconnue", variant: "destructive" });
+      return false;
+    }
+  }, [load, toast, user?.id]);
+
+  const updateAccountExpiration = useCallback(async (userId: string, expiresAt: string | null): Promise<boolean> => {
+    const adminId = user?.id ?? "";
+    if (!adminId) {
+      toast({ title: "Session expirée", variant: "destructive" });
+      return false;
+    }
+    try {
+      const result = await adminDemoService.updateAccountExpiration(userId, adminId, expiresAt);
+      if (!result.ok) return false;
+      toast({ title: "Expiration mise à jour" });
+      await load();
+      return true;
+    } catch (error) {
+      toast({ title: "Erreur modification expiration", description: error instanceof Error ? error.message : "Erreur inconnue", variant: "destructive" });
+      return false;
+    }
+  }, [load, toast, user?.id]);
+
+  const deleteAccount = useCallback(async (userId: string): Promise<boolean> => {
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      toast({ title: "Session expirée", variant: "destructive" });
+      return false;
+    }
+    if (!isSuperAdmin) {
+      toast({ title: "Suppression interdite", description: "Seul le super administrateur peut supprimer un compte.", variant: "destructive" });
+      return false;
+    }
+
+    const runDelete = async (deleteOwnedDemoFleets: boolean): Promise<DeleteUserResponse> => {
+      const response = await fetch("/api/admin/delete-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ user_id: userId, delete_owned_demo_fleets: deleteOwnedDemoFleets }),
+      });
+      const result = (await response.json()) as DeleteUserResponse;
+      if (!response.ok && result.error !== "last_active_organizer_required") {
+        throw new Error(result.error ?? "suppression_echouee");
+      }
+      return result;
+    };
+
+    try {
+      let result = await runDelete(false);
+      if (!result.ok && result.error === "last_active_organizer_required") {
+        if (!result.can_delete_demo_fleets) {
+          toast({
+            title: "Suppression bloquée",
+            description: "Ce compte est le dernier organisateur actif d'une flotte normale. Ajoutez un autre organisateur ou supprimez d'abord la flotte.",
+            variant: "destructive",
+          });
           return false;
         }
-        toast({ title: "Compte suspendu" });
-        await load();
-        return true;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Erreur inconnue";
-        toast({ title: "Erreur suspension", description: message, variant: "destructive" });
-        return false;
-      }
-    },
-    [load, toast, user?.id],
-  );
-
-  const reactivateAccount = useCallback(
-    async (userId: string, extendHours?: number): Promise<boolean> => {
-      const adminId = user?.id ?? "";
-      if (!adminId) {
-        toast({ title: "Session expirée", variant: "destructive" });
-        return false;
+        const confirmed = window.confirm(
+          "Ce compte est le dernier organisateur d'une flotte démo. Supprimer aussi cette flotte démo et toutes ses données ? Cette action est irréversible.",
+        );
+        if (!confirmed) return false;
+        result = await runDelete(true);
       }
 
-      try {
-        const ok = await adminDemoService.reactivateAccount(userId, adminId, extendHours);
-        if (!ok) {
-          toast({ title: "Erreur réactivation", variant: "destructive" });
-          return false;
-        }
-        toast({ title: "Compte réactivé" });
-        await load();
-        return true;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Erreur inconnue";
-        toast({ title: "Erreur réactivation", description: message, variant: "destructive" });
-        return false;
-      }
-    },
-    [load, toast, user?.id],
-  );
+      if (!result.ok) throw new Error(result.error ?? "suppression_echouee");
+      toast({ title: "Compte démo supprimé" });
+      await load();
+      return true;
+    } catch (error) {
+      toast({ title: "Erreur suppression démo", description: error instanceof Error ? error.message : "Erreur inconnue", variant: "destructive" });
+      return false;
+    }
+  }, [isSuperAdmin, load, session?.access_token, toast]);
 
-  const updateAccountExpiration = useCallback(
-    async (userId: string, expiresAt: string | null): Promise<boolean> => {
-      const adminId = user?.id ?? "";
-      if (!adminId) {
-        toast({ title: "Session expirÃ©e", variant: "destructive" });
-        return false;
-      }
+  const resetFleet = useCallback(async (fleetId: string): Promise<boolean> => {
+    try {
+      const result = await adminDemoService.resetFleet(fleetId);
+      if (!result.ok) return false;
+      toast({ title: "Flotte réinitialisée", description: `${result.vehiclesDeleted} véhicules supprimés` });
+      await load();
+      return true;
+    } catch (error) {
+      toast({ title: "Erreur reset flotte", description: error instanceof Error ? error.message : "Erreur inconnue", variant: "destructive" });
+      return false;
+    }
+  }, [load, toast]);
 
-      try {
-        const result = await adminDemoService.updateAccountExpiration(userId, adminId, expiresAt);
-        if (!result.ok) {
-          toast({ title: "Erreur modification expiration", variant: "destructive" });
-          return false;
-        }
-        toast({ title: "Expiration mise a jour" });
-        await load();
-        return true;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Erreur inconnue";
-        toast({ title: "Erreur modification expiration", description: message, variant: "destructive" });
-        return false;
-      }
-    },
-    [load, toast, user?.id],
-  );
-
-  const deleteAccount = useCallback(
-    async (userId: string): Promise<boolean> => {
-      const adminId = user?.id ?? "";
-      if (!adminId) {
-        toast({ title: "Session expirÃ©e", variant: "destructive" });
-        return false;
-      }
-
-      try {
-        const result = await adminDemoService.deleteAccount(userId, adminId);
-        if (!result.ok) {
-          toast({ title: "Erreur suppression demo", variant: "destructive" });
-          return false;
-        }
-        toast({ title: "Compte demo supprime" });
-        await load();
-        return true;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Erreur inconnue";
-        toast({ title: "Erreur suppression demo", description: message, variant: "destructive" });
-        return false;
-      }
-    },
-    [load, toast, user?.id],
-  );
-
-  const resetFleet = useCallback(
-    async (fleetId: string): Promise<boolean> => {
-      try {
-        const result = await adminDemoService.resetFleet(fleetId);
-        if (!result.ok) {
-          toast({ title: "Erreur reset flotte", variant: "destructive" });
-          return false;
-        }
-        toast({
-          title: "Flotte réinitialisée",
-          description: `${result.vehiclesDeleted} véhicules supprimés`,
-        });
-        await load();
-        return true;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Erreur inconnue";
-        toast({ title: "Erreur reset flotte", description: message, variant: "destructive" });
-        return false;
-      }
-    },
-    [load, toast],
-  );
-
-  const generateMagicLink = useCallback(
-    async (
-      userId: string,
-      email: string,
-      fleetId?: string | null,
-      label?: string,
-    ): Promise<string | null> => {
-      const magicUrl = await adminDemoService.generateMagicLink(
-        session?.access_token,
-        userId,
-        email,
-        fleetId,
-        label,
-      );
-      if (magicUrl) {
-        await load();
-      }
-      return magicUrl;
-    },
-    [load, session?.access_token],
-  );
+  const generateMagicLink = useCallback(async (userId: string, email: string, fleetId?: string | null, label?: string): Promise<string | null> => {
+    const magicUrl = await adminDemoService.generateMagicLink(session?.access_token, userId, email, fleetId, label);
+    if (magicUrl) await load();
+    return magicUrl;
+  }, [load, session?.access_token]);
 
   return {
     sessions,
