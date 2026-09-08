@@ -41,11 +41,8 @@ export default function UpdatePasswordPage() {
   const type = searchParams.get("type");
 
   const [pageState, setPageState] = useState<PageState>(() => {
-    // Si token_hash présent dans l'URL → flow PKCE, on doit vérifier d'abord.
     if (tokenHash && type === "recovery") return "verifying";
-    // Sinon si déjà en mode recovery (event hash fragment) → formulaire direct.
     if (isPasswordRecovery) return "ready";
-    // Accès direct sans contexte valide.
     return "error";
   });
 
@@ -55,10 +52,8 @@ export default function UpdatePasswordPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
 
-  // Éviter double-appel en StrictMode (React 18).
   const verifyCalledRef = useRef(false);
 
-  // ── Échange du token PKCE pour établir la session recovery ─────────────────
   useEffect(() => {
     if (pageState !== "verifying") return;
     if (!tokenHash || type !== "recovery") {
@@ -84,8 +79,6 @@ export default function UpdatePasswordPage() {
           );
           setPageState("error");
         } else {
-          // Session établie → AuthProvider reçoit PASSWORD_RECOVERY event et
-          // met isPasswordRecovery=true. On peut afficher le formulaire.
           setPageState("ready");
         }
       } catch (err) {
@@ -96,14 +89,12 @@ export default function UpdatePasswordPage() {
     })();
   }, [pageState, tokenHash, type]);
 
-  // ── Si event PASSWORD_RECOVERY arrive après le mount initial ───────────────
   useEffect(() => {
     if (isPasswordRecovery && pageState === "error") {
       setPageState("ready");
     }
   }, [isPasswordRecovery, pageState]);
 
-  // ── Soumission du nouveau mot de passe ─────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -119,11 +110,20 @@ export default function UpdatePasswordPage() {
 
     setIsSubmitting(true);
     try {
+      const { error: passwordUpdateError } = await supabase.auth.updateUser({
+        password,
+      });
+
+      if (passwordUpdateError) {
+        setFormError(passwordUpdateError.message || "Impossible de modifier le mot de passe.");
+        return;
+      }
+
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
       if (sessionError || !token) {
-        setFormError("Votre session de récupération a expiré. Demandez un nouveau lien.");
+        setFormError("Le mot de passe a été modifié, mais la session n'a pas pu être conservée. Reconnectez-vous avec le nouveau mot de passe.");
         return;
       }
 
@@ -133,7 +133,7 @@ export default function UpdatePasswordPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({}),
       });
       const result = (await response.json()) as {
         ok?: boolean;
@@ -142,14 +142,17 @@ export default function UpdatePasswordPage() {
       };
 
       if (!response.ok || result.ok !== true) {
-        setFormError(result.details ?? result.error ?? "Impossible de modifier le mot de passe.");
+        setFormError(result.details ?? result.error ?? "Impossible de finaliser la modification du mot de passe.");
         return;
       }
 
-      await supabase.auth.refreshSession();
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        console.warn("[UpdatePassword] refreshSession error:", refreshError.message);
+      }
+
       setPageState("success");
 
-      // Redirection après 2s : dashboard si flotte existante, sinon /start.
       setTimeout(() => {
         const dest =
           memberships.length > 0 ? ROUTE_PATHS.dashboard : ROUTE_PATHS.tenantBootstrap;
@@ -162,8 +165,6 @@ export default function UpdatePasswordPage() {
       setIsSubmitting(false);
     }
   };
-
-  // ── Rendus selon l'état ─────────────────────────────────────────────────────
 
   if (pageState === "verifying") {
     return (
@@ -221,7 +222,6 @@ export default function UpdatePasswordPage() {
     );
   }
 
-  // pageState === "ready" — formulaire
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
