@@ -124,10 +124,6 @@
       "destination": "/api/[...path]"
     },
     {
-      "source": "/api/demo/verification-email",
-      "destination": "/api/[...path]"
-    },
-    {
       "source": "/api/demo/request",
       "destination": "/api/[...path]"
     },
@@ -145,10 +141,6 @@
     }
   ],
   "crons": [
-    {
-      "path": "/api/crons/process-demo-verification-queue",
-      "schedule": "5 0 * * *"
-    },
     {
       "path": "/api/crons/expire-demo-accounts",
       "schedule": "0 2 * * *"
