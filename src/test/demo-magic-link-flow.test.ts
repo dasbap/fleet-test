@@ -3,6 +3,7 @@ import fs from "node:fs";
 
 const formSource = fs.readFileSync("src/components/landing/ContactDemoForm.tsx", "utf8");
 const callbackSource = fs.readFileSync("src/features/auth/screens/AuthCallbackPage.tsx", "utf8");
+const routesSource = fs.readFileSync("src/app/routes/app.routes.tsx", "utf8");
 const templateSource = fs.readFileSync("supabase/templates/magic_link.html", "utf8");
 
 describe("demo email verification flow", () => {
@@ -20,20 +21,29 @@ describe("demo email verification flow", () => {
     expect(templateSource).not.toContain("{{ .Token }}");
   });
 
-  it("le callback valide la session puis revient au formulaire sans soumettre automatiquement", () => {
-    expect(callbackSource).toContain("exchangeCodeForSession(code)");
-    expect(callbackSource).toContain("setSession({");
-    expect(callbackSource).toContain("demo_email_verified=1");
-    expect(callbackSource).not.toContain('fetch("/api/demo/request"');
-    expect(callbackSource).not.toContain("demo_request_sent=1");
+  it("intercepte aussi un callback Supabase retourne sur la racine", () => {
+    expect(routesSource).toContain("hasAuthCallbackPayload");
+    expect(routesSource).toContain('to={`/auth/callback${location.search}${location.hash}`}');
+    expect(routesSource).toContain('hash.get("type") === "magiclink"');
   });
 
-  it("le formulaire attend la session Supabase verifiee", () => {
-    expect(formSource).toContain("supabase.auth.onAuthStateChange");
+  it("le callback affiche une confirmation avant le retour au formulaire", () => {
+    expect(callbackSource).toContain("exchangeCodeForSession(code)");
+    expect(callbackSource).toContain("setSession({");
+    expect(callbackSource).toContain("Votre adresse a été vérifiée");
+    expect(callbackSource).toContain("Retourner sur /contact et demander mon compte");
+    expect(callbackSource).toContain("demo_email_verified=1");
+    expect(callbackSource).not.toContain('fetch("/api/demo/request"');
+  });
+
+  it("synchronise la page contact deja ouverte", () => {
+    expect(callbackSource).toContain("BroadcastChannel");
+    expect(callbackSource).toContain("esamba_demo_verification");
+    expect(formSource).toContain("BroadcastChannel");
+    expect(formSource).toContain('window.addEventListener("storage"');
     expect(formSource).toContain("supabase.auth.getSession()");
     expect(formSource).toContain("email_confirmed_at");
     expect(formSource).toContain("setEmailVerificationToken(session.access_token)");
-    expect(formSource).toContain("Cette page détectera automatiquement la confirmation Supabase");
   });
 
   it("demande de reessayer si Supabase limite l'envoi", () => {
