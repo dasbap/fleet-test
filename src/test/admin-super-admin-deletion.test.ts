@@ -5,6 +5,7 @@ const deleteUserApi = readFileSync("api/admin/delete-user.ts", "utf8");
 const deleteFleetApi = readFileSync("api/admin/delete-fleet.ts", "utf8");
 const usersPage = readFileSync("src/pages/admin/AdminUsersPage.tsx", "utf8");
 const subscriptionsPage = readFileSync("src/pages/admin/AdminSubscriptionsPage.tsx", "utf8");
+const fleetPanel = readFileSync("src/components/admin/AdminFleetManagementPanel.tsx", "utf8");
 
 describe("super admin destructive actions", () => {
   it("requires super admin server-side for account deletion", () => {
@@ -27,9 +28,12 @@ describe("super admin destructive actions", () => {
     expect(usersPage).toContain("Supprimer définitivement le compte");
   });
 
-  it("keeps fleet deletion inside the super-admin-only subscriptions page", () => {
-    expect(subscriptionsPage).toContain("if (!isSuperAdmin)");
-    expect(subscriptionsPage).toContain('fetch("/api/admin/delete-fleet"');
-    expect(subscriptionsPage).toContain("Zone de suppression super admin");
+  it("keeps fleet deletion in fleet management and only for super admins", () => {
+    expect(subscriptionsPage).not.toContain('fetch("/api/admin/delete-fleet"');
+    expect(subscriptionsPage).not.toContain("Zone de suppression super admin");
+    expect(fleetPanel).toContain("{isSuperAdmin ? (");
+    expect(fleetPanel).toContain('fetch("/api/admin/delete-fleet"');
+    expect(fleetPanel).toContain("setFleetDeleteTarget(selectedFleet)");
+    expect(fleetPanel).toContain("Supprimer la flotte");
   });
 });
