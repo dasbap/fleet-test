@@ -32,7 +32,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const body = asBody(req.body);
   const userId = asString(body?.user_id);
-  const deleteOwnedDemoFleets = body?.delete_owned_demo_fleets === true;
   if (!userId) {
     res.status(400).json({ ok: false, error: "user_id_required" });
     return;
@@ -93,6 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       .eq("role", "organizer")
       .eq("is_active", true)
       .neq("user_id", userId);
+
     if (countError) {
       res.status(502).json({ ok: false, error: "organizer_count_failed" });
       return;
@@ -101,44 +101,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   if (lastOrganizerFleetIds.length > 0) {
-    const { data: fleets, error: fleetsError } = await admin
+    const { error: deleteFleetsError } = await admin
       .from("flottes")
-      .select("id,is_demo")
+      .delete()
       .in("id", lastOrganizerFleetIds);
-    if (fleetsError) {
-      res.status(502).json({ ok: false, error: "fleet_lookup_failed" });
+
+    if (deleteFleetsError) {
+      res.status(502).json({ ok: false, error: "delete_owned_fleets_failed" });
       return;
-    }
-
-    const demoFleetIds = (fleets ?? []).filter((fleet) => fleet.is_demo === true).map((fleet) => fleet.id);
-    const nonDemoFleetIds = (fleets ?? []).filter((fleet) => fleet.is_demo !== true).map((fleet) => fleet.id);
-
-    if (nonDemoFleetIds.length > 0) {
-      res.status(409).json({
-        ok: false,
-        error: "last_active_organizer_required",
-        fleet_ids: nonDemoFleetIds,
-        can_delete_demo_fleets: false,
-      });
-      return;
-    }
-
-    if (!deleteOwnedDemoFleets) {
-      res.status(409).json({
-        ok: false,
-        error: "last_active_organizer_required",
-        fleet_ids: demoFleetIds,
-        can_delete_demo_fleets: true,
-      });
-      return;
-    }
-
-    if (demoFleetIds.length > 0) {
-      const { error: deleteFleetsError } = await admin.from("flottes").delete().in("id", demoFleetIds);
-      if (deleteFleetsError) {
-        res.status(502).json({ ok: false, error: "delete_demo_fleets_failed" });
-        return;
-      }
     }
   }
 
@@ -148,5 +118,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  res.status(200).json({ ok: true, user_id: userId });
+  res.status(200).json({
+    ok: true,
+    user_id: userId,
+    deleted_fleet_ids: lastOrganizerFleetIds,
+  });
 }
