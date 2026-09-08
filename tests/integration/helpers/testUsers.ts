@@ -27,7 +27,7 @@ export async function createFleetContextForUser(
   let orgId: string;
   let fleetId: string;
 
-  if (options?.user) {
+  if (options?.user && role === "organizer") {
     const { data: onboarding, error: onboardingError } = await options.user.rpc(
       "creer_onboarding_organisation_flotte_et_adhesion",
       {
@@ -94,6 +94,50 @@ export async function createFleetContextForUser(
     orgId = org.id;
     fleetId = createdFleetId;
 
+    if (role !== "organizer") {
+      const anchorEmail = `it-organizer-${runId}@example.invalid`;
+      const { data: anchor, error: anchorError } = await admin.auth.admin.createUser({
+        email: anchorEmail,
+        email_confirm: true,
+      });
+
+      if (anchorError || !anchor.user) {
+        throw new Error(
+          `[integration setup] Creation organizer ancre impossible: ${
+            anchorError?.message ?? "inconnu"
+          }`
+        );
+      }
+
+      auxiliaryUserIds.push(anchor.user.id);
+
+      const { error: anchorProfileError } = await admin.from("profils").insert({
+        user_id: anchor.user.id,
+        full_name: `IT Organizer ${runId}`,
+      });
+
+      if (anchorProfileError) {
+        throw new Error(
+          `[integration setup] Creation profil organizer ancre impossible: ${anchorProfileError.message}`
+        );
+      }
+
+      const { error: anchorMembershipError } = await admin
+        .from("flotte_adhesions")
+        .insert({
+          fleet_id: fleetId,
+          user_id: anchor.user.id,
+          role: "organizer",
+          is_active: true,
+        });
+
+      if (anchorMembershipError) {
+        throw new Error(
+          `[integration setup] Creation adhesion organizer ancre impossible: ${anchorMembershipError.message}`
+        );
+      }
+    }
+
     const { error: membershipError } = await admin
       .from("flotte_adhesions")
       .insert({
@@ -106,66 +150,6 @@ export async function createFleetContextForUser(
     if (membershipError) {
       throw new Error(
         `[integration setup] Creation adhesion service impossible (${role}): ${membershipError.message}`
-      );
-    }
-  }
-
-  if (options?.user && role !== "organizer") {
-    const anchorEmail = `it-organizer-${runId}@example.invalid`;
-    const { data: anchor, error: anchorError } = await admin.auth.admin.createUser({
-      email: anchorEmail,
-      email_confirm: true,
-    });
-
-    if (anchorError || !anchor.user) {
-      throw new Error(
-        `[integration setup] Creation organizer ancre impossible: ${
-          anchorError?.message ?? "inconnu"
-        }`
-      );
-    }
-
-    auxiliaryUserIds.push(anchor.user.id);
-
-    const { error: anchorProfileError } = await admin.from("profils").insert({
-      user_id: anchor.user.id,
-      full_name: `IT Organizer ${runId}`,
-    });
-
-    if (anchorProfileError) {
-      throw new Error(
-        `[integration setup] Creation profil organizer ancre impossible: ${anchorProfileError.message}`
-      );
-    }
-
-    const { error: anchorMembershipError } = await admin
-      .from("flotte_adhesions")
-      .insert({
-        fleet_id: fleetId,
-        user_id: anchor.user.id,
-        role: "organizer",
-        is_active: true,
-      });
-
-    if (anchorMembershipError) {
-      throw new Error(
-        `[integration setup] Creation adhesion organizer ancre impossible: ${anchorMembershipError.message}`
-      );
-    }
-
-    const { error: roleError } = await options.user.rpc(
-      "creer_ou_mettre_a_jour_adhesion_flotte",
-      {
-        p_fleet_id: fleetId,
-        p_user_id: userId,
-        p_role: role,
-        p_is_active: true,
-      }
-    );
-
-    if (roleError) {
-      throw new Error(
-        `[integration setup] Mise a jour adhesion impossible (${role}): ${roleError.message}`
       );
     }
   }
