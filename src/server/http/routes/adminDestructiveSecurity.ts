@@ -47,6 +47,10 @@ function readString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function readBoolean(value: unknown): boolean {
+  return value === true;
+}
+
 async function deleteFleet(c: Context) {
   const auth = await requireSuperAdmin(c);
   if ("response" in auth) return auth.response;
@@ -79,6 +83,7 @@ async function deleteUser(c: Context) {
 
   const body = await readBody(c);
   const userId = readString(body?.user_id);
+  const deleteOwnedDemoFleets = readBoolean(body?.delete_owned_demo_fleets);
   if (!userId) return c.json({ ok: false, error: "user_id_required" }, 400);
   if (userId === auth.user.id) {
     return c.json({ ok: false, error: "cannot_delete_current_super_admin" }, 409);
@@ -129,18 +134,50 @@ async function deleteUser(c: Context) {
     if ((count ?? 0) === 0) lastOrganizerFleetIds.push(membership.fleet_id);
   }
 
+  let canDeleteDemoFleets = false;
   if (lastOrganizerFleetIds.length > 0) {
+    const { data: demoProfiles, error: demoProfileError } = await admin
+      .from("demo_profiles")
+      .select("fleet_id")
+      .in("fleet_id", lastOrganizerFleetIds);
+
+    if (demoProfileError) {
+      return c.json({ ok: false, error: "demo_fleet_lookup_failed" }, 502);
+    }
+
+    const demoFleetIds = new Set(
+      (demoProfiles ?? [])
+        .map((profile) => profile.fleet_id)
+        .filter((fleetId): fleetId is string => typeof fleetId === "string" && fleetId.length > 0),
+    );
+    canDeleteDemoFleets = lastOrganizerFleetIds.every((fleetId) => demoFleetIds.has(fleetId));
+
+    if (!deleteOwnedDemoFleets || !canDeleteDemoFleets) {
+      return c.json({
+        ok: false,
+        error: "last_active_organizer_required",
+        fleet_ids: lastOrganizerFleetIds,
+        can_delete_demo_fleets: canDeleteDemoFleets,
+      }, 409);
+    }
+
     const { error: deleteFleetsError } = await admin
       .from("flottes")
       .delete()
       .in("id", lastOrganizerFleetIds);
     if (deleteFleetsError) {
-      return c.json({ ok: false, error: "delete_owned_fleets_failed" }, 502);
+      return c.json({ ok: false, error: "delete_owned_demo_fleets_failed" }, 502);
     }
   }
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
-  if (deleteError) return c.json({ ok: false, error: "delete_user_failed" }, 502);
+  if (deleteError) {
+    return c.json({
+      ok: false,
+      error: "delete_user_failed",
+      detail: deleteError.message,
+    }, 502);
+  }
 
   return c.json({
     ok: true,
