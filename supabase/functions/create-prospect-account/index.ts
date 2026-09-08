@@ -4,7 +4,7 @@ const ADMIN_SECRET = Deno.env.get("ADMIN_SECRET") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const APP_URL = Deno.env.get("APP_URL") ?? "https://app.e-samba.com";
-const FUNCTION_VERSION = "complete-client-profile-v8";
+const FUNCTION_VERSION = "complete-client-profile-v9";
 const CENTRAL_AFRICA_COUNTRY_CODES = new Set(["CM", "CF", "TD", "CG", "GA", "GQ"]);
 
 interface CreateProspectBody {
@@ -60,6 +60,22 @@ function generateTempPassword(): string {
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
   return `Aa1!${encoded}`;
+}
+
+async function sendScannerSafePasswordSetupEmail(email: string): Promise<boolean> {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/request-password-reset`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+    },
+    body: JSON.stringify({
+      email,
+      redirectTo: `${APP_URL.replace(/\/$/, "")}/auth/update-password`,
+    }),
+  });
+  return response.ok;
 }
 
 function corsHeaders(req: Request): Record<string, string> {
@@ -183,8 +199,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const registration = registrationData as RegistrationResult | null;
     if (registrationError || !registration?.ok) throw new Error("prospect_registration_failed");
 
-    const { error: resetError } = await admin.auth.resetPasswordForEmail(email, { redirectTo: `${APP_URL.replace(/\/$/, "")}/auth/update-password` });
-    if (resetError) throw new Error("password_setup_email_failed");
+    const emailSent = await sendScannerSafePasswordSetupEmail(email).catch(() => false);
+    if (!emailSent) throw new Error("password_setup_email_failed");
 
     if (body.send_email) {
       await admin.from("notification_queue").insert({
