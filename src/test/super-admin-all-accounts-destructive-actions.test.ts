@@ -5,6 +5,7 @@ describe("super admin destructive actions", () => {
   const panel = readFileSync("src/components/admin/AllAccountsPanel.tsx", "utf8");
   const localRoutes = readFileSync("src/server/http/routes/adminDestructiveSecurity.ts", "utf8");
   const vercelDeleteUser = readFileSync("api/admin/delete-user.ts", "utf8");
+  const vercelDeleteFleet = readFileSync("api/admin/delete-fleet.ts", "utf8");
   const app = readFileSync("src/server/http/app.ts", "utf8");
 
   it("affiche les suppressions de compte et de flotte uniquement au super admin", () => {
@@ -33,9 +34,13 @@ describe("super admin destructive actions", () => {
     expect(vercelDeleteUser).not.toContain("last_active_organizer_required");
   });
 
-  it("utilise les vrais noms de colonnes de flottes dans le BFF local", () => {
+  it("utilise la vraie colonne name pour la suppression de flotte locale et Vercel", () => {
+    for (const source of [localRoutes, vercelDeleteFleet]) {
+      expect(source).toContain("name");
+      expect(source).not.toContain("fleet.nom");
+      expect(source).toContain("fleet.name ?? null");
+    }
     expect(localRoutes).toContain('.select("id,name")');
-    expect(localRoutes).not.toContain('.select("id,nom")');
-    expect(localRoutes).toContain("fleet.name ?? null");
+    expect(vercelDeleteFleet).toContain('.select("id,name,org_id")');
   });
 });
