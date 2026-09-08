@@ -1,17 +1,17 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { signOut, getSession, onAuthStateChange, mutateAsync, fetchMock, authState } = vi.hoisted(() => ({
+const { signOut, signInWithOtp, getSession, onAuthStateChange, mutateAsync, authState } = vi.hoisted(() => ({
   signOut: vi.fn(),
+  signInWithOtp: vi.fn(),
   getSession: vi.fn(),
   onAuthStateChange: vi.fn(),
   mutateAsync: vi.fn(),
-  fetchMock: vi.fn(),
   authState: { callback: null as null | ((event: string, session: unknown) => void), unsubscribe: vi.fn() },
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { auth: { signOut, getSession, onAuthStateChange } },
+  supabase: { auth: { signOut, signInWithOtp, getSession, onAuthStateChange } },
 }));
 vi.mock("@/hooks/useSubmitDemoRequest", () => ({
   useSubmitDemoRequest: () => ({ mutateAsync, isPending: false }),
@@ -38,19 +38,23 @@ const verifiedSession = {
   },
 };
 
+function fillForm() {
+  fireEvent.change(screen.getByLabelText("Nom complet *"), { target: { value: "Jean Dupont" } });
+  fireEvent.change(screen.getByLabelText("Entreprise *"), { target: { value: "TransCam" } });
+  fireEvent.change(screen.getByLabelText("Adresse mail *"), { target: { value: "contact@transcam.cm" } });
+  fireEvent.change(screen.getByLabelText("Téléphone *"), { target: { value: "+237 600 000 000" } });
+  fireEvent.change(screen.getByLabelText("Numéro d'identifiant entreprise *"), { target: { value: "RCCM-DLA-2026-B-123" } });
+  fireEvent.change(screen.getByRole("combobox", { name: "Pays *" }), { target: { value: "CM" } });
+}
+
 describe("ContactDemoForm user flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("fetch", fetchMock);
     window.localStorage.clear();
     window.history.replaceState({}, "", "/contact");
     authState.callback = null;
     authState.unsubscribe.mockReset();
-    fetchMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: vi.fn().mockResolvedValue({ ok: true, queued: false }),
-    });
+    signInWithOtp.mockResolvedValue({ data: {}, error: null });
     signOut.mockResolvedValue({ error: null });
     getSession.mockResolvedValue({ data: { session: null }, error: null });
     onAuthStateChange.mockImplementation((callback) => {
@@ -62,19 +66,17 @@ describe("ContactDemoForm user flow", () => {
 
   it("attend le clic magic-link puis soumet toutes les informations client", async () => {
     render(<ContactDemoForm />);
-
-    fireEvent.change(screen.getByLabelText("Nom complet *"), { target: { value: "Jean Dupont" } });
-    fireEvent.change(screen.getByLabelText("Entreprise *"), { target: { value: "TransCam" } });
-    fireEvent.change(screen.getByLabelText("Adresse mail *"), { target: { value: "contact@transcam.cm" } });
-    fireEvent.change(screen.getByLabelText("Téléphone *"), { target: { value: "+237 600 000 000" } });
-    fireEvent.change(screen.getByLabelText("Numéro d'identifiant entreprise *"), { target: { value: "RCCM-DLA-2026-B-123" } });
-    fireEvent.change(screen.getByRole("combobox", { name: "Pays *" }), { target: { value: "CM" } });
+    fillForm();
 
     fireEvent.click(screen.getByRole("button", { name: "Vérifier" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/demo/verification-email", expect.objectContaining({
-      method: "POST",
-      body: JSON.stringify({ email: "contact@transcam.cm" }),
-    })));
+    await waitFor(() => expect(signInWithOtp).toHaveBeenCalledWith({
+      email: "contact@transcam.cm",
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: `${window.location.origin}/auth/callback?intent=demo`,
+        data: { demo_verification_pending: true },
+      },
+    }));
 
     expect(await screen.findByText("En attente de votre confirmation")).toBeInTheDocument();
     await waitFor(() => expect(authState.callback).not.toBeNull());
@@ -96,37 +98,26 @@ describe("ContactDemoForm user flow", () => {
     expect(await screen.findByText("Demande envoyée !")).toBeInTheDocument();
   });
 
-  it("affiche la liste d'attente lorsque le quota quotidien est atteint", async () => {
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      status: 202,
-      json: vi.fn().mockResolvedValue({ ok: true, queued: true }),
+  it("demande de reessayer quand Supabase refuse temporairement l'envoi", async () => {
+    signInWithOtp.mockResolvedValueOnce({
+      data: {},
+      error: new Error("email rate limit exceeded"),
     });
     render(<ContactDemoForm />);
+    fillForm();
 
-    fireEvent.change(screen.getByLabelText("Nom complet *"), { target: { value: "Jean Dupont" } });
-    fireEvent.change(screen.getByLabelText("Entreprise *"), { target: { value: "TransCam" } });
-    fireEvent.change(screen.getByLabelText("Adresse mail *"), { target: { value: "contact@transcam.cm" } });
-    fireEvent.change(screen.getByLabelText("Téléphone *"), { target: { value: "+237600000000" } });
-    fireEvent.change(screen.getByLabelText("Numéro d'identifiant entreprise *"), { target: { value: "RCCM-123" } });
-    fireEvent.change(screen.getByRole("combobox", { name: "Pays *" }), { target: { value: "CM" } });
     fireEvent.click(screen.getByRole("button", { name: "Vérifier" }));
 
-    expect(await screen.findByText("Demande placée en liste d'attente")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "En attente" })).toBeDisabled();
-    expect(screen.getByText(/recevra automatiquement son lien de vérification/)).toBeInTheDocument();
+    expect(await screen.findByText("Supabase limite temporairement l'envoi des e-mails. Réessayez dans quelques minutes.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Vérifier" })).toBeEnabled();
+    expect(screen.queryByText("En attente de votre confirmation")).not.toBeInTheDocument();
   });
 
   it("affiche une erreur utilisateur quand l'environnement Supabase n'est pas synchronise", async () => {
     mutateAsync.mockRejectedValue(new Error("Le service de demande de démo n'est pas encore configuré sur cet environnement. Réessayez plus tard."));
     render(<ContactDemoForm />);
+    fillForm();
 
-    fireEvent.change(screen.getByLabelText("Nom complet *"), { target: { value: "Jean Dupont" } });
-    fireEvent.change(screen.getByLabelText("Entreprise *"), { target: { value: "TransCam" } });
-    fireEvent.change(screen.getByLabelText("Adresse mail *"), { target: { value: "contact@transcam.cm" } });
-    fireEvent.change(screen.getByLabelText("Téléphone *"), { target: { value: "+237600000000" } });
-    fireEvent.change(screen.getByLabelText("Numéro d'identifiant entreprise *"), { target: { value: "RCCM-123" } });
-    fireEvent.change(screen.getByRole("combobox", { name: "Pays *" }), { target: { value: "CM" } });
     fireEvent.click(screen.getByRole("button", { name: "Vérifier" }));
     await waitFor(() => expect(authState.callback).not.toBeNull());
     authState.callback?.("SIGNED_IN", verifiedSession);
