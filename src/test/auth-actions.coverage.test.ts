@@ -8,9 +8,9 @@ const authModeMock = vi.hoisted(() => ({
 const supabaseMock = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
   signUp: vi.fn(),
-  resetPasswordForEmail: vi.fn(),
   updateUser: vi.fn(),
   signInWithOtp: vi.fn(),
+  invoke: vi.fn(),
 }));
 
 const mockAuth = vi.hoisted(() => ({
@@ -28,7 +28,15 @@ vi.mock("@/lib/authMode", () => ({
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    auth: supabaseMock,
+    auth: {
+      signInWithPassword: supabaseMock.signInWithPassword,
+      signUp: supabaseMock.signUp,
+      updateUser: supabaseMock.updateUser,
+      signInWithOtp: supabaseMock.signInWithOtp,
+    },
+    functions: {
+      invoke: supabaseMock.invoke,
+    },
   },
 }));
 
@@ -157,12 +165,26 @@ describe("auth actions coverage", () => {
     await expect(signOut()).resolves.toEqual({ error });
   });
 
-  it("normalise l'email du reset mot de passe", async () => {
-    supabaseMock.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
-    await requestPasswordReset("  user@example.com  ", "https://app/reset");
-    expect(supabaseMock.resetPasswordForEmail).toHaveBeenCalledWith("user@example.com", {
-      redirectTo: "https://app/reset",
+  it("normalise l'email et utilise le mailer scanner-safe", async () => {
+    supabaseMock.invoke.mockResolvedValue({ data: { ok: true }, error: null });
+    await expect(requestPasswordReset("  USER@Example.COM  ", "https://app/reset")).resolves.toEqual({
+      data: { ok: true },
+      error: null,
     });
+    expect(supabaseMock.invoke).toHaveBeenCalledWith("request-password-reset", {
+      body: { email: "user@example.com", redirectTo: "https://app/reset" },
+    });
+  });
+
+  it("remonte le statut HTTP du mailer de reset", async () => {
+    const response = new Response(JSON.stringify({ error: "rate_limit_exceeded" }), { status: 429 });
+    supabaseMock.invoke.mockResolvedValue({
+      data: null,
+      error: { message: "Edge Function returned a non-2xx status code", context: response },
+    });
+    const result = await requestPasswordReset("user@example.com", "https://app/reset");
+    expect(result.error?.message).toBe("rate_limit_exceeded");
+    expect((result.error as Error & { status?: number })?.status).toBe(429);
   });
 
   it("met à jour le mot de passe courant", async () => {
