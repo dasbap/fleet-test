@@ -16,6 +16,7 @@ import { registerBillingNotchPayRoutes } from "./routes/billingNotchPay.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerAdminDemoRoutes } from "./routes/adminDemo.js";
 import { registerAdminProspectSecurityRoutes } from "./routes/adminProspectSecurity.js";
+import { registerAdminUserSecurityRoutes } from "./routes/adminUserSecurity.js";
 import { registerPasswordChangeRoutes } from "./routes/passwordChange.js";
 import { registerDemoRequestRoutes } from "./routes/demoRequest.js";
 import {
@@ -110,6 +111,7 @@ export function createServerApp() {
   registerWebhooksPaymentRoutes(app);
   registerPasswordChangeRoutes(app);
   registerAdminProspectSecurityRoutes(app);
+  registerAdminUserSecurityRoutes(app);
   registerAdminDemoRoutes(app);
   registerDemoRequestRoutes(app);
   registerGpsIngestRoutes(app);
