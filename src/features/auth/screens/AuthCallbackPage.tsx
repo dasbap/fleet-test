@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { demoVerificationSupabase, supabase } from "@/integrations/supabase/client";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 import {
   Card,
@@ -56,9 +56,11 @@ function readDemoDraft(): DemoVerificationDraft | null {
   }
 }
 
-async function resolveCallbackSession(code: string | null): Promise<Session | null> {
+async function resolveCallbackSession(code: string | null, demoIntent: boolean): Promise<Session | null> {
+  const authClient = demoIntent ? demoVerificationSupabase : supabase;
+
   if (code) {
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await authClient.auth.exchangeCodeForSession(code);
     if (!error && data.session) return data.session;
   }
 
@@ -66,14 +68,14 @@ async function resolveCallbackSession(code: string | null): Promise<Session | nu
   const accessToken = hash.get("access_token");
   const refreshToken = hash.get("refresh_token");
   if (accessToken && refreshToken) {
-    const { data, error } = await supabase.auth.setSession({
+    const { data, error } = await authClient.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken,
     });
     if (!error && data.session) return data.session;
   }
 
-  const { data, error } = await supabase.auth.getSession();
+  const { data, error } = await authClient.auth.getSession();
   if (error) return null;
   return data.session;
 }
@@ -130,7 +132,7 @@ export default function AuthCallbackPage() {
       }, 12_000);
 
       try {
-        const session = await resolveCallbackSession(code);
+        const session = await resolveCallbackSession(code, demoIntent);
         if (!session?.user?.email || !session.user.email_confirmed_at) {
           throw new Error("verification_session_missing");
         }
