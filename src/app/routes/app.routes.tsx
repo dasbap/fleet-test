@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { Route, Navigate } from "react-router-dom";
+import { Route, Navigate, useLocation } from "react-router-dom";
 import { RootLayout } from "@/app/RootLayout";
 import AuthProviderLayout from "@/components/auth/AuthProviderLayout";
 import { AuthenticatedDashboardLayout } from "@/components/dashboard/AuthenticatedDashboardLayout";
@@ -128,8 +128,9 @@ const AuthCallbackPage = lazy(
 );
 
 function PublicRootRoute() {
-  const search = new URLSearchParams(window.location.search);
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const location = useLocation();
+  const search = new URLSearchParams(location.search);
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
   const hasAuthCallbackPayload =
     search.has("code") ||
     search.has("error") ||
@@ -140,7 +141,7 @@ function PublicRootRoute() {
   if (hasAuthCallbackPayload) {
     return (
       <Navigate
-        to={`/auth/callback${window.location.search}${window.location.hash}`}
+        to={`/auth/callback${location.search}${location.hash}`}
         replace
       />
     );
@@ -149,52 +150,27 @@ function PublicRootRoute() {
   return <Index />;
 }
 
-/**
- * Arbre de routes racine : pages publiques, redirections, dashboard, 404.
- * Monté dans `App.tsx` sous `<Routes>` (avec Suspense au niveau parent).
- */
 export const appRoutes = (
   <Route element={<RootLayout />}>
     <Route element={<HelpPublicLayout />}>
       <Route path="/help" element={<HelpHomePage />} />
       <Route path="/help/quickstart" element={<HelpQuickStartPage />} />
-      <Route
-        path="/help/faq"
-        element={<Navigate to={ROUTE_PATHS.faq} replace />}
-      />
-      <Route
-        path="/help/guides"
-        element={<Navigate to={ROUTE_PATHS.helpQuickstart} replace />}
-      />
+      <Route path="/help/faq" element={<Navigate to={ROUTE_PATHS.faq} replace />} />
+      <Route path="/help/guides" element={<Navigate to={ROUTE_PATHS.helpQuickstart} replace />} />
       <Route path="/help/search" element={<HelpSearchPage />} />
       <Route path="/help/:category/:slug" element={<HelpArticlePage />} />
       <Route path="/help/:category" element={<HelpCategoryPage />} />
     </Route>
     <Route path="/aide" element={<Navigate to="/help" replace />} />
     <Route path="/aide/*" element={<Navigate to="/help" replace />} />
-    <Route
-      path="/aide/videos"
-      element={<Navigate to="/dashboard/tutorials" replace />}
-    />
-    <Route
-      path="/aide/videos/:tutorialId"
-      element={<LegacyAideVideoRedirect />}
-    />
+    <Route path="/aide/videos" element={<Navigate to="/dashboard/tutorials" replace />} />
+    <Route path="/aide/videos/:tutorialId" element={<LegacyAideVideoRedirect />} />
     <Route path="/securite" element={<SecuritePage />} />
-    <Route
-      path="/guides"
-      element={<Navigate to={ROUTE_PATHS.help} replace />}
-    />
-    <Route
-      path="/features"
-      element={<Navigate to={ROUTE_PATHS.fonctionnalites} replace />}
-    />
+    <Route path="/guides" element={<Navigate to={ROUTE_PATHS.help} replace />} />
+    <Route path="/features" element={<Navigate to={ROUTE_PATHS.fonctionnalites} replace />} />
     <Route path="/demo" element={<Navigate to={PUBLIC_DEMO_HREF} replace />} />
     <Route path="/cookies" element={<CookiesPage />} />
-    <Route
-      path="/privacy"
-      element={<Navigate to="/confidentialite" replace />}
-    />
+    <Route path="/privacy" element={<Navigate to="/confidentialite" replace />} />
     <Route path="/conditions" element={<ConditionsPage />} />
     <Route path="/terms" element={<Navigate to="/conditions" replace />} />
     <Route path="/apropos" element={<AproposPage />} />
@@ -206,102 +182,46 @@ export const appRoutes = (
     <Route path="/use-case/:slug" element={<UseCaseDetailPage />} />
     <Route path="/carrieres" element={<CarrieresPage />} />
     <Route path="/partenaires" element={<PartenairesPage />} />
-    <Route
-      path="/documentation"
-      element={<Navigate to={ROUTE_PATHS.help} replace />}
-    />
+    <Route path="/documentation" element={<Navigate to={ROUTE_PATHS.help} replace />} />
     <Route path="/api" element={<Navigate to={ROUTE_PATHS.help} replace />} />
-    <Route
-      path="/vehicles/new"
-      element={<Navigate to={ROUTE_PATHS.dashboardVehiclesNew} replace />}
-    />
-    <Route
-      path="/team/invite"
-      element={<Navigate to={ROUTE_PATHS.dashboardInvitations} replace />}
-    />
+    <Route path="/vehicles/new" element={<Navigate to={ROUTE_PATHS.dashboardVehiclesNew} replace />} />
+    <Route path="/team/invite" element={<Navigate to={ROUTE_PATHS.dashboardInvitations} replace />} />
     <Route path="/status" element={<StatusPage />} />
-    <Route
-      path="/settings"
-      element={<Navigate to={ROUTE_PATHS.dashboardSettings} replace />}
-    />
-    <Route
-      path="/signup"
-      element={<Navigate to={LANDING_CTA.signupHref} replace />}
-    />
-    <Route
-      path="/register"
-      element={<Navigate to={LANDING_CTA.signupHref} replace />}
-    />
-    <Route
-      path="/inscription"
-      element={<Navigate to={LANDING_CTA.signupHref} replace />}
-    />
-    <Route
-      path="/connexion"
-      element={<Navigate to={ROUTE_PATHS.auth} replace />}
-    />
+    <Route path="/settings" element={<Navigate to={ROUTE_PATHS.dashboardSettings} replace />} />
+    <Route path="/signup" element={<Navigate to={LANDING_CTA.signupHref} replace />} />
+    <Route path="/register" element={<Navigate to={LANDING_CTA.signupHref} replace />} />
+    <Route path="/inscription" element={<Navigate to={LANDING_CTA.signupHref} replace />} />
+    <Route path="/connexion" element={<Navigate to={ROUTE_PATHS.auth} replace />} />
     <Route element={<AuthProviderLayout />}>
       <Route path="/" element={<PublicRootRoute />} />
       <Route path="/faq" element={<FaqPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/fonctionnalites" element={<FonctionnalitesPage />} />
-      <Route
-        path="/fonctionnalites/piloter-flotte"
-        element={<FonctionnaliteSectionPage slug="piloter-flotte" />}
-      />
+      <Route path="/fonctionnalites/piloter-flotte" element={<FonctionnaliteSectionPage slug="piloter-flotte" />} />
       <Route path="/modules" element={<ModulesPage />} />
       <Route path="/contact" element={<ContactPage />} />
-      <Route
-        path="/tarif"
-        element={<Navigate to={ROUTE_PATHS.pricing} replace />}
-      />
-      <Route
-        path="/tarifs"
-        element={<Navigate to={ROUTE_PATHS.pricing} replace />}
-      />
+      <Route path="/tarif" element={<Navigate to={ROUTE_PATHS.pricing} replace />} />
+      <Route path="/tarifs" element={<Navigate to={ROUTE_PATHS.pricing} replace />} />
       <Route element={<AuthenticatedDashboardLayout />}>
         <Route path="/fuel" element={<FuelMonitoringPage />} />
         <Route path="/inspections/nouveau" element={<DvirChecklistPage />} />
-        <Route
-          path="/inspections/:dvirId/modifier"
-          element={<DvirChecklistPage />}
-        />
+        <Route path="/inspections/:dvirId/modifier" element={<DvirChecklistPage />} />
         <Route path="/inspections" element={<DvirInspectionsPage />} />
         <Route path="/inspections/*" element={<DvirDetailPage />} />
         <Route path="/transit" element={<TransitCemacPage />} />
         <Route path="/transit/*" element={<TransitDetailPage />} />
-        <Route
-          path="/maintenance/predictive"
-          element={<PredictiveMaintenancePage />}
-        />
+        <Route path="/maintenance/predictive" element={<PredictiveMaintenancePage />} />
       </Route>
       {authPublicRoutes}
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/start" element={<TenantBootstrapRoute />} />
       <Route path="/terrain" element={<ProtectedRoute />}>
         <Route element={<TerrainLayout />}>
-          <Route
-            index
-            element={
-              <RoleGuard allow={["driver"]}>
-                <TerrainPage />
-              </RoleGuard>
-            }
-          />
-          <Route
-            path="scan"
-            element={
-              <RoleGuard allow={["driver"]}>
-                <Scan />
-              </RoleGuard>
-            }
-          />
+          <Route index element={<RoleGuard allow={["driver"]}><TerrainPage /></RoleGuard>} />
+          <Route path="scan" element={<RoleGuard allow={["driver"]}><Scan /></RoleGuard>} />
         </Route>
       </Route>
-      <Route
-        path="/maintenance"
-        element={<Navigate to={ROUTE_PATHS.dashboardMaintenance} replace />}
-      />
+      <Route path="/maintenance" element={<Navigate to={ROUTE_PATHS.dashboardMaintenance} replace />} />
       <Route path="/upgrade" element={<Upgrade />} />
       <Route path="/post-login" element={<PostLoginGate />} />
       <Route path="/confidentialite" element={<ConfidentialitePage />} />
@@ -312,25 +232,12 @@ export const appRoutes = (
         </>
       ) : (
         <>
-          <Route
-            path="/demo/access"
-            element={<Navigate to={PUBLIC_DEMO_HREF} replace />}
-          />
-          <Route
-            path="/demo/onboarding"
-            element={<Navigate to={PUBLIC_DEMO_HREF} replace />}
-          />
+          <Route path="/demo/access" element={<Navigate to={PUBLIC_DEMO_HREF} replace />} />
+          <Route path="/demo/onboarding" element={<Navigate to={PUBLIC_DEMO_HREF} replace />} />
         </>
       )}
       <Route path="/auth/update-password" element={<UpdatePasswordPage />} />
-      <Route
-        path={ROUTE_PATHS.setPassword}
-        element={
-          <RequireAuth>
-            <SetPasswordPage />
-          </RequireAuth>
-        }
-      />
+      <Route path={ROUTE_PATHS.setPassword} element={<RequireAuth><SetPasswordPage /></RequireAuth>} />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       {dashboardRoutes}
     </Route>
