@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("Supabase auth link contract", () => {
-  it("route tous les resets de mot de passe vers la page recovery compatible Supabase", () => {
+  it("route tous les resets de mot de passe via le mailer scanner-safe", () => {
     const sources = [
       "api/admin/create-user.ts",
       "src/server/http/routes/adminProspectSecurity.ts",
@@ -13,11 +13,17 @@ describe("Supabase auth link contract", () => {
     ].map(read);
 
     for (const source of sources) {
-      expect(source).toContain("resetPasswordForEmail");
+      expect(source).toContain("request-password-reset");
       expect(source).toContain("/auth/update-password");
-      expect(source).not.toContain('redirectTo: `${APP_URL.replace(/\\/$/, "")}/set-password`');
+      expect(source).not.toContain("resetPasswordForEmail");
       expect(source).not.toContain("/set-password");
     }
+
+    const resetFunction = read("supabase/functions/request-password-reset/index.ts");
+    expect(resetFunction).toContain('type: "recovery"');
+    expect(resetFunction).toContain('searchParams.set("token_hash", tokenHash)');
+    expect(resetFunction).toContain('searchParams.set("type", "recovery")');
+    expect(resetFunction).not.toContain("action_link\" style");
   });
 
   it("garde les magic links standards sur le callback PKCE", () => {
@@ -67,6 +73,7 @@ describe("Supabase auth link contract", () => {
       "supabase/functions/create-prospect-account/index.ts",
       "supabase/functions/create-fleet-member-account/index.ts",
       "supabase/functions/demo-magic-link/index.ts",
+      "supabase/functions/request-password-reset/index.ts",
     ]) {
       expect(read(path)).toContain('"https://fleet-test-gamma.vercel.app"');
     }
