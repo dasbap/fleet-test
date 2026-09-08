@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CalendarClock, CreditCard, RefreshCw } from "lucide-react";
+import { CalendarClock, CreditCard, RefreshCw, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { supabase } from "@/integrations/supabase/client";
 import {
   AdminSubscriptionService,
   type AdminSubscriptionGrantOptions,
@@ -36,10 +37,7 @@ export default function AdminSubscriptionsPage() {
   const { isLoading, isSuperAdmin } = useRoleAccess();
   const [searchParams] = useSearchParams();
   const requestedFleetId = searchParams.get("fleet")?.trim() ?? "";
-  const [options, setOptions] = useState<AdminSubscriptionGrantOptions>({
-    fleets: [],
-    plans: [],
-  });
+  const [options, setOptions] = useState<AdminSubscriptionGrantOptions>({ fleets: [], plans: [] });
   const [fleetId, setFleetId] = useState("");
   const [planCode, setPlanCode] = useState("");
   const [vehicleSlots, setVehicleSlots] = useState(1);
@@ -48,23 +46,33 @@ export default function AdminSubscriptionsPage() {
   const [replaceExisting, setReplaceExisting] = useState(true);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingFleet, setDeletingFleet] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const selectedFleet = useMemo(
-    () => options.fleets.find((fleet) => fleet.id === fleetId),
-    [fleetId, options.fleets],
-  );
-  const selectedPlan = useMemo(
-    () => options.plans.find((plan) => plan.code === planCode),
-    [planCode, options.plans],
-  );
-  const exceedsPlanLimit =
-    selectedPlan?.maxVehicles != null && vehicleSlots > selectedPlan.maxVehicles;
+  const selectedFleet = useMemo(() => options.fleets.find((fleet) => fleet.id === fleetId), [fleetId, options.fleets]);
+  const selectedPlan = useMemo(() => options.plans.find((plan) => plan.code === planCode), [planCode, options.plans]);
+  const exceedsPlanLimit = selectedPlan?.maxVehicles != null && vehicleSlots > selectedPlan.maxVehicles;
+
+  async function reloadOptions() {
+    setLoadingOptions(true);
+    setError(null);
+    try {
+      const result = await adminSubscriptionService.listGrantOptions();
+      setOptions(result);
+      setFleetId((current) => current && result.fleets.some((fleet) => fleet.id === current) ? current : result.fleets[0]?.id || "");
+      setPlanCode((current) => current || result.plans[0]?.code || "");
+    } catch (reloadError) {
+      setError(reloadError instanceof Error ? reloadError.message : "Impossible de charger les options.");
+      setOptions({ fleets: [], plans: [] });
+      setFleetId("");
+    } finally {
+      setLoadingOptions(false);
+    }
+  }
 
   useEffect(() => {
     if (isLoading || !isSuperAdmin) return;
     let cancelled = false;
-
     async function loadOptions() {
       setLoadingOptions(true);
       setError(null);
@@ -74,9 +82,7 @@ export default function AdminSubscriptionsPage() {
         setOptions(data);
         setFleetId((current) => {
           if (current) return current;
-          if (requestedFleetId && data.fleets.some((fleet) => fleet.id === requestedFleetId)) {
-            return requestedFleetId;
-          }
+          if (requestedFleetId && data.fleets.some((fleet) => fleet.id === requestedFleetId)) return requestedFleetId;
           return data.fleets[0]?.id || "";
         });
         setPlanCode((current) => current || data.plans[0]?.code || "");
@@ -87,25 +93,16 @@ export default function AdminSubscriptionsPage() {
       }
       setLoadingOptions(false);
     }
-
     void loadOptions();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [isLoading, isSuperAdmin, requestedFleetId]);
 
   if (isLoading) return null;
   if (!isSuperAdmin) {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-        <Alert variant="destructive">
-          <AlertDescription>
-            Seul le super administrateur peut gérer les abonnements. Cette page ne modifie aucun accès pour un administrateur standard.
-          </AlertDescription>
-        </Alert>
-        <Button type="button" variant="outline" onClick={() => window.history.back()}>
-          Retour
-        </Button>
+        <Alert variant="destructive"><AlertDescription>Seul le super administrateur peut gérer les abonnements. Cette page ne modifie aucun accès pour un administrateur standard.</AlertDescription></Alert>
+        <Button type="button" variant="outline" onClick={() => window.history.back()}>Retour</Button>
       </div>
     );
   }
@@ -113,32 +110,18 @@ export default function AdminSubscriptionsPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-
     const expiresAt = permanent ? null : dateToEndOfDayIso(expiresOn);
     setSubmitting(true);
     try {
-      await adminSubscriptionService.grantSubscription({
-        fleetId,
-        planCode,
-        expiresAt,
-        permanent,
-        replaceExisting,
-        vehicleSlots,
-        planMaxVehicles: selectedPlan?.maxVehicles,
-      });
+      await adminSubscriptionService.grantSubscription({ fleetId, planCode, expiresAt, permanent, replaceExisting, vehicleSlots, planMaxVehicles: selectedPlan?.maxVehicles });
     } catch (submitError) {
       const message = submitError instanceof Error ? submitError.message : "Abonnement non attribue";
       setError(message);
-      toast({
-        title: "Abonnement non attribue",
-        description: message,
-        variant: "destructive",
-      });
+      toast({ title: "Abonnement non attribue", description: message, variant: "destructive" });
       setSubmitting(false);
       return;
     }
     setSubmitting(false);
-
     toast({
       title: "Abonnement attribue",
       description: selectedFleet
@@ -147,183 +130,104 @@ export default function AdminSubscriptionsPage() {
     });
   }
 
+  async function deleteSelectedFleet() {
+    if (!selectedFleet || deletingFleet) return;
+    const label = selectedFleet.orgName ? `${selectedFleet.name} - ${selectedFleet.orgName}` : selectedFleet.name;
+    if (!window.confirm(`Supprimer définitivement la flotte ${label} et toutes ses données liées ? Cette action est irréversible.`)) return;
+
+    setDeletingFleet(true);
+    setError(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("session_expiree");
+      const response = await fetch("/api/admin/delete-fleet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ fleet_id: selectedFleet.id }),
+      });
+      const result = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? "delete_fleet_failed");
+      toast({ title: "Flotte supprimée", description: `${label} a été supprimée définitivement.` });
+      await reloadOptions();
+    } catch (deleteError) {
+      const message = deleteError instanceof Error ? deleteError.message : "Suppression impossible";
+      setError(message);
+      toast({ title: "Suppression impossible", description: message, variant: "destructive" });
+    } finally {
+      setDeletingFleet(false);
+    }
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <header className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <CreditCard className="h-5 w-5" aria-hidden />
-          </span>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-normal">Abonnements</h1>
-            <p className="text-sm text-muted-foreground">
-              Attribution manuelle reservee aux super administrateurs.
-            </p>
-          </div>
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><CreditCard className="h-5 w-5" aria-hidden /></span>
+          <div><h1 className="text-2xl font-semibold tracking-normal">Abonnements</h1><p className="text-sm text-muted-foreground">Attribution manuelle reservee aux super administrateurs.</p></div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          disabled={loadingOptions}
-          onClick={() => {
-            setFleetId("");
-            setPlanCode("");
-            setError(null);
-            setLoadingOptions(true);
-            void adminSubscriptionService.listGrantOptions().then((result) => {
-              setOptions(result);
-              setFleetId(result.fleets[0]?.id || "");
-              setPlanCode(result.plans[0]?.code || "");
-              setLoadingOptions(false);
-            }).catch((reloadError) => {
-              setError(reloadError instanceof Error ? reloadError.message : "Impossible de charger les options.");
-              setOptions({ fleets: [], plans: [] });
-              setLoadingOptions(false);
-            });
-          }}
-          aria-label="Rafraichir"
-        >
-          <RefreshCw className="h-4 w-4" aria-hidden />
-        </Button>
+        <Button type="button" variant="outline" size="icon" disabled={loadingOptions} onClick={() => void reloadOptions()} aria-label="Rafraichir"><RefreshCw className="h-4 w-4" aria-hidden /></Button>
       </header>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 
       <Card className="rounded-lg">
         <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
-            <CalendarClock className="h-5 w-5" aria-hidden />
-          </span>
-          <div>
-            <CardTitle className="text-base">Donner un abonnement</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Choisissez la flotte, le plan et la date d'expiration.
-            </p>
-          </div>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground"><CalendarClock className="h-5 w-5" aria-hidden /></span>
+          <div><CardTitle className="text-base">Donner un abonnement</CardTitle><p className="mt-1 text-sm text-muted-foreground">Choisissez la flotte, le plan et la date d'expiration.</p></div>
         </CardHeader>
         <CardContent>
           <form className="grid gap-5 md:grid-cols-2" onSubmit={handleSubmit}>
             <div className="grid gap-2">
               <Label htmlFor="fleet">Flotte</Label>
-              <Select
-                value={fleetId}
-                onValueChange={setFleetId}
-                disabled={loadingOptions || submitting}
-              >
-                <SelectTrigger id="fleet">
-                  <SelectValue placeholder="Choisir une flotte" />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.fleets.map((fleet) => (
-                    <SelectItem key={fleet.id} value={fleet.id}>
-                      {fleet.name}
-                      {fleet.orgName ? ` - ${fleet.orgName}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+              <Select value={fleetId} onValueChange={setFleetId} disabled={loadingOptions || submitting || deletingFleet}>
+                <SelectTrigger id="fleet"><SelectValue placeholder="Choisir une flotte" /></SelectTrigger>
+                <SelectContent>{options.fleets.map((fleet) => <SelectItem key={fleet.id} value={fleet.id}>{fleet.name}{fleet.orgName ? ` - ${fleet.orgName}` : ""}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="plan">Plan</Label>
-              <Select
-                value={planCode}
-                onValueChange={setPlanCode}
-                disabled={loadingOptions || submitting}
-              >
-                <SelectTrigger id="plan">
-                  <SelectValue placeholder="Choisir un plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.plans.map((plan) => (
-                    <SelectItem key={plan.code} value={plan.code}>
-                      {plan.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+              <Select value={planCode} onValueChange={setPlanCode} disabled={loadingOptions || submitting || deletingFleet}>
+                <SelectTrigger id="plan"><SelectValue placeholder="Choisir un plan" /></SelectTrigger>
+                <SelectContent>{options.plans.map((plan) => <SelectItem key={plan.code} value={plan.code}>{plan.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="vehicle-slots">Nombre de vehicules</Label>
-              <Input
-                id="vehicle-slots"
-                type="number"
-                min={1}
-                max={selectedPlan?.maxVehicles ?? undefined}
-                step={1}
-                inputMode="numeric"
-                value={vehicleSlots}
-                disabled={submitting}
-                aria-invalid={exceedsPlanLimit}
-                required
-                onChange={(event) => {
-                  const nextValue = Number.parseInt(event.target.value || "1", 10);
-                  setVehicleSlots(Number.isFinite(nextValue) ? Math.max(1, nextValue) : 1);
-                }}
-              />
-              {selectedPlan?.maxVehicles != null && (
-                <p className="text-xs text-muted-foreground">
-                  Maximum {selectedPlan.maxVehicles} vehicule{selectedPlan.maxVehicles > 1 ? "s" : ""} pour ce plan.
-                </p>
-              )}
+              <Input id="vehicle-slots" type="number" min={1} max={selectedPlan?.maxVehicles ?? undefined} step={1} inputMode="numeric" value={vehicleSlots} disabled={submitting || deletingFleet} aria-invalid={exceedsPlanLimit} required onChange={(event) => { const nextValue = Number.parseInt(event.target.value || "1", 10); setVehicleSlots(Number.isFinite(nextValue) ? Math.max(1, nextValue) : 1); }} />
+              {selectedPlan?.maxVehicles != null && <p className="text-xs text-muted-foreground">Maximum {selectedPlan.maxVehicles} vehicule{selectedPlan.maxVehicles > 1 ? "s" : ""} pour ce plan.</p>}
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="expires-on">Date d'expiration</Label>
-              <Input
-                id="expires-on"
-                type="date"
-                value={expiresOn}
-                disabled={permanent || submitting}
-                required={!permanent}
-                onChange={(event) => setExpiresOn(event.target.value)}
-              />
+              <Input id="expires-on" type="date" value={expiresOn} disabled={permanent || submitting || deletingFleet} required={!permanent} onChange={(event) => setExpiresOn(event.target.value)} />
             </div>
 
             <div className="flex flex-col justify-end gap-3">
-              <label className="flex items-center gap-3 text-sm">
-                <Checkbox
-                  checked={permanent}
-                  disabled={submitting}
-                  onCheckedChange={(checked) => setPermanent(checked === true)}
-                />
-                <span>Permanent</span>
-              </label>
-              <label className="flex items-center gap-3 text-sm">
-                <Checkbox
-                  checked={replaceExisting}
-                  disabled={submitting}
-                  onCheckedChange={(checked) => setReplaceExisting(checked === true)}
-                />
-                <span>Remplacer les abonnements actifs</span>
-              </label>
+              <label className="flex items-center gap-3 text-sm"><Checkbox checked={permanent} disabled={submitting || deletingFleet} onCheckedChange={(checked) => setPermanent(checked === true)} /><span>Permanent</span></label>
+              <label className="flex items-center gap-3 text-sm"><Checkbox checked={replaceExisting} disabled={submitting || deletingFleet} onCheckedChange={(checked) => setReplaceExisting(checked === true)} /><span>Remplacer les abonnements actifs</span></label>
             </div>
 
             <div className="md:col-span-2">
-              <Button
-                type="submit"
-                className="w-full gap-2"
-                disabled={
-                  loadingOptions ||
-                  submitting ||
-                  !fleetId ||
-                  !planCode ||
-                  vehicleSlots <= 0 ||
-                  exceedsPlanLimit ||
-                  (!permanent && !expiresOn)
-                }
-              >
-                <CreditCard className="h-4 w-4" aria-hidden />
-                {submitting ? "Attribution..." : "Donner l'abonnement"}
+              <Button type="submit" className="w-full gap-2" disabled={loadingOptions || submitting || deletingFleet || !fleetId || !planCode || vehicleSlots <= 0 || exceedsPlanLimit || (!permanent && !expiresOn)}>
+                <CreditCard className="h-4 w-4" aria-hidden />{submitting ? "Attribution..." : "Donner l'abonnement"}
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-lg border-destructive/40">
+        <CardHeader>
+          <CardTitle className="text-base text-destructive">Zone de suppression super admin</CardTitle>
+          <p className="text-sm text-muted-foreground">La suppression d'une flotte efface les données métier liées par cascade. Les historiques configurés pour être conservés restent présents sans rattachement à la flotte.</p>
+        </CardHeader>
+        <CardContent>
+          <Button type="button" variant="destructive" className="w-full gap-2" disabled={!selectedFleet || loadingOptions || deletingFleet || submitting} onClick={() => void deleteSelectedFleet()}>
+            <Trash2 className="h-4 w-4" aria-hidden />{deletingFleet ? "Suppression..." : selectedFleet ? `Supprimer ${selectedFleet.name}` : "Aucune flotte sélectionnée"}
+          </Button>
         </CardContent>
       </Card>
     </div>
