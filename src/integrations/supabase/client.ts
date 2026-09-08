@@ -42,6 +42,29 @@ export function createEphemeralSupabaseClient(accessToken?: string): SupabaseCli
   });
 }
 
+export const demoVerificationSupabase: SupabaseClient = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  {
+    auth: {
+      storage: getSupabaseAuthStorage(),
+      storageKey: "sfa_demo_verification_token",
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      flowType: "pkce",
+    },
+    db: {
+      schema: 'public',
+    },
+    global: {
+      headers: {
+        "x-client-info": "smart-fleet-africa-demo-verification@1.0.0",
+      },
+    },
+  }
+);
+
 export const supabase: SupabaseClient = createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
