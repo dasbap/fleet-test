@@ -19,12 +19,21 @@ type RoleRequest = {
   requested_at: string;
 };
 
+type FleetMemberOption = {
+  user_id: string;
+  full_name: string | null;
+  role: RoleType;
+  is_active: boolean;
+};
+
 export function RoleChangeRequestsPanel() {
   const { user, userFleetId, memberships } = useAuth();
   const { isAdmin, isSuperAdmin } = useRoleAccess();
   const { toast } = useToast();
   const [requestedRole, setRequestedRole] = useState<RoleType | "">("");
   const [requests, setRequests] = useState<RoleRequest[]>([]);
+  const [members, setMembers] = useState<FleetMemberOption[]>([]);
+  const [transferUserId, setTransferUserId] = useState("");
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -42,18 +51,26 @@ export function RoleChangeRequestsPanel() {
       .eq("fleet_id", userFleetId)
       .eq("status", "pending")
       .order("requested_at", { ascending: true });
-    const { data, error } = isAdmin ? await query : await query.eq("user_id", user.id);
-    setLoading(false);
-    if (error) {
-      toast({ title: "Demandes de rôle indisponibles", description: error.message, variant: "destructive" });
+    const requestResult = isAdmin ? await query : await query.eq("user_id", user.id);
+    if (requestResult.error) {
+      setLoading(false);
+      toast({ title: "Demandes de rôle indisponibles", description: requestResult.error.message, variant: "destructive" });
       return;
     }
-    setRequests((data ?? []) as RoleRequest[]);
+    setRequests((requestResult.data ?? []) as RoleRequest[]);
+
+    if (isSuperAdmin) {
+      const { data, error } = await supabase.rpc("get_fleet_members", { p_fleet_id: userFleetId });
+      if (!error) {
+        setMembers(((data ?? []) as FleetMemberOption[]).filter((member) => member.is_active));
+      }
+    }
+    setLoading(false);
   }
 
   useEffect(() => {
     void reload();
-  }, [user?.id, userFleetId, isAdmin]);
+  }, [user?.id, userFleetId, isAdmin, isSuperAdmin]);
 
   async function submitRequest() {
     if (!userFleetId || !requestedRole) return;
@@ -90,10 +107,28 @@ export function RoleChangeRequestsPanel() {
     await reload();
   }
 
+  async function transferOrganizer() {
+    if (!userFleetId || !transferUserId) return;
+    setBusy("transfer");
+    const { error } = await supabase.rpc("super_admin_transfer_organizer", {
+      p_fleet_id: userFleetId,
+      p_user_id: transferUserId,
+    });
+    setBusy(null);
+    if (error) {
+      toast({ title: "Transfert impossible", description: error.message, variant: "destructive" });
+      return;
+    }
+    setTransferUserId("");
+    toast({ title: "Organisateur transféré", description: "Le nouvel organisateur est actif immédiatement." });
+    await reload();
+  }
+
   if (!currentMembership || !userFleetId) return null;
 
   const availableRoles = FLEET_ROLES.filter((role) => role !== currentMembership.role);
   const ownPending = requests.find((request) => request.user_id === user?.id);
+  const organizerCandidates = members.filter((member) => member.role !== "organizer");
 
   return (
     <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
@@ -120,10 +155,37 @@ export function RoleChangeRequestsPanel() {
         ) : null}
       </div>
 
+      {loading ? <p className="text-xs text-muted-foreground">Chargement…</p> : null}
+
       {ownPending && !isAdmin ? (
         <p className="text-xs text-muted-foreground">
           Demande en attente : {ROLE_LABELS[ownPending.previous_role]} → {ROLE_LABELS[ownPending.requested_role]}.
         </p>
+      ) : null}
+
+      {isSuperAdmin && organizerCandidates.length > 0 ? (
+        <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium">Transfert direct de l'organisateur</p>
+            <p className="text-xs text-muted-foreground">Aucune demande préalable n'est requise pour le super admin.</p>
+          </div>
+          <div className="flex gap-2">
+            <Select value={transferUserId} onValueChange={setTransferUserId}>
+              <SelectTrigger className="w-52 h-8"><SelectValue placeholder="Nouvel organisateur" /></SelectTrigger>
+              <SelectContent>
+                {organizerCandidates.map((member) => (
+                  <SelectItem key={member.user_id} value={member.user_id}>
+                    {member.full_name || member.user_id.slice(0, 8)} · {ROLE_LABELS[member.role]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button size="sm" disabled={!transferUserId || busy === "transfer"} onClick={() => void transferOrganizer()}>
+              {busy === "transfer" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Transférer
+            </Button>
+          </div>
+        </div>
       ) : null}
 
       {isAdmin && requests.length > 0 ? (
