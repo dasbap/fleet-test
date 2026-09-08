@@ -20,6 +20,8 @@ const CENTRAL_AFRICA_COUNTRIES = [
 const DEMO_VERIFICATION_DRAFT_KEY = "esamba_demo_verification_draft";
 const DEMO_VERIFICATION_INTENT_KEY = "esamba_demo_verification_intent";
 const DEMO_VERIFICATION_EMAIL_STATE_KEY = "esamba_demo_verification_email_state";
+const DEMO_VERIFICATION_EVENT_KEY = `${DEMO_VERIFICATION_EMAIL_STATE_KEY}_event`;
+const DEMO_VERIFICATION_BROADCAST_CHANNEL = "esamba_demo_verification";
 
 interface ContactDemoFormProps { className?: string; }
 
@@ -91,6 +93,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       window.localStorage.removeItem(DEMO_VERIFICATION_DRAFT_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
+      window.localStorage.removeItem(DEMO_VERIFICATION_EVENT_KEY);
       setSent(true);
       window.history.replaceState({}, "", window.location.pathname);
       return;
@@ -131,14 +134,35 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       if (!error) applySession(data.session);
     };
 
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === DEMO_VERIFICATION_EMAIL_STATE_KEY || event.key === DEMO_VERIFICATION_EVENT_KEY) {
+        void refreshSession();
+      }
+    };
+
     void refreshSession();
     const interval = window.setInterval(() => void refreshSession(), 1500);
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => applySession(session));
+    window.addEventListener("storage", handleStorage);
+
+    const channel = typeof BroadcastChannel !== "undefined"
+      ? new BroadcastChannel(DEMO_VERIFICATION_BROADCAST_CHANNEL)
+      : null;
+    if (channel) {
+      channel.onmessage = (event) => {
+        const payload = event.data as { type?: string; email?: string } | null;
+        if (payload?.type === "verified" && payload.email?.toLowerCase() === email) {
+          void refreshSession();
+        }
+      };
+    }
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
       listener.subscription.unsubscribe();
+      window.removeEventListener("storage", handleStorage);
+      channel?.close();
     };
   }, [emailVerified, form.email, verificationEmailSent]);
 
@@ -148,6 +172,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     setEmailVerified(false);
     setEmailVerificationToken("");
     window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
+    window.localStorage.removeItem(DEMO_VERIFICATION_EVENT_KEY);
   }
 
   async function sendVerificationEmail() {
@@ -212,6 +237,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       window.localStorage.removeItem(DEMO_VERIFICATION_DRAFT_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
+      window.localStorage.removeItem(DEMO_VERIFICATION_EVENT_KEY);
       await supabase.auth.signOut({ scope: "local" });
       setSent(true);
     } catch (error) {
@@ -235,13 +261,13 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
             <Input id="demo-email" required type="email" autoComplete="email" value={form.email} onChange={(event) => updateEmail(event.target.value)} placeholder="vous@entreprise.com" disabled={emailVerified} />
             <Button type="button" variant="outline" onClick={() => void sendVerificationEmail()} disabled={verificationPending || emailVerified}>{emailVerified ? "Vérifiée" : verificationEmailSent ? "Renvoyer" : "Vérifier"}</Button>
           </div>
-          {emailVerified ? <p className="flex items-center gap-1 text-xs text-primary"><MailCheck className="h-3.5 w-3.5" />Adresse e-mail vérifiée par E-Samba.</p> : null}
+          {emailVerified ? <p className="flex items-center gap-1 text-xs text-primary"><MailCheck className="h-3.5 w-3.5" />Adresse e-mail vérifiée par E-Samba. Vous pouvez demander votre compte.</p> : null}
         </div>
 
         {verificationEmailSent && !emailVerified ? (
           <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-2">
             <p className="font-medium">En attente de votre confirmation</p>
-            <p className="text-xs text-muted-foreground">E-Samba a demandé à Supabase d'envoyer un lien à {form.email.trim()}. Cliquez sur ce lien pour vérifier l'adresse. Cette page détectera automatiquement la confirmation Supabase.</p>
+            <p className="text-xs text-muted-foreground">E-Samba a demandé à Supabase d'envoyer un lien à {form.email.trim()}. Cliquez sur ce lien pour vérifier l'adresse. Cette page se mettra automatiquement à jour, même si vous ouvrez le lien dans un autre onglet.</p>
           </div>
         ) : null}
 
