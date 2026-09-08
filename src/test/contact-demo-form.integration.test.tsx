@@ -10,8 +10,11 @@ const { signOut, signInWithOtp, getSession, onAuthStateChange, mutateAsync, auth
   authState: { callback: null as null | ((event: string, session: unknown) => void), unsubscribe: vi.fn() },
 }));
 
+const demoAuth = { signOut, signInWithOtp, getSession, onAuthStateChange };
+
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { auth: { signOut, signInWithOtp, getSession, onAuthStateChange } },
+  supabase: { auth: {} },
+  demoVerificationSupabase: { auth: demoAuth },
 }));
 vi.mock("@/hooks/useSubmitDemoRequest", () => ({
   useSubmitDemoRequest: () => ({ mutateAsync, isPending: false }),
@@ -42,7 +45,7 @@ function fillForm() {
   fireEvent.change(screen.getByLabelText("Nom complet *"), { target: { value: "Jean Dupont" } });
   fireEvent.change(screen.getByLabelText("Entreprise *"), { target: { value: "TransCam" } });
   fireEvent.change(screen.getByLabelText("Adresse mail *"), { target: { value: "contact@transcam.cm" } });
-  fireEvent.change(screen.getByLabelText("Téléphone *"), { target: { value: "+237 600 000 000" } });
+  fireEvent.change(screen.getByLabelText("Téléphone *"), { target: { value: "+237 600000000" } });
   fireEvent.change(screen.getByLabelText("Numéro d'identifiant entreprise *"), { target: { value: "RCCM-DLA-2026-B-123" } });
   fireEvent.change(screen.getByRole("combobox", { name: "Pays *" }), { target: { value: "CM" } });
 }
@@ -82,14 +85,14 @@ describe("ContactDemoForm user flow", () => {
     await waitFor(() => expect(authState.callback).not.toBeNull());
     authState.callback?.("SIGNED_IN", verifiedSession);
 
-    await screen.findByText(/Adresse e-mail vérifiée par E-Samba\./);
+    expect(await screen.findByText(/Adresse e-mail vérifiée par E-Samba\./)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Demander ma démo" }));
 
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({
       name: "Jean Dupont",
       email: "contact@transcam.cm",
       company: "TransCam",
-      phone: "+237 600 000 000",
+      phone: "+237600000000",
       companyIdentifier: "RCCM-DLA-2026-B-123",
       countryCode: "CM",
       emailVerificationToken: "verified-token",
@@ -121,10 +124,21 @@ describe("ContactDemoForm user flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Vérifier" }));
     await waitFor(() => expect(authState.callback).not.toBeNull());
     authState.callback?.("SIGNED_IN", verifiedSession);
-    await screen.findByText(/Adresse e-mail vérifiée par E-Samba\./);
+    expect(await screen.findByText(/Adresse e-mail vérifiée par E-Samba\./)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Demander ma démo" }));
 
     expect(await screen.findByText("Le service de demande de démo n'est pas encore configuré sur cet environnement. Réessayez plus tard.")).toBeInTheDocument();
     expect(screen.queryByText("Demande envoyée !")).not.toBeInTheDocument();
+  });
+
+  it("bloque un téléphone incompatible avant d'envoyer le magic-link", async () => {
+    render(<ContactDemoForm />);
+    fillForm();
+    fireEvent.change(screen.getByLabelText("Téléphone *"), { target: { value: "+24166123456" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Vérifier" }));
+
+    expect(await screen.findByText("Le numéro doit correspondre au pays sélectionné (+237)." )).toBeInTheDocument();
+    expect(signInWithOtp).not.toHaveBeenCalled();
   });
 });
