@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { KeyRound, Link2, RefreshCw, Shield, UserPlus, UsersRound } from "lucide-react";
+import { KeyRound, Link2, RefreshCw, Shield, Trash2, UserPlus, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -186,6 +186,34 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function deleteManagedUser(user: ManagedUser) {
+    if (!isSuperAdmin) return;
+    const label = user.email || user.full_name || user.id;
+    if (!window.confirm(`Supprimer définitivement le compte ${label} ? Cette action est irréversible.`)) return;
+
+    setManagedUserBusy(`${user.id}:delete`);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch("/api/admin/delete-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+      const result = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? "delete_user_failed");
+      setManagedUsers((current) => current.filter((item) => item.id !== user.id));
+      toast({ title: "Compte supprimé", description: `${label} a été supprimé définitivement.` });
+    } catch (error) {
+      toast({
+        title: "Suppression impossible",
+        description: error instanceof Error ? error.message : "Erreur inconnue",
+        variant: "destructive",
+      });
+    } finally {
+      setManagedUserBusy(null);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (requiresFleet && !fleetId) {
@@ -285,7 +313,7 @@ export default function AdminUsersPage() {
             <div>
               <h2 className="text-lg font-semibold">Tous les comptes</h2>
               <p className="text-sm text-muted-foreground">
-                Imposez un nouveau mot de passe ou creez un lien de recuperation.
+                Imposez un nouveau mot de passe ou creez un lien de recuperation.{isSuperAdmin ? " Le super admin peut aussi supprimer définitivement un compte." : ""}
               </p>
             </div>
             <Button
@@ -315,61 +343,37 @@ export default function AdminUsersPage() {
           ) : (
             <div className="divide-y rounded-md border">
               {filteredManagedUsers.map((managedUser) => {
-                const forceBusy =
-                  managedUserBusy === `${managedUser.id}:force_password_change`;
-                const linkBusy =
-                  managedUserBusy === `${managedUser.id}:create_recovery_link`;
+                const forceBusy = managedUserBusy === `${managedUser.id}:force_password_change`;
+                const linkBusy = managedUserBusy === `${managedUser.id}:create_recovery_link`;
+                const deleteBusy = managedUserBusy === `${managedUser.id}:delete`;
                 const protectedAdmin = managedUser.is_platform_admin && !isSuperAdmin;
 
                 return (
-                  <div
-                    key={managedUser.id}
-                    className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between"
-                  >
+                  <div key={managedUser.id} className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
-                      <p className="truncate font-medium">
-                        {managedUser.full_name || managedUser.email || managedUser.id}
-                      </p>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {managedUser.email || "Email indisponible"}
-                      </p>
+                      <p className="truncate font-medium">{managedUser.full_name || managedUser.email || managedUser.id}</p>
+                      <p className="truncate text-sm text-muted-foreground">{managedUser.email || "Email indisponible"}</p>
                       <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
                         {managedUser.is_platform_admin ? <span>Admin plateforme</span> : null}
-                        {managedUser.must_set_password ? (
-                          <span className="font-medium text-destructive">
-                            Changement de mot de passe requis
-                          </span>
-                        ) : null}
+                        {managedUser.must_set_password ? <span className="font-medium text-destructive">Changement de mot de passe requis</span> : null}
                       </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        disabled={Boolean(managedUserBusy) || protectedAdmin}
-                        onClick={() =>
-                          void runUserSecurityAction(managedUser, "force_password_change")
-                        }
-                      >
+                      <Button type="button" variant="outline" size="sm" className="gap-2" disabled={Boolean(managedUserBusy) || protectedAdmin} onClick={() => void runUserSecurityAction(managedUser, "force_password_change")}>
                         <KeyRound className="h-4 w-4" aria-hidden />
                         {forceBusy ? "Application..." : "Changer au prochain login"}
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        disabled={Boolean(managedUserBusy) || protectedAdmin}
-                        onClick={() =>
-                          void runUserSecurityAction(managedUser, "create_recovery_link")
-                        }
-                      >
+                      <Button type="button" variant="outline" size="sm" className="gap-2" disabled={Boolean(managedUserBusy) || protectedAdmin} onClick={() => void runUserSecurityAction(managedUser, "create_recovery_link")}>
                         <Link2 className="h-4 w-4" aria-hidden />
                         {linkBusy ? "Creation..." : "Lien mot de passe oublie"}
                       </Button>
+                      {isSuperAdmin ? (
+                        <Button type="button" variant="destructive" size="sm" className="gap-2" disabled={Boolean(managedUserBusy)} onClick={() => void deleteManagedUser(managedUser)}>
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                          {deleteBusy ? "Suppression..." : "Supprimer"}
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 );
