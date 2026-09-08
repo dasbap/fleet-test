@@ -3,20 +3,19 @@ import fs from "node:fs";
 
 const formSource = fs.readFileSync("src/components/landing/ContactDemoForm.tsx", "utf8");
 const callbackSource = fs.readFileSync("src/features/auth/screens/AuthCallbackPage.tsx", "utf8");
-const routeSource = fs.readFileSync("src/server/http/routes/demoRequest.ts", "utf8");
 const templateSource = fs.readFileSync("supabase/templates/magic_link.html", "utf8");
 
 describe("demo email verification flow", () => {
-  it("envoie la demande de verification via le BFF et conserve le brouillon", () => {
-    expect(formSource).toContain('fetch("/api/demo/verification-email"');
+  it("demande le magic link directement a Supabase et conserve le brouillon", () => {
+    expect(formSource).toContain("supabase.auth.signInWithOtp");
     expect(formSource).toContain("esamba_demo_verification_draft");
-    expect(formSource).toContain('body: JSON.stringify({ email })');
+    expect(formSource).toContain("shouldCreateUser: true");
     expect(formSource).toContain('window.localStorage.setItem(DEMO_VERIFICATION_INTENT_KEY, "demo")');
   });
 
   it("envoie un magic link avec redirect vers le callback", () => {
-    expect(routeSource).toContain("emailRedirectTo");
-    expect(routeSource).toContain("/auth/callback?intent=demo");
+    expect(formSource).toContain("emailRedirectTo");
+    expect(formSource).toContain("/auth/callback?intent=demo");
     expect(templateSource).toContain("{{ .ConfirmationURL }}");
     expect(templateSource).not.toContain("{{ .Token }}");
   });
@@ -35,5 +34,10 @@ describe("demo email verification flow", () => {
     expect(formSource).toContain("email_confirmed_at");
     expect(formSource).toContain("setEmailVerificationToken(session.access_token)");
     expect(formSource).toContain("Cette page détectera automatiquement la confirmation Supabase");
+  });
+
+  it("demande de reessayer si Supabase limite l'envoi", () => {
+    expect(formSource).toContain("Supabase limite temporairement l'envoi des e-mails");
+    expect(formSource).toContain("Réessayez dans quelques minutes");
   });
 });
