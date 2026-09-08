@@ -70,8 +70,10 @@ describe("security audit follow-up", () => {
 
   it("never distributes temporary prospect passwords", () => {
     const prospect = read("supabase/functions/create-prospect-account/index.ts");
-    expect(prospect).toContain("resetPasswordForEmail");
+    expect(prospect).toContain("request-password-reset");
+    expect(prospect).toContain("sendScannerSafePasswordSetupEmail");
     expect(prospect).toContain('password_delivery: "reset_email"');
+    expect(prospect).not.toContain("resetPasswordForEmail");
     expect(prospect).not.toContain("temp_password:");
   });
 
