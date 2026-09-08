@@ -16,7 +16,7 @@ type PermissionMatrix = Record<PlatformRole, ReadonlySet<Permission>>;
 const ALL_PERMISSIONS = new Set<Permission>([
   "fleet.view", "fleet.create", "fleet.update", "fleet.delete",
   "vehicle.view", "vehicle.read_by_subscription", "vehicle.create", "vehicle.update", "vehicle.delete", "vehicle.assign_driver",
-  "member.view", "member.invite", "member.remove",
+  "member.view", "member.invite", "member.remove", "member.update_role",
   "maintenance.view", "maintenance.create", "maintenance.update", "maintenance.delete",
   "assignment.view_own", "assignment.view_all", "assignment.manage",
   "report.view", "report.export",
@@ -31,7 +31,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
   organizer: new Set<Permission>([
     "fleet.view", "fleet.create", "fleet.update", "fleet.delete",
     "vehicle.view", "vehicle.read_by_subscription", "vehicle.create", "vehicle.update", "vehicle.delete", "vehicle.assign_driver",
-    "member.view", "member.invite", "member.remove",
+    "member.view", "member.invite", "member.remove", "member.update_role",
     "maintenance.view", "maintenance.create", "maintenance.update", "maintenance.delete",
     "assignment.view_own", "assignment.view_all", "assignment.manage",
     "report.view", "report.export",
@@ -92,9 +92,11 @@ export function canManageRole(
   managerRole: PlatformRole | null,
   targetRole: AppRole,
 ): boolean {
-  if (!managerRole || targetRole === "organizer") return false;
-  if (managerRole === "admin" || managerRole === "organizer") return true;
-  if (managerRole === "manager") return true;
+  if (!managerRole) return false;
+  if (managerRole === "admin") return true;
+  if (targetRole === "organizer") return false;
+  if (managerRole === "organizer") return true;
+  if (managerRole === "manager") return targetRole === "manager" || targetRole === "driver" || targetRole === "mechanic";
   return false;
 }
 
