@@ -17,6 +17,7 @@ import { registerHealthRoutes } from "./routes/health.js";
 import { registerAdminDemoRoutes } from "./routes/adminDemo.js";
 import { registerAdminProspectSecurityRoutes } from "./routes/adminProspectSecurity.js";
 import { registerAdminUserSecurityRoutes } from "./routes/adminUserSecurity.js";
+import { registerAdminDestructiveSecurityRoutes } from "./routes/adminDestructiveSecurity.js";
 import { registerPasswordChangeRoutes } from "./routes/passwordChange.js";
 import { registerDemoRequestRoutes } from "./routes/demoRequest.js";
 import {
@@ -112,6 +113,7 @@ export function createServerApp() {
   registerPasswordChangeRoutes(app);
   registerAdminProspectSecurityRoutes(app);
   registerAdminUserSecurityRoutes(app);
+  registerAdminDestructiveSecurityRoutes(app);
   registerAdminDemoRoutes(app);
   registerDemoRequestRoutes(app);
   registerGpsIngestRoutes(app);
