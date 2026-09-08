@@ -44,21 +44,21 @@ export default function SetPasswordPage() {
   const mustSetPassword = user.app_metadata?.must_set_password === true || user.user_metadata?.must_set_password === true;
   if (!mustSetPassword) return <Navigate to={ROUTE_PATHS.dashboard} replace />;
 
-  const changePasswordAndClearMarker = async () => {
-    const { data, error: functionError } = await supabase.functions.invoke("set-initial-password", { body: { password } });
-    const result = (data ?? {}) as PasswordFunctionResult;
-    if (!functionError && result.ok === true) return;
+  const clearPasswordMarker = async (accessToken: string) => {
+    const response = await fetch("/api/auth/clear-password-marker", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({}),
+    });
+    const result = (await response.json().catch(() => ({}))) as PasswordFunctionResult;
+    if (response.ok && result.ok === true) return;
 
-    let responseResult = result;
-    let status: number | undefined;
-    const context = (functionError as { context?: unknown } | null)?.context;
-    if (context instanceof Response) {
-      status = context.status;
-      responseResult = (await context.clone().json().catch(() => result)) as PasswordFunctionResult;
-    }
-    const requestError = new Error(responseResult.details ?? responseResult.error ?? functionError?.message ?? "Votre mot de passe n'a pas pu être enregistré.") as PasswordChangeError;
-    requestError.code = responseResult.error;
-    requestError.status = status;
+    const requestError = new Error(result.details ?? result.error ?? "Votre mot de passe n'a pas pu être finalisé.") as PasswordChangeError;
+    requestError.code = result.error;
+    requestError.status = response.status;
     throw requestError;
   };
 
@@ -80,9 +80,18 @@ export default function SetPasswordPage() {
 
     setIsSubmitting(true);
     try {
-      await changePasswordAndClearMarker();
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password });
-      if (signInError) throw signInError;
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) throw updateError;
+
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password,
+      });
+      if (signInError || !signInData.session?.access_token) {
+        throw signInError ?? new Error("La nouvelle session n'a pas pu être créée.");
+      }
+
+      await clearPasswordMarker(signInData.session.access_token);
       navigate(ROUTE_PATHS.dashboard, { replace: true });
     } catch (submissionError) {
       setError(getPasswordErrorMessage(submissionError as PasswordChangeError));
