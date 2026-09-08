@@ -53,7 +53,7 @@ describe('OnboardingWizard', () => {
     mockTrackEvent.mockReset();
   });
 
-  it('termine le parcours complet 1->4', async () => {
+  it('termine le parcours complet 1->3', async () => {
     render(
       <MemoryRouter>
         <OnboardingWizard />
@@ -68,10 +68,6 @@ describe('OnboardingWizard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Continuer' }));
     await waitFor(() => expect(mockSaveStep).toHaveBeenCalledWith(2, expect.any(Object)));
-
-    await screen.findByText('Invitez votre équipe');
-    fireEvent.click(screen.getByRole('button', { name: 'Continuer' }));
-    await waitFor(() => expect(mockSaveStep).toHaveBeenCalledWith(3, expect.any(Object)));
 
     await screen.findByText('Validation finale');
     fireEvent.click(screen.getByRole('checkbox'));
@@ -93,7 +89,7 @@ describe('OnboardingWizard', () => {
     await screen.findByText('Activez vos alertes essentielles');
   });
 
-  it('permet un retour de l etape 3 vers l etape 2', async () => {
+  it('permet un retour de la validation vers l etape 2', async () => {
     progress.step = 3;
     progress.steps_data = {
       step2: { alerts: { oil: true, revision: false, tires: true, brakes: false } },
@@ -105,7 +101,7 @@ describe('OnboardingWizard', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByText('Invitez votre équipe');
+    await screen.findByText('Validation finale');
     fireEvent.click(screen.getByRole('button', { name: 'Retour' }));
     await screen.findByText('Activez vos alertes essentielles');
   });
