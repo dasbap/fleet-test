@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMock = vi.hoisted(() => ({
   applyCors: vi.fn(),
+  fetchWithTimeout: vi.fn(),
   handlePreflight: vi.fn(),
   requirePlatformAdmin: vi.fn(),
 }));
@@ -67,7 +68,7 @@ function setup(options: {
   const generateLink = vi.fn(async () => ({
     data: {
       properties: {
-        action_link: "https://supabase.example/recovery",
+        action_link: "https://supabase.example/auth/v1/verify?token=recovery-token&type=recovery",
       },
     },
     error: options.linkError ?? null,
@@ -102,6 +103,7 @@ function setup(options: {
     env: {
       url: "https://supabase.example",
       serviceRoleKey: "service-role",
+      anonKey: "anon-key",
       appUrl: "https://app.example/",
     },
     client: {
@@ -119,6 +121,7 @@ describe("admin user-security route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     apiMock.handlePreflight.mockReturnValue(false);
+    apiMock.fetchWithTimeout.mockResolvedValue({ ok: true });
     setup();
   });
 
@@ -186,7 +189,7 @@ describe("admin user-security route", () => {
     });
   });
 
-  it("cree un lien recovery pour le super-admin", async () => {
+  it("cree un lien recovery scanner-safe pour le super-admin", async () => {
     const { generateLink } = setup({ callerSuperAdmin: true });
     const res = makeResponse();
     await handler(
@@ -205,7 +208,7 @@ describe("admin user-security route", () => {
     });
     expectJson(res, 200, {
       ok: true,
-      recovery_link: "https://supabase.example/recovery",
+      recovery_link: "https://app.example/auth/update-password?token_hash=recovery-token&type=recovery",
       email: "user@example.com",
     });
   });
