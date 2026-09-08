@@ -20,8 +20,8 @@ describe("demo request auto mode safeupdate", () => {
     expect(sql).toContain("to authenticated, service_role");
   });
 
-  it("est rejouée par la chaîne baseline/delta", () => {
-    const deltas = readFileSync("supabase/baseline/delta-migrations.txt", "utf8");
-    expect(deltas).toContain(migrationPath);
+  it("garde un fallback d'insertion pour le singleton absent", () => {
+    expect(sql).toMatch(/if v_row\.id is null then[\s\S]*?insert into public\.demo_request_settings/i);
+    expect(sql).toContain("values (\n      true,");
   });
 });
