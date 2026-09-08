@@ -11,12 +11,13 @@ describe("fleet deletion placement", () => {
     expect(subscriptionsPage).not.toContain("Supprimer la flotte");
   });
 
-  it("place la suppression dans la liste de gestion des flottes pour le super admin", () => {
+  it("place un seul bouton de suppression dans l'en-tête de la flotte sélectionnée", () => {
     expect(fleetPanel).toContain("useRoleAccess");
     expect(fleetPanel).toContain("isSuperAdmin");
     expect(fleetPanel).toContain('/api/admin/delete-fleet');
-    expect(fleetPanel).toContain("aria-label={`Supprimer la flotte ${fleet.name}`}");
-    expect(fleetPanel).toContain("fleetDeleteTarget");
+    expect(fleetPanel).toContain("onClick={() => setFleetDeleteTarget(selectedFleet)}");
+    expect(fleetPanel).toContain("Actualiser");
     expect(fleetPanel).toContain("Supprimer la flotte");
+    expect(fleetPanel).not.toContain("aria-label={`Supprimer la flotte ${fleet.name}`}");
   });
 });
