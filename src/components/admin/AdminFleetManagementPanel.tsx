@@ -24,14 +24,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import {
   getVehicleRegistrationRule,
   normalizeVehicleRegistration,
   sanitizeVehicleRegistrationInput,
   validateVehicleRegistrationForCountry,
 } from "@/domain/vehicleRegistration";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdminFleetOption {
   id: string;
@@ -71,10 +72,7 @@ interface RpcResult<T> {
 }
 
 interface RpcClient {
-  rpc<T = unknown>(
-    fn: string,
-    params?: Record<string, unknown>,
-  ): Promise<RpcResult<T>>;
+  rpc<T = unknown>(fn: string, params?: Record<string, unknown>): Promise<RpcResult<T>>;
 }
 
 const rpcClient = supabase as unknown as RpcClient;
@@ -90,19 +88,41 @@ async function loadFleets(): Promise<AdminFleetOption[]> {
 }
 
 async function loadVehicles(fleetId: string): Promise<AdminVehicle[]> {
-  const { data, error } = await rpcClient.rpc("admin_list_fleet_vehicles", {
-    p_fleet_id: fleetId,
-  });
+  const { data, error } = await rpcClient.rpc("admin_list_fleet_vehicles", { p_fleet_id: fleetId });
   if (error) throw new Error(error.message);
   return parseArray<AdminVehicle>(data);
 }
 
 async function loadLocks(fleetId: string): Promise<RegistrationLock[]> {
-  const { data, error } = await rpcClient.rpc("admin_list_registration_locks", {
-    p_fleet_id: fleetId,
-  });
+  const { data, error } = await rpcClient.rpc("admin_list_registration_locks", { p_fleet_id: fleetId });
   if (error) throw new Error(error.message);
   return parseArray<RegistrationLock>(data);
+}
+
+async function deleteFleet(fleet: AdminFleetOption): Promise<AdminFleetOption> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Session administrateur expirée. Reconnectez-vous.");
+
+  const response = await fetch("/api/admin/delete-fleet", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ fleet_id: fleet.id }),
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { ok?: boolean; error?: string; detail?: string }
+    | null;
+
+  if (!response.ok || payload?.ok !== true) {
+    if (payload?.error === "cannot_delete_current_super_admin") {
+      throw new Error("Cette flotte ne peut pas être supprimée depuis votre propre compte super admin.");
+    }
+    throw new Error(payload?.detail || payload?.error || "delete_fleet_failed");
+  }
+  return fleet;
 }
 
 function mapVehicleError(message: string): string {
@@ -125,6 +145,7 @@ function mapVehicleError(message: string): string {
 
 export function AdminFleetManagementPanel() {
   const { toast } = useToast();
+  const { isSuperAdmin } = useRoleAccess();
   const queryClient = useQueryClient();
 
   const [fleetSearch, setFleetSearch] = useState("");
@@ -136,6 +157,7 @@ export function AdminFleetManagementPanel() {
   const [currentKm, setCurrentKm] = useState("0");
   const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminVehicle | null>(null);
+  const [fleetDeleteTarget, setFleetDeleteTarget] = useState<AdminFleetOption | null>(null);
   const [unlockTarget, setUnlockTarget] = useState<RegistrationLock | null>(null);
 
   const fleetsQuery = useQuery({
@@ -161,7 +183,6 @@ export function AdminFleetManagementPanel() {
       if (fleetId) setFleetId("");
       return;
     }
-
     if (!filteredFleets.some((fleet) => fleet.id === fleetId)) {
       setFleetId(filteredFleets[0].id);
       setRegistration("");
@@ -184,25 +205,18 @@ export function AdminFleetManagementPanel() {
     enabled: Boolean(selectedFleetId),
   });
 
-  const registrationRule = getVehicleRegistrationRule(
-    selectedFleet?.country_code ?? "CM",
-  );
+  const registrationRule = getVehicleRegistrationRule(selectedFleet?.country_code ?? "CM");
 
   const refreshFleet = () => {
-    if (!selectedFleetId) return;
     void queryClient.invalidateQueries({ queryKey: ["admin", "vehicle-fleets"] });
-    void queryClient.invalidateQueries({
-      queryKey: ["admin", "fleet-vehicles", selectedFleetId],
-    });
-    void queryClient.invalidateQueries({
-      queryKey: ["admin", "registration-locks", selectedFleetId],
-    });
+    if (!selectedFleetId) return;
+    void queryClient.invalidateQueries({ queryKey: ["admin", "fleet-vehicles", selectedFleetId] });
+    void queryClient.invalidateQueries({ queryKey: ["admin", "registration-locks", selectedFleetId] });
   };
 
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!selectedFleet) throw new Error("Sélectionnez une flotte.");
-
       const normalizedRegistration = normalizeVehicleRegistration(registration);
       const validationError = validateVehicleRegistrationForCountry(
         normalizedRegistration,
@@ -215,17 +229,10 @@ export function AdminFleetManagementPanel() {
 
       const parsedYear = Number(year);
       const parsedKm = Number(currentKm);
-
-      if (
-        !Number.isInteger(parsedYear) ||
-        parsedYear < 1990 ||
-        parsedYear > new Date().getFullYear() + 1
-      ) {
+      if (!Number.isInteger(parsedYear) || parsedYear < 1990 || parsedYear > new Date().getFullYear() + 1) {
         throw new Error("Année invalide.");
       }
-      if (!Number.isFinite(parsedKm) || parsedKm < 0) {
-        throw new Error("Kilométrage invalide.");
-      }
+      if (!Number.isFinite(parsedKm) || parsedKm < 0) throw new Error("Kilométrage invalide.");
 
       const { data, error } = await rpcClient.rpc("admin_create_vehicle", {
         p_fleet_id: selectedFleet.id,
@@ -235,15 +242,13 @@ export function AdminFleetManagementPanel() {
         p_year: parsedYear,
         p_current_km: Math.floor(parsedKm),
       });
-
       if (error) throw new Error(mapVehicleError(error.message));
       return data;
     },
     onSuccess: () => {
       toast({
         title: "Véhicule créé",
-        description:
-          "Les limites de capacité ont été contournées. La règle d'immatriculation reste appliquée.",
+        description: "Les limites de capacité ont été contournées. La règle d'immatriculation reste appliquée.",
       });
       setRegistration("");
       setBrand("");
@@ -264,9 +269,7 @@ export function AdminFleetManagementPanel() {
 
   const deleteMutation = useMutation({
     mutationFn: async (vehicle: AdminVehicle) => {
-      const { data, error } = await rpcClient.rpc("admin_delete_vehicle", {
-        p_vehicle_id: vehicle.id,
-      });
+      const { data, error } = await rpcClient.rpc("admin_delete_vehicle", { p_vehicle_id: vehicle.id });
       if (error) throw new Error(mapVehicleError(error.message));
       const result = data as { ok?: boolean; error?: string } | null;
       if (result?.ok !== true) throw new Error(result?.error ?? "delete_failed");
@@ -289,12 +292,30 @@ export function AdminFleetManagementPanel() {
     },
   });
 
+  const deleteFleetMutation = useMutation({
+    mutationFn: deleteFleet,
+    onSuccess: (fleet) => {
+      setFleetDeleteTarget(null);
+      if (fleet.id === fleetId) setFleetId("");
+      toast({ title: "Flotte supprimée", description: `${fleet.name} a été supprimée définitivement.` });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "vehicle-fleets"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "all-accounts"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "subscriptions"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Suppression de flotte impossible",
+        description: error instanceof Error ? error.message : "Erreur inconnue.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const unlockMutation = useMutation({
     mutationFn: async (lock: RegistrationLock) => {
-      const { data, error } = await rpcClient.rpc(
-        "admin_release_vehicle_registration",
-        { p_registration: lock.normalized_registration },
-      );
+      const { data, error } = await rpcClient.rpc("admin_release_vehicle_registration", {
+        p_registration: lock.normalized_registration,
+      });
       if (error) throw new Error(mapVehicleError(error.message));
       const result = data as { ok?: boolean; error?: string } | null;
       if (result?.ok !== true) throw new Error(result?.error ?? "unlock_failed");
@@ -323,9 +344,7 @@ export function AdminFleetManagementPanel() {
         <aside className="space-y-4 rounded-xl border bg-card p-4">
           <div>
             <h2 className="font-semibold">Flottes</h2>
-            <p className="text-sm text-muted-foreground">
-              Sélectionnez une flotte pour gérer ses véhicules.
-            </p>
+            <p className="text-sm text-muted-foreground">Sélectionnez une flotte pour gérer ses véhicules.</p>
           </div>
 
           <div className="relative">
@@ -343,41 +362,62 @@ export function AdminFleetManagementPanel() {
             {filteredFleets.map((fleet) => {
               const active = fleet.id === selectedFleetId;
               return (
-                <button
+                <div
                   key={fleet.id}
-                  type="button"
-                  onClick={() => {
-                    setFleetId(fleet.id);
-                    setRegistration("");
-                    setRegistrationError(null);
-                  }}
-                  aria-pressed={active}
                   className={
-                    "w-full rounded-lg border p-3 text-left transition " +
+                    "flex items-stretch overflow-hidden rounded-lg border transition " +
                     (active
                       ? "border-primary bg-primary/5"
                       : "hover:border-muted-foreground/40 hover:bg-muted/40")
                   }
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{fleet.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {fleet.org_name || "Organisation inconnue"}
-                      </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFleetId(fleet.id);
+                      setRegistration("");
+                      setRegistrationError(null);
+                    }}
+                    aria-pressed={active}
+                    className="min-w-0 flex-1 p-3 text-left"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{fleet.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {fleet.org_name || "Organisation inconnue"}
+                        </p>
+                      </div>
+                      <Badge variant="secondary">{fleet.country_code}</Badge>
                     </div>
-                    <Badge variant="secondary">{fleet.country_code}</Badge>
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {fleet.vehicle_count} véhicule{fleet.vehicle_count > 1 ? "s" : ""}
-                  </p>
-                </button>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {fleet.vehicle_count} véhicule{fleet.vehicle_count > 1 ? "s" : ""}
+                    </p>
+                  </button>
+
+                  {isSuperAdmin ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-auto w-10 shrink-0 rounded-none border-l text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={deleteFleetMutation.isPending}
+                      onClick={() => setFleetDeleteTarget(fleet)}
+                      aria-label={`Supprimer la flotte ${fleet.name}`}
+                      title={`Supprimer ${fleet.name}`}
+                    >
+                      {deleteFleetMutation.isPending && fleetDeleteTarget?.id === fleet.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  ) : null}
+                </div>
               );
             })}
             {!fleetsQuery.isLoading && filteredFleets.length === 0 ? (
-              <p className="py-4 text-sm text-muted-foreground">
-                Aucune flotte ne correspond à cette recherche.
-              </p>
+              <p className="py-4 text-sm text-muted-foreground">Aucune flotte ne correspond à cette recherche.</p>
             ) : null}
           </div>
         </aside>
@@ -424,16 +464,14 @@ export function AdminFleetManagementPanel() {
                       autoCapitalize="characters"
                       spellCheck={false}
                       onChange={(event) => {
-                        const next = sanitizeVehicleRegistrationInput(
-                          event.target.value,
-                        ).slice(0, registrationRule.maxInputLength);
+                        const next = sanitizeVehicleRegistrationInput(event.target.value).slice(
+                          0,
+                          registrationRule.maxInputLength,
+                        );
                         setRegistration(next);
                         setRegistrationError(
                           next
-                            ? validateVehicleRegistrationForCountry(
-                                next,
-                                selectedFleet.country_code,
-                              )
+                            ? validateVehicleRegistrationForCountry(next, selectedFleet.country_code)
                             : null,
                         );
                       }}
@@ -446,68 +484,35 @@ export function AdminFleetManagementPanel() {
                       {registrationRule.maxCompactLength} caractères alphanumériques.
                     </p>
                     {registrationError ? (
-                      <p className="text-xs text-destructive" role="alert">
-                        {registrationError}
-                      </p>
+                      <p className="text-xs text-destructive" role="alert">{registrationError}</p>
                     ) : null}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="admin-vehicle-brand">Marque</Label>
-                    <Input
-                      id="admin-vehicle-brand"
-                      value={brand}
-                      onChange={(event) => setBrand(event.target.value)}
-                      placeholder="Toyota"
-                    />
+                    <Input id="admin-vehicle-brand" value={brand} onChange={(event) => setBrand(event.target.value)} placeholder="Toyota" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="admin-vehicle-model">Modèle</Label>
-                    <Input
-                      id="admin-vehicle-model"
-                      value={model}
-                      onChange={(event) => setModel(event.target.value)}
-                      placeholder="Hilux"
-                    />
+                    <Input id="admin-vehicle-model" value={model} onChange={(event) => setModel(event.target.value)} placeholder="Hilux" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="admin-vehicle-year">Année</Label>
-                    <Input
-                      id="admin-vehicle-year"
-                      type="number"
-                      min={1990}
-                      max={new Date().getFullYear() + 1}
-                      value={year}
-                      onChange={(event) => setYear(event.target.value)}
-                    />
+                    <Input id="admin-vehicle-year" type="number" min={1990} max={new Date().getFullYear() + 1} value={year} onChange={(event) => setYear(event.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="admin-vehicle-km">Kilométrage</Label>
-                    <Input
-                      id="admin-vehicle-km"
-                      type="number"
-                      min={0}
-                      value={currentKm}
-                      onChange={(event) => setCurrentKm(event.target.value)}
-                    />
+                    <Input id="admin-vehicle-km" type="number" min={0} value={currentKm} onChange={(event) => setCurrentKm(event.target.value)} />
                   </div>
                 </div>
 
                 <div className="mt-4 flex justify-end">
                   <Button
                     type="button"
-                    disabled={
-                      createMutation.isPending ||
-                      Boolean(registrationError) ||
-                      !registration.trim()
-                    }
+                    disabled={createMutation.isPending || Boolean(registrationError) || !registration.trim()}
                     onClick={() => createMutation.mutate()}
                   >
-                    {createMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Car className="mr-2 h-4 w-4" />
-                    )}
+                    {createMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Car className="mr-2 h-4 w-4" />}
                     Créer le véhicule
                   </Button>
                 </div>
@@ -520,49 +525,27 @@ export function AdminFleetManagementPanel() {
                     Une plaque supprimée reste réservée à cette flotte et peut y être réutilisée.
                   </p>
                 </div>
-
                 <div className="divide-y">
                   {(vehiclesQuery.data ?? []).map((vehicle) => (
-                    <div
-                      key={vehicle.id}
-                      className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
+                    <div key={vehicle.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono font-semibold">
-                            {vehicle.registration}
-                          </span>
-                          <Badge variant={vehicle.status === "ok" ? "secondary" : "outline"}>
-                            {vehicle.status}
-                          </Badge>
+                          <span className="font-mono font-semibold">{vehicle.registration}</span>
+                          <Badge variant={vehicle.status === "ok" ? "secondary" : "outline"}>{vehicle.status}</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {[vehicle.brand, vehicle.model, vehicle.year]
-                            .filter(Boolean)
-                            .join(" · ") || "Informations véhicule non renseignées"}
+                          {[vehicle.brand, vehicle.model, vehicle.year].filter(Boolean).join(" · ") || "Informations véhicule non renseignées"}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {vehicle.current_km.toLocaleString("fr-FR")} km
-                        </p>
+                        <p className="text-xs text-muted-foreground">{vehicle.current_km.toLocaleString("fr-FR")} km</p>
                       </div>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={deleteMutation.isPending}
-                        onClick={() => setDeleteTarget(vehicle)}
-                      >
+                      <Button type="button" variant="outline" size="sm" disabled={deleteMutation.isPending} onClick={() => setDeleteTarget(vehicle)}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         Supprimer
                       </Button>
                     </div>
                   ))}
-
                   {!vehiclesQuery.isLoading && (vehiclesQuery.data ?? []).length === 0 ? (
-                    <p className="p-5 text-sm text-muted-foreground">
-                      Aucun véhicule dans cette flotte.
-                    </p>
+                    <p className="p-5 text-sm text-muted-foreground">Aucun véhicule dans cette flotte.</p>
                   ) : null}
                 </div>
               </section>
@@ -574,56 +557,32 @@ export function AdminFleetManagementPanel() {
                     Une réservation empêche une autre flotte de récupérer une plaque déjà utilisée ici.
                   </p>
                 </div>
-
                 <div className="divide-y">
                   {(locksQuery.data ?? []).map((lock) => (
-                    <div
-                      key={lock.normalized_registration}
-                      className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
+                    <div key={lock.normalized_registration} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-semibold">
-                            {lock.active_registration || lock.normalized_registration}
-                          </span>
+                          <span className="font-mono font-semibold">{lock.active_registration || lock.normalized_registration}</span>
                           {lock.locked ? (
-                            <Badge variant="outline" className="gap-1">
-                              <LockKeyhole className="h-3 w-3" />
-                              Réservée
-                            </Badge>
+                            <Badge variant="outline" className="gap-1"><LockKeyhole className="h-3 w-3" />Réservée</Badge>
                           ) : (
-                            <Badge variant="secondary" className="gap-1">
-                              <UnlockKeyhole className="h-3 w-3" />
-                              Libérée
-                            </Badge>
+                            <Badge variant="secondary" className="gap-1"><UnlockKeyhole className="h-3 w-3" />Libérée</Badge>
                           )}
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {lock.active_vehicle_id
-                            ? "Véhicule actif : la plaque reste de toute façon unique."
-                            : "Aucun véhicule actif avec cette plaque."}
+                          {lock.active_vehicle_id ? "Véhicule actif : la plaque reste de toute façon unique." : "Aucun véhicule actif avec cette plaque."}
                         </p>
                       </div>
-
                       {lock.locked ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={unlockMutation.isPending}
-                          onClick={() => setUnlockTarget(lock)}
-                        >
+                        <Button type="button" variant="outline" size="sm" disabled={unlockMutation.isPending} onClick={() => setUnlockTarget(lock)}>
                           <UnlockKeyhole className="mr-2 h-4 w-4" />
                           Enlever le verrou
                         </Button>
                       ) : null}
                     </div>
                   ))}
-
                   {!locksQuery.isLoading && (locksQuery.data ?? []).length === 0 ? (
-                    <p className="p-5 text-sm text-muted-foreground">
-                      Aucune immatriculation réservée pour cette flotte.
-                    </p>
+                    <p className="p-5 text-sm text-muted-foreground">Aucune immatriculation réservée pour cette flotte.</p>
                   ) : null}
                 </div>
               </section>
@@ -634,16 +593,42 @@ export function AdminFleetManagementPanel() {
               Chargement des flottes...
             </div>
           ) : fleetSearch.trim() ? (
-            <div className="rounded-xl border p-6 text-sm text-muted-foreground">
-              Aucune flotte ne correspond à cette recherche.
-            </div>
+            <div className="rounded-xl border p-6 text-sm text-muted-foreground">Aucune flotte ne correspond à cette recherche.</div>
           ) : (
-            <div className="rounded-xl border p-6 text-sm text-muted-foreground">
-              Aucune flotte disponible.
-            </div>
+            <div className="rounded-xl border p-6 text-sm text-muted-foreground">Aucune flotte disponible.</div>
           )}
         </main>
       </div>
+
+      <AlertDialog
+        open={Boolean(fleetDeleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deleteFleetMutation.isPending) setFleetDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette flotte ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {fleetDeleteTarget
+                ? `${fleetDeleteTarget.name} et toutes ses données liées seront supprimées définitivement. Cette action est réservée au super admin et est irréversible.`
+                : "La flotte sera supprimée définitivement."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteFleetMutation.isPending}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteFleetMutation.isPending || !fleetDeleteTarget}
+              onClick={(event) => {
+                event.preventDefault();
+                if (fleetDeleteTarget) deleteFleetMutation.mutate(fleetDeleteTarget);
+              }}
+            >
+              {deleteFleetMutation.isPending ? "Suppression..." : "Supprimer la flotte"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={Boolean(deleteTarget)}
