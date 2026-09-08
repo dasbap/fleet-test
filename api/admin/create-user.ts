@@ -41,6 +41,24 @@ async function assertCanProvisionFleetRole(auth: AccountProvisioner, fleetId: st
   return "allowed";
 }
 
+async function sendScannerSafePasswordSetupEmail(auth: AccountProvisioner, email: string): Promise<boolean> {
+  const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/auth/update-password`;
+  const response = await fetchWithTimeout(
+    `${auth.env.url.replace(/\/$/, "")}/functions/v1/request-password-reset`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: auth.env.anonKey,
+        Authorization: `Bearer ${auth.env.anonKey}`,
+      },
+      body: JSON.stringify({ email, redirectTo }),
+    },
+    8_000,
+  );
+  return response.ok;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   applyCors(req, res);
   if (handlePreflight(req, res)) return;
@@ -183,13 +201,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
   }
 
-  const publicAuth = createClient(auth.env.url, auth.env.anonKey, {
-    global: { fetch: (input, init) => fetchWithTimeout(input, init, 5_000) },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/auth/update-password`;
-  const { error: resetError } = await publicAuth.auth.resetPasswordForEmail(email, { redirectTo });
-  if (resetError) {
+  const emailSent = await sendScannerSafePasswordSetupEmail(auth, email).catch(() => false);
+  if (!emailSent) {
     await admin.auth.admin.deleteUser(userId);
     res.status(502).json({ ok: false, error: "password_setup_email_failed" });
     return;
