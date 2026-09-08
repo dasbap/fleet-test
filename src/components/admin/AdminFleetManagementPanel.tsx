@@ -362,58 +362,35 @@ export function AdminFleetManagementPanel() {
             {filteredFleets.map((fleet) => {
               const active = fleet.id === selectedFleetId;
               return (
-                <div
+                <button
                   key={fleet.id}
+                  type="button"
+                  onClick={() => {
+                    setFleetId(fleet.id);
+                    setRegistration("");
+                    setRegistrationError(null);
+                  }}
+                  aria-pressed={active}
                   className={
-                    "flex items-stretch overflow-hidden rounded-lg border transition " +
+                    "w-full rounded-lg border p-3 text-left transition " +
                     (active
                       ? "border-primary bg-primary/5"
                       : "hover:border-muted-foreground/40 hover:bg-muted/40")
                   }
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFleetId(fleet.id);
-                      setRegistration("");
-                      setRegistrationError(null);
-                    }}
-                    aria-pressed={active}
-                    className="min-w-0 flex-1 p-3 text-left"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{fleet.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {fleet.org_name || "Organisation inconnue"}
-                        </p>
-                      </div>
-                      <Badge variant="secondary">{fleet.country_code}</Badge>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{fleet.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {fleet.org_name || "Organisation inconnue"}
+                      </p>
                     </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {fleet.vehicle_count} véhicule{fleet.vehicle_count > 1 ? "s" : ""}
-                    </p>
-                  </button>
-
-                  {isSuperAdmin ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-auto w-10 shrink-0 rounded-none border-l text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      disabled={deleteFleetMutation.isPending}
-                      onClick={() => setFleetDeleteTarget(fleet)}
-                      aria-label={`Supprimer la flotte ${fleet.name}`}
-                      title={`Supprimer ${fleet.name}`}
-                    >
-                      {deleteFleetMutation.isPending && fleetDeleteTarget?.id === fleet.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  ) : null}
-                </div>
+                    <Badge variant="secondary">{fleet.country_code}</Badge>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {fleet.vehicle_count} véhicule{fleet.vehicle_count > 1 ? "s" : ""}
+                  </p>
+                </button>
               );
             })}
             {!fleetsQuery.isLoading && filteredFleets.length === 0 ? (
@@ -438,10 +415,27 @@ export function AdminFleetManagementPanel() {
                       {(vehiclesQuery.data?.length ?? selectedFleet.vehicle_count) > 1 ? "s" : ""}
                     </p>
                   </div>
-                  <Button type="button" variant="outline" onClick={refreshFleet}>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Actualiser
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button type="button" variant="outline" onClick={refreshFleet}>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Actualiser
+                    </Button>
+                    {isSuperAdmin ? (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        disabled={deleteFleetMutation.isPending}
+                        onClick={() => setFleetDeleteTarget(selectedFleet)}
+                      >
+                        {deleteFleetMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="mr-2 h-4 w-4" />
+                        )}
+                        Supprimer la flotte
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </section>
 
