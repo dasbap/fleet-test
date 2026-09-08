@@ -79,7 +79,6 @@ async function deleteUser(c: Context) {
 
   const body = await readBody(c);
   const userId = readString(body?.user_id);
-  const deleteOwnedDemoFleets = body?.delete_owned_demo_fleets === true;
   if (!userId) return c.json({ ok: false, error: "user_id_required" }, 400);
   if (userId === auth.user.id) {
     return c.json({ ok: false, error: "cannot_delete_current_super_admin" }, 409);
@@ -131,46 +130,23 @@ async function deleteUser(c: Context) {
   }
 
   if (lastOrganizerFleetIds.length > 0) {
-    const { data: fleets, error: fleetsError } = await admin
+    const { error: deleteFleetsError } = await admin
       .from("flottes")
-      .select("id,is_demo")
+      .delete()
       .in("id", lastOrganizerFleetIds);
-
-    if (fleetsError) return c.json({ ok: false, error: "fleet_lookup_failed" }, 502);
-
-    const demoFleetIds = (fleets ?? []).filter((fleet) => fleet.is_demo === true).map((fleet) => fleet.id);
-    const nonDemoFleetIds = (fleets ?? []).filter((fleet) => fleet.is_demo !== true).map((fleet) => fleet.id);
-
-    if (nonDemoFleetIds.length > 0) {
-      return c.json({
-        ok: false,
-        error: "last_active_organizer_required",
-        fleet_ids: nonDemoFleetIds,
-        can_delete_demo_fleets: false,
-      }, 409);
-    }
-
-    if (!deleteOwnedDemoFleets) {
-      return c.json({
-        ok: false,
-        error: "last_active_organizer_required",
-        fleet_ids: demoFleetIds,
-        can_delete_demo_fleets: true,
-      }, 409);
-    }
-
-    if (demoFleetIds.length > 0) {
-      const { error: deleteFleetsError } = await admin.from("flottes").delete().in("id", demoFleetIds);
-      if (deleteFleetsError) {
-        return c.json({ ok: false, error: "delete_demo_fleets_failed" }, 502);
-      }
+    if (deleteFleetsError) {
+      return c.json({ ok: false, error: "delete_owned_fleets_failed" }, 502);
     }
   }
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
   if (deleteError) return c.json({ ok: false, error: "delete_user_failed" }, 502);
 
-  return c.json({ ok: true, user_id: userId }, 200);
+  return c.json({
+    ok: true,
+    user_id: userId,
+    deleted_fleet_ids: lastOrganizerFleetIds,
+  }, 200);
 }
 
 export function registerAdminDestructiveSecurityRoutes(app: Hono) {
