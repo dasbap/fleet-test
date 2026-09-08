@@ -39,8 +39,10 @@ describe("Temporary password security", () => {
     );
 
     expect(fleetMemberSource).toContain('password_delivery: existingAuthUserAttached ? "existing_account" : "reset_email"');
-    expect(fleetMemberSource).toContain("resetPasswordForEmail");
+    expect(fleetMemberSource).toContain("request-password-reset");
+    expect(fleetMemberSource).toContain("sendScannerSafePasswordSetupEmail");
     expect(fleetMemberSource).toContain("temporary_password_active: true");
+    expect(fleetMemberSource).not.toContain("resetPasswordForEmail");
     expect(fleetMemberSource).not.toContain("temp_password:");
   });
 
@@ -50,8 +52,10 @@ describe("Temporary password security", () => {
 
     expect(adminDemoSource).not.toContain("/api/admin/create-prospect");
     expect(adminDemoSource).not.toContain("temp_password:");
-    expect(adminProspectSource).toContain("resetPasswordForEmail");
+    expect(adminProspectSource).toContain("request-password-reset");
+    expect(adminProspectSource).toContain("sendScannerSafePasswordSetupEmail");
     expect(adminProspectSource).toContain('password_delivery: "reset_email"');
+    expect(adminProspectSource).not.toContain("resetPasswordForEmail");
     expect(adminProspectSource).not.toContain("temp_password:");
   });
 });
