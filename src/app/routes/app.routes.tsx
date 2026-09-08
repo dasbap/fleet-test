@@ -127,6 +127,28 @@ const AuthCallbackPage = lazy(
   () => import("@/features/auth/screens/AuthCallbackPage")
 );
 
+function PublicRootRoute() {
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const hasAuthCallbackPayload =
+    search.has("code") ||
+    search.has("error") ||
+    hash.has("access_token") ||
+    hash.has("refresh_token") ||
+    hash.get("type") === "magiclink";
+
+  if (hasAuthCallbackPayload) {
+    return (
+      <Navigate
+        to={`/auth/callback${window.location.search}${window.location.hash}`}
+        replace
+      />
+    );
+  }
+
+  return <Index />;
+}
+
 /**
  * Arbre de routes racine : pages publiques, redirections, dashboard, 404.
  * Monté dans `App.tsx` sous `<Routes>` (avec Suspense au niveau parent).
@@ -219,7 +241,7 @@ export const appRoutes = (
       element={<Navigate to={ROUTE_PATHS.auth} replace />}
     />
     <Route element={<AuthProviderLayout />}>
-      <Route path="/" element={<Index />} />
+      <Route path="/" element={<PublicRootRoute />} />
       <Route path="/faq" element={<FaqPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/fonctionnalites" element={<FonctionnalitesPage />} />
