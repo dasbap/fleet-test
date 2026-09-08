@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSubmitDemoRequest } from "@/hooks/useSubmitDemoRequest";
-import { supabase } from "@/integrations/supabase/client";
+import { demoVerificationSupabase } from "@/integrations/supabase/client";
+import { normalizeDemoPhone } from "@/lib/demoPhoneValidation";
 
 const CENTRAL_AFRICA_COUNTRIES = [
   { code: "CM", label: "Cameroun" },
@@ -130,7 +131,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     };
 
     const refreshSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
+      const { data, error } = await demoVerificationSupabase.auth.getSession();
       if (!error) applySession(data.session);
     };
 
@@ -142,7 +143,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
 
     void refreshSession();
     const interval = window.setInterval(() => void refreshSession(), 1500);
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => applySession(session));
+    const { data: listener } = demoVerificationSupabase.auth.onAuthStateChange((_event, session) => applySession(session));
     window.addEventListener("storage", handleStorage);
 
     const channel = typeof BroadcastChannel !== "undefined"
@@ -187,12 +188,22 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       return;
     }
 
+    let normalizedPhone: string;
+    try {
+      normalizedPhone = normalizeDemoPhone(form.phone, form.country_code);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Numéro de téléphone invalide.");
+      return;
+    }
+
     setVerificationPending(true);
     try {
-      window.localStorage.setItem(DEMO_VERIFICATION_DRAFT_KEY, JSON.stringify({ ...form, email }));
+      const nextForm = { ...form, email, phone: normalizedPhone };
+      setForm(nextForm);
+      window.localStorage.setItem(DEMO_VERIFICATION_DRAFT_KEY, JSON.stringify(nextForm));
       window.localStorage.setItem(DEMO_VERIFICATION_INTENT_KEY, "demo");
 
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await demoVerificationSupabase.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
@@ -224,11 +235,12 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       return;
     }
     try {
+      const normalizedPhone = normalizeDemoPhone(form.phone, form.country_code);
       await submitDemoRequest.mutateAsync({
         name: form.name,
         email: form.email,
         company: form.company,
-        phone: form.phone,
+        phone: normalizedPhone,
         companyIdentifier: form.company_identifier,
         countryCode: form.country_code,
         emailVerificationToken,
@@ -238,7 +250,7 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_EVENT_KEY);
-      await supabase.auth.signOut({ scope: "local" });
+      await demoVerificationSupabase.auth.signOut({ scope: "local" });
       setSent(true);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Impossible d'envoyer la demande.");
