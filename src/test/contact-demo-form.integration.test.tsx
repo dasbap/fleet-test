@@ -1,16 +1,23 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { signOut, signInWithOtp, getSession, onAuthStateChange, mutateAsync, authState } = vi.hoisted(() => ({
-  signOut: vi.fn(),
-  signInWithOtp: vi.fn(),
-  getSession: vi.fn(),
-  onAuthStateChange: vi.fn(),
-  mutateAsync: vi.fn(),
-  authState: { callback: null as null | ((event: string, session: unknown) => void), unsubscribe: vi.fn() },
-}));
-
-const demoAuth = { signOut, signInWithOtp, getSession, onAuthStateChange };
+const { signOut, signInWithOtp, getSession, onAuthStateChange, mutateAsync, authState, demoAuth } = vi.hoisted(() => {
+  const signOut = vi.fn();
+  const signInWithOtp = vi.fn();
+  const getSession = vi.fn();
+  const onAuthStateChange = vi.fn();
+  const mutateAsync = vi.fn();
+  const authState = { callback: null as null | ((event: string, session: unknown) => void), unsubscribe: vi.fn() };
+  return {
+    signOut,
+    signInWithOtp,
+    getSession,
+    onAuthStateChange,
+    mutateAsync,
+    authState,
+    demoAuth: { signOut, signInWithOtp, getSession, onAuthStateChange },
+  };
+});
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { auth: {} },
