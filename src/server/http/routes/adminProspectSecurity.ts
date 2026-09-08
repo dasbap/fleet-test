@@ -1,5 +1,4 @@
 import { randomBytes } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
 import type { Context, Hono, Next } from "hono";
 import { z } from "zod";
 import { normalizeDemoPhone } from "../../../lib/demoPhoneValidation.js";
@@ -24,6 +23,24 @@ const createProspectSchema = z.object({
 
 function generateTemporaryPassword(): string {
   return randomBytes(18).toString("base64url");
+}
+
+async function sendScannerSafePasswordSetupEmail(email: string): Promise<boolean> {
+  const supabaseUrl = getSupabaseUrl().replace(/\/$/, "");
+  const anonKey = getSupabaseAnonKey();
+  const response = await fetch(`${supabaseUrl}/functions/v1/request-password-reset`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+    },
+    body: JSON.stringify({
+      email,
+      redirectTo: `${getAppUrl().replace(/\/$/, "")}/auth/update-password`,
+    }),
+  });
+  return response.ok;
 }
 
 async function requirePlatformAdmin(c: Context) {
@@ -139,9 +156,8 @@ async function handleSecureLocalProspect(c: Context) {
     return c.json({ ok: false, error: "registration_failed" }, 500);
   }
 
-  const publicAuth = createClient(getSupabaseUrl(), getSupabaseAnonKey(), { auth: { persistSession: false, autoRefreshToken: false } });
-  const { error: resetError } = await publicAuth.auth.resetPasswordForEmail(email, { redirectTo: `${getAppUrl()}/auth/update-password` });
-  if (resetError) {
+  const emailSent = await sendScannerSafePasswordSetupEmail(email).catch(() => false);
+  if (!emailSent) {
     if (createdNewUser) await admin.auth.admin.deleteUser(userId);
     return c.json({ ok: false, error: "password_setup_email_failed" }, 502);
   }
@@ -173,7 +189,7 @@ async function handleSecureLocalProspect(c: Context) {
     login_url: `${getAppUrl()}/auth?email=${encodeURIComponent(email)}&prospect=1`,
     must_set_password: true,
     password_delivery: "reset_email",
-    function_version: "admin-demo-local-v5",
+    function_version: "admin-demo-local-v6",
   }, 201);
 }
 
