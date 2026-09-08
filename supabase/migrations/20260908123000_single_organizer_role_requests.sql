@@ -8,13 +8,13 @@ CREATE TABLE IF NOT EXISTS public.fleet_role_change_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   fleet_id uuid NOT NULL REFERENCES public.flottes(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  current_role public.role_type NOT NULL,
+  previous_role public.role_type NOT NULL,
   requested_role public.role_type NOT NULL,
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
   requested_at timestamptz NOT NULL DEFAULT now(),
   reviewed_at timestamptz,
   reviewed_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  CHECK (current_role IS DISTINCT FROM requested_role)
+  CHECK (previous_role IS DISTINCT FROM requested_role)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS fleet_role_change_requests_one_pending
@@ -42,7 +42,7 @@ WITH CHECK (
     WHERE fa.fleet_id = fleet_role_change_requests.fleet_id
       AND fa.user_id = (SELECT auth.uid())
       AND fa.is_active = true
-      AND fa.role = fleet_role_change_requests.current_role
+      AND fa.role = fleet_role_change_requests.previous_role
   )
 );
 
@@ -57,23 +57,23 @@ SET search_path = public
 AS $$
 DECLARE
   v_user_id uuid := auth.uid();
-  v_current_role public.role_type;
+  v_previous_role public.role_type;
   v_request_id uuid;
 BEGIN
   IF v_user_id IS NULL THEN RAISE EXCEPTION 'non_authentifie'; END IF;
 
-  SELECT role INTO v_current_role
+  SELECT role INTO v_previous_role
   FROM public.flotte_adhesions
   WHERE fleet_id = p_fleet_id AND user_id = v_user_id AND is_active = true
   LIMIT 1;
 
-  IF v_current_role IS NULL THEN RAISE EXCEPTION 'membership_not_found'; END IF;
-  IF v_current_role IS NOT DISTINCT FROM p_requested_role THEN RAISE EXCEPTION 'role_unchanged'; END IF;
+  IF v_previous_role IS NULL THEN RAISE EXCEPTION 'membership_not_found'; END IF;
+  IF v_previous_role IS NOT DISTINCT FROM p_requested_role THEN RAISE EXCEPTION 'role_unchanged'; END IF;
 
-  INSERT INTO public.fleet_role_change_requests (fleet_id, user_id, current_role, requested_role)
-  VALUES (p_fleet_id, v_user_id, v_current_role, p_requested_role)
+  INSERT INTO public.fleet_role_change_requests (fleet_id, user_id, previous_role, requested_role)
+  VALUES (p_fleet_id, v_user_id, v_previous_role, p_requested_role)
   ON CONFLICT (fleet_id, user_id) WHERE status = 'pending'
-  DO UPDATE SET current_role = EXCLUDED.current_role, requested_role = EXCLUDED.requested_role, requested_at = now()
+  DO UPDATE SET previous_role = EXCLUDED.previous_role, requested_role = EXCLUDED.requested_role, requested_at = now()
   RETURNING id INTO v_request_id;
 
   RETURN v_request_id;
