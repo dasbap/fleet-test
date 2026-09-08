@@ -32,6 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const body = asBody(req.body);
   const userId = asString(body?.user_id);
+  const deleteOwnedFleets = body?.delete_owned_fleets === true;
   if (!userId) {
     res.status(400).json({ ok: false, error: "user_id_required" });
     return;
@@ -93,6 +94,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       .filter((fleetId): fleetId is string => typeof fleetId === "string" && fleetId.length > 0),
   ));
 
+  if (ownedFleetIds.length > 0 && !deleteOwnedFleets) {
+    res.status(409).json({
+      ok: false,
+      error: "owned_fleets_require_explicit_deletion",
+      fleet_ids: ownedFleetIds,
+    });
+    return;
+  }
+
   if (ownedFleetIds.length > 0) {
     const { error: deleteFleetsError } = await admin
       .from("flottes")
@@ -109,11 +119,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
   }
 
+  const cleanupTargets = [
+    ["admin_profiles", "user_id"],
+    ["flotte_adhesions", "user_id"],
+    ["notification_tokens", "user_id"],
+    ["onboarding_progress", "user_id"],
+    ["demo_sessions", "user_id"],
+    ["demo_profiles", "user_id"],
+    ["demo_magic_links", "user_id"],
+    ["profils", "user_id"],
+  ] as const;
+
+  for (const [table, column] of cleanupTargets) {
+    const { error: cleanupError } = await admin.from(table).delete().eq(column, userId);
+    if (cleanupError) {
+      res.status(502).json({
+        ok: false,
+        error: "user_access_cleanup_failed",
+        table,
+        detail: cleanupError.message,
+      });
+      return;
+    }
+  }
+
   const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
   if (deleteError) {
     res.status(502).json({
       ok: false,
-      error: "delete_user_failed",
+      error: "delete_user_failed_after_access_cleanup",
       detail: deleteError.message,
     });
     return;
