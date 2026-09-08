@@ -8,7 +8,7 @@ const templateSource = fs.readFileSync("supabase/templates/magic_link.html", "ut
 
 describe("demo email verification flow", () => {
   it("demande le magic link directement a Supabase et conserve le brouillon", () => {
-    expect(formSource).toContain("supabase.auth.signInWithOtp");
+    expect(formSource).toContain("demoVerificationSupabase.auth.signInWithOtp");
     expect(formSource).toContain("esamba_demo_verification_draft");
     expect(formSource).toContain("shouldCreateUser: true");
     expect(formSource).toContain('window.localStorage.setItem(DEMO_VERIFICATION_INTENT_KEY, "demo")');
@@ -41,7 +41,7 @@ describe("demo email verification flow", () => {
     expect(callbackSource).toContain("esamba_demo_verification");
     expect(formSource).toContain("BroadcastChannel");
     expect(formSource).toContain('window.addEventListener("storage"');
-    expect(formSource).toContain("supabase.auth.getSession()");
+    expect(formSource).toContain("demoVerificationSupabase.auth.getSession()");
     expect(formSource).toContain("email_confirmed_at");
     expect(formSource).toContain("setEmailVerificationToken(session.access_token)");
   });
