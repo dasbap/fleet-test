@@ -5,7 +5,7 @@ import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
 import { getBearerToken } from "../auth.js";
 
 const passwordChangeSchema = z.object({
-  password: z.string().min(8).max(256),
+  password: z.string().min(8).max(256).optional(),
 });
 
 const MARKER_UPDATE_ATTEMPTS = 3;
@@ -60,26 +60,43 @@ async function handlePasswordChange(c: Context) {
     appMetadata.temporary_password_active === true ||
     userMetadata.temporary_password_active === true;
   const markerNeedsClearing = mustSetPassword || temporaryPasswordActive;
-
-  const { error: passwordUpdateError } = await admin.auth.admin.updateUserById(
-    user.id,
-    { password: parsed.data.password },
-  );
-
-  if (passwordUpdateError) {
-    const code = passwordUpdateError.code ?? "password_update_failed";
-    const status = code === "same_password" || code === "weak_password" ? 400 : 409;
-    return c.json(
-      {
-        ok: false,
-        error: code,
-        details: passwordUpdateError.message,
-      },
-      status,
-    );
-  }
-
   const passwordSetAt = new Date().toISOString();
+
+  if (parsed.data.password) {
+    const { error: passwordUpdateError } = await admin.auth.admin.updateUserById(
+      user.id,
+      { password: parsed.data.password },
+    );
+
+    if (passwordUpdateError) {
+      const code = passwordUpdateError.code ?? "password_update_failed";
+      const status = code === "same_password" || code === "weak_password" ? 400 : 409;
+      return c.json(
+        {
+          ok: false,
+          error: code,
+          details: passwordUpdateError.message,
+        },
+        status,
+      );
+    }
+  } else if (temporaryPasswordActive) {
+    const temporaryPasswordIssuedAt =
+      typeof appMetadata.temporary_password_issued_at === "string"
+        ? Date.parse(appMetadata.temporary_password_issued_at)
+        : Number.NaN;
+    const userUpdatedAt = currentUserData.user.updated_at
+      ? Date.parse(currentUserData.user.updated_at)
+      : Number.NaN;
+
+    if (
+      !Number.isFinite(temporaryPasswordIssuedAt) ||
+      !Number.isFinite(userUpdatedAt) ||
+      userUpdatedAt <= temporaryPasswordIssuedAt
+    ) {
+      return c.json({ ok: false, error: "password_change_required" }, 409);
+    }
+  }
 
   if (!markerNeedsClearing) {
     return c.json({
