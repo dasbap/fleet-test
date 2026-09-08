@@ -47,12 +47,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const { data: fleet, error: fleetError } = await admin
     .from("flottes")
-    .select("id, nom, org_id")
+    .select("id,name,org_id")
     .eq("id", fleetId)
     .maybeSingle();
 
   if (fleetError) {
-    res.status(502).json({ ok: false, error: "fleet_lookup_failed" });
+    res.status(502).json({ ok: false, error: "fleet_lookup_failed", detail: fleetError.message });
     return;
   }
   if (!fleet) {
@@ -62,9 +62,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const { error: deleteError } = await admin.from("flottes").delete().eq("id", fleetId);
   if (deleteError) {
-    res.status(502).json({ ok: false, error: "delete_fleet_failed" });
+    res.status(502).json({ ok: false, error: "delete_fleet_failed", detail: deleteError.message });
     return;
   }
 
-  res.status(200).json({ ok: true, fleet_id: fleetId, fleet_name: fleet.nom ?? null });
+  res.status(200).json({ ok: true, fleet_id: fleetId, fleet_name: fleet.name ?? null });
 }
