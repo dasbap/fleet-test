@@ -27,6 +27,20 @@ function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function buildScannerSafeRecoveryLink(actionLink: string, redirectTo: string): string | null {
+  try {
+    const actionUrl = new URL(actionLink);
+    const tokenHash = actionUrl.searchParams.get("token");
+    if (!tokenHash) return null;
+    const recoveryUrl = new URL(redirectTo);
+    recoveryUrl.searchParams.set("token_hash", tokenHash);
+    recoveryUrl.searchParams.set("type", "recovery");
+    return recoveryUrl.toString();
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
@@ -187,19 +201,30 @@ export default async function handler(
     return;
   }
 
+  const email = target.email?.trim().toLowerCase() ?? "";
+  if (!email) {
+    res.status(400).json({ ok: false, error: "user_email_missing" });
+    return;
+  }
+
+  const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/auth/update-password`;
+
   if (action === "send_password_reset") {
-    const email = target.email?.trim().toLowerCase() ?? "";
-    if (!email) {
-      res.status(400).json({ ok: false, error: "user_email_missing" });
-      return;
-    }
+    const response = await fetchWithTimeout(
+      `${auth.env.url.replace(/\/$/, "")}/functions/v1/request-password-reset`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: auth.env.anonKey,
+          Authorization: `Bearer ${auth.env.anonKey}`,
+        },
+        body: JSON.stringify({ email, redirectTo }),
+      },
+      8_000,
+    );
 
-    const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/auth/update-password`;
-    const { error } = await admin.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    });
-
-    if (error) {
+    if (!response.ok) {
       res.status(502).json({ ok: false, error: "password_reset_email_failed" });
       return;
     }
@@ -224,13 +249,6 @@ export default async function handler(
     return;
   }
 
-  const email = target.email?.trim().toLowerCase() ?? "";
-  if (!email) {
-    res.status(400).json({ ok: false, error: "user_email_missing" });
-    return;
-  }
-
-  const redirectTo = `${auth.env.appUrl.replace(/\/$/, "")}/auth/update-password`;
   const { data, error } = await admin.auth.admin.generateLink({
     type: "recovery",
     email,
@@ -238,14 +256,17 @@ export default async function handler(
   });
 
   const actionLink = data?.properties?.action_link;
-  if (error || !actionLink) {
+  const recoveryLink = actionLink
+    ? buildScannerSafeRecoveryLink(actionLink, redirectTo)
+    : null;
+  if (error || !recoveryLink) {
     res.status(502).json({ ok: false, error: "recovery_link_failed" });
     return;
   }
 
   res.status(200).json({
     ok: true,
-    recovery_link: actionLink,
+    recovery_link: recoveryLink,
     email,
   });
 }
