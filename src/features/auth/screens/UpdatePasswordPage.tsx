@@ -110,6 +110,17 @@ export default function UpdatePasswordPage() {
 
     setIsSubmitting(true);
     try {
+      const {
+        data: { user: recoveryUser },
+        error: recoveryUserError,
+      } = await supabase.auth.getUser();
+
+      const email = recoveryUser?.email?.trim().toLowerCase();
+      if (recoveryUserError || !email) {
+        setFormError("La session de récupération est invalide. Demandez un nouveau lien.");
+        return;
+      }
+
       const { error: passwordUpdateError } = await supabase.auth.updateUser({
         password,
       });
@@ -119,11 +130,20 @@ export default function UpdatePasswordPage() {
         return;
       }
 
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+      const {
+        data: { session: freshSession },
+        error: signInError,
+      } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      if (sessionError || !token) {
-        setFormError("Le mot de passe a été modifié, mais la session n'a pas pu être conservée. Reconnectez-vous avec le nouveau mot de passe.");
+      const token = freshSession?.access_token;
+      if (signInError || !token) {
+        setFormError(
+          signInError?.message ||
+            "Le mot de passe a été modifié, mais la nouvelle session n'a pas pu être créée."
+        );
         return;
       }
 
@@ -144,11 +164,6 @@ export default function UpdatePasswordPage() {
       if (!response.ok || result.ok !== true) {
         setFormError(result.details ?? result.error ?? "Impossible de finaliser la modification du mot de passe.");
         return;
-      }
-
-      const { error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError) {
-        console.warn("[UpdatePassword] refreshSession error:", refreshError.message);
       }
 
       setPageState("success");
