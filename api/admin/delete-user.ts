@@ -51,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const { data: targetData, error: targetError } = await admin.auth.admin.getUserById(userId);
   if (targetError || !targetData.user) {
-    res.status(404).json({ ok: false, error: "user_not_found" });
+    res.status(404).json({ ok: false, error: "user_not_found", detail: targetError?.message });
     return;
   }
 
@@ -63,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     .maybeSingle();
 
   if (profileError) {
-    res.status(502).json({ ok: false, error: "admin_profile_lookup_failed" });
+    res.status(502).json({ ok: false, error: "admin_profile_lookup_failed", detail: profileError.message });
     return;
   }
   if (targetAdminProfile?.internal_role === "super_admin") {
@@ -73,54 +73,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const { data: organizerMemberships, error: organizerError } = await admin
     .from("flotte_adhesions")
-    .select("id,fleet_id")
+    .select("fleet_id")
     .eq("user_id", userId)
     .eq("role", "organizer")
     .eq("is_active", true);
 
   if (organizerError) {
-    res.status(502).json({ ok: false, error: "organizer_membership_lookup_failed" });
+    res.status(502).json({
+      ok: false,
+      error: "organizer_membership_lookup_failed",
+      detail: organizerError.message,
+    });
     return;
   }
 
-  const lastOrganizerFleetIds: string[] = [];
-  for (const membership of organizerMemberships ?? []) {
-    const { count, error: countError } = await admin
-      .from("flotte_adhesions")
-      .select("id", { count: "exact", head: true })
-      .eq("fleet_id", membership.fleet_id)
-      .eq("role", "organizer")
-      .eq("is_active", true)
-      .neq("user_id", userId);
+  const ownedFleetIds = Array.from(new Set(
+    (organizerMemberships ?? [])
+      .map((membership) => membership.fleet_id)
+      .filter((fleetId): fleetId is string => typeof fleetId === "string" && fleetId.length > 0),
+  ));
 
-    if (countError) {
-      res.status(502).json({ ok: false, error: "organizer_count_failed" });
-      return;
-    }
-    if ((count ?? 0) === 0) lastOrganizerFleetIds.push(membership.fleet_id);
-  }
-
-  if (lastOrganizerFleetIds.length > 0) {
+  if (ownedFleetIds.length > 0) {
     const { error: deleteFleetsError } = await admin
       .from("flottes")
       .delete()
-      .in("id", lastOrganizerFleetIds);
+      .in("id", ownedFleetIds);
 
     if (deleteFleetsError) {
-      res.status(502).json({ ok: false, error: "delete_owned_fleets_failed" });
+      res.status(502).json({
+        ok: false,
+        error: "delete_owned_fleets_failed",
+        detail: deleteFleetsError.message,
+      });
       return;
     }
   }
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
   if (deleteError) {
-    res.status(502).json({ ok: false, error: "delete_user_failed" });
+    res.status(502).json({
+      ok: false,
+      error: "delete_user_failed",
+      detail: deleteError.message,
+    });
     return;
   }
 
   res.status(200).json({
     ok: true,
     user_id: userId,
-    deleted_fleet_ids: lastOrganizerFleetIds,
+    deleted_fleet_ids: ownedFleetIds,
   });
 }
