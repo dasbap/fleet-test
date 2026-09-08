@@ -1,18 +1,42 @@
 import { ESAMBA_DEEP_LINK_PREFIX } from "@/lib/deepLinks/deepLinkConfig";
 import { isNativePlatform } from "@/lib/platform";
 
-/**
- * Centralise la construction des URLs de redirection Supabase Auth.
- *
- * - Web : `VITE_APP_URL` si défini, sinon `window.location.origin`.
- * - Natif (Capacitor) : `esamba://` + chemin (ex. `auth/callback`) pour ouvrir l’app
- *   depuis l’email ; à autoriser aussi dans Supabase → Redirect URLs.
- *
- * Build mobile : définir `VITE_APP_URL=https://www.e-samba.com` dans `.env.local` pour
- * les flux qui doivent passer par le domaine public (App Links) au lieu du schéma custom.
- *
- * Ne jamais hardcoder les URLs dans les appels resetPasswordForEmail / signInWithOtp.
- */
+const DEFAULT_PUBLIC_APP_URL = "https://www.e-samba.com";
+
+function normalizeBaseUrl(value: string): string {
+  return value.replace(/\/$/, "");
+}
+
+function isLocalBaseUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
+function resolveWebBaseUrl(): string {
+  const configured = (import.meta.env.VITE_APP_URL as string | undefined)?.trim();
+  const currentOrigin = typeof window !== "undefined" ? window.location.origin : "";
+
+  if (configured) {
+    const normalizedConfigured = normalizeBaseUrl(configured);
+    if (!import.meta.env.PROD || !isLocalBaseUrl(normalizedConfigured)) {
+      return normalizedConfigured;
+    }
+  }
+
+  if (currentOrigin) {
+    const normalizedOrigin = normalizeBaseUrl(currentOrigin);
+    if (!import.meta.env.PROD || !isLocalBaseUrl(normalizedOrigin)) {
+      return normalizedOrigin;
+    }
+  }
+
+  return DEFAULT_PUBLIC_APP_URL;
+}
+
 export function getAuthRedirectUrl(path: string): string {
   const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
 
@@ -24,10 +48,7 @@ export function getAuthRedirectUrl(path: string): string {
     }
   }
 
-  const base =
-    (import.meta.env.VITE_APP_URL as string | undefined)?.replace(/\/$/, "") ??
-    window.location.origin;
-
+  const base = resolveWebBaseUrl();
   const spaPath = path.startsWith("/") ? path : `/${path}`;
   return `${base}${spaPath}`;
 }
