@@ -4,7 +4,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { StepFlotte } from '@/components/onboarding/StepFlotte';
 import { StepAlertes } from '@/components/onboarding/StepAlertes';
-import { StepEquipe } from '@/components/onboarding/StepEquipe';
 import { StepValidation } from '@/components/onboarding/StepValidation';
 import { cn } from '@/lib/utils';
 import type { OnboardingData } from '@/types/onboarding';
@@ -12,7 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { useTrackFunnelEvent } from '@/hooks/useFunnelTelemetry';
 import { formatPostgrestError, mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
 
-type StepNumber = 1 | 2 | 3 | 4;
+type StepNumber = 1 | 2 | 4;
 type StepKey = keyof OnboardingData;
 
 type StepConfig<K extends StepKey = StepKey> = {
@@ -47,14 +46,6 @@ const STEPS: StepConfig[] = [
     ),
   },
   {
-    num: 3,
-    key: 'step3',
-    label: 'Équipe',
-    render: ({ orgId, initial, onNext, onBack, onSkip }) => (
-      <StepEquipe orgId={orgId} initial={initial} onNext={onNext} onBack={onBack} onSkip={onSkip} />
-    ),
-  },
-  {
     num: 4,
     key: 'step4',
     label: 'Validation',
@@ -71,6 +62,12 @@ const STEPS: StepConfig[] = [
   },
 ];
 
+function normalizeStep(step: number): StepNumber {
+  if (step <= 1) return 1;
+  if (step === 2) return 2;
+  return 4;
+}
+
 export function OnboardingWizard() {
   const navigate = useNavigate();
   const { orgId } = useAuth();
@@ -85,14 +82,18 @@ export function OnboardingWizard() {
 
   useEffect(() => {
     if (!progress?.step) return;
-    const safeStep = Math.min(Math.max(progress.step, 1), maxStep) as StepNumber;
+    const safeStep = normalizeStep(progress.step);
     if (!hasHydratedFromServer.current) {
       setStep(safeStep);
       hasHydratedFromServer.current = true;
       return;
     }
-    setStep(prev => (safeStep > prev ? safeStep : prev));
-  }, [maxStep, progress?.step]);
+    const safeIndex = STEPS.findIndex(item => item.num === safeStep);
+    setStep(prev => {
+      const prevIndex = STEPS.findIndex(item => item.num === prev);
+      return safeIndex > prevIndex ? safeStep : prev;
+    });
+  }, [progress?.step]);
 
   useEffect(() => {
     trackEvent({
@@ -102,7 +103,10 @@ export function OnboardingWizard() {
     });
   }, [step, trackEvent]);
 
-  const pct = useMemo(() => Math.round((step / maxStep) * 100), [maxStep, step]);
+  const pct = useMemo(
+    () => Math.round(((currentIndex + 1) / STEPS.length) * 100),
+    [currentIndex],
+  );
 
   const goBack = () => {
     const prev = STEPS[currentIndex - 1];
@@ -191,16 +195,16 @@ export function OnboardingWizard() {
               <div
                 className={cn(
                   'flex h-7 w-7 items-center justify-center rounded-full border text-xs font-medium transition-colors',
-                  step === item.num && 'border-brand bg-brand text-white',
-                  step > item.num && 'border-brand bg-brand-light/20 text-brand-dark',
-                  step < item.num && 'border-surface-raised bg-surface text-slate-400',
+                  currentIndex === index && 'border-brand bg-brand text-white',
+                  currentIndex > index && 'border-brand bg-brand-light/20 text-brand-dark',
+                  currentIndex < index && 'border-surface-raised bg-surface text-slate-400',
                 )}
-                aria-current={step === item.num ? 'step' : undefined}
+                aria-current={currentIndex === index ? 'step' : undefined}
               >
-                {step > item.num ? '✓' : item.num}
+                {currentIndex > index ? '✓' : index + 1}
               </div>
               {index < STEPS.length - 1 ? (
-                <div className={cn('mx-1.5 h-px flex-1 transition-colors', step > item.num ? 'bg-brand' : 'bg-surface-raised')} />
+                <div className={cn('mx-1.5 h-px flex-1 transition-colors', currentIndex > index ? 'bg-brand' : 'bg-surface-raised')} />
               ) : null}
             </div>
           ))}
@@ -208,13 +212,6 @@ export function OnboardingWizard() {
 
         <div className="mb-8 h-0.5 overflow-hidden rounded-full bg-surface-raised">
           <div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${pct}%` }} />
-        </div>
-
-        <div className="mb-6 rounded-md border border-brand/20 bg-brand/5 p-3">
-          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Gain immédiat</p>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-            Activez votre flotte maintenant pour recevoir des alertes en temps reel et corriger une anomalie en un clic.
-          </p>
         </div>
 
         {currentStep.render({
