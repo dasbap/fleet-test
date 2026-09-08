@@ -92,10 +92,9 @@ export function canManageRole(
   managerRole: PlatformRole | null,
   targetRole: AppRole,
 ): boolean {
-  if (!managerRole) return false;
-  if (managerRole === "admin") return true;
-  if (managerRole === "organizer") return true;
-  if (managerRole === "manager") return targetRole !== "organizer";
+  if (!managerRole || targetRole === "organizer") return false;
+  if (managerRole === "admin" || managerRole === "organizer") return true;
+  if (managerRole === "manager") return true;
   return false;
 }
 
