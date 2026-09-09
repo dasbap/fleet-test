@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Clock3, Mail, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Clock3, Mail, Play, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,16 @@ interface EmailDeliveryStats {
   oldest_pending_at: string | null;
   day_resets_at: string;
   month_resets_at: string;
+}
+
+interface QueueProcessResult {
+  ok?: boolean;
+  processed?: number;
+  sent?: number;
+  failed?: number;
+  abandoned?: number;
+  deferred?: number;
+  error?: string;
 }
 
 async function fetchEmailDeliveryStats(): Promise<EmailDeliveryStats> {
@@ -57,12 +68,45 @@ function UsageBar({ used, limit }: { used: number; limit: number }) {
 }
 
 export function EmailDeliveryPanel() {
+  const [isProcessing, setProcessing] = useState(false);
+  const [processMessage, setProcessMessage] = useState<string | null>(null);
   const { data, error, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["admin-email-delivery-stats"],
     queryFn: fetchEmailDeliveryStats,
     refetchInterval: 30_000,
     staleTime: 10_000,
   });
+
+  const processQueue = async () => {
+    setProcessing(true);
+    setProcessMessage(null);
+    try {
+      const { data: authData } = await supabase.auth.getSession();
+      const token = authData.session?.access_token;
+      if (!token) throw new Error("Session administrateur expirée");
+
+      const response = await fetch("/api/admin/process-email-queue", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const result = (await response.json()) as QueueProcessResult;
+      if (!response.ok || result.ok === false) {
+        throw new Error(result.error ?? "Traitement de la file impossible");
+      }
+
+      setProcessMessage(
+        `${result.sent ?? 0} envoyé(s), ${result.deferred ?? 0} différé(s), ${result.failed ?? 0} échec(s).`,
+      );
+      await refetch();
+    } catch (queueError) {
+      setProcessMessage(queueError instanceof Error ? queueError.message : "Traitement de la file impossible");
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">Chargement des limites e-mail…</div>;
@@ -87,11 +131,23 @@ export function EmailDeliveryPanel() {
           <p className="text-sm text-muted-foreground">
             Budget de sécurité appliqué avant chaque envoi afin de rester sous les limites Resend.
           </p>
+          {processMessage ? <p className="mt-2 text-xs text-muted-foreground">{processMessage}</p> : null}
         </div>
-        <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-          Actualiser
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => void processQueue()}
+            disabled={isProcessing || data.pending === 0 || data.daily_remaining === 0 || data.monthly_remaining === 0}
+          >
+            <Play className={`mr-2 h-4 w-4 ${isProcessing ? "animate-pulse" : ""}`} />
+            {isProcessing ? "Traitement…" : "Traiter la file"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            Actualiser
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
