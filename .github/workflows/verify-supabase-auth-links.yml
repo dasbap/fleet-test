@@ -43,8 +43,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node <<'NODE'
-          const fs = require("node:fs");
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
 
           const token = process.env.SUPABASE_ACCESS_TOKEN;
           const ref = process.env.SUPABASE_PROJECT_REF;
