@@ -34,6 +34,16 @@ export interface DemoRpcActionResult {
   plan_code?: string;
 }
 
+async function flushUserEmailQueue(userId: string): Promise<void> {
+  try {
+    await supabase.functions.invoke("process-notification-queue", {
+      body: { user_id: userId },
+    });
+  } catch (error) {
+    console.error("Erreur process-notification-queue:", error);
+  }
+}
+
 export class AdminDemoRepository {
   async listSessions(activeOnly = false): Promise<DemoSession[]> {
     const { data, error } = await supabase.rpc("admin_list_demo_sessions", {
@@ -64,7 +74,9 @@ export class AdminDemoRepository {
       throw new Error(error.message);
     }
 
-    return (data ?? { ok: false }) as DemoRpcActionResult;
+    const result = (data ?? { ok: false }) as DemoRpcActionResult;
+    if (result.ok) void flushUserEmailQueue(userId);
+    return result;
   }
 
   async reactivateAccount(
@@ -83,7 +95,9 @@ export class AdminDemoRepository {
       throw new Error(error.message);
     }
 
-    return (data ?? { ok: false }) as DemoRpcActionResult;
+    const result = (data ?? { ok: false }) as DemoRpcActionResult;
+    if (result.ok) void flushUserEmailQueue(userId);
+    return result;
   }
 
   async updateAccountExpiration(
@@ -121,7 +135,9 @@ export class AdminDemoRepository {
       throw new Error(error.message);
     }
 
-    return (data ?? { ok: false }) as DemoRpcActionResult;
+    const result = (data ?? { ok: false }) as DemoRpcActionResult;
+    if (result.ok) void flushUserEmailQueue(userId);
+    return result;
   }
 
   async resetDemoFleet(fleetId: string): Promise<DemoRpcActionResult> {
