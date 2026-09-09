@@ -93,6 +93,7 @@ describe("ContactDemoForm user flow", () => {
     authState.callback?.("SIGNED_IN", verifiedSession);
 
     expect(await screen.findByText(/Adresse e-mail vérifiée par E-Samba\./)).toBeInTheDocument();
+    getSession.mockResolvedValue({ data: { session: verifiedSession }, error: null });
     fireEvent.click(screen.getByRole("button", { name: "Demander ma démo" }));
 
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({
@@ -132,6 +133,7 @@ describe("ContactDemoForm user flow", () => {
     await waitFor(() => expect(authState.callback).not.toBeNull());
     authState.callback?.("SIGNED_IN", verifiedSession);
     expect(await screen.findByText(/Adresse e-mail vérifiée par E-Samba\./)).toBeInTheDocument();
+    getSession.mockResolvedValue({ data: { session: verifiedSession }, error: null });
     fireEvent.click(screen.getByRole("button", { name: "Demander ma démo" }));
 
     expect(await screen.findByText("Le service de demande de démo n'est pas encore configuré sur cet environnement. Réessayez plus tard.")).toBeInTheDocument();
