@@ -36,9 +36,10 @@ describe("admin demo origin security", () => {
     expect(result).not.toBe("http://localhost:5173");
   });
 
-  it("does not log full demo magic-link bearer tokens", () => {
+  it("does not log demo magic-link bearer tokens", () => {
     expect(demoMagicLinkFunction).not.toContain("Created for ${email} → ${link.token}");
-    expect(demoMagicLinkFunction).toContain("Created for ${email} -> ${link.token.slice(0, 8)}");
+    expect(demoMagicLinkFunction).not.toContain("Created for ${email} -> ${link.token.slice(0, 8)}");
+    expect(demoMagicLinkFunction).not.toMatch(/console\.(?:log|info|warn|error)\([^\n]*link\.token/);
   });
 
   it("does not persist full demo magic-link tokens in rate-limit keys", () => {
