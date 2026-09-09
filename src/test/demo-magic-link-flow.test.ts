@@ -43,7 +43,8 @@ describe("demo email verification flow", () => {
     expect(formSource).toContain('window.addEventListener("storage"');
     expect(formSource).toContain("demoVerificationSupabase.auth.getSession()");
     expect(formSource).toContain("email_confirmed_at");
-    expect(formSource).toContain("setEmailVerificationToken(session.access_token)");
+    expect(formSource).toContain("emailVerificationToken: session.access_token");
+    expect(formSource).not.toContain("setEmailVerificationToken");
   });
 
   it("demande de reessayer si Supabase limite l'envoi", () => {
