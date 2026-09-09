@@ -6,7 +6,8 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") ?? "billing@e-samba.com";
 const MAX_RETRIES = 3;
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 25;
+const SEND_INTERVAL_MS = 110;
 
 interface QueueRow {
   id: string;
@@ -22,6 +23,11 @@ interface ResendPayload {
   to: string[];
   subject: string;
   html: string;
+}
+
+interface ReservationResult {
+  ok?: boolean;
+  reason?: string;
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -41,6 +47,10 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function sendEmail(payload: ResendPayload): Promise<{ ok: boolean; error?: string }> {
@@ -174,7 +184,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (fetchError) return Response.json({ ok: false, error: fetchError.message }, { status: 500 });
 
   const queue = (rows ?? []) as QueueRow[];
-  const stats = { sent: 0, failed: 0, abandoned: 0, skipped: 0 };
+  const stats = { sent: 0, failed: 0, abandoned: 0, skipped: 0, deferred: 0 };
+  let lastSendAt = 0;
 
   for (const row of queue) {
     const payload = buildEmail(row);
@@ -189,7 +200,29 @@ Deno.serve(async (req: Request): Promise<Response> => {
       continue;
     }
 
+    const { data: reservationData, error: reservationError } = await admin.rpc(
+      "reserve_notification_email_send",
+      { p_queue_id: row.id },
+    );
+
+    if (reservationError) {
+      stats.failed++;
+      continue;
+    }
+
+    const reservation = reservationData as ReservationResult | null;
+    if (reservation?.ok !== true) {
+      stats.deferred++;
+      if (reservation?.reason === "daily_limit_reached" || reservation?.reason === "monthly_limit_reached") break;
+      continue;
+    }
+
+    const elapsed = Date.now() - lastSendAt;
+    if (lastSendAt > 0 && elapsed < SEND_INTERVAL_MS) await sleep(SEND_INTERVAL_MS - elapsed);
+
     const result = await sendEmail(payload);
+    lastSendAt = Date.now();
+
     if (result.ok) {
       await admin.from("notification_queue").update({
         status: "sent",
