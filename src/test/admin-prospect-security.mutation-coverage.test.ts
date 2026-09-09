@@ -8,7 +8,12 @@ const { createSupabaseUserClient, createSupabaseServiceClient } = vi.hoisted(() 
 
 vi.mock("@/server/infra/supabaseUserClient", () => ({ createSupabaseUserClient }));
 vi.mock("@/server/infra/supabaseServiceClient", () => ({ createSupabaseServiceClient }));
-vi.mock("@/server/env", () => ({ getAppUrl: () => "https://app.test", getSupabaseAnonKey: () => "anon", getSupabaseUrl: () => "https://supabase.test" }));
+vi.mock("@/server/env", () => ({
+  getAppUrl: () => "https://app.test",
+  getSupabaseAnonKey: () => "anon",
+  getSupabaseServiceRoleKey: () => "service-role",
+  getSupabaseUrl: () => "https://supabase.test",
+}));
 
 import { registerAdminProspectSecurityRoutes } from "@/server/http/routes/adminProspectSecurity";
 
@@ -72,7 +77,7 @@ describe("admin prospect security mutation coverage", () => {
     delete process.env.ADMIN_SECRET;
     createSupabaseUserClient.mockReturnValue(userClient());
     createSupabaseServiceClient.mockReturnValue(serviceClient());
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ ok: true }) }));
   });
 
   it("requires authentication and admin permissions", async () => {
@@ -114,11 +119,11 @@ describe("admin prospect security mutation coverage", () => {
   it("creates a normalized prospect", async () => {
     const admin = serviceClient();
     createSupabaseServiceClient.mockReturnValue(admin);
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ ok: true }) });
     vi.stubGlobal("fetch", fetchMock);
     const response = await post(validPayload({ email: "USER@Example.COM", fleet_id: "00000000-0000-4000-8000-000000000001" }));
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual(expect.objectContaining({ ok: true, user_id: "prospect-1", email: "user@example.com", fleet_id: "fleet-1", permanent_access: false, must_set_password: true }));
+    expect(await response.json()).toEqual(expect.objectContaining({ ok: true, user_id: "prospect-1", email: "user@example.com", fleet_id: "fleet-1", permanent_access: false, must_set_password: true, password_delivery: "reset_email" }));
     expect(admin.rpc).toHaveBeenCalledWith("prospect_create_account", expect.objectContaining({ p_email: "user@example.com", p_company_name: "Acme", p_trial_days: 7, p_account_type: "prospect", p_permanent_access: false }));
     expect(fetchMock).toHaveBeenCalledWith(
       "https://supabase.test/functions/v1/request-password-reset",
@@ -126,8 +131,8 @@ describe("admin prospect security mutation coverage", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          apikey: "anon",
-          Authorization: "Bearer anon",
+          apikey: "service-role",
+          Authorization: "Bearer service-role",
         },
         body: JSON.stringify({ email: "user@example.com", redirectTo: "https://app.test/auth/update-password" }),
       }),
@@ -148,13 +153,22 @@ describe("admin prospect security mutation coverage", () => {
     }
   });
 
-  it("rolls back when reset email fails", async () => {
+  it("keeps the provisioned account when reset email delivery fails", async () => {
     const admin = serviceClient();
     createSupabaseServiceClient.mockReturnValue(admin);
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: vi.fn().mockResolvedValue({ error: "email_delivery_failed" }),
+    }));
     const response = await post(validPayload());
-    expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ ok: false, error: "password_setup_email_failed" });
-    expect(admin.deleteUser).toHaveBeenCalledWith("prospect-1");
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual(expect.objectContaining({
+      ok: true,
+      user_id: "prospect-1",
+      password_delivery: "pending",
+      password_delivery_error: "email_delivery_failed",
+    }));
+    expect(admin.deleteUser).not.toHaveBeenCalled();
   });
 });
