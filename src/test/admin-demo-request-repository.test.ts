@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminDemoRequestRepository } from "@/repositories/admin-demo-request.repository";
 import { supabase } from "@/integrations/supabase/client";
 
-const invoke = vi.fn();
+const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
