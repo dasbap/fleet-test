@@ -7,6 +7,12 @@ import {
   requirePlatformAdmin,
 } from "../_lib/vercel-api.js";
 
+function requestOrigin(req: VercelRequest): string {
+  const origin = req.headers.origin;
+  if (Array.isArray(origin)) return origin[0]?.trim() ?? "";
+  return typeof origin === "string" ? origin.trim() : "";
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   applyCors(req, res);
   if (handlePreflight(req, res)) return;
@@ -81,6 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         send_email: body.send_email ?? false,
         permanent_access: body.permanent_access === true,
         invited_by: auth.user.id,
+        app_origin: requestOrigin(req),
       }),
     });
     const data = (await upstream.json()) as Record<string, unknown>;
