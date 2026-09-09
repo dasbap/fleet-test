@@ -54,7 +54,7 @@ describe("Temporary password security", () => {
     expect(adminDemoSource).not.toContain("temp_password:");
     expect(adminProspectSource).toContain("request-password-reset");
     expect(adminProspectSource).toContain("sendScannerSafePasswordSetupEmail");
-    expect(adminProspectSource).toContain('password_delivery: "reset_email"');
+    expect(adminProspectSource).toContain('password_delivery: passwordDelivery.ok ? "reset_email" : "pending"');
     expect(adminProspectSource).not.toContain("resetPasswordForEmail");
     expect(adminProspectSource).not.toContain("temp_password:");
   });
