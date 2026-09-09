@@ -1,25 +1,12 @@
 /**
  * useAdminDemoAccounts — hook admin pour gérer les comptes démo E-Samba.
- *
- * Expose :
- *   - sessions      : liste complète enrichie (email, rôle, flotte, expiration, activité)
- *   - isLoading
- *   - reload()
- *   - createAccess(payload)      → crée prospect + magic link (via BFF)
- *   - suspendAccount(userId)     → désactive le compte
- *   - reactivateAccount(userId)  → réactive le compte
- *   - resetFleet(fleetId)        → remet à zéro la flotte démo
- *   - generateMagicLink(userId)  → génère un nouveau lien d'accès (via BFF)
- *
- * Sécurité : ADMIN_SECRET n'est JAMAIS exposé côté client.
- * Les appels sensibles passent par les routes BFF Vercel (/api/admin/*)
- * qui portent le secret côté serveur et vérifient le JWT admin.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { supabase } from "@/integrations/supabase/client";
 import { AdminDemoRepository } from "@/repositories/admin-demo.repository";
 import { AdminDemoBffRepository } from "@/repositories/admin-demo-bff.repository";
 import { AdminDemoService } from "@/services/admin-demo.service";
@@ -193,6 +180,7 @@ export function useAdminDemoAccounts(): UseAdminDemoAccountsReturn {
       }
 
       if (!result.ok) throw new Error(result.error ?? "suppression_echouee");
+      void supabase.functions.invoke("process-notification-queue", { body: { user_id: userId } });
       toast({ title: "Compte démo supprimé" });
       await load();
       return true;
