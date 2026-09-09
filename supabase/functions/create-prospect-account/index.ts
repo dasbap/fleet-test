@@ -4,7 +4,7 @@ const ADMIN_SECRET = Deno.env.get("ADMIN_SECRET") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const APP_URL = Deno.env.get("APP_URL") ?? "https://app.e-samba.com";
-const FUNCTION_VERSION = "complete-client-profile-v10";
+const FUNCTION_VERSION = "origin-aware-password-setup-v11";
 const CENTRAL_AFRICA_COUNTRY_CODES = new Set(["CM", "CF", "TD", "CG", "GA", "GQ"]);
 
 interface CreateProspectBody {
@@ -20,6 +20,7 @@ interface CreateProspectBody {
   trial_days?: number;
   send_email?: boolean;
   permanent_access?: boolean;
+  app_origin?: string;
 }
 
 interface ProspectResult {
@@ -64,7 +65,15 @@ function generateTempPassword(): string {
   return `Aa1!${encoded}`;
 }
 
-async function sendScannerSafePasswordSetupEmail(email: string): Promise<boolean> {
+function resolveAppOrigin(value: unknown): string {
+  const candidate = typeof value === "string" ? value.trim().replace(/\/$/, "") : "";
+  if (ALLOWED_ORIGINS.includes(candidate)) return candidate;
+  const configured = APP_URL.trim().replace(/\/$/, "");
+  if (ALLOWED_ORIGINS.includes(configured)) return configured;
+  return "https://www.e-samba.com";
+}
+
+async function sendScannerSafePasswordSetupEmail(email: string, appOrigin: string): Promise<boolean> {
   const response = await fetch(`${SUPABASE_URL}/functions/v1/request-password-reset`, {
     method: "POST",
     headers: {
@@ -74,7 +83,7 @@ async function sendScannerSafePasswordSetupEmail(email: string): Promise<boolean
     },
     body: JSON.stringify({
       email,
-      redirectTo: `${APP_URL.replace(/\/$/, "")}/auth/update-password`,
+      redirectTo: `${appOrigin}/auth/update-password`,
     }),
   });
   if (!response.ok) {
@@ -152,6 +161,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const fleetId = body.fleet_id ?? null;
   const trialDays = Number(body.trial_days ?? 31);
   const permanentAccess = body.permanent_access === true;
+  const appOrigin = resolveAppOrigin(body.app_origin);
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return jsonResponse(req, { ok: false, error: "invalid_email" }, 400);
   if (!fullName || !companyName || !phone || !companyIdentifier || !CENTRAL_AFRICA_COUNTRY_CODES.has(countryCode)) {
@@ -210,7 +220,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
     accountProvisioned = true;
 
-    const emailSent = await sendScannerSafePasswordSetupEmail(email).catch((error) => {
+    const emailSent = await sendScannerSafePasswordSetupEmail(email, appOrigin).catch((error) => {
       console.error("[create-prospect-account] password setup request failed:", error instanceof Error ? error.message : String(error));
       return false;
     });
@@ -219,7 +229,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const { error: notificationError } = await admin.from("notification_queue").insert({
         to_email: email,
         template_id: "prospect_welcome",
-        metadata: { ...clientProfile, trial_days: trialDays, trial_end: registration.trial_end, permanent_access: permanentAccess, login_url: APP_URL },
+        metadata: { ...clientProfile, trial_days: trialDays, trial_end: registration.trial_end, permanent_access: permanentAccess, login_url: appOrigin },
         status: "pending",
         created_at: new Date().toISOString(),
       });
@@ -232,7 +242,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       email,
       fleet_id: registration.fleet_id,
       trial_end: registration.trial_end,
-      login_url: `${APP_URL}/auth?email=${encodeURIComponent(email)}&prospect=1`,
+      login_url: `${appOrigin}/auth?email=${encodeURIComponent(email)}&prospect=1`,
       permanent_access: permanentAccess,
       must_set_password: true,
       password_delivery: emailSent ? "reset_email" : "email_failed",
