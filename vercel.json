@@ -121,7 +121,7 @@
     },
     {
       "source": "/api/demo/magic-link",
-      "destination": "/api/[...path]"
+      "destination": "/api/admin/generate-magic-link"
     },
     {
       "source": "/api/demo/request",
