@@ -32,6 +32,7 @@ export function DemoRequestsPanel({ onCreateAccess, onReloadSessions }: DemoRequ
   const [includeProcessed, setIncludeProcessed] = useState(false);
   const [reasonById, setReasonById] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const { data: requests = [], error, isError, isLoading, refetch } = useAdminDemoRequests(includeProcessed);
   const { data: persistedSettings } = useAdminDemoRequestSettings();
   const finalizeRequest = useFinalizeDemoRequest();
@@ -56,9 +57,11 @@ export function DemoRequestsPanel({ onCreateAccess, onReloadSessions }: DemoRequ
     const companyIdentifier = request.company_identifier?.trim() ?? "";
     const countryCode = request.country_code?.trim().toUpperCase() ?? "";
     if (!request.full_name.trim() || !company || !phone || !companyIdentifier || !countryCode) {
-      throw new Error("Demande incomplète : nom, entreprise, téléphone, identifiant entreprise et pays sont requis.");
+      setActionError("Demande incomplète : nom, entreprise, téléphone, identifiant entreprise et pays sont requis.");
+      return;
     }
     setBusyId(request.id);
+    setActionError(null);
     try {
       const result = await onCreateAccess({
         email: request.email,
@@ -81,13 +84,20 @@ export function DemoRequestsPanel({ onCreateAccess, onReloadSessions }: DemoRequ
         invitationUrl: result.magic_url ?? null,
       });
       await onReloadSessions();
+    } catch (acceptError) {
+      setActionError(acceptError instanceof Error ? acceptError.message : "Création utilisateur impossible.");
     } finally {
       setBusyId(null);
     }
   }
 
   async function refuseRequest(request: AdminDemoRequest) {
-    await finalizeRequest.mutateAsync({ requestId: request.id, status: "refused", reason: reasonById[request.id] ?? "Demande refusee par un admin." });
+    setActionError(null);
+    try {
+      await finalizeRequest.mutateAsync({ requestId: request.id, status: "refused", reason: reasonById[request.id] ?? "Demande refusee par un admin." });
+    } catch (refuseError) {
+      setActionError(refuseError instanceof Error ? refuseError.message : "Impossible de refuser la demande.");
+    }
   }
 
   return (
@@ -106,6 +116,7 @@ export function DemoRequestsPanel({ onCreateAccess, onReloadSessions }: DemoRequ
           </div>
         </CardContent>
       </Card>
+      {actionError ? <Alert variant="destructive"><AlertDescription>{actionError}</AlertDescription></Alert> : null}
       {isSchemaMissing ? <Alert><AlertDescription>La migration des demandes utilisateurs n'est pas appliquée sur cette base.</AlertDescription></Alert> : isLoading ? <p className="text-sm text-muted-foreground">Chargement...</p> : requests.length === 0 ? <p className="text-sm text-muted-foreground">Aucune demande utilisateur.</p> : (
         <div className="grid gap-3">
           {requests.map((request) => (
