@@ -31,9 +31,17 @@ export function useFinalizeDemoRequest() {
       provisionedUserId?: string | null;
       invitationUrl?: string | null;
     }) => repository.finalize(input),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["admin-demo-requests"] });
-      toast({ title: "Demande demo mise a jour" });
+      if (result.emailSent) {
+        toast({ title: "Demande mise à jour", description: "L'e-mail de décision a été envoyé à l'utilisateur." });
+      } else {
+        toast({
+          title: "Demande mise à jour",
+          description: "La décision est enregistrée, mais l'e-mail n'a pas pu être envoyé immédiatement.",
+          variant: "destructive",
+        });
+      }
     },
     onError: (error) => {
       toast({
