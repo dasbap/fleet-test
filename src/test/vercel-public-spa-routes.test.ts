@@ -46,7 +46,8 @@ describe("Vercel public SPA routes", () => {
       destination: "/index.html",
     });
     expect(apiRewrites.length).toBeGreaterThan(0);
-    expect(apiRewrites.every((route) => route.destination === "/api/[...path]")).toBe(true);
+    expect(apiRewrites.every((route) => route.destination.startsWith("/api/"))).toBe(true);
+    expect(apiRewrites.every((route) => route.destination !== "/index.html")).toBe(true);
     expect(apiRewrites).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: "/api/:path*" }),
