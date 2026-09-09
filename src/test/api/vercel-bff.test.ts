@@ -16,10 +16,16 @@ const CATCH_ALL_API_ROUTES = [
   "/api/webhooks/payment",
   "/api/webhooks/payments/inbound",
   "/api/auth/clear-password-marker",
-  "/api/demo/magic-link",
   "/api/demo/request",
   "/api/terrain/shift-close",
   "/api/gps/ingest",
+] as const;
+
+const DIRECT_API_REWRITES = [
+  {
+    source: "/api/demo/magic-link",
+    destination: "/api/admin/generate-magic-link",
+  },
 ] as const;
 
 describe("extractBearerToken", () => {
@@ -62,7 +68,7 @@ describe("health handler", () => {
 });
 
 describe("Vercel catch-all API routing", () => {
-  it("route explicitement toutes les routes Hono sans fonction dediee", () => {
+  it("route explicitement les routes Hono et isole le magic-link public", () => {
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
       rewrites?: Array<{ source?: string; destination?: string }>;
     };
@@ -71,12 +77,17 @@ describe("Vercel catch-all API routing", () => {
       route.source?.startsWith("/api/"),
     );
 
-    expect(apiRewrites).toEqual(
-      CATCH_ALL_API_ROUTES.map((source) => ({
+    expect(apiRewrites).toEqual([
+      ...CATCH_ALL_API_ROUTES.map((source) => ({
         source,
         destination: "/api/[...path]",
-      })),
-    );
+      })).slice(0, 11),
+      ...DIRECT_API_REWRITES,
+      ...CATCH_ALL_API_ROUTES.map((source) => ({
+        source,
+        destination: "/api/[...path]",
+      })).slice(11),
+    ]);
     expect(readFileSync("api/[...path].ts", "utf8")).toContain("createVercelApiApp");
   });
 
@@ -225,7 +236,13 @@ describe("direct Vercel admin routes", () => {
     expect(directHandler).toContain("req.body");
     expect(directHandler).toContain("is_platform_admin");
     expect(directHandler).toContain("demo_create_magic_link");
+    expect(directHandler).toContain("/functions/v1/demo-magic-link");
     expect(config.functions?.["api/admin/generate-magic-link.ts"]?.maxDuration).toBe(15);
+    expect(config.functions?.["api/[...path].ts"]?.maxDuration).toBe(15);
+    expect(config.rewrites).toContainEqual({
+      source: "/api/demo/magic-link",
+      destination: "/api/admin/generate-magic-link",
+    });
     expect(config.rewrites ?? []).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: "/api/admin/generate-magic-link" }),
