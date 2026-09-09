@@ -82,7 +82,6 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
   const [form, setForm] = useState<DemoFormState>({ name: "", email: "", company: "", phone: "", company_identifier: "", country_code: "" });
   const [verificationEmailSent, setVerificationEmailSent] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [emailVerificationToken, setEmailVerificationToken] = useState("");
   const [verificationPending, setVerificationPending] = useState(false);
   const [sent, setSent] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -122,7 +121,6 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
 
     const applySession = (session: Session | null) => {
       if (cancelled || !isMatchingVerifiedDemoSession(session, email)) return;
-      setEmailVerificationToken(session.access_token);
       setEmailVerified(true);
       setVerificationEmailSent(true);
       setFormError(null);
@@ -171,7 +169,6 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     setForm((current) => ({ ...current, email }));
     setVerificationEmailSent(false);
     setEmailVerified(false);
-    setEmailVerificationToken("");
     window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
     window.localStorage.removeItem(DEMO_VERIFICATION_EVENT_KEY);
   }
@@ -216,7 +213,6 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
 
       setVerificationEmailSent(true);
       setEmailVerified(false);
-      setEmailVerificationToken("");
       window.localStorage.setItem(DEMO_VERIFICATION_EMAIL_STATE_KEY, "sent");
     } catch (error) {
       setVerificationEmailSent(false);
@@ -230,22 +226,34 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setFormError(null);
-    if (!emailVerified || !emailVerificationToken) {
+    if (!emailVerified) {
       setFormError("Cliquez sur le lien reçu par e-mail et attendez la confirmation E-Samba avant d'envoyer la demande.");
       return;
     }
     try {
+      const normalizedEmail = form.email.trim().toLowerCase();
+      const { data: sessionData, error: sessionError } = await demoVerificationSupabase.auth.getSession();
+      const session = sessionData.session;
+
+      if (sessionError || !isMatchingVerifiedDemoSession(session, normalizedEmail)) {
+        setEmailVerified(false);
+        setVerificationEmailSent(false);
+        window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
+        window.localStorage.removeItem(DEMO_VERIFICATION_EVENT_KEY);
+        setFormError("Votre session de vérification n'est plus valide. Vérifiez à nouveau votre adresse e-mail.");
+        return;
+      }
+
       const normalizedPhone = normalizeDemoPhone(form.phone, form.country_code);
       await submitDemoRequest.mutateAsync({
         name: form.name,
-        email: form.email,
+        email: normalizedEmail,
         company: form.company,
         phone: normalizedPhone,
         companyIdentifier: form.company_identifier,
         countryCode: form.country_code,
-        emailVerificationToken,
+        emailVerificationToken: session.access_token,
       });
-      setEmailVerificationToken("");
       window.localStorage.removeItem(DEMO_VERIFICATION_DRAFT_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
