@@ -12,11 +12,16 @@ import {
 
 const UPSTREAM_TIMEOUT_MS = 3_500;
 
-const bodySchema = z.object({
+const createSchema = z.object({
   user_id: z.string().uuid(),
   fleet_id: z.string().uuid().nullable().optional(),
   email: z.string().email(),
   label: z.string().trim().min(1).optional(),
+});
+
+const validateSchema = z.object({
+  action: z.literal("validate"),
+  token: z.string().uuid(),
 });
 
 function normalizeBody(body: unknown): unknown {
@@ -80,6 +85,46 @@ async function fetchJson(
   return { response, body };
 }
 
+async function handleValidation(
+  req: VercelRequest,
+  res: VercelResponse,
+  env: ReturnType<typeof getSupabaseEnv>,
+  normalizedBody: unknown,
+): Promise<void> {
+  const parsed = validateSchema.safeParse(normalizedBody);
+  if (!parsed.success) {
+    res.status(404).json({ ok: false, error: "token_not_found" });
+    return;
+  }
+
+  console.info("[magic-link] validate:upstream:start");
+  const upstream = await fetchJson(`${env.url}/functions/v1/demo-magic-link`, {
+    method: "POST",
+    headers: {
+      apikey: env.anonKey,
+      Authorization: `Bearer ${env.anonKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "validate",
+      token: parsed.data.token,
+      app_origin: requestOrigin(req).trim().replace(/\/$/, ""),
+    }),
+  });
+  console.info("[magic-link] validate:upstream:done", { status: upstream.response.status });
+
+  if (!upstream.response.ok) {
+    const upstreamBody = upstream.body && typeof upstream.body === "object"
+      ? upstream.body as Record<string, unknown>
+      : null;
+    const error = typeof upstreamBody?.error === "string" ? upstreamBody.error : "validation_error";
+    res.status(upstream.response.status).json({ ok: false, error });
+    return;
+  }
+
+  res.status(200).json(upstream.body);
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
@@ -99,24 +144,7 @@ export default async function handler(
     return;
   }
 
-  const token = extractBearerToken(req);
-  if (!token) {
-    res.status(401).json({ ok: false, error: "missing_auth_token" });
-    return;
-  }
-
-  const parsed = bodySchema.safeParse(normalizeBody(req.body));
-  if (!parsed.success) {
-    res.status(400).json({
-      ok: false,
-      error: "invalid_payload",
-      details: parsed.error.flatten(),
-    });
-    return;
-  }
-
-  console.info("[magic-link] payload:valid");
-
+  const normalizedBody = normalizeBody(req.body);
   const env = getSupabaseEnv();
   if (!env.url || !env.anonKey || !env.serviceRoleKey) {
     res.status(503).json({ ok: false, error: "server_configuration_error" });
@@ -124,6 +152,33 @@ export default async function handler(
   }
 
   try {
+    if (
+      normalizedBody &&
+      typeof normalizedBody === "object" &&
+      "action" in normalizedBody &&
+      normalizedBody.action === "validate"
+    ) {
+      await handleValidation(req, res, env, normalizedBody);
+      return;
+    }
+
+    const token = extractBearerToken(req);
+    if (!token) {
+      res.status(401).json({ ok: false, error: "missing_auth_token" });
+      return;
+    }
+
+    const parsed = createSchema.safeParse(normalizedBody);
+    if (!parsed.success) {
+      res.status(400).json({
+        ok: false,
+        error: "invalid_payload",
+        details: parsed.error.flatten(),
+      });
+      return;
+    }
+
+    console.info("[magic-link] payload:valid");
     console.info("[magic-link] auth:start");
     const auth = await fetchJson(`${env.url}/auth/v1/user`, {
       method: "GET",
