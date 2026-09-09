@@ -1,5 +1,5 @@
 import { Link, Navigate } from "react-router-dom";
-import { Inbox, ListFilter, Plus, Truck, Users } from "lucide-react";
+import { Inbox, ListFilter, Mail, Plus, Truck, Users } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { AdminFleetManagementPanel } from "@/components/admin/AdminFleetManageme
 import { CreateDemoForm } from "@/components/admin/CreateDemoForm";
 import { DemoRequestsPanel } from "@/components/admin/DemoRequestsPanel";
 import { DemoSessionsPanel } from "@/components/admin/DemoSessionsPanel";
+import { EmailDeliveryPanel } from "@/components/admin/EmailDeliveryPanel";
 import { useAdminDemoAccounts } from "@/hooks/useAdminDemoAccounts";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
@@ -81,6 +82,11 @@ export default function DemoAdminPage() {
             Flottes
           </TabsTrigger>
 
+          <TabsTrigger value="emails" className="gap-1.5">
+            <Mail className="h-4 w-4" />
+            E-mails
+          </TabsTrigger>
+
           <TabsTrigger value="create" className="gap-1.5">
             <Plus className="h-4 w-4" />
             Créer un accès
@@ -114,6 +120,10 @@ export default function DemoAdminPage() {
 
         <TabsContent value="fleets" className="mt-6">
           <AdminFleetManagementPanel />
+        </TabsContent>
+
+        <TabsContent value="emails" className="mt-6">
+          <EmailDeliveryPanel />
         </TabsContent>
 
         <TabsContent value="create" className="mt-6">
