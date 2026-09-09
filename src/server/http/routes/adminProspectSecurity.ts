@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { Context, Hono, Next } from "hono";
 import { z } from "zod";
 import { normalizeDemoPhone } from "../../../lib/demoPhoneValidation.js";
-import { getAppUrl, getSupabaseAnonKey, getSupabaseUrl } from "../../env.js";
+import { getAppUrl, getSupabaseAnonKey, getSupabaseServiceRoleKey, getSupabaseUrl } from "../../env.js";
 import { createSupabaseServiceClient } from "../../infra/supabaseServiceClient.js";
 import { createSupabaseUserClient } from "../../infra/supabaseUserClient.js";
 import { getBearerToken } from "../auth.js";
@@ -21,26 +21,42 @@ const createProspectSchema = z.object({
   permanent_access: z.boolean().optional(),
 });
 
+type PasswordSetupDelivery = {
+  ok: boolean;
+  error?: string;
+};
+
 function generateTemporaryPassword(): string {
   return randomBytes(18).toString("base64url");
 }
 
-async function sendScannerSafePasswordSetupEmail(email: string): Promise<boolean> {
+async function sendScannerSafePasswordSetupEmail(email: string): Promise<PasswordSetupDelivery> {
   const supabaseUrl = getSupabaseUrl().replace(/\/$/, "");
-  const anonKey = getSupabaseAnonKey();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
+  const apiKey = serviceRoleKey ?? getSupabaseAnonKey();
   const response = await fetch(`${supabaseUrl}/functions/v1/request-password-reset`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
+      apikey: apiKey,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       email,
       redirectTo: `${getAppUrl().replace(/\/$/, "")}/auth/update-password`,
     }),
   });
-  return response.ok;
+
+  let payload: { error?: string } = {};
+  try {
+    payload = await response.json() as { error?: string };
+  } catch {
+    payload = {};
+  }
+
+  return response.ok
+    ? { ok: true }
+    : { ok: false, error: payload.error ?? `http_${response.status}` };
 }
 
 async function requirePlatformAdmin(c: Context) {
@@ -156,10 +172,13 @@ async function handleSecureLocalProspect(c: Context) {
     return c.json({ ok: false, error: "registration_failed" }, 500);
   }
 
-  const emailSent = await sendScannerSafePasswordSetupEmail(email).catch(() => false);
-  if (!emailSent) {
-    if (createdNewUser) await admin.auth.admin.deleteUser(userId);
-    return c.json({ ok: false, error: "password_setup_email_failed" }, 502);
+  const passwordDelivery = await sendScannerSafePasswordSetupEmail(email).catch((error) => ({
+    ok: false,
+    error: error instanceof Error ? error.message : "password_setup_email_failed",
+  }));
+
+  if (!passwordDelivery.ok) {
+    console.error("[admin-prospect-security] password setup email failed after provisioning:", passwordDelivery.error);
   }
 
   if (parsed.data.send_email) {
@@ -188,8 +207,9 @@ async function handleSecureLocalProspect(c: Context) {
     permanent_access: parsed.data.permanent_access === true,
     login_url: `${getAppUrl()}/auth?email=${encodeURIComponent(email)}&prospect=1`,
     must_set_password: true,
-    password_delivery: "reset_email",
-    function_version: "admin-demo-local-v6",
+    password_delivery: passwordDelivery.ok ? "reset_email" : "pending",
+    password_delivery_error: passwordDelivery.ok ? undefined : passwordDelivery.error,
+    function_version: "admin-demo-local-v7",
   }, 201);
 }
 
