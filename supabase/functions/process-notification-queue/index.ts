@@ -8,6 +8,11 @@ const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") ?? "billing@e-samba.com";
 const MAX_RETRIES = 3;
 const BATCH_SIZE = 25;
 const SEND_INTERVAL_MS = 110;
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 interface QueueRow {
   id: string;
@@ -28,6 +33,13 @@ interface ResendPayload {
 interface ReservationResult {
   ok?: boolean;
   reason?: string;
+}
+
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+  });
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -129,15 +141,16 @@ function buildEmail(row: QueueRow): ResendPayload | null {
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
-  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return Response.json({ ok: false, error: "server_configuration_error" }, { status: 503 });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
+  if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: CORS_HEADERS });
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return jsonResponse({ ok: false, error: "server_configuration_error" }, 503);
 
   let body: Record<string, unknown> = {};
   try {
     const text = await req.text();
     if (text) body = JSON.parse(text) as Record<string, unknown>;
   } catch {
-    return Response.json({ ok: false, error: "invalid_json" }, { status: 400 });
+    return jsonResponse({ ok: false, error: "invalid_json" }, 400);
   }
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
@@ -148,10 +161,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!cronAuthorized) {
     const authorization = req.headers.get("Authorization") ?? "";
     const bearer = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-    if (!bearer || !requestId) return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    if (!bearer || !requestId) return jsonResponse({ ok: false, error: "unauthorized" }, 401);
 
     const { data: userData, error: userError } = await admin.auth.getUser(bearer);
-    if (userError || !userData.user) return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    if (userError || !userData.user) return jsonResponse({ ok: false, error: "unauthorized" }, 401);
 
     const { data: profile, error: profileError } = await admin
       .from("admin_profiles")
@@ -160,7 +173,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (profileError || !profile || profile.is_active === false) {
-      return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
+      return jsonResponse({ ok: false, error: "forbidden" }, 403);
     }
   }
 
@@ -181,7 +194,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   const { data: rows, error: fetchError } = await query;
-  if (fetchError) return Response.json({ ok: false, error: fetchError.message }, { status: 500 });
+  if (fetchError) return jsonResponse({ ok: false, error: fetchError.message }, 500);
 
   const queue = (rows ?? []) as QueueRow[];
   const stats = { sent: 0, failed: 0, abandoned: 0, skipped: 0, deferred: 0 };
@@ -246,7 +259,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     else stats.failed++;
   }
 
-  return Response.json({
+  return jsonResponse({
     ok: stats.failed === 0 && stats.abandoned === 0,
     processed: queue.length,
     ...stats,
