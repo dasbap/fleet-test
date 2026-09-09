@@ -89,7 +89,7 @@ async function sendEmail(payload: ResendPayload): Promise<{ ok: boolean; error?:
   });
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    return { ok: false, error: `Resend ${response.status}: ${text.slice(0, 200)}` };
+    return { ok: false, error: `Resend ${response.status}: ${text.slice(0, 500)}` };
   }
   return { ok: true };
 }
@@ -102,9 +102,10 @@ function buildEmail(row: QueueRow): ResendPayload | null {
     const companyName = escapeHtml(String(m.company_name ?? m.company ?? "votre entreprise"));
     const invitationUrl = escapeHtml(String(m.invitation_url ?? "https://www.e-samba.com/auth"));
     return {
-      from: fromAddress(), to,
+      from: fromAddress(),
+      to,
       subject: "Votre demande E-Samba a été acceptée",
-      html: shell("Votre demande E-Samba est acceptée", `${greeting(m)}<p style="margin:0 0 16px">Votre demande pour <strong>${companyName}</strong> a été acceptée. Votre compte E-Samba est prêt.</p><p style="margin:0 0 24px">Utilisez le bouton ci-dessous pour définir votre mot de passe et accéder à votre compte.</p><a href="${invitationUrl}" style="display:inline-block;background:#16a34a;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold">Créer mon mot de passe</a>`),
+      html: shell("Votre demande E-Samba est acceptée", `${greeting(m)}<p style="margin:0 0 16px">Votre demande pour <strong>${companyName}</strong> a été acceptée. Votre compte E-Samba est prêt.</p><p style="margin:0 0 24px">Utilisez le bouton ci-dessous pour définir votre mot de passe et accéder à votre compte.</p><a href="${invitationUrl}">Créer mon mot de passe</a>`),
     };
   }
 
@@ -112,9 +113,10 @@ function buildEmail(row: QueueRow): ResendPayload | null {
     const companyName = escapeHtml(String(m.company_name ?? m.company ?? "votre entreprise"));
     const reason = escapeHtml(String(m.reason ?? "Votre demande ne peut pas être acceptée pour le moment."));
     return {
-      from: fromAddress(), to,
+      from: fromAddress(),
+      to,
       subject: "Décision concernant votre demande E-Samba",
-      html: shell("Décision concernant votre demande", `${greeting(m)}<p style="margin:0 0 16px">Votre demande pour <strong>${companyName}</strong> n'a pas été acceptée.</p><p style="margin:0 0 24px"><strong>Motif :</strong> ${reason}</p>`),
+      html: shell("Décision concernant votre demande", `${greeting(m)}<p>Votre demande pour <strong>${companyName}</strong> n'a pas été acceptée.</p><p><strong>Motif :</strong> ${reason}</p>`),
     };
   }
 
@@ -128,7 +130,7 @@ function buildEmail(row: QueueRow): ResendPayload | null {
   if (row.template_id === "billing_grace" || row.template_id === "billing_suspended") {
     const planName = escapeHtml(String(m.plan_name ?? "votre plan"));
     const suspended = row.template_id === "billing_suspended";
-    return { from: fromAddress("E-Samba Billing"), to, subject: suspended ? "Votre accès E-Samba a été suspendu" : "Votre abonnement E-Samba arrive à expiration", html: shell("Information abonnement E-Samba", `<p>Bonjour,</p><p>Votre abonnement <strong>${planName}</strong> ${suspended ? "a expiré et votre accès est suspendu" : "arrive à expiration"}.</p><p><a href="https://e-samba.com/dashboard/billing">Gérer mon abonnement</a></p>`) };
+    return { from: fromAddress("E-Samba Billing"), to, subject: suspended ? "Votre accès E-Samba a été suspendu" : "Votre abonnement E-Samba arrive à expiration", html: shell("Information abonnement E-Samba", `<p>Bonjour,</p><p>Votre abonnement <strong>${planName}</strong> ${suspended ? "a expiré et votre accès est suspendu" : "arrive à expiration"}.</p>`) };
   }
 
   if (row.template_id === "account_suspended") {
@@ -191,21 +193,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const queue = (rows ?? []) as QueueRow[];
   const stats = { sent: 0, failed: 0, abandoned: 0, skipped: 0, deferred: 0 };
+  const errors: Array<{ queue_id: string; template_id: string; error: string }> = [];
   let lastSendAt = 0;
 
   for (const row of queue) {
     const payload = buildEmail(row);
     if (!payload) {
-      await admin.from("notification_queue").update({ status: "abandoned", error_msg: `Unknown template: ${row.template_id}`, retry_count: row.retry_count + 1, updated_at: new Date().toISOString() }).eq("id", row.id);
+      const errorText = `Unknown template: ${row.template_id}`;
+      await admin.from("notification_queue").update({ status: "abandoned", error_msg: errorText, retry_count: row.retry_count + 1, updated_at: new Date().toISOString() }).eq("id", row.id);
       stats.skipped++;
+      errors.push({ queue_id: row.id, template_id: row.template_id, error: errorText });
       continue;
     }
 
     const { data: reservationData, error: reservationError } = await admin.rpc("reserve_notification_email_send", { p_queue_id: row.id });
     if (reservationError) {
       stats.failed++;
+      errors.push({ queue_id: row.id, template_id: row.template_id, error: reservationError.message });
       continue;
     }
+
     const reservation = reservationData as ReservationResult | null;
     if (reservation?.ok !== true) {
       stats.deferred++;
@@ -224,12 +231,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
       continue;
     }
 
+    await admin.rpc("release_notification_email_send", { p_queue_id: row.id });
     const retryCount = row.retry_count + 1;
     const status = retryCount >= MAX_RETRIES ? "abandoned" : "pending";
-    await admin.from("notification_queue").update({ status, retry_count: retryCount, error_msg: result.error ?? "email_send_failed", updated_at: new Date().toISOString() }).eq("id", row.id);
+    const errorText = result.error ?? "email_send_failed";
+    await admin.from("notification_queue").update({ status, retry_count: retryCount, error_msg: errorText, updated_at: new Date().toISOString() }).eq("id", row.id);
+    errors.push({ queue_id: row.id, template_id: row.template_id, error: errorText });
     if (status === "abandoned") stats.abandoned++;
     else stats.failed++;
   }
 
-  return jsonResponse({ ok: stats.failed === 0 && stats.abandoned === 0, processed: queue.length, ...stats });
+  return jsonResponse({ ok: stats.failed === 0 && stats.abandoned === 0, processed: queue.length, ...stats, errors });
 });
