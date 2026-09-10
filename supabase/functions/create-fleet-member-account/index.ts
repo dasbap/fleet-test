@@ -98,7 +98,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const fullName = body.full_name?.trim() ?? "";
   const role = body.role;
   const phone = body.phone?.trim() || null;
-  const appOrigin = resolveAppOrigin(body.app_origin);
+  const appOrigin = resolveAppOrigin(body.app_origin ?? req.headers.get("origin"));
 
   if (!UUID_RE.test(fleetId)) return json(req, { ok: false, error: "invalid_fleet_id" }, 400);
   if (!EMAIL_RE.test(email) || email.length > 320) return json(req, { ok: false, error: "invalid_email" }, 400);
