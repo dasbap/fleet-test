@@ -6,7 +6,8 @@ import { ROUTE_PATHS } from "@/navigation/routePaths";
 
 const viteEnv =
   typeof import.meta !== "undefined" && "env" in import.meta
-    ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+    ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> })
+        .env
     : undefined;
 const processEnv =
   typeof process !== "undefined"
@@ -14,7 +15,9 @@ const processEnv =
     : undefined;
 
 const WHATSAPP_NUMBER =
-  viteEnv?.VITE_WHATSAPP_NUMBER ?? processEnv?.VITE_WHATSAPP_NUMBER ?? "237641341857";
+  viteEnv?.VITE_WHATSAPP_NUMBER ??
+  processEnv?.VITE_WHATSAPP_NUMBER ??
+  "237641341857";
 
 export type PublicNavItemType = "anchor" | "route" | "external";
 
@@ -42,7 +45,11 @@ export interface DashboardNavItem {
 
 /** Liens principaux header public (navbar desktop + mobile). */
 export const PUBLIC_NAV: readonly PublicNavItem[] = [
-  { label: "Fonctionnalités", href: ROUTE_PATHS.fonctionnalites, type: "route" },
+  {
+    label: "Fonctionnalités",
+    href: ROUTE_PATHS.fonctionnalites,
+    type: "route",
+  },
   { label: "Modules", href: ROUTE_PATHS.modules, type: "route" },
   { label: "Tarifs", href: ROUTE_PATHS.pricing, type: "route" },
   { label: "FAQ", href: ROUTE_PATHS.faq, type: "route" },
@@ -52,7 +59,7 @@ export const PUBLIC_NAV: readonly PublicNavItem[] = [
 /** CTAs header (connexion, démo, inscription). */
 export const AUTH_NAV: readonly AuthNavItem[] = [
   { label: "Connexion", href: ROUTE_PATHS.auth, primary: false },
-  { label: "Demander une démo", href: ROUTE_PATHS.contact, primary: false },
+  { label: "Découvrir E-Samba", href: ROUTE_PATHS.contact, primary: false },
 ];
 
 /** CTA démo — ancre formulaire contact. */
@@ -113,7 +120,7 @@ export const DEPARTMENT_EMAILS = {
 /** Construit un lien mailto avec sujet et corps optionnels. */
 export function buildMailtoHref(
   email: string,
-  options?: { subject?: string; body?: string },
+  options?: { subject?: string; body?: string }
 ): string {
   const params = new URLSearchParams();
   if (options?.subject) params.set("subject", options.subject);
@@ -157,7 +164,7 @@ export function buildWhatsAppUrl(message: string): string {
 export function isPublicNavActive(
   item: PublicNavItem,
   pathname: string,
-  hash: string,
+  hash: string
 ): boolean {
   if (item.type === "anchor") {
     const anchor = item.href.includes("#") ? `#${item.href.split("#")[1]}` : "";
@@ -234,7 +241,10 @@ export const DASHBOARD_NAV = {
     { label: "Aide admin", href: ROUTE_PATHS.dashboardHelpAdmin },
   ],
   organizerExtras: {
-    retention: { label: "Rétention", href: ROUTE_PATHS.dashboardRetentionAnalytics },
+    retention: {
+      label: "Rétention",
+      href: ROUTE_PATHS.dashboardRetentionAnalytics,
+    },
     roles: { label: "Rôles", href: ROUTE_PATHS.dashboardRoles },
   },
 } as const;
@@ -245,16 +255,20 @@ export const DASHBOARD_FINANCE_NAV_HREFS = new Set([
   ROUTE_PATHS.dashboardCollections,
 ]);
 
-export const DASHBOARD_REPORTS_NAV_HREFS = new Set([ROUTE_PATHS.dashboardReports]);
+export const DASHBOARD_REPORTS_NAV_HREFS = new Set([
+  ROUTE_PATHS.dashboardReports,
+]);
 
 /** Filtre les entrées sidebar selon les droits plan facturation. */
 export function filterDashboardNavByPlan<T extends { href: string }>(
   items: readonly T[],
-  options: { financeEnabled: boolean; reportsEnabled: boolean },
+  options: { financeEnabled: boolean; reportsEnabled: boolean }
 ): T[] {
   return items.filter((item) => {
-    if (DASHBOARD_FINANCE_NAV_HREFS.has(item.href)) return options.financeEnabled;
-    if (DASHBOARD_REPORTS_NAV_HREFS.has(item.href)) return options.reportsEnabled;
+    if (DASHBOARD_FINANCE_NAV_HREFS.has(item.href))
+      return options.financeEnabled;
+    if (DASHBOARD_REPORTS_NAV_HREFS.has(item.href))
+      return options.reportsEnabled;
     return true;
   });
 }
@@ -279,9 +293,11 @@ export type PublicNavLink =
   | { name: string; href: string; external: true };
 
 /** @deprecated Préférer PUBLIC_NAV */
-export const PUBLIC_NAV_LINKS: readonly PublicNavLink[] = PUBLIC_NAV.map((item) => {
-  if (item.type === "external") {
-    return { name: item.label, href: item.href, external: true as const };
+export const PUBLIC_NAV_LINKS: readonly PublicNavLink[] = PUBLIC_NAV.map(
+  (item) => {
+    if (item.type === "external") {
+      return { name: item.label, href: item.href, external: true as const };
+    }
+    return { name: item.label, to: item.href, external: false as const };
   }
-  return { name: item.label, to: item.href, external: false as const };
-});
+);

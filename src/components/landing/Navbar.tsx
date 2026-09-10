@@ -81,7 +81,7 @@ const Navbar = () => {
   const appEntry = getAppEntryPath(role);
 
   const connexionNav = AUTH_NAV.find((item) => item.label === "Connexion");
-  const demoNav = AUTH_NAV.find((item) => item.label === "Demander une démo");
+  const demoNav = AUTH_NAV.find((item) => item.label === "Découvrir E-Samba");
   const primaryAuthNav = AUTH_NAV.find((item) => item.primary);
 
   const closeMenu = () => setIsOpen(false);
@@ -117,7 +117,11 @@ const Navbar = () => {
                   item={link}
                   pathname={location.pathname}
                   className={navLinkClass}
-                  isActive={isPublicNavActive(link, location.pathname, location.hash)}
+                  isActive={isPublicNavActive(
+                    link,
+                    location.pathname,
+                    location.hash
+                  )}
                 />
               ))}
             </div>
@@ -133,12 +137,20 @@ const Navbar = () => {
                   <Link to={appEntry}>Dashboard</Link>
                 </Button>
               ) : connexionNav ? (
-                <Button variant="ghost" asChild className="hidden lg:inline-flex">
+                <Button
+                  variant="ghost"
+                  asChild
+                  className="hidden lg:inline-flex"
+                >
                   <Link to={connexionNav.href}>{connexionNav.label}</Link>
                 </Button>
               ) : null}
               {!user && demoNav ? (
-                <Button variant="outline" asChild className="hidden lg:inline-flex">
+                <Button
+                  variant="outline"
+                  asChild
+                  className="hidden lg:inline-flex"
+                >
                   <Link to={demoNav.href}>{demoNav.label}</Link>
                 </Button>
               ) : null}
@@ -165,7 +177,10 @@ const Navbar = () => {
       </div>
 
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-sm overflow-y-auto">
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-sm overflow-y-auto"
+        >
           <SheetHeader className="text-left">
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
@@ -178,13 +193,21 @@ const Navbar = () => {
                 pathname={location.pathname}
                 onNavigate={closeMenu}
                 className={mobileNavLinkClass}
-                isActive={isPublicNavActive(link, location.pathname, location.hash)}
+                isActive={isPublicNavActive(
+                  link,
+                  location.pathname,
+                  location.hash
+                )}
               />
             ))}
 
             <div className="flex flex-col gap-2 border-t border-border pt-4">
               {user ? (
-                <Button variant="ghost" asChild className="justify-start min-h-[44px]">
+                <Button
+                  variant="ghost"
+                  asChild
+                  className="justify-start min-h-[44px]"
+                >
                   <Link to={appEntry} onClick={closeMenu}>
                     Dashboard
                   </Link>
@@ -192,14 +215,22 @@ const Navbar = () => {
               ) : (
                 <>
                   {connexionNav ? (
-                    <Button variant="ghost" asChild className="justify-start min-h-[44px]">
+                    <Button
+                      variant="ghost"
+                      asChild
+                      className="justify-start min-h-[44px]"
+                    >
                       <Link to={connexionNav.href} onClick={closeMenu}>
                         {connexionNav.label}
                       </Link>
                     </Button>
                   ) : null}
                   {demoNav ? (
-                    <Button variant="outline" asChild className="justify-start min-h-[44px]">
+                    <Button
+                      variant="outline"
+                      asChild
+                      className="justify-start min-h-[44px]"
+                    >
                       <Link to={demoNav.href} onClick={closeMenu}>
                         {demoNav.label}
                       </Link>

@@ -23,8 +23,8 @@ const HeroSection = () => {
     import.meta.env.VITE_ANDROID_APK_URL?.trim() || DEFAULT_APK_URL;
 
   const highlights = [
-    "Gestion multi-flottes",
-    "Suivi temps réel",
+    "Plus de performance",
+    "Gestion centralisée",
     "Paiements Mobile Money",
   ];
 
