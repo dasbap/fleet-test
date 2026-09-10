@@ -46,7 +46,9 @@ function clearInvalidActiveFleetStorage(): void {
     if (v && !isValidUuid(v)) {
       localStorage.removeItem(ACTIVE_FLEET_STORAGE_KEY);
     }
-  } catch {}
+  } catch {
+    void 0;
+  }
 }
 
 function isProtectedVercelDeployment(): boolean {
@@ -78,7 +80,9 @@ window.addEventListener("vite:preloadError", (event) => {
       return;
     }
     sessionStorage.setItem(VITE_PRELOAD_RECOVERY_KEY, String(now));
-  } catch {}
+  } catch {
+    void 0;
+  }
   window.location.reload();
 });
 
