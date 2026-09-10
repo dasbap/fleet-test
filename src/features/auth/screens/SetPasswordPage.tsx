@@ -22,10 +22,10 @@ function getPasswordErrorMessage(error: PasswordChangeError): string {
       return "Le mot de passe est trop faible. Ajoutez des majuscules, minuscules, chiffres et caractères spéciaux.";
     }
     case "reauthentication_needed":
-      return "Votre session doit être renouvelée. Réessayez la création du mot de passe.";
+      return "Votre session doit être renouvelée. Reconnectez-vous avec le mot de passe que vous venez de choisir.";
     case "session_not_found":
     case "refresh_token_not_found":
-      return "La nouvelle session n'a pas pu être créée. Réessayez la création du mot de passe.";
+      return "Votre mot de passe a été enregistré. Reconnectez-vous avec ce nouveau mot de passe.";
     default:
       return error.message || "Impossible de modifier le mot de passe.";
   }
@@ -44,14 +44,14 @@ export default function SetPasswordPage() {
   const mustSetPassword = user.app_metadata?.must_set_password === true || user.user_metadata?.must_set_password === true;
   if (!mustSetPassword) return <Navigate to={ROUTE_PATHS.dashboard} replace />;
 
-  const clearPasswordMarker = async (accessToken: string) => {
+  const setPasswordAndClearMarker = async (accessToken: string, nextPassword: string) => {
     const response = await fetch("/api/auth/clear-password-marker", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ password: nextPassword }),
     });
     const result = (await response.json().catch(() => ({}))) as PasswordFunctionResult;
     if (response.ok && result.ok === true) return;
@@ -80,18 +80,25 @@ export default function SetPasswordPage() {
 
     setIsSubmitting(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-      if (updateError) throw updateError;
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (sessionError || !accessToken) {
+        throw sessionError ?? Object.assign(new Error("Session introuvable."), { code: "session_not_found" });
+      }
+
+      await setPasswordAndClearMarker(accessToken, password);
 
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password,
       });
-      if (signInError || !signInData.session?.access_token) {
-        throw signInError ?? new Error("La nouvelle session n'a pas pu être créée.");
+
+      if (signInError || !signInData.session) {
+        await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+        navigate(ROUTE_PATHS.login, { replace: true });
+        return;
       }
 
-      await clearPasswordMarker(signInData.session.access_token);
       navigate(ROUTE_PATHS.dashboard, { replace: true });
     } catch (submissionError) {
       setError(getPasswordErrorMessage(submissionError as PasswordChangeError));
