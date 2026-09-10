@@ -80,8 +80,9 @@ const HeroSection = () => {
           </div>
 
           <h1 className="mb-4 animate-fade-in-up font-heading text-3xl font-bold leading-tight sm:text-4xl md:text-5xl lg:text-6xl">
-            Gérez votre flotte avec{" "}
-            <span className="text-gradient">intelligence</span>
+            Pilotez votre <span className="text-gradient">flotte</span>. <br />
+            Reduisez vos <span className="text-gradient">coûts</span>. Gangnez
+            en <span className="text-gradient">visibilité</span>.
           </h1>
 
           <p
@@ -90,8 +91,9 @@ const HeroSection = () => {
               animationDelay: "0.1s",
             }}
           >
-            E-Samba est la plateforme de gestion de flotte conçue pour
-            l'Afrique. Taxis, logistique, transport : tout en un seul endroit.
+            Avec E-Sambe, ne vous contantezplus de suivre vos véhicules. Vous
+            pilotez réellement votre activité. Une seule platefome, votre flotte
+            en temps réel.
           </p>
 
           <div
