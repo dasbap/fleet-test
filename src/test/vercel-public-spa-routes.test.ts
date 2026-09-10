@@ -37,14 +37,16 @@ describe("Vercel public SPA routes", () => {
     }
   });
 
-  it("conserve le fallback SPA sans intercepter les fonctions API", () => {
+  it("conserve le fallback SPA sans intercepter les fonctions API ni les fichiers statiques", () => {
     const rewrites = config.rewrites ?? [];
     const apiRewrites = rewrites.filter((route) => route.source.startsWith("/api/"));
+    const spaFallback = rewrites.find((route) => route.destination === "/index.html" && route.source.startsWith("/((?!api/)"));
 
-    expect(rewrites).toContainEqual({
-      source: "/((?!api/).*)",
+    expect(spaFallback).toEqual({
+      source: "/((?!api/)(?!.*\\.[^/]+$).*)",
       destination: "/index.html",
     });
+    expect(spaFallback?.source).toContain("(?!.*\\.[^/]+$)");
     expect(apiRewrites.length).toBeGreaterThan(0);
     expect(apiRewrites.every((route) => route.destination.startsWith("/api/"))).toBe(true);
     expect(apiRewrites.every((route) => route.destination !== "/index.html")).toBe(true);
