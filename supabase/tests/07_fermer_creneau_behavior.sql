@@ -1,14 +1,12 @@
 -- Vérifie le comportement de fermer_creneau (clôture + km véhicule côté serveur).
 
--- 1) Définition : la RPC doit mettre à jour current_km via GREATEST
 DO $$
 DECLARE
   v_def text;
 BEGIN
   SELECT pg_get_functiondef(
     'public.fermer_creneau(uuid,integer,integer,text,text,text,text)'::regprocedure
-  )
-  INTO v_def;
+  ) INTO v_def;
 
   IF v_def IS NULL THEN
     RAISE EXCEPTION 'fonction manquante: fermer_creneau(uuid,int,int,text,text,text,text)';
@@ -24,7 +22,6 @@ BEGIN
   END IF;
 END $$;
 
--- 2) Comportement : créneau fermé, clôture pending, km véhicule mis à jour
 DO $$
 DECLARE
   v_user_id uuid := 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
@@ -55,32 +52,36 @@ BEGIN
   DELETE FROM auth.users WHERE id = v_user_id;
 
   INSERT INTO auth.users (
-    instance_id,
-    id,
-    aud,
-    role,
-    email,
-    encrypted_password,
-    email_confirmed_at,
-    created_at,
-    updated_at
-  )
-  VALUES (
+    instance_id, id, aud, role, email, email_confirmed_at, created_at, updated_at
+  ) VALUES (
     '00000000-0000-0000-0000-000000000000',
     v_user_id,
     'authenticated',
     'authenticated',
     'test-fermer-creneau@example.com',
-    crypt('test-password', gen_salt('bf')),
     now(),
     now(),
     now()
-  )
-  ON CONFLICT (id) DO NOTHING;
+  ) ON CONFLICT (id) DO NOTHING;
 
   INSERT INTO profils (user_id, full_name)
   VALUES (v_user_id, 'Test fermer_creneau')
   ON CONFLICT (user_id) DO NOTHING;
+
+  INSERT INTO driver_legal_profiles (
+    user_id, birth_date, birth_place, nationality_country, residence_country,
+    address, identity_document_type, identity_document_number,
+    identity_issued_at, identity_expires_at, identity_document_path,
+    driving_license_number, driving_license_categories,
+    driving_license_issued_at, driving_license_expires_at,
+    driving_license_country, driving_license_document_path
+  ) VALUES (
+    v_user_id, DATE '1990-01-01', 'Yaoundé', 'CM', 'CM', 'Adresse test',
+    'national_id', 'TEST-CNI-001', current_date - 365, current_date + 365,
+    'tests/drivers/identity.pdf', 'TEST-PERMIT-001', ARRAY['B'],
+    current_date - 365, current_date + 365, 'CM',
+    'tests/drivers/driving-license.pdf'
+  );
 
   INSERT INTO organisations (name, country_code)
   VALUES ('Test fermer_creneau', 'CM')
@@ -96,15 +97,23 @@ BEGIN
   VALUES (v_fleet_id, 'TF123456', 'Toyota', 'Corolla', v_km_before, 'ok')
   RETURNING id INTO v_vehicle_id;
 
-  INSERT INTO affectations_vehicules (
-    fleet_id,
-    vehicle_id,
-    driver_user_id,
-    starts_at,
-    is_active,
+  INSERT INTO vehicle_legal_documents (
+    vehicle_id, country_code, registration_certificate_number,
+    registration_certificate_path, insurer_name, insurance_policy_number,
+    insurance_issued_at, insurance_expires_at, insurance_document_path,
+    technical_inspection_number, technical_inspection_issued_at,
+    technical_inspection_expires_at, technical_inspection_document_path,
     created_by
-  )
-  VALUES (v_fleet_id, v_vehicle_id, v_user_id, now(), true, v_user_id)
+  ) VALUES (
+    v_vehicle_id, 'CM', 'TEST-CG-001', 'tests/vehicles/registration-certificate.pdf',
+    'Assureur test', 'TEST-INS-001', current_date - 30, current_date + 365,
+    'tests/vehicles/insurance.pdf', 'TEST-VT-001', current_date - 30,
+    current_date + 180, 'tests/vehicles/technical-inspection.pdf', v_user_id
+  );
+
+  INSERT INTO affectations_vehicules (
+    fleet_id, vehicle_id, driver_user_id, starts_at, is_active, created_by
+  ) VALUES (v_fleet_id, v_vehicle_id, v_user_id, now(), true, v_user_id)
   RETURNING id INTO v_assignment_id;
 
   INSERT INTO creneaux_conducteurs (assignment_id, km_start, status, started_at)
@@ -112,67 +121,47 @@ BEGIN
   RETURNING id INTO v_shift_id;
 
   PERFORM public.fermer_creneau(
-    v_shift_id::uuid,
-    v_km_end::integer,
-    15000::integer,
-    'cash'::text,
-    'photo'::text,
-    'proof-test-fermer'::text,
+    v_shift_id::uuid, v_km_end::integer, 15000::integer,
+    'cash'::text, 'photo'::text, 'proof-test-fermer'::text,
     'idem-test-fermer-1'::text
   );
 
   SELECT status INTO v_shift_status
-  FROM creneaux_conducteurs
-  WHERE id = v_shift_id;
-
+  FROM creneaux_conducteurs WHERE id = v_shift_id;
   IF v_shift_status IS DISTINCT FROM 'closed' THEN
     RAISE EXCEPTION 'creneau non fermé: status=%', v_shift_status;
   END IF;
 
   SELECT status::text INTO v_closure_status
-  FROM clotures_creneaux
-  WHERE shift_id = v_shift_id;
-
+  FROM clotures_creneaux WHERE shift_id = v_shift_id;
   IF v_closure_status IS DISTINCT FROM 'pending' THEN
     RAISE EXCEPTION 'cloture non pending: status=%', v_closure_status;
   END IF;
 
   SELECT current_km INTO v_km_after
-  FROM vehicules
-  WHERE id = v_vehicle_id;
-
+  FROM vehicules WHERE id = v_vehicle_id;
   IF v_km_after <> v_km_end THEN
     RAISE EXCEPTION 'current_km attendu %, obtenu %', v_km_end, v_km_after;
   END IF;
 
-  -- GREATEST : re-clôture avec km inférieur ne doit pas régresser km_end ni current_km
   PERFORM public.fermer_creneau(
-    v_shift_id::uuid,
-    (v_km_before - 100)::integer,
-    15000::integer,
-    'cash'::text,
-    'photo'::text,
-    'proof-test-fermer-2'::text,
+    v_shift_id::uuid, (v_km_before - 100)::integer, 15000::integer,
+    'cash'::text, 'photo'::text, 'proof-test-fermer-2'::text,
     'idem-test-fermer-2'::text
   );
 
   SELECT km_end INTO v_shift_km_end
-  FROM creneaux_conducteurs
-  WHERE id = v_shift_id;
-
+  FROM creneaux_conducteurs WHERE id = v_shift_id;
   IF v_shift_km_end <> v_km_end THEN
     RAISE EXCEPTION 'GREATEST: km_end créneau régressé à %', v_shift_km_end;
   END IF;
 
   SELECT current_km INTO v_km_after
-  FROM vehicules
-  WHERE id = v_vehicle_id;
-
+  FROM vehicules WHERE id = v_vehicle_id;
   IF v_km_after <> v_km_end THEN
     RAISE EXCEPTION 'GREATEST: current_km régressé à %', v_km_after;
   END IF;
 
-  -- GREATEST véhicule : km compteur déjà supérieur au km de clôture
   UPDATE vehicules SET current_km = v_km_end + 500 WHERE id = v_vehicle_id;
 
   INSERT INTO creneaux_conducteurs (assignment_id, km_start, status, started_at)
@@ -180,19 +169,13 @@ BEGIN
   RETURNING id INTO v_shift_id;
 
   PERFORM public.fermer_creneau(
-    v_shift_id::uuid,
-    (v_km_end + 50)::integer,
-    15000::integer,
-    'cash'::text,
-    'photo'::text,
-    'proof-test-fermer-3'::text,
+    v_shift_id::uuid, (v_km_end + 50)::integer, 15000::integer,
+    'cash'::text, 'photo'::text, 'proof-test-fermer-3'::text,
     'idem-test-fermer-3'::text
   );
 
   SELECT current_km INTO v_km_after
-  FROM vehicules
-  WHERE id = v_vehicle_id;
-
+  FROM vehicules WHERE id = v_vehicle_id;
   IF v_km_after <> v_km_end + 500 THEN
     RAISE EXCEPTION 'GREATEST véhicule: current_km attendu %, obtenu %', v_km_end + 500, v_km_after;
   END IF;
@@ -208,11 +191,13 @@ BEGIN
   DELETE FROM affectations_vehicules
   WHERE driver_user_id = v_user_id OR created_by = v_user_id;
   DELETE FROM droits_vehicules WHERE vehicle_id = v_vehicle_id;
+  DELETE FROM vehicle_legal_documents WHERE vehicle_id = v_vehicle_id;
   DELETE FROM vehicules WHERE fleet_id = v_fleet_id;
   DELETE FROM billing_events WHERE fleet_id = v_fleet_id;
   DELETE FROM abonnements WHERE fleet_id = v_fleet_id;
   DELETE FROM flottes WHERE id = v_fleet_id;
   DELETE FROM organisations WHERE id = v_org_id;
+  DELETE FROM driver_legal_profiles WHERE user_id = v_user_id;
   DELETE FROM profils WHERE user_id = v_user_id;
   DELETE FROM auth.users WHERE id = v_user_id;
 END $$;
