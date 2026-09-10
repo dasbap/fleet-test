@@ -1,5 +1,27 @@
 BEGIN;
 
+WITH ranked_active_organizers AS (
+  SELECT
+    id,
+    row_number() OVER (
+      PARTITION BY fleet_id
+      ORDER BY
+        updated_at DESC NULLS LAST,
+        created_at DESC NULLS LAST,
+        id DESC
+    ) AS rn
+  FROM public.flotte_adhesions
+  WHERE role = 'organizer'::public.role_type
+    AND is_active = true
+)
+UPDATE public.flotte_adhesions fa
+SET
+  is_active = false,
+  updated_at = now()
+FROM ranked_active_organizers r
+WHERE fa.id = r.id
+  AND r.rn > 1;
+
 CREATE UNIQUE INDEX IF NOT EXISTS flotte_adhesions_one_active_organizer
 ON public.flotte_adhesions (fleet_id)
 WHERE role = 'organizer'::public.role_type AND is_active = true;
