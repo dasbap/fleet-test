@@ -1,5 +1,8 @@
 BEGIN;
 
+ALTER TABLE public.flotte_adhesions
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
 WITH ranked_active_organizers AS (
   SELECT
     id,
