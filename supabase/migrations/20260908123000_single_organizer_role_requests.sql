@@ -1,5 +1,8 @@
 BEGIN;
 
+ALTER TABLE public.flotte_adhesions
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
 WITH ranked_active_organizers AS (
   SELECT
     id,
@@ -136,6 +139,8 @@ BEGIN
   IF tg_op = 'DELETE' AND NOT EXISTS (SELECT 1 FROM public.flottes f WHERE f.id = old.fleet_id) THEN
     RETURN old;
   END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(old.fleet_id::text, 0));
 
   IF NOT EXISTS (
     SELECT 1 FROM public.flotte_adhesions fa
