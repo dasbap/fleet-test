@@ -35,6 +35,8 @@ export function mapSupabaseErrorToFrench(message: string): string {
 
   if (m.includes("vehicule_non_trouve")) return "Véhicule non trouvé dans cette flotte.";
   if (m.includes("vehicule_bloque")) return "Ce véhicule est actuellement bloqué.";
+  if (m.includes("vehicule_documents_legaux_incomplets_ou_expires")) return "Affectation impossible : la carte grise, l'assurance ou la visite technique du véhicule est manquante ou expirée.";
+  if (m.includes("chauffeur_documents_legaux_incomplets_ou_expires")) return "Affectation impossible : le dossier légal du chauffeur est incomplet ou son permis n'est plus valide.";
   if (m.includes("cloture_manquante_bloque_affectation")) return "Une clôture manquante empêche cette affectation. Clôturez le créneau concerné.";
   if (m.includes("conducteur_deja_affecte")) return "Ce chauffeur a déjà un véhicule affecté.";
   if (m.includes("affectation_introuvable")) return "Affectation introuvable ou deja cloturee.";
@@ -82,7 +84,6 @@ export function mapSupabaseErrorToFrench(message: string): string {
     return "Vous devez être connecté pour créer une flotte.";
   }
 
-  // PostgREST / Supabase client
   if (m.includes("cannot coerce") || m.includes("single json object") || m.includes("pgrst116")) {
     return "Donnée introuvable ou action non autorisée. Réessayez ou contactez votre superviseur.";
   }
