@@ -4,12 +4,11 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("Supabase auth link contract", () => {
-  it("route tous les resets de mot de passe via le mailer scanner-safe", () => {
+  it("route les resets de mot de passe via le mailer scanner-safe", () => {
     const sources = [
       "api/admin/create-user.ts",
       "src/server/http/routes/adminProspectSecurity.ts",
       "supabase/functions/create-prospect-account/index.ts",
-      "supabase/functions/create-fleet-member-account/index.ts",
     ].map(read);
 
     for (const source of sources) {
@@ -24,6 +23,17 @@ describe("Supabase auth link contract", () => {
     expect(resetFunction).toContain('searchParams.set("token_hash", tokenHash)');
     expect(resetFunction).toContain('searchParams.set("type", "recovery")');
     expect(resetFunction).not.toContain("action_link\" style");
+  });
+
+  it("envoie les nouveaux membres de flotte vers une verification email puis le callback web", () => {
+    const fleetMemberSource = read("supabase/functions/create-fleet-member-account/index.ts");
+    expect(fleetMemberSource).toContain("auth.admin.inviteUserByEmail");
+    expect(fleetMemberSource).toContain('redirectTo: `${appOrigin}/auth/callback`');
+    expect(fleetMemberSource).toContain('email_delivery: existingAuthUserAttached ? "existing_account" : "verification_invite"');
+    expect(fleetMemberSource).toContain("email_verification_required: !existingAuthUserAttached");
+    expect(fleetMemberSource).not.toContain("request-password-reset");
+    expect(fleetMemberSource).not.toContain("resetPasswordForEmail");
+    expect(fleetMemberSource).not.toContain("temp_password:");
   });
 
   it("garde les magic links standards sur le callback PKCE", () => {
