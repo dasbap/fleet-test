@@ -139,7 +139,7 @@
       "destination": "/api/[...path]"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/)(?!.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }
   ],
