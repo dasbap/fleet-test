@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { AllAccountsPanel } from "@/components/admin/AllAccountsPanel";
 import { AdminFleetManagementPanel } from "@/components/admin/AdminFleetManagementPanel";
+import { AdminRegistrationLocksPanel } from "@/components/admin/AdminRegistrationLocksPanel";
 import { CreateDemoForm } from "@/components/admin/CreateDemoForm";
 import { DemoRequestsPanel } from "@/components/admin/DemoRequestsPanel";
 import { DemoSessionsPanel } from "@/components/admin/DemoSessionsPanel";
@@ -118,8 +119,9 @@ export default function DemoAdminPage() {
           <AllAccountsPanel />
         </TabsContent>
 
-        <TabsContent value="fleets" className="mt-6">
+        <TabsContent value="fleets" className="mt-6 space-y-6">
           <AdminFleetManagementPanel />
+          <AdminRegistrationLocksPanel />
         </TabsContent>
 
         <TabsContent value="emails" className="mt-6">
