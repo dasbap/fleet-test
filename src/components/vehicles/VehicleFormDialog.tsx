@@ -189,7 +189,7 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
     try {
       await completeStep("first_vehicle");
     } catch {
-      undefined;
+      // L'ajout du véhicule est déjà effectif; l'activation se recalculera au prochain chargement.
     }
 
     closeDialog();
