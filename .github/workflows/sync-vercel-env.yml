@@ -30,23 +30,47 @@ jobs:
       VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       VITE_PROTOMAPS_PM_TILES_URL: ${{ vars.VITE_PROTOMAPS_PM_TILES_URL }}
       VITE_ANDROID_APK_URL: ${{ vars.VITE_ANDROID_APK_URL }}
+      VITE_APP_URL: ${{ vars.VITE_APP_URL }}
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+      VITE_MAPBOX_TOKEN: ${{ vars.VITE_MAPBOX_TOKEN }}
+      VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
+      VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
+      VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+      VITE_MARKETING_URL: ${{ vars.VITE_MARKETING_URL }}
+      VITE_HELP_CENTER_URL: ${{ vars.VITE_HELP_CENTER_URL }}
+      VITE_PRIVACY_POLICY_URL: ${{ vars.VITE_PRIVACY_POLICY_URL }}
+      VITE_TERMS_URL: ${{ vars.VITE_TERMS_URL }}
+      VITE_ORANGE_MONEY_MERCHANT: ${{ vars.VITE_ORANGE_MONEY_MERCHANT }}
+      VITE_MTN_MOMO_MERCHANT: ${{ vars.VITE_MTN_MOMO_MERCHANT }}
 
       SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+      APP_URL: ${{ vars.APP_URL }}
+      BACKEND_URL: ${{ vars.BACKEND_URL }}
+      PAYMENT_PROVIDER: ${{ vars.PAYMENT_PROVIDER }}
+      GPS_INGEST_URL: ${{ vars.GPS_INGEST_URL }}
+
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
-
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SUPABASE_POOLER_HOST: ${{ secrets.SUPABASE_POOLER_HOST }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PAYMENT_WEBHOOK_SECRET: ${{ secrets.PAYMENT_WEBHOOK_SECRET }}
+      NOTCH_PAY_API_KEY: ${{ secrets.NOTCH_PAY_API_KEY }}
+      NOTCH_PAY_WEBHOOK_SECRET: ${{ secrets.NOTCH_PAY_WEBHOOK_SECRET }}
+      CINETPAY_WEBHOOK_SECRET: ${{ secrets.CINETPAY_WEBHOOK_SECRET }}
+      CINETPAY_API_KEY: ${{ secrets.CINETPAY_API_KEY }}
+      CINETPAY_SITE_ID: ${{ secrets.CINETPAY_SITE_ID }}
+      CINETPAY_SECRET_KEY: ${{ secrets.CINETPAY_SECRET_KEY }}
+      GPS_INGEST_KEY: ${{ secrets.GPS_INGEST_KEY }}
 
     steps:
-      - name: Checkout pre-prod source
+      - name: Checkout source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: pre-prod
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Setup Node.js
@@ -71,7 +95,7 @@ jobs:
           }
           EOF
 
-      - name: Derive Supabase URLs from project ref
+      - name: Derive Supabase runtime values
         shell: bash
         run: |
           ref="$(printf '%s' "$SUPABASE_PROJECT_REF" | tr -d '[:space:]')"
@@ -85,9 +109,10 @@ jobs:
             echo "SUPABASE_PROJECT_REF=$ref"
             echo "VITE_SUPABASE_URL=$url"
             echo "SUPABASE_URL=$url"
+            if [ -z "${GPS_INGEST_URL:-}" ]; then
+              echo "GPS_INGEST_URL=$url/functions/v1/gps-ingest"
+            fi
           } >> "$GITHUB_ENV"
-
-          echo "Supabase URL dérivée dynamiquement depuis SUPABASE_PROJECT_REF"
 
       - name: Validate required source variables
         shell: bash
@@ -115,7 +140,23 @@ jobs:
             "SUPABASE_ANON_KEY",
             "SUPABASE_URL",
             "VITE_PROTOMAPS_PM_TILES_URL",
-            "VITE_ANDROID_APK_URL"
+            "VITE_ANDROID_APK_URL",
+            "VITE_APP_URL",
+            "VITE_API_BASE_URL",
+            "VITE_MAPBOX_TOKEN",
+            "VITE_POSTHOG_KEY",
+            "VITE_POSTHOG_HOST",
+            "VITE_SENTRY_DSN",
+            "VITE_MARKETING_URL",
+            "VITE_HELP_CENTER_URL",
+            "VITE_PRIVACY_POLICY_URL",
+            "VITE_TERMS_URL",
+            "VITE_ORANGE_MONEY_MERCHANT",
+            "VITE_MTN_MOMO_MERCHANT",
+            "APP_URL",
+            "BACKEND_URL",
+            "PAYMENT_PROVIDER",
+            "GPS_INGEST_URL"
           ]
 
           const sensitiveVars = [
@@ -126,7 +167,15 @@ jobs:
             "DIRECT_URL",
             "SUPABASE_DB_URL",
             "SUPABASE_POOLER_HOST",
-            "DATABASE_URL"
+            "DATABASE_URL",
+            "PAYMENT_WEBHOOK_SECRET",
+            "NOTCH_PAY_API_KEY",
+            "NOTCH_PAY_WEBHOOK_SECRET",
+            "CINETPAY_WEBHOOK_SECRET",
+            "CINETPAY_API_KEY",
+            "CINETPAY_SITE_ID",
+            "CINETPAY_SECRET_KEY",
+            "GPS_INGEST_KEY"
           ]
 
           const targets =
@@ -141,22 +190,17 @@ jobs:
               stdio: ["pipe", "inherit", "inherit"],
               env: process.env
             })
-
-            if (result.status !== 0) {
-              process.exit(result.status ?? 1)
-            }
+            if (result.status !== 0) process.exit(result.status ?? 1)
           }
 
           function syncVariable(key, target, sensitive) {
             const value = process.env[key]?.trim()
-
             if (!value) {
               console.log(`Skip ${key}: valeur absente`)
               return
             }
 
             console.log(`Sync ${key} -> ${target}`)
-
             const args = [
               "env",
               "add",
@@ -167,11 +211,7 @@ jobs:
               "--token",
               process.env.VERCEL_TOKEN
             ]
-
-            if (sensitive && target !== "development") {
-              args.push("--sensitive")
-            }
-
+            if (sensitive && target !== "development") args.push("--sensitive")
             runVercel(args, value)
           }
 
@@ -181,7 +221,7 @@ jobs:
           }
           NODE
 
-      - name: Audit production Supabase runtime variables
+      - name: Audit production runtime variables
         if: ${{ inputs.target == 'production' || inputs.target == 'all' }}
         shell: bash
         run: |
@@ -193,8 +233,7 @@ jobs:
 
           node <<'NODE'
           const fs = require("node:fs")
-          const path = ".vercel/.env.production.audit"
-          const raw = fs.readFileSync(path, "utf8")
+          const raw = fs.readFileSync(".vercel/.env.production.audit", "utf8")
           const env = {}
 
           for (const line of raw.split(/\r?\n/)) {
@@ -224,9 +263,23 @@ jobs:
             process.exit(1)
           }
 
-          if (process.env.ADMIN_SECRET?.trim() && !env.ADMIN_SECRET?.trim()) {
-            console.error("ADMIN_SECRET existe dans GitHub mais est absent de Vercel Production")
-            process.exit(1)
+          const optionalSensitive = [
+            "ADMIN_SECRET",
+            "PAYMENT_WEBHOOK_SECRET",
+            "NOTCH_PAY_API_KEY",
+            "NOTCH_PAY_WEBHOOK_SECRET",
+            "CINETPAY_WEBHOOK_SECRET",
+            "CINETPAY_API_KEY",
+            "CINETPAY_SITE_ID",
+            "CINETPAY_SECRET_KEY",
+            "GPS_INGEST_KEY"
+          ]
+
+          for (const key of optionalSensitive) {
+            if (process.env[key]?.trim() && !env[key]?.trim()) {
+              console.error(`${key} existe dans GitHub mais est absent de Vercel Production`)
+              process.exit(1)
+            }
           }
 
           function projectRef(url) {
@@ -239,17 +292,14 @@ jobs:
           }
 
           const expectedRef = process.env.SUPABASE_PROJECT_REF?.trim()
-          if (env.VITE_SUPABASE_URL === String.fromCharCode(91,83,69,78,83,73,84,73,86,69,93)) env.VITE_SUPABASE_URL = process.env.VITE_SUPABASE_URL
-          if (env.SUPABASE_URL === String.fromCharCode(91,83,69,78,83,73,84,73,86,69,93)) env.SUPABASE_URL = process.env.SUPABASE_URL
-          if (env.SUPABASE_PROJECT_REF === String.fromCharCode(91,83,69,78,83,73,84,73,86,69,93)) env.SUPABASE_PROJECT_REF = process.env.SUPABASE_PROJECT_REF
+          const sensitivePlaceholder = String.fromCharCode(91,83,69,78,83,73,84,73,86,69,93)
+          if (env.VITE_SUPABASE_URL === sensitivePlaceholder) env.VITE_SUPABASE_URL = process.env.VITE_SUPABASE_URL
+          if (env.SUPABASE_URL === sensitivePlaceholder) env.SUPABASE_URL = process.env.SUPABASE_URL
+          if (env.SUPABASE_PROJECT_REF === sensitivePlaceholder) env.SUPABASE_PROJECT_REF = process.env.SUPABASE_PROJECT_REF
+
           const publicRef = projectRef(env.VITE_SUPABASE_URL)
           const serverRef = projectRef(env.SUPABASE_URL)
           const vercelRef = env.SUPABASE_PROJECT_REF?.trim()
-
-          if (!expectedRef) {
-            console.error("SUPABASE_PROJECT_REF GitHub absent")
-            process.exit(1)
-          }
 
           if (publicRef !== expectedRef || serverRef !== expectedRef || vercelRef !== expectedRef) {
             console.error(
@@ -276,14 +326,10 @@ jobs:
           node <<'NODE'
           const fs = require("node:fs")
           const path = require("node:path")
-
           const root = ".vercel/output/static"
           const expectedRef = process.env.SUPABASE_PROJECT_REF?.trim()
 
-          if (!expectedRef) {
-            console.error("SUPABASE_PROJECT_REF GitHub absent")
-            process.exit(1)
-          }
+          if (!expectedRef) process.exit(1)
           if (!fs.existsSync(root)) {
             console.error(`Sortie frontend Vercel introuvable: ${root}`)
             process.exit(1)
@@ -301,7 +347,6 @@ jobs:
                 continue
               }
               if (!extensions.has(path.extname(entry.name))) continue
-
               const content = fs.readFileSync(fullPath, "utf8")
               for (const match of content.matchAll(urlPattern)) {
                 const ref = match[1]
@@ -312,7 +357,6 @@ jobs:
           }
 
           walk(root)
-
           if (!refs.has(expectedRef)) {
             console.error(`Le bundle frontend ne contient pas le projet Supabase attendu (${expectedRef})`)
             process.exit(1)
@@ -323,8 +367,6 @@ jobs:
             console.error(`Le bundle frontend contient des projets Supabase inattendus: ${unexpected.join(", ")}`)
             process.exit(1)
           }
-
-          console.log(`Bundle frontend OK: seul le projet Supabase attendu est embarqué (${expectedRef})`)
           NODE
 
       - name: Redeploy production with synchronized variables
@@ -343,10 +385,6 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Environnement : \`${{ inputs.target }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Runtime Supabase synchronisé depuis SUPABASE_PROJECT_REF :" >> "$GITHUB_STEP_SUMMARY"
-          echo "- VITE_SUPABASE_URL / SUPABASE_URL dérivées dynamiquement" >> "$GITHUB_STEP_SUMMARY"
-          echo "- VITE_SUPABASE_ANON_KEY / SUPABASE_ANON_KEY" >> "$GITHUB_STEP_SUMMARY"
-          echo "- SUPABASE_SERVICE_ROLE_KEY" >> "$GITHUB_STEP_SUMMARY"
-          echo "- ADMIN_SECRET (si configuré dans GitHub)" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Une sync Production/All audite le runtime, vérifie le bundle Vite puis redéploie pre-prod." >> "$GITHUB_STEP_SUMMARY"
+          echo "Variables Supabase obligatoires synchronisées et auditées." >> "$GITHUB_STEP_SUMMARY"
+          echo "Variables front/BFF et secrets optionnels synchronisés lorsqu'ils existent dans GitHub." >> "$GITHUB_STEP_SUMMARY"
+          echo "GPS_INGEST_URL est dérivée automatiquement depuis SUPABASE_PROJECT_REF lorsqu'elle n'est pas configurée." >> "$GITHUB_STEP_SUMMARY"
