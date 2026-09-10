@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 
-/** Clic sur Select/Popover/Dropdown portés hors du Dialog — ne pas fermer ni bloquer. */
 function isPortaledOverlayTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   return !!(
@@ -18,11 +17,8 @@ function isPortaledOverlayTarget(target: EventTarget | null): boolean {
 }
 
 const Dialog = DialogPrimitive.Root;
-
 const DialogTrigger = DialogPrimitive.Trigger;
-
 const DialogPortal = DialogPrimitive.Portal;
-
 const DialogClose = DialogPrimitive.Close;
 
 const DialogOverlay = React.forwardRef<
@@ -43,7 +39,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, onPointerDownOutside, onInteractOutside, ...props }, ref) => {
+>(({ className, children, onPointerDownOutside, onInteractOutside, onCloseAutoFocus, ...props }, ref) => {
   const { t } = useTranslation("common");
 
   return (
@@ -68,6 +64,13 @@ const DialogContent = React.forwardRef<
             return;
           }
           onInteractOutside?.(e);
+        }}
+        onCloseAutoFocus={(e) => {
+          const activeElement = document.activeElement;
+          if (activeElement instanceof HTMLElement && e.currentTarget.contains(activeElement)) {
+            activeElement.blur();
+          }
+          onCloseAutoFocus?.(e);
         }}
         {...props}
       >
