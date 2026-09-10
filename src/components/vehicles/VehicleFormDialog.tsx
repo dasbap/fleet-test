@@ -90,6 +90,13 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
     },
   });
 
+  const closeDialog = () => {
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    onOpenChange(false);
+  };
+
   const onSubmit = async (data: VehicleFormValues) => {
     const normalizedRegistration = normalizeVehicleRegistration(data.registration);
     const registrationError = validateVehicleRegistrationForCountry(
@@ -101,18 +108,27 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
       return;
     }
 
-    await createVehicle.mutateAsync({
-      fleet_id: fleetId,
-      subscription_id: data.subscription_id,
-      registration: normalizedRegistration,
-      brand: data.brand,
-      model: data.model,
-      year: data.year,
-      current_km: data.current_km,
-    });
-    await completeStep("first_vehicle");
+    try {
+      await createVehicle.mutateAsync({
+        fleet_id: fleetId,
+        subscription_id: data.subscription_id,
+        registration: normalizedRegistration,
+        brand: data.brand,
+        model: data.model,
+        year: data.year,
+        current_km: data.current_km,
+      });
+    } catch {
+      return;
+    }
 
-    onOpenChange(false);
+    try {
+      await completeStep("first_vehicle");
+    } catch {
+      // L'ajout du véhicule est déjà effectif; l'activation se recalculera au prochain chargement.
+    }
+
+    closeDialog();
     form.reset();
     onSuccess?.();
   };
@@ -273,7 +289,7 @@ const VehicleFormDialog = ({ open, onOpenChange, fleetId, onSuccess }: VehicleFo
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={closeDialog}
               >
                 Annuler
               </Button>
