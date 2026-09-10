@@ -90,8 +90,8 @@ const HeroSection = () => {
               animationDelay: "0.1s",
             }}
           >
-            E-Samba est la plateforme SaaS de gestion de flotte conçue pour
-            l’Afrique. Taxis, logistique, transport : tout en un seul endroit.
+            E-Samba est la plateforme de gestion de flotte conçue pour
+            l'Afrique. Taxis, logistique, transport : tout en un seul endroit.
           </p>
 
           <div
