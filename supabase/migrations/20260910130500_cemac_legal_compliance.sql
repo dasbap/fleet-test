@@ -55,12 +55,7 @@ alter table public.driver_legal_profiles enable row level security;
 alter table public.vehicle_legal_documents enable row level security;
 
 create policy driver_legal_profiles_select on public.driver_legal_profiles for select to authenticated using (
-  user_id = auth.uid() or public.is_platform_admin() or exists (
-    select 1 from public.flotte_adhesions target
-    where target.user_id = driver_legal_profiles.user_id
-      and target.is_active = true
-      and public.rbac_is_fleet_manager_or_above(target.fleet_id)
-  )
+  user_id = auth.uid() or public.is_platform_admin() or public.is_fleet_manager_of_user(user_id)
 );
 create policy driver_legal_profiles_insert_own on public.driver_legal_profiles for insert to authenticated with check (user_id = auth.uid());
 create policy driver_legal_profiles_update_own on public.driver_legal_profiles for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
@@ -73,11 +68,15 @@ create policy vehicle_legal_documents_select on public.vehicle_legal_documents f
 );
 create policy vehicle_legal_documents_write on public.vehicle_legal_documents for all to authenticated using (
   public.is_platform_admin() or exists (
-    select 1 from public.vehicules v where v.id = vehicle_legal_documents.vehicle_id and public.rbac_is_fleet_manager_or_above(v.fleet_id)
+    select 1 from public.vehicules v
+    where v.id = vehicle_legal_documents.vehicle_id
+      and coalesce((public.rbac_check_permission('vehicle.update', v.fleet_id)->>'allowed')::boolean, false)
   )
 ) with check (
   public.is_platform_admin() or exists (
-    select 1 from public.vehicules v where v.id = vehicle_legal_documents.vehicle_id and public.rbac_is_fleet_manager_or_above(v.fleet_id)
+    select 1 from public.vehicules v
+    where v.id = vehicle_legal_documents.vehicle_id
+      and coalesce((public.rbac_check_permission('vehicle.update', v.fleet_id)->>'allowed')::boolean, false)
   )
 );
 
@@ -87,9 +86,7 @@ on conflict (id) do update set public = excluded.public, file_size_limit = exclu
 
 create policy legal_documents_read on storage.objects for select to authenticated using (
   bucket_id = 'legal-documents' and (
-    ((storage.foldername(name))[1] = 'drivers' and ((storage.foldername(name))[2] = auth.uid()::text or public.is_platform_admin() or exists (
-      select 1 from public.flotte_adhesions target where target.user_id::text = (storage.foldername(name))[2] and target.is_active = true and public.rbac_is_fleet_manager_or_above(target.fleet_id)
-    )))
+    ((storage.foldername(name))[1] = 'drivers' and ((storage.foldername(name))[2] = auth.uid()::text or public.is_platform_admin() or public.is_fleet_manager_of_user(((storage.foldername(name))[2])::uuid)))
     or ((storage.foldername(name))[1] = 'vehicles' and (public.is_platform_admin() or exists (
       select 1 from public.flotte_adhesions fa where fa.user_id = auth.uid() and fa.fleet_id::text = (storage.foldername(name))[2] and fa.is_active = true
     )))
