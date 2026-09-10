@@ -15,13 +15,16 @@ const CATCH_ALL_API_ROUTES = [
   "/api/payments/mobile-money/initiate",
   "/api/webhooks/payment",
   "/api/webhooks/payments/inbound",
-  "/api/auth/clear-password-marker",
   "/api/demo/request",
   "/api/terrain/shift-close",
   "/api/gps/ingest",
 ] as const;
 
 const DIRECT_API_REWRITES = [
+  {
+    source: "/api/auth/clear-password-marker",
+    destination: "/api/auth/me?operation=clear-password-marker",
+  },
   {
     source: "/api/demo/magic-link",
     destination: "/api/admin/generate-magic-link",
@@ -68,7 +71,7 @@ describe("health handler", () => {
 });
 
 describe("Vercel catch-all API routing", () => {
-  it("route explicitement les routes Hono et isole le magic-link public", () => {
+  it("route explicitement les routes Hono et isole les routes auth sensibles", () => {
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
       rewrites?: Array<{ source?: string; destination?: string }>;
     };
@@ -77,17 +80,13 @@ describe("Vercel catch-all API routing", () => {
       route.source?.startsWith("/api/"),
     );
 
-    expect(apiRewrites).toEqual([
-      ...CATCH_ALL_API_ROUTES.map((source) => ({
-        source,
-        destination: "/api/[...path]",
-      })).slice(0, 11),
-      ...DIRECT_API_REWRITES,
-      ...CATCH_ALL_API_ROUTES.map((source) => ({
-        source,
-        destination: "/api/[...path]",
-      })).slice(11),
-    ]);
+    expect(apiRewrites).toHaveLength(CATCH_ALL_API_ROUTES.length + DIRECT_API_REWRITES.length);
+    for (const source of CATCH_ALL_API_ROUTES) {
+      expect(apiRewrites).toContainEqual({ source, destination: "/api/[...path]" });
+    }
+    for (const rewrite of DIRECT_API_REWRITES) {
+      expect(apiRewrites).toContainEqual(rewrite);
+    }
     expect(readFileSync("api/[...path].ts", "utf8")).toContain("createVercelApiApp");
   });
 
@@ -223,7 +222,7 @@ describe("Vercel Hobby function budget", () => {
   });
 });
 
-describe("direct Vercel admin routes", () => {
+describe("direct Vercel routes", () => {
   it("garde generate-magic-link en fonction dediee avec timeout borne", () => {
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
       functions?: Record<string, { maxDuration?: number }>;
@@ -243,11 +242,23 @@ describe("direct Vercel admin routes", () => {
       source: "/api/demo/magic-link",
       destination: "/api/admin/generate-magic-link",
     });
-    expect(config.rewrites ?? []).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ source: "/api/admin/generate-magic-link" }),
-      ]),
-    );
+  });
+
+  it("isole clear-password-marker sans ajouter une fonction Vercel", () => {
+    const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
+      functions?: Record<string, { maxDuration?: number }>;
+      rewrites?: Array<{ source?: string; destination?: string }>;
+    };
+    const authHandler = readFileSync("api/auth/me.ts", "utf8");
+
+    expect(authHandler).not.toContain("createServerApp");
+    expect(authHandler).toContain('operation === "clear-password-marker"');
+    expect(authHandler).toContain("updateUserById");
+    expect(config.functions?.["api/auth/me.ts"]?.maxDuration).toBe(15);
+    expect(config.rewrites).toContainEqual({
+      source: "/api/auth/clear-password-marker",
+      destination: "/api/auth/me?operation=clear-password-marker",
+    });
   });
 
   it("garde create-prospect direct pour son fallback ADMIN_SECRET specifique", () => {
