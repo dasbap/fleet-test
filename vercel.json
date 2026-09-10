@@ -13,6 +13,9 @@
     },
     "api/admin/user-security.ts": {
       "maxDuration": 15
+    },
+    "api/auth/me.ts": {
+      "maxDuration": 15
     }
   },
   "redirects": [
@@ -117,7 +120,7 @@
     },
     {
       "source": "/api/auth/clear-password-marker",
-      "destination": "/api/[...path]"
+      "destination": "/api/auth/me?operation=clear-password-marker"
     },
     {
       "source": "/api/demo/magic-link",
