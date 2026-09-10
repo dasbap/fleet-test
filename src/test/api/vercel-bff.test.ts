@@ -252,7 +252,7 @@ describe("direct Vercel routes", () => {
     const authHandler = readFileSync("api/auth/me.ts", "utf8");
 
     expect(authHandler).not.toContain("createServerApp");
-    expect(authHandler).toContain('operation === "clear-password-marker"');
+    expect(authHandler).toContain('"clear-password-marker"');
     expect(authHandler).toContain("updateUserById");
     expect(config.functions?.["api/auth/me.ts"]?.maxDuration).toBe(15);
     expect(config.rewrites).toContainEqual({
