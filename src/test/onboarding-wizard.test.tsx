@@ -10,9 +10,9 @@ const mockComplete = vi.fn();
 const mockTrackEvent = vi.fn();
 
 const progress = {
-  step: 1 as const,
+  step: 1,
   completed: false,
-  steps_data: {},
+  steps_data: {} as Record<string, unknown>,
 };
 
 vi.mock('react-router-dom', async importOriginal => {
@@ -53,7 +53,7 @@ describe('OnboardingWizard', () => {
     mockTrackEvent.mockReset();
   });
 
-  it('termine le parcours complet 1->3', async () => {
+  it('termine le parcours simplifie flotte puis validation', async () => {
     render(
       <MemoryRouter>
         <OnboardingWizard />
@@ -64,20 +64,17 @@ describe('OnboardingWizard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continuer' }));
 
     await waitFor(() => expect(mockSaveStep1).toHaveBeenCalledOnce());
-    await screen.findByText('Activez vos alertes essentielles');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Continuer' }));
-    await waitFor(() => expect(mockSaveStep).toHaveBeenCalledWith(2, expect.any(Object)));
-
     await screen.findByText('Validation finale');
+
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Terminer' }));
 
+    await waitFor(() => expect(mockSaveStep).toHaveBeenCalledWith(4, { step4: { confirmed: true } }));
     await waitFor(() => expect(mockComplete).toHaveBeenCalledOnce());
     expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true });
   });
 
-  it('permet de passer l etape 1', async () => {
+  it('permet de passer l etape flotte et arrive a la validation', async () => {
     render(
       <MemoryRouter>
         <OnboardingWizard />
@@ -86,14 +83,11 @@ describe('OnboardingWizard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Passer' }));
     await waitFor(() => expect(mockSaveStep).toHaveBeenCalledWith(1, {}));
-    await screen.findByText('Activez vos alertes essentielles');
+    await screen.findByText('Validation finale');
   });
 
-  it('permet un retour de la validation vers l etape 2', async () => {
-    progress.step = 3;
-    progress.steps_data = {
-      step2: { alerts: { oil: true, revision: false, tires: true, brakes: false } },
-    };
+  it('permet un retour de la validation vers l etape flotte', async () => {
+    progress.step = 4;
 
     render(
       <MemoryRouter>
@@ -103,7 +97,7 @@ describe('OnboardingWizard', () => {
 
     await screen.findByText('Validation finale');
     fireEvent.click(screen.getByRole('button', { name: 'Retour' }));
-    await screen.findByText('Activez vos alertes essentielles');
+    await screen.findByText('Ajoutez votre premier véhicule');
   });
 
   it('bloque la validation finale sans confirmation', async () => {
