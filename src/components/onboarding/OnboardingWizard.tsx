@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { StepFlotte } from '@/components/onboarding/StepFlotte';
-import { StepAlertes } from '@/components/onboarding/StepAlertes';
 import { StepValidation } from '@/components/onboarding/StepValidation';
 import { cn } from '@/lib/utils';
 import type { OnboardingData } from '@/types/onboarding';
@@ -11,7 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { useTrackFunnelEvent } from '@/hooks/useFunnelTelemetry';
 import { formatPostgrestError, mapSupabaseErrorToFrench } from '@/lib/mapSupabaseError';
 
-type StepNumber = 1 | 2 | 4;
+type StepNumber = 1 | 4;
 type StepKey = keyof OnboardingData;
 
 type StepConfig<K extends StepKey = StepKey> = {
@@ -38,14 +37,6 @@ const STEPS: StepConfig[] = [
     ),
   },
   {
-    num: 2,
-    key: 'step2',
-    label: 'Alertes',
-    render: ({ orgId, initial, onNext, onBack, onSkip }) => (
-      <StepAlertes orgId={orgId} initial={initial} onNext={onNext} onBack={onBack} onSkip={onSkip} />
-    ),
-  },
-  {
     num: 4,
     key: 'step4',
     label: 'Validation',
@@ -64,7 +55,6 @@ const STEPS: StepConfig[] = [
 
 function normalizeStep(step: number): StepNumber {
   if (step <= 1) return 1;
-  if (step === 2) return 2;
   return 4;
 }
 
