@@ -29,4 +29,18 @@ describe("admin fleet management UX", () => {
       "Une plaque supprimée reste réservée à cette flotte et peut y être réutilisée.",
     );
   });
+
+  it("garde les verrous visibles quand leur flotte a été supprimée", () => {
+    const page = readFileSync("src/pages/admin/DemoAdminPage.tsx", "utf8");
+    const locksPanel = readFileSync(
+      "src/components/admin/AdminRegistrationLocksPanel.tsx",
+      "utf8",
+    );
+
+    expect(page).toContain("<AdminRegistrationLocksPanel />");
+    expect(locksPanel).toContain('p_fleet_id: null');
+    expect(locksPanel).toContain("Flotte supprimée");
+    expect(locksPanel).toContain("Seul un administrateur peut les libérer");
+    expect(locksPanel).toContain("admin_release_vehicle_registration");
+  });
 });
