@@ -31,6 +31,11 @@ const DIRECT_API_REWRITES = [
   },
 ] as const;
 
+const SPA_FALLBACK = {
+  source: "/((?!api/)(?!.*\\.[^/]+$).*)",
+  destination: "/index.html",
+} as const;
+
 describe("extractBearerToken", () => {
   it("extrait un token Bearer valide", () => {
     const token = extractBearerToken({
@@ -90,15 +95,14 @@ describe("Vercel catch-all API routing", () => {
     expect(readFileSync("api/[...path].ts", "utf8")).toContain("createVercelApiApp");
   });
 
-  it("exclut /api du fallback SPA", () => {
+  it("exclut /api et les fichiers statiques du fallback SPA", () => {
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
       rewrites?: Array<{ source?: string; destination?: string }>;
     };
 
-    expect(config.rewrites).toContainEqual({
-      source: "/((?!api/).*)",
-      destination: "/index.html",
-    });
+    expect(config.rewrites).toContainEqual(SPA_FALLBACK);
+    expect(SPA_FALLBACK.source).toContain("(?!api/)");
+    expect(SPA_FALLBACK.source).toContain("(?!.*\\.[^/]+$)");
   });
 
   it("fait matcher chaque route Hono via son URL publique Vercel", async () => {
