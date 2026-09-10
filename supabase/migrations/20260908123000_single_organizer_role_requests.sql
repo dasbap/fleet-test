@@ -140,6 +140,8 @@ BEGIN
     RETURN old;
   END IF;
 
+  PERFORM pg_advisory_xact_lock(hashtextextended(old.fleet_id::text, 0));
+
   IF NOT EXISTS (
     SELECT 1 FROM public.flotte_adhesions fa
     WHERE fa.fleet_id = old.fleet_id
