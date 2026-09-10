@@ -12,6 +12,7 @@ interface CreateFleetMemberAccountBody {
   full_name?: string;
   role?: RoleType;
   phone?: string;
+  app_origin?: string;
 }
 
 const ALLOWED_ORIGINS = [
@@ -45,30 +46,12 @@ function json(req: Request, body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: corsHeaders(req) });
 }
 
-function generateTempPassword(): string {
-  const bytes = new Uint8Array(18);
-  crypto.getRandomValues(bytes);
-  const encoded = btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-  return `Aa1!${encoded}`;
-}
-
-async function sendScannerSafePasswordSetupEmail(email: string): Promise<boolean> {
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/request-password-reset`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-    },
-    body: JSON.stringify({
-      email,
-      redirectTo: `${APP_URL.replace(/\/$/, "")}/auth/update-password`,
-    }),
-  });
-  return response.ok;
+function resolveAppOrigin(value: unknown): string {
+  const candidate = typeof value === "string" ? value.trim().replace(/\/$/, "") : "";
+  if (ALLOWED_ORIGINS.includes(candidate)) return candidate;
+  const configured = APP_URL.trim().replace(/\/$/, "");
+  if (ALLOWED_ORIGINS.includes(configured)) return configured;
+  return "https://www.e-samba.com";
 }
 
 function canCreateRole(callerRole: RoleType, targetRole: RoleType): boolean {
@@ -115,6 +98,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const fullName = body.full_name?.trim() ?? "";
   const role = body.role;
   const phone = body.phone?.trim() || null;
+  const appOrigin = resolveAppOrigin(body.app_origin);
 
   if (!UUID_RE.test(fleetId)) return json(req, { ok: false, error: "invalid_fleet_id" }, 400);
   if (!EMAIL_RE.test(email) || email.length > 320) return json(req, { ok: false, error: "invalid_email" }, 400);
@@ -153,21 +137,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if ((activeOrganizerCount ?? 0) >= 1) return json(req, { ok: false, error: "active_organizer_limit_reached" }, 409);
   }
 
-  const temporaryPassword = generateTempPassword();
-  const temporaryPasswordIssuedAt = new Date().toISOString();
   let existingAuthUserAttached = false;
   let userId: string | null = null;
 
-  const { data: authData, error: authErr } = await admin.auth.admin.createUser({
-    email,
-    password: temporaryPassword,
-    email_confirm: true,
-    app_metadata: {
-      must_set_password: true,
-      temporary_password_active: true,
-      temporary_password_issued_at: temporaryPasswordIssuedAt,
-    },
-    user_metadata: {
+  const { data: authData, error: authErr } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${appOrigin}/auth/callback`,
+    data: {
       full_name: fullName,
       phone,
       fleet_id: fleetId,
@@ -190,11 +165,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
       if (!userId) return json(req, { ok: false, error: "email_already_registered" }, 409);
       existingAuthUserAttached = true;
     } else {
-      return json(req, { ok: false, error: "auth_create_failed" }, 500);
+      return json(req, { ok: false, error: "auth_invite_failed" }, 502);
     }
   }
 
-  if (!userId) return json(req, { ok: false, error: "auth_create_failed" }, 500);
+  if (!userId) return json(req, { ok: false, error: "auth_invite_failed" }, 502);
 
   const cleanupUser = async () => {
     if (existingAuthUserAttached || !userId) return;
@@ -239,15 +214,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json(req, { ok: false, error: "membership_create_failed" }, 500);
   }
 
-  if (!existingAuthUserAttached) {
-    const emailSent = await sendScannerSafePasswordSetupEmail(email).catch(() => false);
-    if (!emailSent) {
-      await admin.from("flotte_adhesions").delete().eq("id", membershipData.id);
-      await cleanupUser();
-      return json(req, { ok: false, error: "password_setup_email_failed" }, 502);
-    }
-  }
-
   return json(req, {
     ok: true,
     user_id: userId,
@@ -255,9 +221,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
     email,
     fleet_id: fleetId,
     role,
-    login_url: `${APP_URL.replace(/\/$/, "")}/login`,
-    password_delivery: existingAuthUserAttached ? "existing_account" : "reset_email",
-    must_set_password: !existingAuthUserAttached,
+    login_url: `${appOrigin}/login`,
+    verification_redirect_url: `${appOrigin}/auth/callback`,
+    email_delivery: existingAuthUserAttached ? "existing_account" : "verification_invite",
+    email_verification_required: !existingAuthUserAttached,
     existing_auth_user_attached: existingAuthUserAttached,
   });
 });
