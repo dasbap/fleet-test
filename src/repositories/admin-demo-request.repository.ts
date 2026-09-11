@@ -64,7 +64,7 @@ export class AdminDemoRequestRepository {
     reason?: string | null;
     provisionedUserId?: string | null;
     invitationUrl?: string | null;
-  }): Promise<void> {
+  }): Promise<{ emailSent: boolean }> {
     const { error } = await supabase.rpc("admin_finalize_demo_request", {
       p_request_id: input.requestId,
       p_status: input.status,
@@ -73,6 +73,16 @@ export class AdminDemoRequestRepository {
       p_invitation_url: input.invitationUrl ?? null,
     });
     if (error) throwDemoRequestError(error);
+
+    const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+      "process-notification-queue",
+      { body: { request_id: input.requestId } },
+    );
+
+    if (emailError) return { emailSent: false };
+
+    const result = emailResult as { ok?: boolean; sent?: number } | null;
+    return { emailSent: result?.ok === true && (result.sent ?? 0) > 0 };
   }
 
   async updateAutoMode(enabled: boolean, decision: DemoRequestAutoDecision): Promise<void> {

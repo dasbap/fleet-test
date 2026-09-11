@@ -5,7 +5,6 @@ import { normalizeLoginRole } from "@/lib/mobile/mobileRoleBridge";
 import { mockAuthService } from "@/services/mock-auth.service";
 import type { AppRole } from "@/types/auth";
 
-/** Événement pour resynchroniser le provider mock après login / logout hors React. */
 export const MOCK_AUTH_CHANGED_EVENT = "esamba-mock-auth-changed";
 
 export function notifyMockAuthChanged(): void {
@@ -34,9 +33,6 @@ function isSupabaseNetworkError(error: unknown): boolean {
   return message.toLowerCase().includes("failed to fetch");
 }
 
-/**
- * Connexion : en mode mock, identifiant = email ou téléphone ; sinon email Supabase.
- */
 export async function signIn(
   identifier: string,
   password: string,
@@ -62,8 +58,6 @@ export async function signIn(
     });
     return { data, error };
   } catch (error) {
-    // Fallback robuste pour les comptes démo quand Supabase n'est pas accessible localement.
-    // Limité au mode développement pour éviter toute activation accidentelle en production.
     if (import.meta.env.DEV && isDemoAccount(normalizedIdentifier) && isSupabaseNetworkError(error)) {
       enableDemoAuthFallback();
       const { error: mockError } = mockAuthService.signInWithPassword(
@@ -119,6 +113,9 @@ export async function signUp(
   return { data, error };
 }
 
+type PasswordResetError = Error & { status?: number };
+type PasswordResetResult = { ok?: boolean; error?: string };
+
 export async function signOut() {
   if (isMockAuthEnabled()) {
     mockAuthService.clearSession();
@@ -129,25 +126,33 @@ export async function signOut() {
   return { error };
 }
 
-/**
- * Envoi d’un email de réinitialisation du mot de passe.
- */
 export async function requestPasswordReset(email: string, redirectTo: string) {
-  const normalizedEmail = email.trim();
-  return supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+  const normalizedEmail = email.trim().toLowerCase();
+  const { data, error } = await supabase.functions.invoke("request-password-reset", {
+    body: { email: normalizedEmail, redirectTo },
+  });
+
+  const payload = (data ?? {}) as PasswordResetResult;
+  if (!error && payload.ok === true) return { data: payload, error: null };
+
+  let status: number | undefined;
+  let message = payload.error ?? error?.message ?? "password_reset_failed";
+  const context = (error as { context?: unknown } | null)?.context;
+  if (context instanceof Response) {
+    status = context.status;
+    const contextPayload = (await context.clone().json().catch(() => null)) as PasswordResetResult | null;
+    if (contextPayload?.error) message = contextPayload.error;
+  }
+
+  const requestError = new Error(message) as PasswordResetError;
+  requestError.status = status;
+  return { data: payload, error: requestError };
 }
 
-/**
- * Mise à jour du mot de passe de la session courante (flux recovery).
- */
 export async function updateCurrentUserPassword(password: string) {
   return supabase.auth.updateUser({ password });
 }
 
-/**
- * Envoi d'un lien magique (connexion sans mot de passe).
- * redirectTo doit pointer vers /auth/callback pour l'échange PKCE.
- */
 export async function sendMagicLink(email: string, redirectTo: string) {
   const normalizedEmail = email.trim().toLowerCase();
   return supabase.auth.signInWithOtp({

@@ -4,6 +4,20 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": "vite",
+  "functions": {
+    "api/[...path].ts": {
+      "maxDuration": 15
+    },
+    "api/admin/generate-magic-link.ts": {
+      "maxDuration": 15
+    },
+    "api/admin/user-security.ts": {
+      "maxDuration": 15
+    },
+    "api/auth/me.ts": {
+      "maxDuration": 15
+    }
+  },
   "redirects": [
     {
       "source": "/:path*",
@@ -42,11 +56,6 @@
       "permanent": true
     },
     {
-      "source": "/fonctionnalites/:path*",
-      "destination": "https://marketing.e-samba.com/fonctionnalites/:path*",
-      "permanent": true
-    },
-    {
       "source": "/solutions/:path*",
       "destination": "https://marketing.e-samba.com/solutions/:path*",
       "permanent": true
@@ -74,19 +83,7 @@
       "destination": "/api/[...path]"
     },
     {
-      "source": "/api/gps/ingest",
-      "destination": "/api/[...path]"
-    },
-    {
-      "source": "/api/admin/generate-magic-link",
-      "destination": "/api/[...path]"
-    },
-    {
-      "source": "/api/demo/magic-link",
-      "destination": "/api/[...path]"
-    },
-    {
-      "source": "/api/auth/clear-password-marker",
+      "source": "/api/billing/checkout",
       "destination": "/api/[...path]"
     },
     {
@@ -94,15 +91,55 @@
       "destination": "/api/[...path]"
     },
     {
+      "source": "/api/billing/mobile-money/initiate",
+      "destination": "/api/[...path]"
+    },
+    {
       "source": "/api/billing/notch/initiate",
       "destination": "/api/[...path]"
     },
     {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
+      "source": "/api/billing/notch/reconcile",
+      "destination": "/api/[...path]"
     },
     {
-      "source": "/:path*",
+      "source": "/api/billing/snapshot",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/payments/mobile-money/initiate",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/webhooks/payment",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/webhooks/payments/inbound",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/auth/clear-password-marker",
+      "destination": "/api/auth/me?operation=clear-password-marker"
+    },
+    {
+      "source": "/api/demo/magic-link",
+      "destination": "/api/admin/generate-magic-link"
+    },
+    {
+      "source": "/api/demo/request",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/terrain/shift-close",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/api/gps/ingest",
+      "destination": "/api/[...path]"
+    },
+    {
+      "source": "/((?!api/)(?!.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }
   ],
@@ -138,7 +175,7 @@
         },
         {
           "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=()"
+          "value": "camera=(), microphone=(), geolocation=(self)"
         },
         {
           "key": "Content-Security-Policy",

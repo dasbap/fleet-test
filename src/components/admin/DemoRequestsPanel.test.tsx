@@ -75,7 +75,9 @@ describe("DemoRequestsPanel", () => {
       <DemoRequestsPanel onCreateAccess={vi.fn()} onReloadSessions={vi.fn()} />
     );
 
-    expect(screen.getByText(/migration des demandes demo/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/migration des demandes utilisateurs/i)
+    ).toBeInTheDocument();
   });
 
   it("met a jour visuellement le mode automatique des qu'un admin coche le switch", () => {

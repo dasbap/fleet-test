@@ -136,7 +136,7 @@ BEGIN
   PERFORM public.billing_start_trial(v_fleet_id, 30);
 
   INSERT INTO vehicules (fleet_id, registration, current_km)
-  VALUES (v_fleet_id, 'LIM-1', 1001);
+  VALUES (v_fleet_id, 'LIM001', 1001);
 
   v_ctx := public.get_fleet_billing_context_internal(v_fleet_id);
   IF (v_ctx->>'vehicle_count')::int <> 1 THEN
@@ -145,7 +145,7 @@ BEGIN
 
   BEGIN
     INSERT INTO vehicules (fleet_id, registration, current_km)
-    VALUES (v_fleet_id, 'LIM-2', 2000);
+    VALUES (v_fleet_id, 'LIM002', 2000);
     RAISE EXCEPTION 'attendu: limite_vehicules_plan_atteinte';
   EXCEPTION
     WHEN OTHERS THEN

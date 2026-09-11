@@ -1,1 +1,1 @@
-export { default as RolesHubScreen } from "./screens/RolesHubScreen";
+export { default as RolesHubScreen } from "./screens/RolesHubWithRequests";

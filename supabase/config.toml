@@ -53,7 +53,7 @@ max_client_conn = 100
 [db.migrations]
 # Si désactivé, les migrations seront ignorées pendant un `db push` ou `db reset`.
 enabled = true
-# Spécifie une liste ordonnée de fichiers de schéma décrivant votre base.
+# Spécifie une liste ordonnée de fichiers de schéma décrivant la base.
 # Prend en charge les motifs glob relatifs au dossier supabase : "./schemas/*.sql"
 schema_paths = []
 
@@ -83,7 +83,7 @@ enabled = true
 
 [studio]
 enabled = true
-# Port à utiliser pour Supabase Studio.
+# Port à utiliser pour l’URL de Studio.
 port = 54323
 # URL externe du serveur API auquel le frontend se connecte.
 api_url = "http://127.0.0.1"
@@ -163,7 +163,10 @@ additional_redirect_urls = [
   "http://localhost:8080/**",
   "http://localhost:8080/auth",
   "http://smart-fleet-africa.vercel.app/**",
-  "https://*.vercel.app/**",
+  "https://fleet-test-gamma.vercel.app/**",
+  "https://fleet-test-gamma.vercel.app/auth/callback",
+  "https://fleet-test-gamma.vercel.app/auth/update-password",
+  "https://fleet-test-gamma.vercel.app/demo/onboarding",
   "https://127.0.0.1:3000",
   "https://app.e-samba.com/**",
   "https://e-samba.com/**",

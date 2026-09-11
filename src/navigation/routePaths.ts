@@ -152,8 +152,8 @@ export const ROUTE_PATHS = {
   dashboardAdminUsers: "/dashboard/admin/users",
   /** Attribution manuelle des abonnements par super administrateur. */
   dashboardAdminSubscriptions: "/dashboard/admin/subscriptions",
-  /** Administration des comptes de demonstration. */
-  dashboardAdminDemo: "/dashboard/admin/demo",
+  /** Administration centralisée des utilisateurs et accès. */
+  dashboardAdminDemo: "/dashboard/admin/utilisateurs",
 } as const;
 
 /** Hub conducteur et sous-routes (scan QR, etc.). */

@@ -10,8 +10,8 @@ import { scheduleDeferredMainThreadWork } from "@/lib/performance/deferredMainTh
 import App from "./App.tsx";
 
 const ACTIVE_FLEET_STORAGE_KEY = "esamba.active_fleet_id";
-
-/** Délai max pour i18n (fichiers /locales/…) — évite un écran noir infini si le réseau bloque (LAN, VPN, pare-feu). */
+const VITE_PRELOAD_RECOVERY_KEY = "esamba.vite_preload_recovery_at";
+const VITE_PRELOAD_RECOVERY_WINDOW_MS = 30_000;
 const I18N_READY_TIMEOUT_MS = 35_000;
 
 function escapeHtmlForBootstrap(text: string): string {
@@ -47,7 +47,7 @@ function clearInvalidActiveFleetStorage(): void {
       localStorage.removeItem(ACTIVE_FLEET_STORAGE_KEY);
     }
   } catch {
-    /* stockage indisponible */
+    void 0;
   }
 }
 
@@ -70,7 +70,22 @@ function unregisterProtectedVercelServiceWorkers(): void {
     });
 }
 
-// En dev : log des requêtes Supabase en échec (URL = table ou RPC) pour diagnostic
+window.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault();
+  const now = Date.now();
+  let previousRecovery = 0;
+  try {
+    previousRecovery = Number(sessionStorage.getItem(VITE_PRELOAD_RECOVERY_KEY) ?? "0");
+    if (Number.isFinite(previousRecovery) && now - previousRecovery < VITE_PRELOAD_RECOVERY_WINDOW_MS) {
+      return;
+    }
+    sessionStorage.setItem(VITE_PRELOAD_RECOVERY_KEY, String(now));
+  } catch {
+    void 0;
+  }
+  window.location.reload();
+});
+
 if (import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL) {
   const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, "");
   const realFetch = window.fetch;
@@ -122,7 +137,6 @@ const bootstrap = async () => {
   clearInvalidActiveFleetStorage();
 
   try {
-    // Sentry (`instrument`) est chargé après le 1er rendu : son gros chunk ne doit pas bloquer i18n + React sur réseau lent / LAN.
     void withTimeout(
       i18nReady,
       I18N_READY_TIMEOUT_MS,
@@ -154,7 +168,6 @@ const bootstrap = async () => {
       unregisterProtectedVercelServiceWorkers();
     }
 
-    // Analytics est différé en production pour préserver le LCP/INP.
     if (import.meta.env.PROD) {
       scheduleDeferredMainThreadWork(() => {
         void import("@/lib/analytics")
@@ -167,7 +180,6 @@ const bootstrap = async () => {
       }, { delayMs: 8_000, idleTimeoutMs: 5_000 });
     }
 
-    // PWA est chargée après load avec un délai pour éviter la compétition réseau initiale.
     if (import.meta.env.PROD && !isProtectedVercelDeployment()) {
       window.addEventListener("load", () => {
         scheduleDeferredMainThreadWork(() => {

@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import type { DemoSession } from "@/hooks/useAdminDemoAccounts";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
 
@@ -152,14 +153,18 @@ export function DemoSessionsPanel({
   onGenerateMagicLink,
 }: DemoSessionsPanelProps) {
   const { toast } = useToast();
+  const { isSuperAdmin, isLoading: isRoleLoading } = useRoleAccess();
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
   const [expirationDraft, setExpirationDraft] = useState("");
 
   const filtered = sessions.filter((s) => {
-    if (filter === "active" && !s.is_active) return false;
-    if (filter === "inactive" && s.is_active) return false;
+    const effectivelyActive =
+      s.is_active &&
+      (!s.expires_at || new Date(s.expires_at).getTime() > Date.now());
+    if (filter === "active" && !effectivelyActive) return false;
+    if (filter === "inactive" && effectivelyActive) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -171,8 +176,11 @@ export function DemoSessionsPanel({
 
   async function withBusy(userId: string, action: () => Promise<unknown>) {
     setActionInProgress(userId);
-    await action();
-    setActionInProgress(null);
+    try {
+      await action();
+    } finally {
+      setActionInProgress(null);
+    }
   }
 
   async function handleGenerateLink(session: DemoSession) {
@@ -187,6 +195,12 @@ export function DemoSessionsPanel({
         toast({
           title: "Lien genere et copie",
           description: `${url.slice(0, 60)}...`,
+        });
+      } else {
+        toast({
+          title: "Lien non genere",
+          description: "Le compte doit etre actif et non expire.",
+          variant: "destructive",
         });
       }
     });
@@ -221,13 +235,17 @@ export function DemoSessionsPanel({
     );
   }
 
-  const activeCount = sessions.filter((s) => s.is_active).length;
+  const activeCount = sessions.filter(
+    (s) =>
+      s.is_active &&
+      (!s.expires_at || new Date(s.expires_at).getTime() > Date.now()),
+  ).length;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Sessions demo</h2>
+          <h2 className="text-lg font-semibold">Sessions utilisateurs</h2>
           <p className="text-sm text-muted-foreground">
             {sessions.length} compte{sessions.length > 1 ? "s" : ""} -{" "}
             {activeCount} actif{activeCount > 1 ? "s" : ""}
@@ -309,22 +327,29 @@ export function DemoSessionsPanel({
                   colSpan={9}
                   className="text-center text-muted-foreground py-10"
                 >
-                  {search ? "Aucun resultat" : "Aucune session demo"}
+                  {search ? "Aucun resultat" : "Aucune session utilisateur"}
                 </TableCell>
               </TableRow>
             )}
 
             {filtered.map((session) => {
+              const effectivelyActive =
+                session.is_active &&
+                (!session.expires_at ||
+                  new Date(session.expires_at).getTime() > Date.now());
               const expiry = formatExpiry(
                 session.expires_at,
-                session.is_active
+                effectivelyActive
               );
+              const maxReactivateAt = new Date(session.created_at);
+              maxReactivateAt.setMonth(maxReactivateAt.getMonth() + 1);
+              const canReactivate = maxReactivateAt.getTime() > Date.now();
               const busy = actionInProgress === session.user_id;
 
               return (
                 <TableRow
                   key={session.user_id}
-                  className={cn(!session.is_active && "opacity-60")}
+                  className={cn(!effectivelyActive && "opacity-60")}
                 >
                   <TableCell className="font-mono text-xs max-w-[160px] truncate">
                     {session.email}
@@ -363,12 +388,27 @@ export function DemoSessionsPanel({
 
                   <TableCell>
                     {session.fleet_id ? (
-                      <Button asChild variant="outline" size="sm" className="gap-2">
-                        <Link to={ROUTE_PATHS.dashboardAdminSubscriptions}>
-                          <CreditCard className="h-4 w-4" aria-hidden />
-                          Gérer
-                        </Link>
-                      </Button>
+                      isRoleLoading ? (
+                        <Button variant="outline" size="sm" disabled>
+                          Chargement...
+                        </Button>
+                      ) : isSuperAdmin ? (
+                        <Button asChild variant="outline" size="sm" className="gap-2">
+                          <Link
+                            to={`${ROUTE_PATHS.dashboardAdminSubscriptions}?fleet=${encodeURIComponent(session.fleet_id)}`}
+                          >
+                            <CreditCard className="h-4 w-4" aria-hidden />
+                            Gérer
+                          </Link>
+                        </Button>
+                      ) : (
+                        <span
+                          className="text-xs text-muted-foreground"
+                          title="Seul le super administrateur peut attribuer un abonnement."
+                        >
+                          Super admin requis
+                        </span>
+                      )
                     ) : (
                       <span className="text-muted-foreground">
                         Après création flotte
@@ -433,12 +473,14 @@ export function DemoSessionsPanel({
                           </DropdownMenuItem>
                         )}
 
-                        <DropdownMenuItem
-                          onClick={() => void handleGenerateLink(session)}
-                        >
-                          <Link2 className="h-4 w-4 mr-2" />
-                          Nouveau magic link
-                        </DropdownMenuItem>
+                        {effectivelyActive && (
+                          <DropdownMenuItem
+                            onClick={() => void handleGenerateLink(session)}
+                          >
+                            <Link2 className="h-4 w-4 mr-2" />
+                            Nouveau magic link
+                          </DropdownMenuItem>
+                        )}
 
                         <DropdownMenuSeparator />
 
@@ -499,7 +541,7 @@ export function DemoSessionsPanel({
                           </AlertDialogContent>
                         </AlertDialog>
 
-                        {session.is_active ? (
+                        {effectivelyActive ? (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <DropdownMenuItem
@@ -535,7 +577,7 @@ export function DemoSessionsPanel({
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                        ) : (
+                        ) : canReactivate ? (
                           <DropdownMenuItem
                             onClick={() =>
                               void withBusy(session.user_id, () =>
@@ -545,6 +587,11 @@ export function DemoSessionsPanel({
                           >
                             <UserCheck className="h-4 w-4 mr-2" />
                             Reactiver
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem disabled>
+                            <UserX className="h-4 w-4 mr-2" />
+                            Periode maximale atteinte
                           </DropdownMenuItem>
                         )}
 

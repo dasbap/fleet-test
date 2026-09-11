@@ -34,6 +34,7 @@ import {
   SettingsSection,
   SyncStatusIndicator,
 } from "@/features/account/components";
+import { DriverLegalComplianceForm } from "@/features/account/components/DriverLegalComplianceForm";
 import { useOfflineSyncStatus } from "@/hooks/useOfflineSyncStatus";
 import { cn } from "@/lib/utils";
 import {
@@ -59,13 +60,9 @@ function initialsFromName(name: string) {
     .slice(0, 2) || "?";
 }
 
-/**
- * Écran Compte mobile — profil, rôle, flotte, préférences, aide, déconnexion.
- */
 export default function MobileAccountScreen() {
   const navigate = useNavigate();
-  const { user, role, memberships, userFleetId, isLoading: authLoading } =
-    useAuth();
+  const { user, role, memberships, userFleetId, isLoading: authLoading } = useAuth();
   const { fleetById, isLoading: fleetsLoading } = useUserFleets(memberships);
   const prefs = useAccountPreferences();
   const offlineSync = useOfflineSyncStatus();
@@ -74,16 +71,9 @@ export default function MobileAccountScreen() {
   const fullName = useMemo(() => displayNameFromUser(user), [user]);
   const initials = useMemo(() => initialsFromName(fullName), [fullName]);
 
-  const fleetName = userFleetId
-    ? fleetById[userFleetId]?.name ?? "—"
-    : "—";
+  const fleetName = userFleetId ? fleetById[userFleetId]?.name ?? "—" : "—";
+  const roleLabel = role != null ? FLEET_ROLE_LABELS[role as FleetRole] : "Aucun rôle actif";
 
-  const roleLabel =
-    role != null
-      ? FLEET_ROLE_LABELS[role as FleetRole]
-      : "Aucun rôle actif";
-
-  /** Simulation courte de synchronisation au chargement (remplaçable par worker/API). */
   useEffect(() => {
     let cancelled = false;
     const timer = window.setTimeout(() => {
@@ -119,33 +109,19 @@ export default function MobileAccountScreen() {
     }
   };
 
-  if (authLoading || (memberships.length > 0 && fleetsLoading)) {
-    return <PageLoader />;
-  }
-
-  if (!user) {
-    return null;
-  }
+  if (authLoading || (memberships.length > 0 && fleetsLoading)) return <PageLoader />;
+  if (!user) return null;
 
   return (
     <div className={cn(mobileScreenRootColumn, "flex flex-col gap-7 pb-8")}>
       <div>
         <h1 className={mobileScreenTitle}>Compte</h1>
-        <p className={cn(mobileScreenSubtitle, "mt-1")}>
-          Profil et paramètres Flotte E-Samba
-        </p>
+        <p className={cn(mobileScreenSubtitle, "mt-1")}>Profil et paramètres Flotte E-Samba</p>
       </div>
 
-      <ProfileCard
-        displayName={fullName}
-        email={user.email ?? null}
-        initials={initials}
-      />
+      <ProfileCard displayName={fullName} email={user.email ?? null} initials={initials} />
 
-      <SettingsSection
-        title="Identité & organisation"
-        description="Rôle et flotte rattachée à votre session."
-      >
+      <SettingsSection title="Identité & organisation" description="Rôle et flotte rattachée à votre session.">
         <SettingsRow>
           <div className="flex items-start gap-3">
             <UserCircle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
@@ -163,9 +139,7 @@ export default function MobileAccountScreen() {
               <p className="text-muted-foreground truncate text-xs">
                 {fleetName}
                 {userFleetId && (
-                  <span className="block font-mono text-[10px] opacity-70">
-                    ID flotte : {userFleetId.slice(0, 8)}…
-                  </span>
+                  <span className="block font-mono text-[10px] opacity-70">ID flotte : {userFleetId.slice(0, 8)}…</span>
                 )}
               </p>
             </div>
@@ -173,27 +147,17 @@ export default function MobileAccountScreen() {
         </SettingsRow>
       </SettingsSection>
 
+      {role === "driver" ? <DriverLegalComplianceForm userId={user.id} /> : null}
+
       <SettingsSection title="Préférences" description="Notifications et langue d’affichage.">
         <SettingsRow>
-          <NotificationPreferenceSwitch
-            checked={prefs.notificationsEnabled}
-            onCheckedChange={(v) => void prefs.setNotifications(v)}
-          />
+          <NotificationPreferenceSwitch checked={prefs.notificationsEnabled} onCheckedChange={(v) => void prefs.setNotifications(v)} />
         </SettingsRow>
         <SettingsRow className="flex-col items-stretch gap-3">
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Label htmlFor="account-lang" className="text-sm font-medium">
-              Langue
-            </Label>
-            <Select
-              value={prefs.language}
-              onValueChange={(v) =>
-                void prefs.setLanguage(v as "fr" | "en")
-              }
-            >
-              <SelectTrigger id="account-lang" className="w-full sm:w-[200px]">
-                <SelectValue />
-              </SelectTrigger>
+            <Label htmlFor="account-lang" className="text-sm font-medium">Langue</Label>
+            <Select value={prefs.language} onValueChange={(v) => void prefs.setLanguage(v as "fr" | "en")}>
+              <SelectTrigger id="account-lang" className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="fr">Français</SelectItem>
                 <SelectItem value="en">English</SelectItem>
@@ -201,28 +165,18 @@ export default function MobileAccountScreen() {
             </Select>
           </div>
           <p className="text-muted-foreground text-xs">
-            Le changement de langue sera appliqué à l’application une fois l’i18n
-            branché côté API.
+            Le changement de langue sera appliqué à l’application une fois l’i18n branché côté API.
           </p>
         </SettingsRow>
       </SettingsSection>
 
-      <SettingsSection
-        title="Synchronisation"
-        description="État réseau et file d’attente hors ligne."
-      >
-        <SettingsRow>
-          <SyncStatusIndicator syncStatus={offlineSync.displayStatus} />
-        </SettingsRow>
+      <SettingsSection title="Synchronisation" description="État réseau et file d’attente hors ligne.">
+        <SettingsRow><SyncStatusIndicator syncStatus={offlineSync.displayStatus} /></SettingsRow>
       </SettingsSection>
 
       <SettingsSection title="Aide & confidentialité">
         <SettingsRow>
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-2 text-left"
-            onClick={() => navigate(ACCOUNT_EXTERNAL_LINKS.helpCenter)}
-          >
+          <button type="button" className="flex w-full items-center justify-between gap-2 text-left" onClick={() => navigate(ACCOUNT_EXTERNAL_LINKS.helpCenter)}>
             <span className="flex items-center gap-3">
               <HelpCircle className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm font-medium">Centre d’aide</span>
@@ -231,29 +185,17 @@ export default function MobileAccountScreen() {
           </button>
         </SettingsRow>
         <SettingsRow>
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-2 text-left"
-            onClick={() => navigate(ACCOUNT_EXTERNAL_LINKS.privacyPolicy)}
-          >
+          <button type="button" className="flex w-full items-center justify-between gap-2 text-left" onClick={() => navigate(ACCOUNT_EXTERNAL_LINKS.privacyPolicy)}>
             <span className="flex items-center gap-3">
               <Shield className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm font-medium">
-                Politique de confidentialité
-              </span>
+              <span className="text-sm font-medium">Politique de confidentialité</span>
             </span>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </button>
         </SettingsRow>
       </SettingsSection>
 
-      <Button
-        type="button"
-        variant="destructive"
-        className="w-full gap-2"
-        disabled={loggingOut}
-        onClick={() => void handleLogout()}
-      >
+      <Button type="button" variant="destructive" className="w-full gap-2" disabled={loggingOut} onClick={() => void handleLogout()}>
         <LogOut className="h-4 w-4" aria-hidden />
         {loggingOut ? "Déconnexion…" : "Déconnexion"}
       </Button>

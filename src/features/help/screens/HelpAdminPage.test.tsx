@@ -18,10 +18,9 @@ describe("HelpAdminPage", () => {
     expect(screen.getByText(/chaque membre suit le forfait de la flotte/i)).toBeInTheDocument();
     expect(screen.getByText(/fonctionnalites disponibles viennent du forfait/i)).toBeInTheDocument();
     expect(screen.getByText(/un chauffeur reste chauffeur/i)).toBeInTheDocument();
-    expect(screen.getByText(/demande utilisateur ou etre ouverte par un admin/i)).toBeInTheDocument();
-    expect(screen.getByText(/partir proprement avec les comptes crees depuis cette demo/i)).toBeInTheDocument();
-    expect(screen.getByText(/ne se transforme pas en compte client/i)).toBeInTheDocument();
-    expect(screen.getByText(/jusqu'a un mois apres la creation/i)).toBeInTheDocument();
+    expect(screen.getByText(/demande utilisateur ou être ouvert par un admin/i)).toBeInTheDocument();
+    expect(screen.getByText(/accès associés doivent être retirés proprement/i)).toBeInTheDocument();
+    expect(screen.getByText(/jusqu'à un mois après la création/i)).toBeInTheDocument();
     expect(screen.queryByText(/limite importante/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/ne doit pas remplacer le role de l'organisateur/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/parcours admin utiles/i)).not.toBeInTheDocument();

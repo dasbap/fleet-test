@@ -1,48 +1,23 @@
-/**
- * Edge Function : demo-magic-link
- *
- * Deux actions :
- *
- *   action: "create"
- *     → Nécessite Authorization: Bearer <ADMIN_SECRET> (appelé uniquement depuis BFF Vercel)
- *     → Crée un token UUID en base via demo_create_magic_link()
- *     → Retourne magic_url = APP_URL/demo/access?token=<UUID>
- *     → Rate-limit : 10 créations/heure par token admin (via demo_check_rate_limit)
- *
- *   action: "validate"
- *     → Public (appelé depuis DemoMagicLinkPage côté client)
- *     → Valide le token via demo_validate_magic_link()
- *     → Génère un Supabase Auth magic link (OTP) pour authentifier le prospect
- *     → Rate-limit : 20 tentatives/heure par token UUID (via demo_check_rate_limit)
- *     → Retourne { ok, magic_link } → le client redirige vers magic_link
- *
- * Variables ENV :
- *   - ADMIN_SECRET
- *   - SUPABASE_URL
- *   - SUPABASE_SERVICE_ROLE_KEY
- *   - APP_URL
- */
-
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const ADMIN_SECRET     = Deno.env.get("ADMIN_SECRET") ?? "";
-const SUPABASE_URL     = Deno.env.get("SUPABASE_URL") ?? "";
+const ADMIN_SECRET = Deno.env.get("ADMIN_SECRET") ?? "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const APP_URL          = Deno.env.get("APP_URL") ?? "https://app.e-samba.com";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+const APP_URL = Deno.env.get("APP_URL") ?? "https://app.e-samba.com";
+const UPSTREAM_TIMEOUT_MS = 3_000;
 
 interface CreateBody {
-  action:   "create";
-  user_id:  string;
+  action: "create";
+  user_id: string;
   fleet_id?: string | null;
-  email:    string;
-  label?:   string;
+  email: string;
+  label?: string;
 }
 
 interface ValidateBody {
   action: "validate";
-  token:  string;
+  token: string;
+  app_origin?: string;
 }
 
 type RequestBody = CreateBody | ValidateBody;
@@ -61,23 +36,25 @@ interface ValidateResult {
   error?: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 const ALLOWED_ORIGINS = [
   "https://www.e-samba.com",
   "https://app.e-samba.com",
+  "https://fleet-test-gamma.vercel.app",
   "capacitor://localhost",
   "http://localhost:5173",
+  "http://localhost:8080",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:8080",
 ];
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
-    "Access-Control-Allow-Origin":  allowedOrigin,
+    "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Vary": "Origin",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
+    Vary: "Origin",
   };
 }
 
@@ -106,148 +83,121 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-// ─── Handler ──────────────────────────────────────────────────────────────────
+function resolveAppOrigin(value: unknown): string {
+  const candidate = typeof value === "string" ? value.trim().replace(/\/$/, "") : "";
+  if (ALLOWED_ORIGINS.includes(candidate)) return candidate;
+  const configured = APP_URL.trim().replace(/\/$/, "");
+  if (ALLOWED_ORIGINS.includes(configured)) return configured;
+  return "https://www.e-samba.com";
+}
+
+async function boundedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders(req) });
-  }
-
-  if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
+  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, req);
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return json({ ok: false, error: "server_configuration_error" }, 503, req);
 
   let body: RequestBody;
   try {
     body = await req.json() as RequestBody;
   } catch {
-    return json({ ok: false, error: "invalid_json" }, 400);
+    return json({ ok: false, error: "invalid_json" }, 400, req);
   }
 
   if (!body.action || !["create", "validate"].includes(body.action)) {
-    return json({ ok: false, error: "invalid_action" }, 400);
+    return json({ ok: false, error: "invalid_action" }, 400, req);
   }
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    db: { retry: false },
+    global: { fetch: boundedFetch },
   });
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // ACTION : create
-  // ─────────────────────────────────────────────────────────────────────────
   if (body.action === "create") {
     const authHeader = req.headers.get("Authorization") ?? "";
-    const token      = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
     if (!ADMIN_SECRET || !timingSafeEqual(token, ADMIN_SECRET)) {
-      return json({ ok: false, error: "unauthorized" }, 401);
+      return json({ ok: false, error: "unauthorized" }, 401, req);
     }
 
     const { user_id, fleet_id, email, label } = body as CreateBody;
+    if (!user_id || !email) return json({ ok: false, error: "missing_fields" }, 400, req);
 
-    if (!user_id || !email) {
-      return json({ ok: false, error: "missing_fields: user_id, email requis" }, 400);
-    }
-
-    // Rate-limit : 10 créations/heure pour ce token admin (hash du token pour la clé)
     const tokenHash = await hashSensitiveValue(token);
-    const { data: rlData } = await admin.rpc("demo_check_rate_limit", {
-      p_key:       `create_magic_link:${tokenHash}`,
+    const { data: rlData, error: rlError } = await admin.rpc("demo_check_rate_limit", {
+      p_key: `create_magic_link:${tokenHash}`,
       p_max_count: 10,
     });
+    if (rlError) return json({ ok: false, error: "rate_limit_check_failed" }, 503, req);
 
     const rl = rlData as RateResult;
-    if (!rl?.ok) {
-      console.warn(`[demo-magic-link] Rate limit create: ${rl?.error}`);
-      return json({ ok: false, error: "rate_limit_exceeded", reset_at: rl?.reset_at }, 429);
-    }
+    if (!rl?.ok) return json({ ok: false, error: "rate_limit_exceeded", reset_at: rl?.reset_at }, 429, req);
 
-    // Créer le magic link en base
     const { data: linkData, error: linkErr } = await admin.rpc("demo_create_magic_link", {
-      p_user_id:  user_id,
+      p_user_id: user_id,
       p_fleet_id: fleet_id ?? null,
-      p_email:    email,
-      p_label:    label ?? null,
+      p_email: email,
+      p_label: label ?? null,
     });
 
-    if (linkErr || !(linkData as { ok: boolean })?.ok) {
-      console.error("[demo-magic-link] demo_create_magic_link error:", linkErr?.message);
-      return json({ ok: false, error: linkErr?.message ?? "create_failed" }, 500);
+    if (linkErr || !(linkData as { ok?: boolean })?.ok) {
+      console.error("[demo-magic-link] demo_create_magic_link error", linkErr?.message);
+      return json({ ok: false, error: "create_failed" }, 500, req);
     }
 
     const link = linkData as { ok: boolean; token: string };
-    const magicUrl = `${APP_URL}/demo/access?token=${link.token}`;
-
-    console.log(`[demo-magic-link] Created for ${email} -> ${link.token.slice(0, 8)}...`);
-    return json({ ok: true, magic_url: magicUrl });
+    return json({ ok: true, magic_url: `${resolveAppOrigin(APP_URL)}/demo/access?token=${link.token}` }, 200, req);
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // ACTION : validate
-  // ─────────────────────────────────────────────────────────────────────────
-  if (body.action === "validate") {
-    const { token } = body as ValidateBody;
+  const { token, app_origin } = body as ValidateBody;
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!token || !UUID_RE.test(token)) return json({ ok: false, error: "token_not_found" }, 404, req);
 
-    if (!token) {
-      return json({ ok: false, error: "token_required" }, 400);
-    }
+  const { data: rlData, error: rlError } = await admin.rpc("demo_check_rate_limit", {
+    p_key: `validate_token:${await hashSensitiveValue(token)}`,
+    p_max_count: 20,
+  });
+  if (rlError) return json({ ok: false, error: "rate_limit_check_failed" }, 503, req);
 
-    // Validation UUID format basique (évite injections / requêtes inutiles)
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!UUID_RE.test(token)) {
-      return json({ ok: false, error: "token_not_found" }, 404);
-    }
+  const rl = rlData as RateResult;
+  if (!rl?.ok) return json({ ok: false, error: "rate_limit_exceeded", reset_at: rl?.reset_at }, 429, req);
 
-    // Rate-limit : 20 tentatives/heure par token (protection brute-force)
-    const { data: rlData } = await admin.rpc("demo_check_rate_limit", {
-      p_key:       `validate_token:${await hashSensitiveValue(token)}`,
-      p_max_count: 20,
-    });
-
-    const rl = rlData as RateResult;
-    if (!rl?.ok) {
-      console.warn(`[demo-magic-link] Rate limit validate token: ${token.slice(0, 8)}…`);
-      return json({ ok: false, error: "rate_limit_exceeded", reset_at: rl?.reset_at }, 429);
-    }
-
-    // Valider le token en base
-    const { data: validateData, error: validateErr } = await admin.rpc("demo_validate_magic_link", {
-      p_token: token,
-    });
-
-    if (validateErr) {
-      console.error("[demo-magic-link] demo_validate_magic_link error:", validateErr.message);
-      return json({ ok: false, error: "validation_error" }, 500);
-    }
-
-    const result = validateData as ValidateResult;
-
-    if (!result.ok) {
-      console.warn(`[demo-magic-link] Validate failed: ${result.error} — token: ${token.slice(0, 8)}…`);
-      return json({ ok: false, error: result.error }, 404);
-    }
-
-    // Générer un Supabase Auth magic link (OTP) pour le prospect
-    const redirectTo = `${APP_URL}/demo/onboarding`;
-
-    const { data: otpData, error: otpErr } = await admin.auth.admin.generateLink({
-      type:       "magiclink",
-      email:      result.email!,
-      options: { redirectTo },
-    });
-
-    if (otpErr || !otpData?.properties?.action_link) {
-      console.error("[demo-magic-link] generateLink error:", otpErr?.message);
-      return json({ ok: false, error: "auth_link_failed" }, 500);
-    }
-
-    console.log(`[demo-magic-link] Validated for ${result.email} → onboarding`);
-    return json({
-      ok:         true,
-      magic_link: otpData.properties.action_link,
-      fleet_id:   result.fleet_id,
-    });
+  const { data: validateData, error: validateErr } = await admin.rpc("demo_validate_magic_link", {
+    p_token: token,
+  });
+  if (validateErr) {
+    console.error("[demo-magic-link] demo_validate_magic_link error", validateErr.message);
+    return json({ ok: false, error: "validation_error" }, 500, req);
   }
 
-  return json({ ok: false, error: "unknown_action" }, 400);
+  const result = validateData as ValidateResult;
+  if (!result.ok || !result.email) return json({ ok: false, error: result.error ?? "token_not_found" }, 404, req);
+
+  const redirectTo = `${resolveAppOrigin(app_origin)}/demo/onboarding`;
+  const { data: otpData, error: otpErr } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email: result.email,
+    options: { redirectTo },
+  });
+
+  if (otpErr || !otpData?.properties?.action_link) {
+    console.error("[demo-magic-link] generateLink error", otpErr?.message);
+    return json({ ok: false, error: "auth_link_failed" }, 500, req);
+  }
+
+  return json({
+    ok: true,
+    magic_link: otpData.properties.action_link,
+    fleet_id: result.fleet_id,
+  }, 200, req);
 });

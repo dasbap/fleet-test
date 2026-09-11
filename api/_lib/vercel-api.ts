@@ -128,12 +128,22 @@ export function extractBearerToken(req: VercelRequest): string | null {
   return token.length > 0 ? token : null;
 }
 
+const DEFAULT_SUPABASE_TIMEOUT_MS = 5_000;
+
+function boundedSupabaseFetch(
+  input: Parameters<typeof fetch>[0],
+  init?: Parameters<typeof fetch>[1],
+): Promise<Response> {
+  return fetchWithTimeout(input, init, DEFAULT_SUPABASE_TIMEOUT_MS);
+}
+
 export function createUserClient(
   env: SupabaseEnv,
   accessToken: string
 ): SupabaseClient {
   return createClient(env.url, env.anonKey, {
     global: {
+      fetch: boundedSupabaseFetch,
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -151,6 +161,9 @@ export function createAdminClient(env: SupabaseEnv): SupabaseClient {
   }
 
   return createClient(env.url, env.serviceRoleKey, {
+    global: {
+      fetch: boundedSupabaseFetch,
+    },
     auth: {
       persistSession: false,
       autoRefreshToken: false,

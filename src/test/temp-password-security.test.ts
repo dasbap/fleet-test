@@ -2,24 +2,17 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("Temporary password security", () => {
-  it("conserve au moins 144 bits aleatoires dans les chemins de provisioning production", () => {
+  it("conserve au moins 144 bits aleatoires dans les chemins qui utilisent encore un mot de passe temporaire", () => {
     const prospectSource = readFileSync(
       "supabase/functions/create-prospect-account/index.ts",
       "utf8",
     );
-    const fleetMemberSource = readFileSync(
-      "supabase/functions/create-fleet-member-account/index.ts",
-      "utf8",
-    );
     const adminSource = readFileSync("api/admin/create-user.ts", "utf8");
 
-    for (const source of [prospectSource, fleetMemberSource]) {
-      expect(source).toContain("new Uint8Array(18)");
-      expect(source).toContain("crypto.getRandomValues(bytes)");
-      expect(source).toContain("btoa(String.fromCharCode(...bytes))");
-      expect(source).not.toContain("byte % alphabet.length");
-    }
-
+    expect(prospectSource).toContain("new Uint8Array(18)");
+    expect(prospectSource).toContain("crypto.getRandomValues(bytes)");
+    expect(prospectSource).toContain("btoa(String.fromCharCode(...bytes))");
+    expect(prospectSource).not.toContain("byte % alphabet.length");
     expect(adminSource).toContain('randomBytes(18).toString("base64url")');
   });
 
@@ -32,15 +25,17 @@ describe("Temporary password security", () => {
     expect(adminSource).not.toContain("providedPassword || generateTempPassword()");
   });
 
-  it("ne renvoie plus de mot de passe temporaire lors de la creation d'un membre de flotte", () => {
+  it("provisionne un membre de flotte par invitation verifiee sans mot de passe temporaire", () => {
     const fleetMemberSource = readFileSync(
       "supabase/functions/create-fleet-member-account/index.ts",
       "utf8",
     );
 
-    expect(fleetMemberSource).toContain('password_delivery: existingAuthUserAttached ? "existing_account" : "reset_email"');
-    expect(fleetMemberSource).toContain("resetPasswordForEmail");
-    expect(fleetMemberSource).toContain("temporary_password_active: true");
+    expect(fleetMemberSource).toContain("auth.admin.inviteUserByEmail");
+    expect(fleetMemberSource).toContain('redirectTo: `${appOrigin}/auth/callback`');
+    expect(fleetMemberSource).toContain('email_delivery: existingAuthUserAttached ? "existing_account" : "verification_invite"');
+    expect(fleetMemberSource).not.toContain("request-password-reset");
+    expect(fleetMemberSource).not.toContain("temporary_password_active");
     expect(fleetMemberSource).not.toContain("temp_password:");
   });
 
@@ -50,8 +45,10 @@ describe("Temporary password security", () => {
 
     expect(adminDemoSource).not.toContain("/api/admin/create-prospect");
     expect(adminDemoSource).not.toContain("temp_password:");
-    expect(adminProspectSource).toContain("resetPasswordForEmail");
-    expect(adminProspectSource).toContain('password_delivery: "reset_email"');
+    expect(adminProspectSource).toContain("request-password-reset");
+    expect(adminProspectSource).toContain("sendScannerSafePasswordSetupEmail");
+    expect(adminProspectSource).toContain('password_delivery: passwordDelivery.ok ? "reset_email" : "pending"');
+    expect(adminProspectSource).not.toContain("resetPasswordForEmail");
     expect(adminProspectSource).not.toContain("temp_password:");
   });
 });

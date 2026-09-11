@@ -35,6 +35,8 @@ export function mapSupabaseErrorToFrench(message: string): string {
 
   if (m.includes("vehicule_non_trouve")) return "Véhicule non trouvé dans cette flotte.";
   if (m.includes("vehicule_bloque")) return "Ce véhicule est actuellement bloqué.";
+  if (m.includes("vehicule_documents_legaux_incomplets_ou_expires")) return "Affectation impossible : la carte grise, l'assurance ou la visite technique du véhicule est manquante ou expirée.";
+  if (m.includes("chauffeur_documents_legaux_incomplets_ou_expires")) return "Affectation impossible : le dossier légal du chauffeur est incomplet ou son permis n'est plus valide.";
   if (m.includes("cloture_manquante_bloque_affectation")) return "Une clôture manquante empêche cette affectation. Clôturez le créneau concerné.";
   if (m.includes("conducteur_deja_affecte")) return "Ce chauffeur a déjà un véhicule affecté.";
   if (m.includes("affectation_introuvable")) return "Affectation introuvable ou deja cloturee.";
@@ -71,6 +73,22 @@ export function mapSupabaseErrorToFrench(message: string): string {
 
   if (m.includes("could not find the function") || (m.includes("function") && m.includes("does not exist")) || m.includes("42883")) {
     return "Fonction serveur introuvable ou migrations non appliquées. Déployez les migrations Supabase du dépôt ou vérifiez VITE_SUPABASE_URL dans .env.local.";
+  }
+  if (m.includes("nom_organisation_requis")) {
+    return "Le nom de l'organisation est requis.";
+  }
+  if (m.includes("nom_flotte_requis")) {
+    return "Le nom de la flotte est requis.";
+  }
+  if (m.includes("utilisateur non connecté")) {
+    return "Vous devez être connecté pour créer une flotte.";
+  }
+
+  if (m.includes("cannot coerce") || m.includes("single json object") || m.includes("pgrst116")) {
+    return "Donnée introuvable ou action non autorisée. Réessayez ou contactez votre superviseur.";
+  }
+  if (m.includes("statement timeout") || m.includes("canceling statement")) {
+    return "Le serveur met trop de temps à répondre. Réessayez dans quelques instants.";
   }
 
   if (m.includes("querying schema") || (m.includes("database error") && m.includes("schema"))) return "Problème côté base de données. Vérifiez que le projet Supabase est actif et que les migrations sont appliquées.";

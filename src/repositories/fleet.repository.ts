@@ -35,4 +35,27 @@ export class FleetRepository {
       orgId: row.org_id ?? undefined,
     }));
   }
+
+
+  async findCountryCodeById(fleetId: string): Promise<string> {
+    const rpcClient = supabase as unknown as {
+      rpc: (
+        fn: string,
+        params: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+    };
+
+    const { data, error } = await rpcClient.rpc(
+      'get_fleet_vehicle_country_code',
+      { p_fleet_id: fleetId },
+    );
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return typeof data === 'string' && data.trim()
+      ? data.trim().toUpperCase()
+      : 'CM';
+  }
 }

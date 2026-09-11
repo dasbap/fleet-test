@@ -197,7 +197,7 @@ describe("DashboardSidebar", () => {
       "href",
       ROUTE_PATHS.dashboardAdminUsers,
     );
-    expect(screen.getByRole("link", { name: /Comptes demo/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Utilisateurs/i })).toHaveAttribute(
       "href",
       ROUTE_PATHS.dashboardAdminDemo,
     );

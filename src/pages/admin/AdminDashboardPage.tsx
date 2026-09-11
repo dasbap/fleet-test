@@ -24,8 +24,8 @@ const ADMIN_ACTIONS = [
     superAdminOnly: true,
   },
   {
-    title: "Accès démo",
-    description: "Créer, suivre et réactiver les comptes de démonstration.",
+    title: "Utilisateurs",
+    description: "Créer, suivre et gérer les comptes et leurs accès.",
     href: ROUTE_PATHS.dashboardAdminDemo,
     icon: KeyRound,
     cta: "Ouvrir",

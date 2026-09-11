@@ -37,7 +37,7 @@ async function handleSubmitDemoRequest(c: Context) {
     error: authError,
   } = await userClient.auth.getUser(token);
 
-  if (authError || !user?.email) {
+  if (authError || !user?.email || !user.email_confirmed_at) {
     return c.json({ ok: false, error: "invalid_token" }, 401);
   }
 
@@ -46,9 +46,6 @@ async function handleSubmitDemoRequest(c: Context) {
     return c.json({ ok: false, error: "verified_email_mismatch" }, 403);
   }
 
-  // Important: seuls les comptes Auth créés spécifiquement pour la vérification
-  // d'une demande de démo peuvent emprunter ce chemin. Un compte produit normal
-  // ne doit jamais être supprimé par cette route.
   if (user.user_metadata?.demo_verification_pending !== true) {
     return c.json({ ok: false, error: "email_already_registered" }, 409);
   }
@@ -58,7 +55,7 @@ async function handleSubmitDemoRequest(c: Context) {
     return c.json({ ok: false, error: "server_configuration_error" }, 503);
   }
 
-  const { error: insertError } = await admin.from("demo_requests").insert({
+  const requestPayload = {
     full_name: parsed.data.full_name,
     email: normalizedEmail,
     company: parsed.data.company,
@@ -66,26 +63,69 @@ async function handleSubmitDemoRequest(c: Context) {
     company_identifier: parsed.data.company_identifier,
     country_code: parsed.data.country_code,
     verified_user_id: user.id,
-  });
+  };
 
-  if (insertError) {
-    // Même en cas de doublon, ce compte n'avait d'autre rôle que la vérification.
-    const { error: cleanupError } = await admin.auth.admin.deleteUser(user.id);
-    if (cleanupError) {
-      console.error("[demo-request] transient auth cleanup failed after insert error:", cleanupError.message);
-    }
+  const { data: existingRequest, error: existingRequestError } = await admin
+    .from("demo_requests")
+    .select("id,status,provisioned_user_id")
+    .ilike("email", normalizedEmail)
+    .maybeSingle();
 
-    if (insertError.code === "23505") {
+  if (existingRequestError) {
+    console.error("[demo-request] existing request lookup failed:", existingRequestError.message);
+    return c.json({ ok: false, error: "demo_request_lookup_failed" }, 500);
+  }
+
+  let writeError: { code?: string; message?: string } | null = null;
+
+  if (existingRequest) {
+    const canReopenLegacyAcceptedRequest =
+      existingRequest.status === "accepted" && !existingRequest.provisioned_user_id;
+
+    if (!canReopenLegacyAcceptedRequest) {
+      const { error: cleanupError } = await admin.auth.admin.deleteUser(user.id);
+      if (cleanupError) {
+        console.error("[demo-request] transient auth cleanup failed after duplicate lookup:", cleanupError.message);
+      }
       return c.json({ ok: false, error: "demo_email_already_used" }, 409);
     }
-    console.error("[demo-request] insert failed:", insertError.message);
+
+    const { error } = await admin
+      .from("demo_requests")
+      .update({
+        ...requestPayload,
+        status: "pending",
+        decision_reason: null,
+        decided_by: null,
+        decided_at: null,
+        admin_interacted_at: null,
+        provisioned_user_id: null,
+        invitation_url: null,
+        processed_email_queued_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existingRequest.id);
+    writeError = error;
+  } else {
+    const { error } = await admin.from("demo_requests").insert(requestPayload);
+    writeError = error;
+  }
+
+  if (writeError) {
+    const { error: cleanupError } = await admin.auth.admin.deleteUser(user.id);
+    if (cleanupError) {
+      console.error("[demo-request] transient auth cleanup failed after write error:", cleanupError.message);
+    }
+
+    if (writeError.code === "23505") {
+      return c.json({ ok: false, error: "demo_email_already_used" }, 409);
+    }
+    console.error("[demo-request] write failed:", writeError.message);
     return c.json({ ok: false, error: "demo_request_insert_failed" }, 500);
   }
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
   if (deleteError) {
-    // La demande est déjà enregistrée. Ne pas transformer un succès métier en
-    // faux échec utilisateur ; le nettoyage peut être repris côté administration.
     console.error("[demo-request] transient auth user cleanup failed:", deleteError.message);
   }
 

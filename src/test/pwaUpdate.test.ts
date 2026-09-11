@@ -61,7 +61,6 @@ describe("PWA service worker update", () => {
   it("does not register the service worker on protected Vercel deployments", () => {
     const mainSource = readFileSync("src/main.tsx", "utf8");
     const viteConfig = readFileSync("vite.config.ts", "utf8");
-    const pwaBlock = mainSource.slice(mainSource.indexOf("// PWA"));
 
     expect(viteConfig).toContain('process.env.VERCEL_ENV === "preview"');
     expect(viteConfig).toContain(
@@ -80,6 +79,7 @@ describe("PWA service worker update", () => {
     expect(mainSource).toContain("unregisterProtectedVercelServiceWorkers");
     expect(mainSource).toContain(".getRegistrations()");
     expect(mainSource).toContain("registration.unregister()");
-    expect(pwaBlock).toContain("!isProtectedVercelDeployment()");
+    expect(mainSource).toContain("import.meta.env.PROD && !isProtectedVercelDeployment()");
+    expect(mainSource).toContain('void import("@/pwa")');
   });
 });

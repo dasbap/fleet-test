@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { cn } from '@/lib/utils';
 import type { OnboardingData } from '@/types/onboarding';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { toast } from '@/hooks/use-toast';
@@ -14,15 +13,6 @@ interface Props {
   onNext: (d: Data) => void;
   onSkip: () => void;
 }
-
-const VEHICLE_TYPES: Array<{ label: string; value: NonNullable<Data['type']> }> = [
-  { label: 'Berline', value: 'berline' },
-  { label: 'Pick-up', value: 'pickup' },
-  { label: '4x4', value: '4x4' },
-  { label: 'Camionnette', value: 'camionnette' },
-  { label: 'Bus', value: 'bus' },
-  { label: 'Camion', value: 'camion' },
-];
 
 const BRANDS = [
   'Toyota',
@@ -57,7 +47,6 @@ export function StepFlotte({ orgId, initial, onNext, onSkip }: Props) {
         km: form.km ?? 0,
         ...(form.brand?.trim() ? { brand: form.brand.trim() } : {}),
         ...(form.model?.trim() ? { model: form.model.trim() } : {}),
-        ...(form.type ? { type: form.type } : {}),
       };
       await saveStep1(payload);
       onNext(payload);
@@ -140,29 +129,6 @@ export function StepFlotte({ orgId, initial, onNext, onSkip }: Props) {
             onChange={e => setForm(prev => ({ ...prev, km: Math.max(0, Number(e.target.value) || 0) }))}
             className="h-9 w-full rounded-md border border-surface-raised bg-surface px-3 text-sm focus:border-brand focus:outline-none"
           />
-        </div>
-
-        <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
-            Type de véhicule <OptionalHint />
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {VEHICLE_TYPES.map(vehicleType => (
-              <button
-                key={vehicleType.value}
-                type="button"
-                onClick={() => setForm(prev => ({ ...prev, type: vehicleType.value }))}
-                className={cn(
-                  'h-9 rounded-md border text-xs font-medium transition-colors',
-                  form.type === vehicleType.value
-                    ? 'border-brand bg-brand-light/20 text-brand-dark'
-                    : 'border-surface-raised bg-surface text-slate-600 hover:bg-surface-raised',
-                )}
-              >
-                {vehicleType.label}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 

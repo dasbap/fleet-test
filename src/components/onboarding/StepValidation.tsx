@@ -17,8 +17,6 @@ interface StepValidationProps {
 export function StepValidation({ orgId, initial, summary, onNext, onBack, onSkip }: StepValidationProps) {
   const [confirmed, setConfirmed] = useState(Boolean(initial?.confirmed));
   const { saveStep, isSaving } = useOnboarding(orgId);
-  const activeAlerts = Object.entries(summary?.step2?.alerts ?? {}).filter(([, enabled]) => enabled).length;
-  const invitesCount = summary?.step3?.invites?.length ?? 0;
 
   const handleSubmit = async () => {
     if (!confirmed || isSaving) return;
@@ -43,15 +41,9 @@ export function StepValidation({ orgId, initial, summary, onNext, onBack, onSkip
         <p className="text-sm text-slate-500">Confirmez vos informations pour terminer la configuration.</p>
       </div>
 
-      <div className="space-y-2 rounded-md border border-surface-raised p-3 text-sm text-slate-200">
+      <div className="rounded-md border border-surface-raised p-3 text-sm text-slate-200">
         <p>
-          <span className="text-slate-400">Vehicule:</span> {summary?.step1?.plate || 'Non renseigne'}
-        </p>
-        <p>
-          <span className="text-slate-400">Alertes actives:</span> {activeAlerts}
-        </p>
-        <p>
-          <span className="text-slate-400">Invitations preparees:</span> {invitesCount}
+          <span className="text-slate-400">Véhicule :</span> {summary?.step1?.plate || 'Non renseigné'}
         </p>
       </div>
 

@@ -72,6 +72,20 @@ describe("AdminDemoService", () => {
     expect(result).toEqual({ ok: true, user_id: "user-1", magic_url: "https://example.com/magic" });
   });
 
+  it("ne marque pas la creation reussie si le magic link echoue", async () => {
+    const createProspect = vi.fn().mockResolvedValue({ ok: true, user_id: "user-1" });
+    const generateMagicLink = vi.fn().mockResolvedValue({ ok: false, error: "account_inactive" });
+    const result = await createService({}, { createProspect, generateMagicLink }).createAccess("token", payload());
+    expect(result).toEqual({ ok: false, user_id: "user-1", error: "account_inactive" });
+  });
+
+  it("ne marque pas la creation reussie si le magic link est absent", async () => {
+    const createProspect = vi.fn().mockResolvedValue({ ok: true, user_id: "user-1" });
+    const generateMagicLink = vi.fn().mockResolvedValue({ ok: true });
+    const result = await createService({}, { createProspect, generateMagicLink }).createAccess("token", payload());
+    expect(result).toEqual({ ok: false, user_id: "user-1", error: "creation_echouee" });
+  });
+
   it("transmet le type de compte, la duree et l'acces permanent", async () => {
     const createProspect = vi.fn().mockResolvedValue({ ok: true, user_id: "user-1" });
     const generateMagicLink = vi.fn().mockResolvedValue({ ok: true, magic_url: "https://example.com/magic" });
@@ -120,6 +134,29 @@ describe("AdminDemoService", () => {
     const result = await createService({ setFleetPlan }, {}).setFleetPlan("fleet-1", "admin-1", "enterprise");
     expect(setFleetPlan).toHaveBeenCalledWith("fleet-1", "admin-1", "enterprise");
     expect(result).toEqual({ ok: true, plan_code: "enterprise" });
+  });
+
+  it("propage les erreurs metier de suppression", async () => {
+    const deleteAccount = vi.fn().mockResolvedValue({ ok: false, error: "last_active_organizer_required" });
+    await expect(createService({ deleteAccount }, {}).deleteAccount("user-1", "admin-1"))
+      .rejects.toThrow("last_active_organizer_required");
+  });
+
+  it("propage les erreurs metier de reactivation", async () => {
+    const reactivateAccount = vi.fn().mockResolvedValue({ ok: false, error: "max_demo_extension_exceeded" });
+    await expect(createService({ reactivateAccount }, {}).reactivateAccount("user-1", "admin-1"))
+      .rejects.toThrow("max_demo_extension_exceeded");
+  });
+
+  it("propage les erreurs metier de modification d'expiration", async () => {
+    const updateAccountExpiration = vi.fn().mockResolvedValue({ ok: false, error: "max_demo_extension_exceeded" });
+    await expect(
+      createService({ updateAccountExpiration }, {}).updateAccountExpiration(
+        "user-1",
+        "admin-1",
+        "2026-08-01T12:00:00.000Z",
+      ),
+    ).rejects.toThrow("max_demo_extension_exceeded");
   });
 
   it("suspendAccount exige les identifiants", async () => {

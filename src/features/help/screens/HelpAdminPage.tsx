@@ -35,12 +35,12 @@ const roleGuides = [
     ],
   },
   {
-    title: "Comptes demo",
+    title: "Accès temporaires",
     icon: KeyRound,
     points: [
-      "Une demo peut venir d'une demande utilisateur ou etre ouverte par un admin pour laisser un client essayer E-Samba.",
-      "Quand elle expire, elle doit partir proprement avec les comptes crees depuis cette demo.",
-      "Elle ne se transforme pas en compte client: l'admin peut seulement ajuster l'expiration, au maximum jusqu'a un mois apres la creation.",
+      "Un accès temporaire peut venir d'une demande utilisateur ou être ouvert par un admin pour laisser un client essayer E-Samba.",
+      "Quand il expire, les accès associés doivent être retirés proprement.",
+      "L'admin peut ajuster son expiration, au maximum jusqu'à un mois après la création.",
     ],
   },
 ];

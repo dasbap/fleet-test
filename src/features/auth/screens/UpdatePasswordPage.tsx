@@ -41,11 +41,8 @@ export default function UpdatePasswordPage() {
   const type = searchParams.get("type");
 
   const [pageState, setPageState] = useState<PageState>(() => {
-    // Si token_hash présent dans l'URL → flow PKCE, on doit vérifier d'abord.
     if (tokenHash && type === "recovery") return "verifying";
-    // Sinon si déjà en mode recovery (event hash fragment) → formulaire direct.
     if (isPasswordRecovery) return "ready";
-    // Accès direct sans contexte valide.
     return "error";
   });
 
@@ -55,10 +52,8 @@ export default function UpdatePasswordPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
 
-  // Éviter double-appel en StrictMode (React 18).
   const verifyCalledRef = useRef(false);
 
-  // ── Échange du token PKCE pour établir la session recovery ─────────────────
   useEffect(() => {
     if (pageState !== "verifying") return;
     if (!tokenHash || type !== "recovery") {
@@ -84,8 +79,6 @@ export default function UpdatePasswordPage() {
           );
           setPageState("error");
         } else {
-          // Session établie → AuthProvider reçoit PASSWORD_RECOVERY event et
-          // met isPasswordRecovery=true. On peut afficher le formulaire.
           setPageState("ready");
         }
       } catch (err) {
@@ -96,14 +89,12 @@ export default function UpdatePasswordPage() {
     })();
   }, [pageState, tokenHash, type]);
 
-  // ── Si event PASSWORD_RECOVERY arrive après le mount initial ───────────────
   useEffect(() => {
     if (isPasswordRecovery && pageState === "error") {
       setPageState("ready");
     }
   }, [isPasswordRecovery, pageState]);
 
-  // ── Soumission du nouveau mot de passe ─────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -119,16 +110,64 @@ export default function UpdatePasswordPage() {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      const {
+        data: { user: recoveryUser },
+        error: recoveryUserError,
+      } = await supabase.auth.getUser();
 
-      if (error) {
-        setFormError(error.message);
+      const email = recoveryUser?.email?.trim().toLowerCase();
+      if (recoveryUserError || !email) {
+        setFormError("La session de récupération est invalide. Demandez un nouveau lien.");
+        return;
+      }
+
+      const { error: passwordUpdateError } = await supabase.auth.updateUser({
+        password,
+      });
+
+      if (passwordUpdateError) {
+        setFormError(passwordUpdateError.message || "Impossible de modifier le mot de passe.");
+        return;
+      }
+
+      const {
+        data: { session: freshSession },
+        error: signInError,
+      } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      const token = freshSession?.access_token;
+      if (signInError || !token) {
+        setFormError(
+          signInError?.message ||
+            "Le mot de passe a été modifié, mais la nouvelle session n'a pas pu être créée."
+        );
+        return;
+      }
+
+      const response = await fetch("/api/auth/clear-password-marker", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      });
+      const result = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        details?: string;
+      };
+
+      if (!response.ok || result.ok !== true) {
+        setFormError(result.details ?? result.error ?? "Impossible de finaliser la modification du mot de passe.");
         return;
       }
 
       setPageState("success");
 
-      // Redirection après 2s : dashboard si flotte existante, sinon /start.
       setTimeout(() => {
         const dest =
           memberships.length > 0 ? ROUTE_PATHS.dashboard : ROUTE_PATHS.tenantBootstrap;
@@ -141,8 +180,6 @@ export default function UpdatePasswordPage() {
       setIsSubmitting(false);
     }
   };
-
-  // ── Rendus selon l'état ─────────────────────────────────────────────────────
 
   if (pageState === "verifying") {
     return (
@@ -200,7 +237,6 @@ export default function UpdatePasswordPage() {
     );
   }
 
-  // pageState === "ready" — formulaire
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">

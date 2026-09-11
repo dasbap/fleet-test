@@ -8,15 +8,24 @@ const functionSource = readFileSync(
 );
 
 describe("create-fleet-member-account Edge Function", () => {
-  it("checks the active organizer count before creating an organizer account", () => {
+  it("checks the active organizer count before inviting an organizer account", () => {
     const countCheckIndex = functionSource.indexOf("active_organizer_limit_reached");
-    const createUserIndex = functionSource.indexOf("auth.admin.createUser");
+    const inviteUserIndex = functionSource.indexOf("auth.admin.inviteUserByEmail");
 
     expect(countCheckIndex).toBeGreaterThan(-1);
-    expect(createUserIndex).toBeGreaterThan(-1);
-    expect(countCheckIndex).toBeLessThan(createUserIndex);
+    expect(inviteUserIndex).toBeGreaterThan(-1);
+    expect(countCheckIndex).toBeLessThan(inviteUserIndex);
     expect(functionSource).toContain('.eq("role", "organizer")');
     expect(functionSource).toContain("count: \"exact\"");
+  });
+
+  it("sends a Supabase verification invite back to the web account", () => {
+    expect(functionSource).toContain("auth.admin.inviteUserByEmail");
+    expect(functionSource).toContain('redirectTo: `${appOrigin}/auth/callback`');
+    expect(functionSource).toContain('email_delivery: existingAuthUserAttached ? "existing_account" : "verification_invite"');
+    expect(functionSource).toContain("email_verification_required: !existingAuthUserAttached");
+    expect(functionSource).toContain('resolveAppOrigin(body.app_origin ?? req.headers.get("origin"))');
+    expect(functionSource).not.toContain("email_confirm: true");
   });
 
   it("reattaches an existing auth user instead of failing on duplicate email", () => {

@@ -1,12 +1,15 @@
 import { Link, Navigate } from "react-router-dom";
-import { Inbox, ListFilter, Plus, Users } from "lucide-react";
+import { Inbox, ListFilter, Mail, Plus, Truck, Users } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { AllAccountsPanel } from "@/components/admin/AllAccountsPanel";
+import { AdminFleetManagementPanel } from "@/components/admin/AdminFleetManagementPanel";
+import { AdminRegistrationLocksPanel } from "@/components/admin/AdminRegistrationLocksPanel";
 import { CreateDemoForm } from "@/components/admin/CreateDemoForm";
 import { DemoRequestsPanel } from "@/components/admin/DemoRequestsPanel";
 import { DemoSessionsPanel } from "@/components/admin/DemoSessionsPanel";
+import { EmailDeliveryPanel } from "@/components/admin/EmailDeliveryPanel";
 import { useAdminDemoAccounts } from "@/hooks/useAdminDemoAccounts";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { ROUTE_PATHS } from "@/navigation/routePaths";
@@ -48,7 +51,7 @@ export default function DemoAdminPage() {
           </h1>
 
           <p className="text-sm text-muted-foreground">
-            Gestion des demandes, comptes démo, membres de flotte et accès
+            Gestion des demandes, utilisateurs, membres de flotte et accès
             internes.
           </p>
         </div>
@@ -73,6 +76,16 @@ export default function DemoAdminPage() {
           <TabsTrigger value="all-accounts" className="gap-1.5">
             <ListFilter className="h-4 w-4" />
             Tous les comptes
+          </TabsTrigger>
+
+          <TabsTrigger value="fleets" className="gap-1.5">
+            <Truck className="h-4 w-4" />
+            Flottes
+          </TabsTrigger>
+
+          <TabsTrigger value="emails" className="gap-1.5">
+            <Mail className="h-4 w-4" />
+            E-mails
           </TabsTrigger>
 
           <TabsTrigger value="create" className="gap-1.5">
@@ -106,10 +119,19 @@ export default function DemoAdminPage() {
           <AllAccountsPanel />
         </TabsContent>
 
+        <TabsContent value="fleets" className="mt-6 space-y-6">
+          <AdminFleetManagementPanel />
+          <AdminRegistrationLocksPanel />
+        </TabsContent>
+
+        <TabsContent value="emails" className="mt-6">
+          <EmailDeliveryPanel />
+        </TabsContent>
+
         <TabsContent value="create" className="mt-6">
           <div className="max-w-md">
             <div className="space-y-2 rounded-lg border p-6">
-              <h2 className="text-base font-semibold">Nouvel accès démo</h2>
+              <h2 className="text-base font-semibold">Nouvel accès utilisateur</h2>
 
               <p className="mb-4 text-sm text-muted-foreground">
                 Crée un compte prospect et génère un accès à partager.

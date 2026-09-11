@@ -42,11 +42,10 @@ describeIntegration("Trigger limite vehicules", () => {
   });
 
   it("bloque le 2e vehicule sur le seul slot free", async () => {
-    // creer_vehicule_esamba is intentionally service-owned. This test targets
-    // the database vehicle-limit trigger, so use service_role for both inserts.
+    const registrationSuffix = String(Date.now()).slice(-8);
     const { data, error } = await clients.admin.rpc("creer_vehicule_esamba", {
       p_fleet_id: context.fleetId,
-      p_registration: `LIM-${Date.now()}-1`,
+      p_registration: `L${registrationSuffix}`,
       p_brand: "Toyota",
       p_model: "Corolla",
       p_year: 2022,
@@ -60,7 +59,7 @@ describeIntegration("Trigger limite vehicules", () => {
       "creer_vehicule_esamba",
       {
         p_fleet_id: context.fleetId,
-        p_registration: `LIM-${Date.now()}-2`,
+        p_registration: `M${registrationSuffix}`,
         p_brand: "Honda",
         p_model: "Civic",
         p_year: 2023,

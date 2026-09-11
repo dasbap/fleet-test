@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2, MailCheck } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSubmitDemoRequest } from "@/hooks/useSubmitDemoRequest";
-import { createEphemeralSupabaseClient, supabase } from "@/integrations/supabase/client";
+import { demoVerificationSupabase } from "@/integrations/supabase/client";
+import { normalizeDemoPhone } from "@/lib/demoPhoneValidation";
 
 const CENTRAL_AFRICA_COUNTRIES = [
   { code: "CM", label: "Cameroun" },
@@ -18,6 +20,9 @@ const CENTRAL_AFRICA_COUNTRIES = [
 
 const DEMO_VERIFICATION_DRAFT_KEY = "esamba_demo_verification_draft";
 const DEMO_VERIFICATION_INTENT_KEY = "esamba_demo_verification_intent";
+const DEMO_VERIFICATION_EMAIL_STATE_KEY = "esamba_demo_verification_email_state";
+const DEMO_VERIFICATION_EVENT_KEY = `${DEMO_VERIFICATION_EMAIL_STATE_KEY}_event`;
+const DEMO_VERIFICATION_BROADCAST_CHANNEL = "esamba_demo_verification";
 
 interface ContactDemoFormProps { className?: string; }
 
@@ -33,17 +38,19 @@ type DemoFormState = {
 function mapVerificationError(error: unknown): string {
   const message = error instanceof Error ? error.message : "";
   const normalized = message.toLowerCase();
-  if (normalized.includes("rate") || normalized.includes("too many")) {
-    return "Trop d'e-mails de vérification ont été demandés. Attendez quelques minutes avant de réessayer.";
-  }
-  if (normalized.includes("expired") || normalized.includes("invalid") || normalized.includes("token")) {
-    return "Le lien ou le code de vérification est invalide ou expiré. Demandez un nouvel e-mail E-Samba.";
+  if (
+    normalized.includes("rate") ||
+    normalized.includes("too many") ||
+    normalized.includes("email rate limit") ||
+    normalized.includes("over_email_send_rate_limit")
+  ) {
+    return "Supabase limite temporairement l'envoi des e-mails. Réessayez dans quelques minutes.";
   }
   if (normalized.includes("fetch") || normalized.includes("network")) {
-    return "Impossible de joindre le service de vérification E-Samba. Vérifiez votre connexion et réessayez.";
+    return "Impossible de joindre Supabase. Vérifiez votre connexion et réessayez dans quelques minutes.";
   }
   console.error("[E-Samba] Erreur vérification email démo", error);
-  return "Le service de vérification e-mail E-Samba n'est pas disponible sur cet environnement. Réessayez plus tard.";
+  return "Supabase n'a pas pu envoyer l'e-mail de vérification. Réessayez dans quelques minutes.";
 }
 
 function readSavedDraft(): DemoFormState | null {
@@ -65,13 +72,16 @@ function readSavedDraft(): DemoFormState | null {
   }
 }
 
+function isMatchingVerifiedDemoSession(session: Session | null, email: string): session is Session {
+  if (!session?.user?.email || !session.user.email_confirmed_at) return false;
+  if (session.user.email.toLowerCase() !== email.trim().toLowerCase()) return false;
+  return session.user.user_metadata?.demo_verification_pending === true;
+}
+
 export function ContactDemoForm({ className }: ContactDemoFormProps) {
-  const verificationClientRef = useRef<ReturnType<typeof createEphemeralSupabaseClient> | null>(null);
   const [form, setForm] = useState<DemoFormState>({ name: "", email: "", company: "", phone: "", company_identifier: "", country_code: "" });
-  const [otp, setOtp] = useState("");
   const [verificationEmailSent, setVerificationEmailSent] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [emailVerificationToken, setEmailVerificationToken] = useState("");
   const [verificationPending, setVerificationPending] = useState(false);
   const [sent, setSent] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -82,6 +92,8 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     if (params.get("demo_request_sent") === "1") {
       window.localStorage.removeItem(DEMO_VERIFICATION_DRAFT_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
+      window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
+      window.localStorage.removeItem(DEMO_VERIFICATION_EVENT_KEY);
       setSent(true);
       window.history.replaceState({}, "", window.location.pathname);
       return;
@@ -90,48 +102,75 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
     const savedDraft = readSavedDraft();
     if (savedDraft) {
       setForm(savedDraft);
+      const savedEmailState = window.localStorage.getItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
+      if (savedEmailState === "sent" || savedEmailState === "verified") {
+        setVerificationEmailSent(true);
+      }
     }
 
-    // Compatibilité OTP : si une configuration SMTP personnalisée est ajoutée
-    // plus tard, le code à 6 chiffres peut toujours finaliser le formulaire ici.
-    const shouldResumeVerification = params.get("demo_email_verified") === "1";
-    if (!shouldResumeVerification) return;
+    if (params.get("demo_email_verified") === "1") {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!verificationEmailSent || emailVerified || !form.email.trim()) return;
 
     let cancelled = false;
-    void (async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (cancelled || error || !data.session?.user?.email) return;
+    const email = form.email.trim().toLowerCase();
 
-      const draft = savedDraft ?? readSavedDraft();
-      const sessionEmail = data.session.user.email.toLowerCase();
-      if (!draft || draft.email.trim().toLowerCase() !== sessionEmail) return;
-
-      if (data.session.user.user_metadata?.demo_verification_pending !== true) {
-        setFormError("Cette adresse e-mail est déjà associée à un compte E-Samba.");
-        return;
-      }
-
-      setForm(draft);
-      setEmailVerificationToken(data.session.access_token);
+    const applySession = (session: Session | null) => {
+      if (cancelled || !isMatchingVerifiedDemoSession(session, email)) return;
       setEmailVerified(true);
       setVerificationEmailSent(true);
       setFormError(null);
       window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
-      window.history.replaceState({}, "", window.location.pathname);
-    })();
+      window.localStorage.setItem(DEMO_VERIFICATION_EMAIL_STATE_KEY, "verified");
+    };
+
+    const refreshSession = async () => {
+      const { data, error } = await demoVerificationSupabase.auth.getSession();
+      if (!error) applySession(data.session);
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === DEMO_VERIFICATION_EMAIL_STATE_KEY || event.key === DEMO_VERIFICATION_EVENT_KEY) {
+        void refreshSession();
+      }
+    };
+
+    void refreshSession();
+    const interval = window.setInterval(() => void refreshSession(), 1500);
+    const { data: listener } = demoVerificationSupabase.auth.onAuthStateChange((_event, session) => applySession(session));
+    window.addEventListener("storage", handleStorage);
+
+    const channel = typeof BroadcastChannel !== "undefined"
+      ? new BroadcastChannel(DEMO_VERIFICATION_BROADCAST_CHANNEL)
+      : null;
+    if (channel) {
+      channel.onmessage = (event) => {
+        const payload = event.data as { type?: string; email?: string } | null;
+        if (payload?.type === "verified" && payload.email?.toLowerCase() === email) {
+          void refreshSession();
+        }
+      };
+    }
 
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      listener.subscription.unsubscribe();
+      window.removeEventListener("storage", handleStorage);
+      channel?.close();
     };
-  }, []);
+  }, [emailVerified, form.email, verificationEmailSent]);
 
   function updateEmail(email: string) {
     setForm((current) => ({ ...current, email }));
-    verificationClientRef.current = null;
-    setOtp("");
     setVerificationEmailSent(false);
     setEmailVerified(false);
-    setEmailVerificationToken("");
+    window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
+    window.localStorage.removeItem(DEMO_VERIFICATION_EVENT_KEY);
   }
 
   async function sendVerificationEmail() {
@@ -146,65 +185,39 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
       return;
     }
 
-    setVerificationPending(true);
+    let normalizedPhone: string;
     try {
-      window.localStorage.setItem(DEMO_VERIFICATION_DRAFT_KEY, JSON.stringify({ ...form, email }));
-      window.localStorage.setItem(DEMO_VERIFICATION_INTENT_KEY, "demo");
-
-      const redirectTo = `${window.location.origin}/auth/callback?intent=demo`;
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: redirectTo,
-          data: { demo_verification_pending: true },
-        },
-      });
-      if (error) throw error;
-
-      setVerificationEmailSent(true);
-      setEmailVerified(false);
-      setEmailVerificationToken("");
+      normalizedPhone = normalizeDemoPhone(form.phone, form.country_code);
     } catch (error) {
-      window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
-      setFormError(mapVerificationError(error));
-    } finally {
-      setVerificationPending(false);
-    }
-  }
-
-  async function verifyEmailCode() {
-    setFormError(null);
-    const email = form.email.trim().toLowerCase();
-    const token = otp.trim();
-    if (!/^\d{6}$/.test(token)) {
-      setFormError("Saisissez le code E-Samba à 6 chiffres reçu par e-mail.");
+      setFormError(error instanceof Error ? error.message : "Numéro de téléphone invalide.");
       return;
     }
 
     setVerificationPending(true);
     try {
-      const verificationClient = createEphemeralSupabaseClient();
-      verificationClientRef.current = verificationClient;
-      const { data, error } = await verificationClient.auth.verifyOtp({ email, token, type: "email" });
+      const nextForm = { ...form, email, phone: normalizedPhone };
+      setForm(nextForm);
+      window.localStorage.setItem(DEMO_VERIFICATION_DRAFT_KEY, JSON.stringify(nextForm));
+      window.localStorage.setItem(DEMO_VERIFICATION_INTENT_KEY, "demo");
+
+      const { error } = await demoVerificationSupabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: `${window.location.origin}/auth/callback?intent=demo`,
+          data: { demo_verification_pending: true },
+        },
+      });
+
       if (error) throw error;
-      if (!data.user || data.user.email?.toLowerCase() !== email || !data.session?.access_token) {
-        throw new Error("invalid_verification_session");
-      }
-      if (data.user.user_metadata?.demo_verification_pending !== true) {
-        throw new Error("Cette adresse e-mail est déjà associée à un compte E-Samba.");
-      }
-      setEmailVerificationToken(data.session.access_token);
-      setEmailVerified(true);
-      window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
-    } catch (error) {
+
+      setVerificationEmailSent(true);
       setEmailVerified(false);
-      setEmailVerificationToken("");
-      if (error instanceof Error && error.message.includes("déjà associée")) {
-        setFormError(error.message);
-      } else {
-        setFormError(mapVerificationError(error));
-      }
+      window.localStorage.setItem(DEMO_VERIFICATION_EMAIL_STATE_KEY, "sent");
+    } catch (error) {
+      setVerificationEmailSent(false);
+      window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
+      setFormError(mapVerificationError(error));
     } finally {
       setVerificationPending(false);
     }
@@ -213,25 +226,39 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setFormError(null);
-    if (!emailVerified || !emailVerificationToken) {
-      setFormError("Vérifiez votre adresse e-mail depuis l'e-mail E-Samba avant d'envoyer la demande.");
+    if (!emailVerified) {
+      setFormError("Cliquez sur le lien reçu par e-mail et attendez la confirmation E-Samba avant d'envoyer la demande.");
       return;
     }
     try {
+      const normalizedEmail = form.email.trim().toLowerCase();
+      const { data: sessionData, error: sessionError } = await demoVerificationSupabase.auth.getSession();
+      const session = sessionData.session;
+
+      if (sessionError || !isMatchingVerifiedDemoSession(session, normalizedEmail)) {
+        setEmailVerified(false);
+        setVerificationEmailSent(false);
+        window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
+        window.localStorage.removeItem(DEMO_VERIFICATION_EVENT_KEY);
+        setFormError("Votre session de vérification n'est plus valide. Vérifiez à nouveau votre adresse e-mail.");
+        return;
+      }
+
+      const normalizedPhone = normalizeDemoPhone(form.phone, form.country_code);
       await submitDemoRequest.mutateAsync({
         name: form.name,
-        email: form.email,
+        email: normalizedEmail,
         company: form.company,
-        phone: form.phone,
+        phone: normalizedPhone,
         companyIdentifier: form.company_identifier,
         countryCode: form.country_code,
-        emailVerificationToken,
+        emailVerificationToken: session.access_token,
       });
-      verificationClientRef.current = null;
-      setEmailVerificationToken("");
       window.localStorage.removeItem(DEMO_VERIFICATION_DRAFT_KEY);
       window.localStorage.removeItem(DEMO_VERIFICATION_INTENT_KEY);
-      await supabase.auth.signOut({ scope: "local" });
+      window.localStorage.removeItem(DEMO_VERIFICATION_EMAIL_STATE_KEY);
+      window.localStorage.removeItem(DEMO_VERIFICATION_EVENT_KEY);
+      await demoVerificationSupabase.auth.signOut({ scope: "local" });
       setSent(true);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Impossible d'envoyer la demande.");
@@ -254,20 +281,13 @@ export function ContactDemoForm({ className }: ContactDemoFormProps) {
             <Input id="demo-email" required type="email" autoComplete="email" value={form.email} onChange={(event) => updateEmail(event.target.value)} placeholder="vous@entreprise.com" disabled={emailVerified} />
             <Button type="button" variant="outline" onClick={() => void sendVerificationEmail()} disabled={verificationPending || emailVerified}>{emailVerified ? "Vérifiée" : verificationEmailSent ? "Renvoyer" : "Vérifier"}</Button>
           </div>
-          {emailVerified ? <p className="flex items-center gap-1 text-xs text-primary"><MailCheck className="h-3.5 w-3.5" />Adresse e-mail vérifiée par E-Samba.</p> : null}
+          {emailVerified ? <p className="flex items-center gap-1 text-xs text-primary"><MailCheck className="h-3.5 w-3.5" />Adresse e-mail vérifiée par E-Samba. Vous pouvez demander votre compte.</p> : null}
         </div>
 
         {verificationEmailSent && !emailVerified ? (
-          <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-3">
-            <p className="font-medium">Vérifiez votre boîte mail</p>
-            <p className="text-xs text-muted-foreground">E-Samba a envoyé un e-mail à <strong>{form.email.trim()}</strong>. Cliquez sur le lien ou le bouton contenu dans cet e-mail. Ce clic vérifiera votre adresse et enverra automatiquement la demande. Aucun compte produit ne sera conservé.</p>
-            <div className="border-t pt-3 space-y-2">
-              <p className="text-xs text-muted-foreground">Si votre e-mail contient plutôt un code à 6 chiffres, vous pouvez aussi le saisir ici :</p>
-              <div className="flex gap-2">
-                <Input id="demo-email-otp" aria-label="Code de vérification E-Samba" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="123456" />
-                <Button type="button" onClick={() => void verifyEmailCode()} disabled={verificationPending || otp.length !== 6}>Valider</Button>
-              </div>
-            </div>
+          <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-2">
+            <p className="font-medium">En attente de votre confirmation</p>
+            <p className="text-xs text-muted-foreground">E-Samba a demandé à Supabase d'envoyer un lien à {form.email.trim()}. Cliquez sur ce lien pour vérifier l'adresse. Cette page se mettra automatiquement à jour, même si vous ouvrez le lien dans un autre onglet.</p>
           </div>
         ) : null}
 

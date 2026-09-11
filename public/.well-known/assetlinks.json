@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.esamba.flotte",
+      "sha256_cert_fingerprints": [
+        "07:2E:08:5A:29:95:96:81:94:89:62:86:74:9A:65:EF:88:75:F6:F0:87:57:64:51:C1:90:96:12:F4:47:70:5A",
+        "6D:A1:FD:56:58:05:14:85:2F:8C:28:36:5F:DA:25:61:66:47:89:3F:4B:49:8A:B4:5E:66:97:ED:C6:46:2D:FE"
+      ]
+    }
+  }
+]

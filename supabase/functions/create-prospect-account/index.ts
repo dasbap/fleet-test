@@ -4,7 +4,7 @@ const ADMIN_SECRET = Deno.env.get("ADMIN_SECRET") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const APP_URL = Deno.env.get("APP_URL") ?? "https://app.e-samba.com";
-const FUNCTION_VERSION = "complete-client-profile-v8";
+const FUNCTION_VERSION = "origin-aware-password-setup-v11";
 const CENTRAL_AFRICA_COUNTRY_CODES = new Set(["CM", "CF", "TD", "CG", "GA", "GQ"]);
 
 interface CreateProspectBody {
@@ -20,6 +20,7 @@ interface CreateProspectBody {
   trial_days?: number;
   send_email?: boolean;
   permanent_access?: boolean;
+  app_origin?: string;
 }
 
 interface ProspectResult {
@@ -31,7 +32,9 @@ interface ProspectResult {
   login_url?: string;
   permanent_access?: boolean;
   must_set_password?: boolean;
-  password_delivery?: "reset_email";
+  password_delivery?: "reset_email" | "email_failed";
+  password_setup_email_sent?: boolean;
+  warning?: string;
   function_version?: string;
   error?: string;
 }
@@ -46,6 +49,7 @@ interface RegistrationResult {
 const ALLOWED_ORIGINS = [
   "https://www.e-samba.com",
   "https://app.e-samba.com",
+  "https://fleet-test-gamma.vercel.app",
   "capacitor://localhost",
   "http://localhost:5173",
   "http://localhost:8080",
@@ -59,6 +63,34 @@ function generateTempPassword(): string {
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
   return `Aa1!${encoded}`;
+}
+
+function resolveAppOrigin(value: unknown): string {
+  const candidate = typeof value === "string" ? value.trim().replace(/\/$/, "") : "";
+  if (ALLOWED_ORIGINS.includes(candidate)) return candidate;
+  const configured = APP_URL.trim().replace(/\/$/, "");
+  if (ALLOWED_ORIGINS.includes(configured)) return configured;
+  return "https://www.e-samba.com";
+}
+
+async function sendScannerSafePasswordSetupEmail(email: string, appOrigin: string): Promise<boolean> {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/request-password-reset`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+    },
+    body: JSON.stringify({
+      email,
+      redirectTo: `${appOrigin}/auth/update-password`,
+    }),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    console.error("[create-prospect-account] password setup email failed:", response.status, detail.slice(0, 200));
+  }
+  return response.ok;
 }
 
 function corsHeaders(req: Request): Record<string, string> {
@@ -93,7 +125,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== "POST") return jsonResponse(req, { ok: false, error: "method_not_allowed" }, 405);
-  if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !ADMIN_SECRET) return jsonResponse(req, { ok: false, error: "missing_server_configuration" }, 500);
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return jsonResponse(req, { ok: false, error: "missing_server_configuration" }, 500);
 
   let body: CreateProspectBody;
   try {
@@ -104,7 +136,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const authorization = req.headers.get("Authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-  if (!timingSafeEqual(token, ADMIN_SECRET)) return jsonResponse(req, { ok: false, error: "unauthorized" }, 401);
+  const authorized =
+    (ADMIN_SECRET && timingSafeEqual(token, ADMIN_SECRET)) ||
+    timingSafeEqual(token, SERVICE_ROLE_KEY);
+  if (!authorized) return jsonResponse(req, { ok: false, error: "unauthorized" }, 401);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
   const encoder = new TextEncoder();
@@ -126,6 +161,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const fleetId = body.fleet_id ?? null;
   const trialDays = Number(body.trial_days ?? 31);
   const permanentAccess = body.permanent_access === true;
+  const appOrigin = resolveAppOrigin(body.app_origin);
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return jsonResponse(req, { ok: false, error: "invalid_email" }, 400);
   if (!fullName || !companyName || !phone || !companyIdentifier || !CENTRAL_AFRICA_COUNTRY_CODES.has(countryCode)) {
@@ -147,6 +183,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   let createdUserId: string | null = null;
+  let accountProvisioned = false;
   try {
     const temporaryPasswordIssuedAt = new Date().toISOString();
     const clientProfile = { full_name: fullName, company_name: companyName, phone, company_identifier: companyIdentifier, country_code: countryCode };
@@ -177,19 +214,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
       p_permanent_access: permanentAccess,
     });
     const registration = registrationData as RegistrationResult | null;
-    if (registrationError || !registration?.ok) throw new Error("prospect_registration_failed");
+    if (registrationError || !registration?.ok) {
+      console.error("[create-prospect-account] registration failed:", registrationError?.message ?? registration?.error ?? "unknown_registration_error");
+      throw new Error("prospect_registration_failed");
+    }
+    accountProvisioned = true;
 
-    const { error: resetError } = await admin.auth.resetPasswordForEmail(email, { redirectTo: `${APP_URL.replace(/\/$/, "")}/set-password` });
-    if (resetError) throw new Error("password_setup_email_failed");
+    const emailSent = await sendScannerSafePasswordSetupEmail(email, appOrigin).catch((error) => {
+      console.error("[create-prospect-account] password setup request failed:", error instanceof Error ? error.message : String(error));
+      return false;
+    });
 
     if (body.send_email) {
-      await admin.from("notification_queue").insert({
+      const { error: notificationError } = await admin.from("notification_queue").insert({
         to_email: email,
         template_id: "prospect_welcome",
-        metadata: { ...clientProfile, trial_days: trialDays, trial_end: registration.trial_end, permanent_access: permanentAccess, login_url: APP_URL },
+        metadata: { ...clientProfile, trial_days: trialDays, trial_end: registration.trial_end, permanent_access: permanentAccess, login_url: appOrigin },
         status: "pending",
         created_at: new Date().toISOString(),
       });
+      if (notificationError) console.error("[create-prospect-account] welcome notification failed:", notificationError.message);
     }
 
     return jsonResponse(req, {
@@ -198,14 +242,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
       email,
       fleet_id: registration.fleet_id,
       trial_end: registration.trial_end,
-      login_url: `${APP_URL}/auth?email=${encodeURIComponent(email)}&prospect=1`,
+      login_url: `${appOrigin}/auth?email=${encodeURIComponent(email)}&prospect=1`,
       permanent_access: permanentAccess,
       must_set_password: true,
-      password_delivery: "reset_email",
+      password_delivery: emailSent ? "reset_email" : "email_failed",
+      password_setup_email_sent: emailSent,
+      ...(emailSent ? {} : { warning: "password_setup_email_failed" }),
       function_version: FUNCTION_VERSION,
     }, 201);
-  } catch {
-    if (createdUserId) await admin.auth.admin.deleteUser(createdUserId);
-    return jsonResponse(req, { ok: false, error: "account_creation_failed", function_version: FUNCTION_VERSION }, 500);
+  } catch (error) {
+    if (createdUserId && !accountProvisioned) await admin.auth.admin.deleteUser(createdUserId);
+    const errorCode = error instanceof Error && error.message === "prospect_registration_failed"
+      ? "prospect_registration_failed"
+      : "account_creation_failed";
+    console.error("[create-prospect-account] account creation failed:", error instanceof Error ? error.message : String(error));
+    return jsonResponse(req, { ok: false, error: errorCode, function_version: FUNCTION_VERSION }, 500);
   }
 });

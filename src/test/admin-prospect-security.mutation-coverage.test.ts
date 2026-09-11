@@ -1,16 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 
-const { createSupabaseUserClient, createSupabaseServiceClient, createClient } = vi.hoisted(() => ({
+const { createSupabaseUserClient, createSupabaseServiceClient } = vi.hoisted(() => ({
   createSupabaseUserClient: vi.fn(),
   createSupabaseServiceClient: vi.fn(),
-  createClient: vi.fn(),
 }));
 
-vi.mock("@supabase/supabase-js", () => ({ createClient }));
 vi.mock("@/server/infra/supabaseUserClient", () => ({ createSupabaseUserClient }));
 vi.mock("@/server/infra/supabaseServiceClient", () => ({ createSupabaseServiceClient }));
-vi.mock("@/server/env", () => ({ getAppUrl: () => "https://app.test", getSupabaseAnonKey: () => "anon", getSupabaseUrl: () => "https://supabase.test" }));
+vi.mock("@/server/env", () => ({
+  getAppUrl: () => "https://app.test",
+  getSupabaseAnonKey: () => "anon",
+  getSupabaseServiceRoleKey: () => "service-role",
+  getSupabaseUrl: () => "https://supabase.test",
+}));
 
 import { registerAdminProspectSecurityRoutes } from "@/server/http/routes/adminProspectSecurity";
 
@@ -74,7 +77,7 @@ describe("admin prospect security mutation coverage", () => {
     delete process.env.ADMIN_SECRET;
     createSupabaseUserClient.mockReturnValue(userClient());
     createSupabaseServiceClient.mockReturnValue(serviceClient());
-    createClient.mockReturnValue({ auth: { resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }) } });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ ok: true }) }));
   });
 
   it("requires authentication and admin permissions", async () => {
@@ -116,13 +119,24 @@ describe("admin prospect security mutation coverage", () => {
   it("creates a normalized prospect", async () => {
     const admin = serviceClient();
     createSupabaseServiceClient.mockReturnValue(admin);
-    const resetPasswordForEmail = vi.fn().mockResolvedValue({ error: null });
-    createClient.mockReturnValue({ auth: { resetPasswordForEmail } });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ ok: true }) });
+    vi.stubGlobal("fetch", fetchMock);
     const response = await post(validPayload({ email: "USER@Example.COM", fleet_id: "00000000-0000-4000-8000-000000000001" }));
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual(expect.objectContaining({ ok: true, user_id: "prospect-1", email: "user@example.com", fleet_id: "fleet-1", permanent_access: false, must_set_password: true }));
+    expect(await response.json()).toEqual(expect.objectContaining({ ok: true, user_id: "prospect-1", email: "user@example.com", fleet_id: "fleet-1", permanent_access: false, must_set_password: true, password_delivery: "reset_email" }));
     expect(admin.rpc).toHaveBeenCalledWith("prospect_create_account", expect.objectContaining({ p_email: "user@example.com", p_company_name: "Acme", p_trial_days: 7, p_account_type: "prospect", p_permanent_access: false }));
-    expect(resetPasswordForEmail).toHaveBeenCalledWith("user@example.com", { redirectTo: "https://app.test/set-password" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://supabase.test/functions/v1/request-password-reset",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: "service-role",
+          Authorization: "Bearer service-role",
+        },
+        body: JSON.stringify({ email: "user@example.com", redirectTo: "https://app.test/auth/update-password" }),
+      }),
+    );
   });
 
   it("handles auth creation and registration failures with rollback", async () => {
@@ -139,13 +153,22 @@ describe("admin prospect security mutation coverage", () => {
     }
   });
 
-  it("rolls back when reset email fails", async () => {
+  it("keeps the provisioned account when reset email delivery fails", async () => {
     const admin = serviceClient();
     createSupabaseServiceClient.mockReturnValue(admin);
-    createClient.mockReturnValue({ auth: { resetPasswordForEmail: vi.fn().mockResolvedValue({ error: { message: "mail" } }) } });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: vi.fn().mockResolvedValue({ error: "email_delivery_failed" }),
+    }));
     const response = await post(validPayload());
-    expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ ok: false, error: "password_setup_email_failed" });
-    expect(admin.deleteUser).toHaveBeenCalledWith("prospect-1");
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual(expect.objectContaining({
+      ok: true,
+      user_id: "prospect-1",
+      password_delivery: "pending",
+      password_delivery_error: "email_delivery_failed",
+    }));
+    expect(admin.deleteUser).not.toHaveBeenCalled();
   });
 });
